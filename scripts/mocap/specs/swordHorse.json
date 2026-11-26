@@ -1,0 +1,1060 @@
+{
+ "set": "swordHorse",
+ "title": "One-handed sword: attacks from the horse",
+ "film": "sword",
+ "out": "src/entities/hero2/clips/swordHorse.js",
+ "note": "The rider's attacks, built by H2/rider/py/rgen.py (kind 'ride': the whole body typed in 3D from the SWORD film's riding chapters). Seated convention as moveHorse; the right hand holds the sword (props), the left the reins (rider.js).",
+ "clips": [
+  {
+   "name": "rideLight",
+   "title": "Riding: the light attack",
+   "src": "sword 7:02-7:48",
+   "kind": "ride",
+   "fps": 30,
+   "n": 41,
+   "loop": false,
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "hands": {
+    "L": "fist"
+   },
+   "from": "ride",
+   "to": "ride",
+   "events": [
+    {
+     "f": 15,
+     "name": "hit"
+    }
+   ],
+   "phases": {
+    "windup": 8,
+    "active": 18,
+    "recover": 35
+   },
+   "qa": {
+    "maxStepDeg": 40,
+    "reason": "typed in 3D: the cut from over his right shoulder across to his left takes 4 frames at 30 fps (7:17.12-7:17.25)"
+   },
+   "ride_keys": {
+    "keys": [
+     {
+      "f": 0,
+      "base": "seat",
+      "note": "7:16.75 (side camera at the horse's left, he faces picture right): the sword held low forward on the horse's right, the left hand on the reins",
+      "uaR": [
+       -0.15,
+       -0.95,
+       0.25
+      ],
+      "faR": [
+       -0.1,
+       -0.85,
+       0.5
+      ],
+      "blade": [
+       -0.2,
+       -0.3,
+       0.93
+      ]
+     },
+     {
+      "f": 4,
+      "note": "7:16.88 the blade comes up on his right",
+      "uaR": [
+       -0.5,
+       -0.3,
+       0.6
+      ],
+      "faR": [
+       -0.3,
+       0.5,
+       0.8
+      ],
+      "blade": [
+       -0.15,
+       0.95,
+       0.2
+      ],
+      "chest": [
+       -10,
+       2,
+       2
+      ]
+     },
+     {
+      "f": 8,
+      "note": "7:17.0 the coil: the hand high over his right shoulder, the blade cocked back over his head",
+      "uaR": [
+       -0.55,
+       0.65,
+       0.3
+      ],
+      "faR": [
+       0.05,
+       0.95,
+       -0.2
+      ],
+      "blade": [
+       0.35,
+       0.55,
+       -0.75
+      ],
+      "chest": [
+       -22,
+       -2,
+       4
+      ],
+      "hips": [
+       -8,
+       0,
+       0
+      ],
+      "head": [
+       -5,
+       -4,
+       0
+      ]
+     },
+     {
+      "f": 11,
+      "note": "7:17.1 the top: over the head, starting across",
+      "uaR": [
+       -0.3,
+       0.85,
+       0.4
+      ],
+      "faR": [
+       0.3,
+       0.9,
+       0.3
+      ],
+      "blade": [
+       0.95,
+       0.3,
+       -0.1
+      ],
+      "chest": [
+       -10,
+       2,
+       0
+      ]
+     },
+     {
+      "f": 13,
+      "uaR": [
+       0.0,
+       0.5,
+       0.85
+      ],
+      "faR": [
+       0.5,
+       0.3,
+       0.8
+      ],
+      "blade": [
+       0.75,
+       0.2,
+       0.6
+      ],
+      "chest": [
+       10,
+       8,
+       -6
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 15,
+      "note": "7:17.25 the hit: the arm swung across in front, the blade down to his left over the horse's neck",
+      "uaR": [
+       0.35,
+       0.1,
+       0.93
+      ],
+      "faR": [
+       0.65,
+       -0.2,
+       0.73
+      ],
+      "blade": [
+       0.75,
+       -0.55,
+       -0.1
+      ],
+      "chest": [
+       30,
+       10,
+       -12
+      ],
+      "hips": [
+       10,
+       4,
+       -4
+      ],
+      "head": [
+       15,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 18,
+      "note": "7:17.4 the follow-through: the arm out to his left and back, the blade trailing back",
+      "uaR": [
+       0.8,
+       0.0,
+       0.4
+      ],
+      "faR": [
+       0.85,
+       0.1,
+       -0.5
+      ],
+      "blade": [
+       0.0,
+       0.05,
+       -1.0
+      ],
+      "chest": [
+       50,
+       6,
+       -12
+      ],
+      "hips": [
+       15,
+       2,
+       -5
+      ],
+      "head": [
+       25,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 23,
+      "note": "7:17.6 held",
+      "uaR": [
+       0.8,
+       -0.05,
+       0.35
+      ],
+      "faR": [
+       0.8,
+       0.0,
+       -0.55
+      ],
+      "blade": [
+       0.0,
+       0.0,
+       -1.0
+      ],
+      "chest": [
+       50,
+       6,
+       -10
+      ],
+      "hips": [
+       15,
+       2,
+       -4
+      ],
+      "head": [
+       25,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 29,
+      "note": "7:17.8 brought back in front",
+      "uaR": [
+       0.2,
+       -0.6,
+       0.6
+      ],
+      "faR": [
+       0.3,
+       -0.3,
+       0.9
+      ],
+      "blade": [
+       0.8,
+       -0.5,
+       0.2
+      ],
+      "chest": [
+       20,
+       4,
+       -4
+      ],
+      "hips": [
+       6,
+       0,
+       0
+      ],
+      "head": [
+       10,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 35,
+      "note": "7:18.0 the rest again",
+      "uaR": [
+       -0.15,
+       -0.95,
+       0.25
+      ],
+      "faR": [
+       -0.1,
+       -0.85,
+       0.5
+      ],
+      "blade": [
+       -0.2,
+       -0.3,
+       0.93
+      ],
+      "chest": [
+       2,
+       0,
+       0
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 40,
+      "base": "seat",
+      "uaR": [
+       -0.15,
+       -0.95,
+       0.25
+      ],
+      "faR": [
+       -0.1,
+       -0.85,
+       0.5
+      ],
+      "blade": [
+       -0.2,
+       -0.3,
+       0.93
+      ]
+     }
+    ]
+   },
+   "hand_ease": 30
+  },
+  {
+   "name": "rideHeavy",
+   "title": "Riding: the heavy attack (two cuts)",
+   "src": "sword 7:48-8:40",
+   "kind": "ride",
+   "fps": 30,
+   "n": 121,
+   "loop": false,
+   "props": {
+    "R": "sword",
+    "L": null
+   },
+   "hands": {
+    "L": "fist"
+   },
+   "from": "ride",
+   "to": "ride",
+   "events": [
+    {
+     "f": 30,
+     "name": "hit"
+    },
+    {
+     "f": 102,
+     "name": "hit2"
+    }
+   ],
+   "phases": {
+    "windup": 15,
+    "active": 36,
+    "recover": 118
+   },
+   "qa": {
+    "maxStepDeg": 40,
+    "reason": "typed in 3D: each cut from over his right shoulder down to his left side takes 5 frames at 30 fps (8:08.73-8:09.0)"
+   },
+   "ride_keys": {
+    "keys": [
+     {
+      "f": 0,
+      "base": "seat",
+      "note": "8:08.0 (front camera): the sword low forward on the horse's right",
+      "uaR": [
+       -0.15,
+       -0.95,
+       0.25
+      ],
+      "faR": [
+       -0.1,
+       -0.85,
+       0.5
+      ],
+      "blade": [
+       -0.2,
+       -0.3,
+       0.93
+      ]
+     },
+     {
+      "f": 8,
+      "note": "8:08.27 the blade up on his right",
+      "uaR": [
+       -0.6,
+       0.3,
+       0.5
+      ],
+      "faR": [
+       -0.3,
+       0.5,
+       0.8
+      ],
+      "blade": [
+       -0.1,
+       0.95,
+       0.2
+      ],
+      "chest": [
+       -12,
+       0,
+       4
+      ]
+     },
+     {
+      "f": 15,
+      "note": "8:08.5 the coil: high over his right shoulder, cocked back",
+      "uaR": [
+       -0.35,
+       0.9,
+       0.15
+      ],
+      "faR": [
+       0.1,
+       0.95,
+       -0.2
+      ],
+      "blade": [
+       0.3,
+       0.5,
+       -0.8
+      ],
+      "chest": [
+       -25,
+       -5,
+       6
+      ],
+      "hips": [
+       -8,
+       0,
+       2
+      ],
+      "head": [
+       -8,
+       -5,
+       0
+      ]
+     },
+     {
+      "f": 22,
+      "note": "8:08.73 coming over, leaning to his left",
+      "uaR": [
+       0.1,
+       0.7,
+       0.7
+      ],
+      "faR": [
+       0.4,
+       0.5,
+       0.75
+      ],
+      "blade": [
+       0.6,
+       0.75,
+       -0.25
+      ],
+      "chest": [
+       10,
+       6,
+       -15
+      ],
+      "hips": [
+       0,
+       2,
+       -5
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 27,
+      "note": "8:08.9 the cut: leaning far out over the horse's left shoulder",
+      "uaR": [
+       0.6,
+       0.0,
+       0.8
+      ],
+      "faR": [
+       0.75,
+       -0.4,
+       0.5
+      ],
+      "blade": [
+       0.95,
+       -0.1,
+       -0.25
+      ],
+      "chest": [
+       35,
+       15,
+       -30
+      ],
+      "hips": [
+       10,
+       6,
+       -12
+      ],
+      "head": [
+       20,
+       5,
+       10
+      ],
+      "hp": [
+       0.06,
+       1.05,
+       0.0
+      ]
+     },
+     {
+      "f": 30,
+      "note": "8:09.0 the hit: deep in the lean, the blade down at his left",
+      "uaR": [
+       0.7,
+       -0.5,
+       0.5
+      ],
+      "faR": [
+       0.6,
+       -0.75,
+       0.25
+      ],
+      "blade": [
+       0.2,
+       -0.8,
+       -0.55
+      ],
+      "chest": [
+       40,
+       25,
+       -40
+      ],
+      "hips": [
+       15,
+       8,
+       -15
+      ],
+      "head": [
+       25,
+       10,
+       15
+      ],
+      "hp": [
+       0.1,
+       1.04,
+       0.0
+      ]
+     },
+     {
+      "f": 36,
+      "note": "8:09.2 sweeping on, low and back",
+      "uaR": [
+       0.8,
+       -0.3,
+       0.3
+      ],
+      "faR": [
+       0.7,
+       -0.5,
+       -0.4
+      ],
+      "blade": [
+       0.0,
+       -0.5,
+       -0.85
+      ],
+      "chest": [
+       40,
+       20,
+       -35
+      ],
+      "hips": [
+       15,
+       6,
+       -12
+      ],
+      "head": [
+       25,
+       8,
+       12
+      ],
+      "hp": [
+       0.09,
+       1.045,
+       0.0
+      ]
+     },
+     {
+      "f": 42,
+      "note": "8:09.45 and up behind him on the left",
+      "uaR": [
+       0.7,
+       0.3,
+       0.1
+      ],
+      "faR": [
+       0.6,
+       0.7,
+       -0.2
+      ],
+      "blade": [
+       0.5,
+       0.6,
+       -0.6
+      ],
+      "chest": [
+       30,
+       8,
+       -20
+      ],
+      "hips": [
+       10,
+       2,
+       -6
+      ],
+      "head": [
+       15,
+       0,
+       5
+      ],
+      "hp": [
+       0.04,
+       1.055,
+       0.0
+      ]
+     },
+     {
+      "f": 48,
+      "note": "8:09.6 the blade up over his head",
+      "uaR": [
+       -0.2,
+       0.95,
+       0.1
+      ],
+      "faR": [
+       0.2,
+       0.6,
+       0.75
+      ],
+      "blade": [
+       -0.2,
+       0.95,
+       0.1
+      ],
+      "chest": [
+       0,
+       0,
+       0
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ],
+      "hp": [
+       0,
+       1.057,
+       0
+      ]
+     },
+     {
+      "f": 56,
+      "note": "8:09.85-8:11.3 held out to his right, slowly lowering (the hold is 0.45 s shorter than the footage's: the horse's second hit is at 3.4 s)",
+      "uaR": [
+       -0.9,
+       0.3,
+       0.2
+      ],
+      "faR": [
+       -0.9,
+       0.35,
+       0.15
+      ],
+      "blade": [
+       -0.45,
+       0.85,
+       0.25
+      ],
+      "chest": [
+       -15,
+       0,
+       5
+      ]
+     },
+     {
+      "f": 80,
+      "uaR": [
+       -0.95,
+       0.05,
+       0.2
+      ],
+      "faR": [
+       -0.95,
+       0.0,
+       0.25
+      ],
+      "blade": [
+       -0.5,
+       0.65,
+       0.55
+      ],
+      "chest": [
+       -20,
+       0,
+       6
+      ]
+     },
+     {
+      "f": 87,
+      "note": "8:11.5 raised again",
+      "uaR": [
+       -0.5,
+       0.7,
+       0.3
+      ],
+      "faR": [
+       -0.1,
+       0.95,
+       0.1
+      ],
+      "blade": [
+       0.3,
+       0.3,
+       -0.9
+      ],
+      "chest": [
+       -15,
+       -2,
+       5
+      ]
+     },
+     {
+      "f": 92,
+      "note": "8:11.7 the second coil",
+      "uaR": [
+       -0.35,
+       0.9,
+       0.15
+      ],
+      "faR": [
+       0.1,
+       0.95,
+       -0.2
+      ],
+      "blade": [
+       0.3,
+       0.5,
+       -0.8
+      ],
+      "chest": [
+       -25,
+       -5,
+       6
+      ],
+      "hips": [
+       -8,
+       0,
+       2
+      ],
+      "head": [
+       -8,
+       -5,
+       0
+      ]
+     },
+     {
+      "f": 97,
+      "uaR": [
+       0.1,
+       0.7,
+       0.7
+      ],
+      "faR": [
+       0.4,
+       0.5,
+       0.75
+      ],
+      "blade": [
+       0.6,
+       0.75,
+       -0.25
+      ],
+      "chest": [
+       10,
+       6,
+       -15
+      ],
+      "hips": [
+       0,
+       2,
+       -5
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 100,
+      "uaR": [
+       0.6,
+       0.0,
+       0.8
+      ],
+      "faR": [
+       0.75,
+       -0.4,
+       0.5
+      ],
+      "blade": [
+       0.95,
+       -0.1,
+       -0.25
+      ],
+      "chest": [
+       35,
+       15,
+       -30
+      ],
+      "hips": [
+       10,
+       6,
+       -12
+      ],
+      "head": [
+       20,
+       5,
+       10
+      ],
+      "hp": [
+       0.06,
+       1.05,
+       0.0
+      ]
+     },
+     {
+      "f": 102,
+      "note": "8:11.85 the second hit, as the first",
+      "uaR": [
+       0.7,
+       -0.5,
+       0.5
+      ],
+      "faR": [
+       0.6,
+       -0.75,
+       0.25
+      ],
+      "blade": [
+       0.2,
+       -0.8,
+       -0.55
+      ],
+      "chest": [
+       40,
+       25,
+       -40
+      ],
+      "hips": [
+       15,
+       8,
+       -15
+      ],
+      "head": [
+       25,
+       10,
+       15
+      ],
+      "hp": [
+       0.1,
+       1.04,
+       0.0
+      ]
+     },
+     {
+      "f": 108,
+      "uaR": [
+       0.8,
+       -0.3,
+       0.3
+      ],
+      "faR": [
+       0.7,
+       -0.5,
+       -0.4
+      ],
+      "blade": [
+       0.0,
+       -0.5,
+       -0.85
+      ],
+      "chest": [
+       40,
+       22,
+       -38
+      ],
+      "hips": [
+       15,
+       7,
+       -14
+      ],
+      "head": [
+       25,
+       8,
+       12
+      ],
+      "hp": [
+       0.1,
+       1.042,
+       0.0
+      ]
+     },
+     {
+      "f": 113,
+      "note": "8:12.2 still low in the lean",
+      "uaR": [
+       0.75,
+       -0.55,
+       0.3
+      ],
+      "faR": [
+       0.5,
+       -0.8,
+       -0.2
+      ],
+      "blade": [
+       0.0,
+       -0.3,
+       -0.95
+      ],
+      "chest": [
+       35,
+       20,
+       -32
+      ],
+      "hips": [
+       12,
+       6,
+       -12
+      ],
+      "hp": [
+       0.08,
+       1.045,
+       0.0
+      ]
+     },
+     {
+      "f": 118,
+      "note": "8:12.35 upright again",
+      "uaR": [
+       -0.15,
+       -0.9,
+       0.4
+      ],
+      "faR": [
+       -0.1,
+       -0.8,
+       0.55
+      ],
+      "blade": [
+       -0.2,
+       -0.3,
+       0.93
+      ],
+      "chest": [
+       3,
+       2,
+       0
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ],
+      "hp": [
+       0,
+       1.057,
+       0
+      ]
+     },
+     {
+      "f": 120,
+      "base": "seat",
+      "uaR": [
+       -0.15,
+       -0.95,
+       0.25
+      ],
+      "faR": [
+       -0.1,
+       -0.85,
+       0.5
+      ],
+      "blade": [
+       -0.2,
+       -0.3,
+       0.93
+      ]
+     }
+    ]
+   },
+   "hand_ease": 30
+  }
+ ]
+}

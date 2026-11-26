@@ -51,7 +51,7 @@ export const RIDES = [
   { name: 'horseStand', horse: 'horseStand', rider: 'rideIdle', offset: 0, reins: true },
   { name: 'horseMount', horse: 'horseMount', rider: 'rideMount', offset: 0, reins: false, events: { riderOn: 0.7 }, lead: 0.4, summon: { on: 0.62 } },
   { name: 'horseDismount', horse: 'horseDismount', rider: 'rideDismount', offset: 0, reins: false, events: { riderOff: 0.5 }, summon: { off: 0.62 } },
-  { name: 'rideMountRun', horse: 'horseRun', rider: 'rideMountRun', offset: 0, reins: false, events: { riderOn: 'the rider clip decides: the horse canters on (0.60 s cycle)' }, summon: { on: 0.55 } },
+  { name: 'rideMountRun', horse: 'horseRun', rider: 'rideMountRun', offset: 0, reins: false, events: { riderOn: 'the rider clip decides: the horse canters on (0.60 s cycle)' }, summon: { on: 0.62 } },
   { name: 'rideDismountRun', horse: 'horseRunStop', rider: 'rideDismountRun', offset: 0, reins: false, events: { riderOff: 'the rider clip decides: the horse halts under him (1.5 s)' }, summon: { off: 0.45 }, free: true },
   { name: 'horseWalkStart', horse: 'horseWalkStart', rider: 'rideWalk', offset: 0, reins: true },
   { name: 'horseWalk', horse: 'horseWalk', rider: 'rideWalk', offset: 0, reins: true },

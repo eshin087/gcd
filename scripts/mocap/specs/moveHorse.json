@@ -742,6 +742,1035 @@
    }
   },
   {
+   "name": "rideMountRun",
+   "title": "Riding: mount while moving",
+   "src": "move 25:55-26:27",
+   "kind": "ride",
+   "fps": 30,
+   "n": 72,
+   "loop": false,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "sprint",
+   "to": "ride",
+   "events": [
+    {
+     "f": 16,
+     "name": "seatIn"
+    },
+    {
+     "f": 36,
+     "name": "riderOn"
+    }
+   ],
+   "ride_keys": {
+    "keys": [
+     {
+      "f": 0,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 0,
+       "yaw": 0
+      },
+      "note": "25:58.0-25:58.4 (follow camera, side-back): sprinting beside where the horse will be"
+     },
+     {
+      "f": 1,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 1,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 2,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 2,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 3,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 3,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 4,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 4,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 5,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 5,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 6,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 6,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 7,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 7,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 8,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 8,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 9,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 9,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 10,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 10,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 11,
+      "base": {
+       "set": "moveGround",
+       "clip": "sprint",
+       "f": 11,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 16,
+      "note": "25:58.5 take-off off the left foot, the right knee driving up",
+      "hp": [
+       0,
+       1.12,
+       0.12
+      ],
+      "hips": [
+       0,
+       20,
+       0
+      ],
+      "chest": [
+       0,
+       28,
+       0
+      ],
+      "head": [
+       0,
+       -12,
+       0
+      ],
+      "footL": [
+       0.12,
+       -0.25,
+       5,
+       0.1,
+       45
+      ],
+      "footR": [
+       -0.12,
+       0.35,
+       -5,
+       0.45,
+       20
+      ],
+      "uaL": [
+       0.3,
+       -0.7,
+       0.6
+      ],
+      "faL": [
+       0.1,
+       -0.2,
+       0.97
+      ],
+      "uaR": [
+       -0.3,
+       -0.7,
+       0.6
+      ],
+      "faR": [
+       -0.1,
+       -0.2,
+       0.97
+      ],
+      "handL": [
+       15
+      ],
+      "handR": [
+       15
+      ]
+     },
+     {
+      "f": 22,
+      "note": "25:58.65 the kick: high over the saddle, the left leg thrown back straight, the right bent forward (the horse appears under him)",
+      "hp": [
+       0,
+       1.5,
+       0.06
+      ],
+      "hips": [
+       0,
+       25,
+       0
+      ],
+      "chest": [
+       0,
+       30,
+       0
+      ],
+      "head": [
+       0,
+       -18,
+       0
+      ],
+      "footL": [
+       0.14,
+       -0.45,
+       5,
+       0.66,
+       60
+      ],
+      "footR": [
+       -0.22,
+       0.2,
+       -12,
+       0.88,
+       10
+      ],
+      "uaL": [
+       0.45,
+       -0.55,
+       0.7
+      ],
+      "faL": [
+       0.1,
+       -0.2,
+       0.97
+      ],
+      "uaR": [
+       -0.45,
+       -0.55,
+       0.7
+      ],
+      "faR": [
+       -0.1,
+       -0.2,
+       0.97
+      ]
+     },
+     {
+      "f": 31,
+      "note": "25:59.1 coming down astride",
+      "hp": [
+       0,
+       1.2,
+       0.02
+      ],
+      "hips": [
+       0,
+       10,
+       0
+      ],
+      "chest": [
+       0,
+       16,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ],
+      "footL": [
+       0.25,
+       -0.1,
+       8,
+       0.45,
+       10
+      ],
+      "footR": [
+       -0.25,
+       0.0,
+       -8,
+       0.45,
+       0
+      ]
+     },
+     {
+      "f": 36,
+      "base": "seat",
+      "note": "25:59.4 in the saddle, cantering on (rideRun's rock on the horse's clock)",
+      "hips": [
+       0.0,
+       -4.0,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       10.0,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -8.0,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.06,
+       -0.01
+      ]
+     },
+     {
+      "f": 40.5,
+      "hips": [
+       0.0,
+       4.000000000000007,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       6.000000000000011,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -4.000000000000009,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.045,
+       0.025000000000000012
+      ]
+     },
+     {
+      "f": 45.0,
+      "hips": [
+       0.0,
+       8.0,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       12.0,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -9.0,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.05,
+       0.03
+      ]
+     },
+     {
+      "f": 49.5,
+      "hips": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       14.0,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -10.0,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.065,
+       0.0
+      ]
+     },
+     {
+      "f": 54.0,
+      "hips": [
+       0.0,
+       -4.0,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       10.0,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -8.0,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.06,
+       -0.01
+      ]
+     },
+     {
+      "f": 58.5,
+      "hips": [
+       0.0,
+       4.0,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       6.0,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -4.0,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.045,
+       0.025
+      ]
+     },
+     {
+      "f": 63.0,
+      "hips": [
+       0.0,
+       7.999999999999986,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       12.000000000000004,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -9.000000000000002,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.05,
+       0.029999999999999947
+      ]
+     },
+     {
+      "f": 67.5,
+      "hips": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       14.0,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -10.0,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.065,
+       0.0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rideDismountRun",
+   "title": "Riding: dismount while moving",
+   "src": "move 25:55-26:27",
+   "kind": "ride",
+   "fps": 30,
+   "n": 60,
+   "loop": false,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "ride",
+   "to": "run",
+   "root_keys": [
+    [
+     0,
+     0,
+     0
+    ],
+    [
+     30,
+     0,
+     0
+    ],
+    [
+     59,
+     0,
+     4.253333333333334
+    ]
+   ],
+   "events": [
+    {
+     "f": 10,
+     "name": "riderOff"
+    },
+    {
+     "f": 30,
+     "name": "seatOut"
+    }
+   ],
+   "ride_keys": {
+    "keys": [
+     {
+      "f": 0,
+      "base": "seat",
+      "note": "26:00.2 seated at the canter (side view)",
+      "hips": [
+       0.0,
+       -4.0,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       10.0,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -8.0,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.06,
+       -0.01
+      ]
+     },
+     {
+      "f": 4.5,
+      "hips": [
+       0.0,
+       4.0,
+       0.0
+      ],
+      "chest": [
+       0.0,
+       6.0,
+       0.0
+      ],
+      "head": [
+       0.0,
+       -4.0,
+       0.0
+      ],
+      "hp": [
+       0.0,
+       1.045,
+       0.025
+      ]
+     },
+     {
+      "f": 8,
+      "hp": [
+       0,
+       1.06,
+       0.0
+      ],
+      "hips": [
+       0,
+       4,
+       0
+      ],
+      "chest": [
+       0,
+       14,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ]
+     },
+     {
+      "f": 11,
+      "note": "26:00.55 the spring off the stirrups",
+      "hp": [
+       0,
+       1.12,
+       0.03
+      ],
+      "hips": [
+       0,
+       14,
+       0
+      ],
+      "chest": [
+       0,
+       20,
+       0
+      ],
+      "head": [
+       0,
+       -10,
+       0
+      ]
+     },
+     {
+      "f": 17,
+      "note": "26:00.7 high over the saddle: the left leg thrown back, the right bent under (the horse vanishes)",
+      "hp": [
+       0,
+       1.43,
+       0.04
+      ],
+      "hips": [
+       0,
+       22,
+       0
+      ],
+      "chest": [
+       0,
+       26,
+       0
+      ],
+      "head": [
+       0,
+       -15,
+       0
+      ],
+      "footL": [
+       0.14,
+       -0.5,
+       5,
+       0.6,
+       60
+      ],
+      "footR": [
+       -0.2,
+       0.18,
+       -10,
+       0.83,
+       10
+      ],
+      "uaL": [
+       0.5,
+       -0.5,
+       0.7
+      ],
+      "faL": [
+       0.2,
+       -0.2,
+       0.95
+      ],
+      "uaR": [
+       -0.5,
+       -0.5,
+       0.7
+      ],
+      "faR": [
+       -0.2,
+       -0.2,
+       0.95
+      ],
+      "handL": [
+       15
+      ],
+      "handR": [
+       15
+      ]
+     },
+     {
+      "f": 24,
+      "note": "26:01.0 dropping, the legs reaching for the ground",
+      "hp": [
+       0,
+       1.35,
+       0.03
+      ],
+      "hips": [
+       0,
+       14,
+       0
+      ],
+      "chest": [
+       0,
+       16,
+       0
+      ],
+      "head": [
+       0,
+       -6,
+       0
+      ],
+      "footL": [
+       0.13,
+       -0.15,
+       5,
+       0.4,
+       30
+      ],
+      "footR": [
+       -0.13,
+       0.25,
+       -5,
+       0.55,
+       10
+      ]
+     },
+     {
+      "f": 29,
+      "hp": [
+       0,
+       1.15,
+       0.03
+      ],
+      "hips": [
+       0,
+       12,
+       0
+      ],
+      "chest": [
+       0,
+       14,
+       0
+      ],
+      "footL": [
+       0.12,
+       0.0,
+       5,
+       0.15,
+       20
+      ],
+      "footR": [
+       -0.12,
+       0.3,
+       -5,
+       0.3,
+       10
+      ]
+     },
+     {
+      "f": 31,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 18,
+       "yaw": 0
+      },
+      "note": "26:01.3-26:02 landed running (the run's own cycle, his own root from here)"
+     },
+     {
+      "f": 32,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 19,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 33,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 20,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 34,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 21,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 35,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 22,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 36,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 23,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 37,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 0,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 38,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 1,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 39,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 2,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 40,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 3,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 41,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 4,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 42,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 5,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 43,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 6,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 44,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 7,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 45,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 8,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 46,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 9,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 47,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 10,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 48,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 11,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 49,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 12,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 50,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 13,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 51,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 14,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 52,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 15,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 53,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 16,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 54,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 17,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 55,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 18,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 56,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 19,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 57,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 20,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 58,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 21,
+       "yaw": 0
+      }
+     },
+     {
+      "f": 59,
+      "base": {
+       "set": "moveGround",
+       "clip": "run",
+       "f": 22,
+       "yaw": 0
+      }
+     }
+    ]
+   }
+  },
+  {
    "name": "rideWalk",
    "title": "Riding: the walk",
    "src": "move 26:27-27:07",
@@ -1058,6 +2087,488 @@
        0,
        1.035,
        -0.04
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rideJump",
+   "title": "Riding: the jump",
+   "src": "move 28:37-29:07",
+   "kind": "ride",
+   "fps": 60,
+   "n": 79,
+   "loop": false,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "ride",
+   "to": "ride",
+   "events": [
+    {
+     "f": 16,
+     "name": "takeoff"
+    },
+    {
+     "f": 46,
+     "name": "land"
+    }
+   ],
+   "ride_keys": {
+    "keys": [
+     {
+      "f": 0,
+      "base": "seat",
+      "note": "28:49.44 (the horse's pair sheet: clip 0) seated"
+     },
+     {
+      "f": 12,
+      "note": "28:49.6 the gather: sitting down into the horse",
+      "hp": [
+       0,
+       1.045,
+       0
+      ],
+      "hips": [
+       0,
+       4,
+       0
+      ],
+      "chest": [
+       0,
+       2,
+       0
+      ],
+      "head": [
+       0,
+       -4,
+       0
+      ]
+     },
+     {
+      "f": 18,
+      "note": "28:49.75 take-off: up out of the saddle with the horse's rear",
+      "hp": [
+       0,
+       1.085,
+       0.03
+      ],
+      "hips": [
+       0,
+       8,
+       0
+      ],
+      "chest": [
+       0,
+       2,
+       0
+      ],
+      "head": [
+       0,
+       -6,
+       0
+      ]
+     },
+     {
+      "f": 30,
+      "note": "28:49.95 the top: forward over the neck, out of the saddle",
+      "hp": [
+       0,
+       1.12,
+       0.05
+      ],
+      "hips": [
+       0,
+       10,
+       0
+      ],
+      "chest": [
+       0,
+       4,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ]
+     },
+     {
+      "f": 42,
+      "note": "28:50.15 coming down: sitting back up",
+      "hp": [
+       0,
+       1.09,
+       0.0
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ],
+      "chest": [
+       0,
+       -10,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 48,
+      "note": "28:50.26 the landing: braced, the trunk upright as the horse lands nose down",
+      "hp": [
+       0,
+       1.03,
+       -0.02
+      ],
+      "hips": [
+       0,
+       -6,
+       0
+      ],
+      "chest": [
+       0,
+       -20,
+       0
+      ],
+      "head": [
+       0,
+       4,
+       0
+      ]
+     },
+     {
+      "f": 56,
+      "hp": [
+       0,
+       1.045,
+       0
+      ],
+      "hips": [
+       0,
+       -2,
+       0
+      ],
+      "chest": [
+       0,
+       -14,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 78,
+      "hp": [
+       0,
+       1.057,
+       0
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ],
+      "chest": [
+       0,
+       -12,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rideDoubleJump",
+   "title": "Riding: the double jump",
+   "src": "move 29:07-29:39",
+   "kind": "ride",
+   "fps": 60,
+   "n": 124,
+   "loop": false,
+   "props": {
+    "R": null,
+    "L": null
+   },
+   "hands": {
+    "L": "fist",
+    "R": "fist"
+   },
+   "from": "ride",
+   "to": "ride",
+   "events": [
+    {
+     "f": 16,
+     "name": "takeoff"
+    },
+    {
+     "f": 49,
+     "name": "kick"
+    },
+    {
+     "f": 94,
+     "name": "land"
+    }
+   ],
+   "ride_keys": {
+    "keys": [
+     {
+      "f": 0,
+      "base": "seat",
+      "note": "29:09-29:13 (side views) seated"
+     },
+     {
+      "f": 12,
+      "hp": [
+       0,
+       1.045,
+       0
+      ],
+      "hips": [
+       0,
+       4,
+       0
+      ],
+      "chest": [
+       0,
+       2,
+       0
+      ],
+      "head": [
+       0,
+       -4,
+       0
+      ]
+     },
+     {
+      "f": 18,
+      "note": "take-off",
+      "hp": [
+       0,
+       1.085,
+       0.03
+      ],
+      "hips": [
+       0,
+       8,
+       0
+      ],
+      "chest": [
+       0,
+       2,
+       0
+      ],
+      "head": [
+       0,
+       -6,
+       0
+      ]
+     },
+     {
+      "f": 32,
+      "note": "the first top",
+      "hp": [
+       0,
+       1.12,
+       0.05
+      ],
+      "hips": [
+       0,
+       10,
+       0
+      ],
+      "chest": [
+       0,
+       4,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ]
+     },
+     {
+      "f": 46,
+      "note": "sinking into the saddle before the kick",
+      "hp": [
+       0,
+       1.05,
+       0.0
+      ],
+      "hips": [
+       0,
+       2,
+       0
+      ],
+      "chest": [
+       0,
+       -4,
+       0
+      ],
+      "head": [
+       0,
+       -2,
+       0
+      ]
+     },
+     {
+      "f": 53,
+      "note": "the kick in the air (the horse's second jump): up out of the saddle again",
+      "hp": [
+       0,
+       1.11,
+       0.04
+      ],
+      "hips": [
+       0,
+       10,
+       0
+      ],
+      "chest": [
+       0,
+       6,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ]
+     },
+     {
+      "f": 68,
+      "note": "the second top",
+      "hp": [
+       0,
+       1.12,
+       0.05
+      ],
+      "hips": [
+       0,
+       10,
+       0
+      ],
+      "chest": [
+       0,
+       4,
+       0
+      ],
+      "head": [
+       0,
+       -8,
+       0
+      ]
+     },
+     {
+      "f": 86,
+      "hp": [
+       0,
+       1.09,
+       0.0
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ],
+      "chest": [
+       0,
+       -10,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 96,
+      "note": "the landing",
+      "hp": [
+       0,
+       1.03,
+       -0.02
+      ],
+      "hips": [
+       0,
+       -6,
+       0
+      ],
+      "chest": [
+       0,
+       -20,
+       0
+      ],
+      "head": [
+       0,
+       4,
+       0
+      ]
+     },
+     {
+      "f": 104,
+      "hp": [
+       0,
+       1.045,
+       0
+      ],
+      "hips": [
+       0,
+       -2,
+       0
+      ],
+      "chest": [
+       0,
+       -14,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "f": 123,
+      "hp": [
+       0,
+       1.057,
+       0
+      ],
+      "hips": [
+       0,
+       0,
+       0
+      ],
+      "chest": [
+       0,
+       -12,
+       0
+      ],
+      "head": [
+       0,
+       0,
+       0
       ]
      }
     ]
