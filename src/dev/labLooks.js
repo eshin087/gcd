@@ -64,8 +64,8 @@ export const LOOK_SWITCHES = Object.freeze([
   ['oneLetters', ['0', 'a'], '0', 'a', false, ['code'], 'Xin Yi\'s letters: 0 the bosses\' fine cell, a they follow his size as the hero\'s do (the default; live)'],
   ['onePrint', ['0', 'a', 'b'], '0', 'a', true, ['code'], 'Xin Yi\'s print: 0 the lifted print and the shapes he shipped with; a the hero\'s quiet print, simpler shapes, a coat that stirs from phase 1 (the default); b a, and one letter size bolder on a small screen (a reload)'],
   // --- code: Xin Yi rebuilt (ADR-221; awaiting: the owner picks from the sheets and films)
-  ['oneBody', ['0', 'a', 'b', 'c'], '0', 'b', true, ['code'], 'Xin Yi's figure: 0 as shipped; printed like the hero on a man's build: a the long coat closed in phase 1, b the coat open in every phase, c a duster to mid-shin (a reload)', 'awaiting'],
-  ['oneMoves', ['0', 'a'], '0', 'a', false, ['code'], 'Xin Yi's moves: 0 as shipped; a the guns aimed down the arm, every blue / red blow held in its windup pose before the snap, two fast strings (live)', 'awaiting'],
+  ['oneBody', ['0', 'a', 'b', 'c'], '0', 'b', true, ['code'], 'Xin Yi\'s figure: 0 as shipped; printed like the hero on a man\'s build: a the long coat closed in phase 1, b the coat open in every phase, c a duster to mid-shin (a reload)', 'awaiting'],
+  ['oneMoves', ['0', 'a'], '0', 'a', false, ['code'], 'Xin Yi\'s moves: 0 as shipped; a the guns aimed down the arm, every blue / red blow held in its windup pose before the snap, two fast strings (live)', 'awaiting'],
   // --- grove: Lu Wusheng readable (ADR-152): the palette picked; the print's five steps and the mark wait for the owner
   ['sheathArt', ['0', '1', '2', '3', 'a'], '0', 'a', true, ['grove'], 'Lu Wusheng\'s print, five steps: 0 the wyrm\'s digits as shipped, 1 digits in his colours, 2 digits lit and outlined, 3 ink-line flattened, a the hero\'s ink-line art (the default since ADR-194; a reload)'],
   ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)'],
