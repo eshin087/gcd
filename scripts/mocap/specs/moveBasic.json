@@ -1,0 +1,18 @@
+{
+ "set": "moveBasic",
+ "title": "Movement: the basics",
+ "film": "move",
+ "out": "src/entities/hero2/clips/moveBasic.js",
+ "clips": [
+  {
+   "name": "walk", "title": "Walk", "src": "move 0:32-0:54", "kind": "loop", "fps": 30, "travel": "forward", "symmetric": 1,
+   "takes": [
+    {"t0": "0:35.50", "t1": "0:39.20", "view": "right"},
+    {"t0": "0:39.70", "t1": "0:43.40", "view": "left"},
+    {"t0": "0:44.30", "t1": "0:48.10", "view": "back"},
+    {"t0": "0:48.50", "t1": "0:51.50", "view": "front"}
+   ],
+   "from": "walk", "to": "walk"
+  }
+ ]
+}
