@@ -276,6 +276,9 @@ export default {
     "R": null,
     "L": null
    },
+   "hands": {
+    "R": "fist"
+   },
    "from": "idle",
    "to": "idle"
   },
