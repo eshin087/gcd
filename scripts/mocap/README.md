@@ -1,5 +1,10 @@
 # scripts/mocap: clips for hero2 measured from the owner's reference footage
 
+> For a BOSS's blows (the duelist engine: Tian Lei, Wen Yao, ...), the clips this tool builds are fitted onto
+> the boss by `duelist/fit.mjs`: read `duelist/README.md` (the melee attack animation engine) first. Films so
+> far: `move`, `sword` (the hero remake), `fist` (bare-handed attacks, ADR-208). The paths in Setup below are
+> one session's scratchpad: set `MOCAP_REF` / `MOCAP_WORK` (and the python with the pose tool) to your own.
+
 The remade hero (`src/entities/hero2/`, `?hero=new`) plays RECORDED clips. This folder is the offline tool
 that makes them: it tracks the character in the owner's reference footage (the MOVE film and the SWORD
 film), fuses the camera angles of each move, retargets the motion onto our skeleton (`skeleton.js`,

@@ -35,7 +35,7 @@ for (const c of set.clips) {
   if (q.length !== c.n * nj * 4) bad(`q has ${q.length} values, expected ${c.n * nj * 4}`);
   if (hips.length !== c.n * 3) bad(`hips has ${hips.length} values, expected ${c.n * 3}`);
   if (root.length !== c.n * 3) bad(`root has ${root.length} values`);
-  if (/\d/.test(c.src) && !/^(move|sword) /.test(c.src)) bad(`src must start with the film id: ${c.src}`);
+  if (/\d/.test(c.src) && !/^(move|sword|fist) /.test(c.src)) bad(`src must start with the film id: ${c.src}`);
   // quaternions: unit and continuous
   let normErr = 0, flips = 0, maxStep = 0, wrap = 0, stepAt = '';
   const ang = (f0, f1, j) => {
