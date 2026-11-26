@@ -64,6 +64,75 @@
    "to": "strafeWalk",
    "contact_h": 0.02,
    "period": 1.313
+  },
+  {
+   "name": "strafeRunL",
+   "title": "Strafe run",
+   "src": "move 15:22-16:01",
+   "kind": "loop",
+   "fps": 30,
+   "travel": 90,
+   "period_lo": 0.5,
+   "period_hi": 1.1,
+   "takes": [
+    {
+     "t0": "15:40.60",
+     "t1": "15:43.50",
+     "view": "back",
+     "yaw": 180
+    },
+    {
+     "t0": "15:56.50",
+     "t1": "15:58.20",
+     "view": "back",
+     "yaw": 180
+    }
+   ],
+   "from": "strafeRun",
+   "to": "strafeRun",
+   "draft": true
+  },
+  {
+   "name": "strafeRunR",
+   "title": "Strafe run",
+   "src": "move 15:22-16:01",
+   "kind": "loop",
+   "fps": 30,
+   "travel": -90,
+   "period_lo": 0.5,
+   "period_hi": 1.1,
+   "takes": [
+    {
+     "t0": "15:52.50",
+     "t1": "15:54.30",
+     "view": "back",
+     "yaw": 180
+    }
+   ],
+   "from": "strafeRun",
+   "to": "strafeRun",
+   "draft": true
+  },
+  {
+   "name": "strafeRunB",
+   "title": "Strafe run",
+   "src": "move 15:22-16:01",
+   "kind": "loop",
+   "fps": 30,
+   "travel": 180,
+   "period_lo": 0.5,
+   "period_hi": 1.1,
+   "takes": [
+    {
+     "t0": "15:30.90",
+     "t1": "15:32.40",
+     "view": "back",
+     "yaw": 180
+    }
+   ],
+   "from": "strafeRun",
+   "to": "strafeRun",
+   "draft": true
   }
  ]
 }
