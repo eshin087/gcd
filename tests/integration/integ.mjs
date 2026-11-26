@@ -1589,8 +1589,10 @@ async function scenarioForestEdge() {
     assert(melee > 0 && fg[nn >> 1] < 12, `fencing it among the trees, its melee reaches him (${melee} blows, ${fg[nn >> 1].toFixed(1)} m apart at the median)`);
   }
   // 3. back in: its ground comes back with him
+  // (40 s: the defending bot walks back under the wyrm's attacks; 25 s was short once the quick swipe, ADR-223,
+  // kept it rolling: back inside 15 m with the follow still easing down, 3.3 m to go)
   let inside = false;
-  for (let i = 0; i < Math.round(25 / DT) && !inside; i++) {
+  for (let i = 0; i < Math.round(40 / DT) && !inside; i++) {
     bot(G, { god: true, defend: true, attack: false });
     if (!G.input.pressedKeys.has('Space') && p.state !== 'roll') {
       G.input.axis = Math.hypot(p.position.x, p.position.z - 8) > 1.5 ? follow(0, 8) : { x: 0, y: 0 };
