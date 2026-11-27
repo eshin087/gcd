@@ -16,7 +16,7 @@
 //                      comes up), so nothing showed until a blow met it and the deflect pose arrived in one frame.
 //                      a: the guard is SHOWN at least 0.16 s from the press (b: 0.24 s); only the pose waits: the
 //                      state is idle at once as before, so blocks, parries, windows and actions are unchanged
-//                      (player.js _toLocoAfter). Default 0 until the owner picks from the films.
+//                      (player.js _toLocoAfter). The owner's pick from the films (2026-11-27): a.
 //
 // Read live: the player sets its animator's `wristSoft` every frame (player.js), setHeroThrust patches the two clips'
 // keys in place (swings.js SWINGS; '0' puts production's back). The Lab's 'hero' row switches both.
@@ -91,16 +91,18 @@ export function setParryFlick(m) {
   return true;
 }
 
-// (in the game the fixes are on unless a switch turns them off; the headless sims start from the motion before,
-//  which their checks are written for, and the audit names what it measures)
+// (the owner's picks, 2026-11-27: wrist a, thrusts a, flick a. In the game they are on unless a switch turns them
+//  off; the headless sims start from the motion before, which their checks are written for, and the audit names
+//  what it measures)
 export const DEFAULT_WRIST = 'a';
 export const DEFAULT_THRUST = 'a';
+export const DEFAULT_FLICK = 'a';
 {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
   if (q) {
     setHeroWrist(q.get('heroWrist') ?? DEFAULT_WRIST);
     setHeroThrust(q.get('heroThrust') ?? DEFAULT_THRUST);
-    setParryFlick(q.get('parryFlick') ?? '0');
+    setParryFlick(q.get('parryFlick') ?? DEFAULT_FLICK);
   } else {
     setHeroWrist('0');
   }
