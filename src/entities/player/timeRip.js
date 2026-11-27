@@ -245,7 +245,7 @@ export class TimeRip {
         // (all at once: every standing copy is past its tear)
         for (const g of this.ghosts) if (g.alive && g.age < g.hold + RIP_LOOK.ghosts.tear) g.hold = g.age - RIP_LOOK.ghosts.tear - 1e-3;
       }
-      if (mode === 'off' || !fl) return;
+      if (mode === 'off' || !fl || e?.planted) return; // (a planted answer draws no flash cuts of its own)
       const li = (fl.nLines | 0) - 1, L = li >= 0 ? fl.lines?.[li] : null;
       if (!L || !fin(L.ax + L.ay + L.az + L.bx + L.by + L.bz)) return;
       // (the last blow of an art draws no line of its own: the newest one is the cut before, marked

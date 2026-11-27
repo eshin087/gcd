@@ -6367,6 +6367,33 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
   it names. Not measured: any phone.
 
+## ADR-211 — The perfect parry earns its own reward: N planted deathblows (2026-11-26)
+
+- **Context:** a parried last blow of a string answered with the perfect dodge's flurry (vanish, flash cuts round
+  him, leaping arts), every string, so the parry had no reward of its own. The owner gave reference footage of a
+  sword-deflect chain and of a sword-action game's skills, and shaped the answer over five filmed rounds: a planted
+  single cut (kept as `planted`), then a posture-break two-beat deathblow ("i dont like this"), then "the parry
+  streak ... do # of streak death blows to the boss" with a special effect per hit, then faster / weightier /
+  piercing, then a hit-pause per blow, blood, cuts on the sword's contact, then Shatter Web without the big slashes,
+  the Flesh sound and no matrix effect ("push this out").
+- **Decision:** against a duelist (`?parryRiposte=deathblow`, the default), parries fill posture and `player.parryRun`
+  banks perfect parries (not the dodge streak; spent by a combo, reset when he is hurt or the posture empties). A
+  string's last blow parried opens the counter-cut window, nothing automatic. A parry that breaks posture, or any
+  parry of a blue-tell blow, starts the combo (`player/deathblow.js`, `DEFENSE.deathblow`): N = clamp(parryRun, 1, 7)
+  of the hero's own attack clips (13 moves, no repeat in a row, never the last combo's order, the finisher one of
+  three big ones), within 0.6 m of where he parried, unhurtable; every contact freezes the world `hold` real
+  seconds (0.16 - 0.2 s, the finisher 0.38 s; ~3 s for N = 7) with the dodge flurry's cold cast and a 12 m camera
+  lean; damage 22 + 2N a blow, 40 + 15N the finisher. Each hit calls `combat/deathblowFx.js` `deathblowHit` (the
+  blade's sampled `path`, `base`, `hold`): one straight cut centred on the contact along the swing (`?dbfx=b` Shatter
+  Web, the owner's pick: the cuts cross and snap on the finisher; a, c, d kept), blood (`?blood=0`: a spray, a wound
+  along the cut, LetterBatch pools until the fight resets) and the exit burst; the fire-field heat is budgeted (280
+  blobs). The hero's own blade line / arc is not drawn for a deathblow swing (`slashFx.owns`). Sound
+  `audio/deathblowSfx.js` (`?dbsfx=a` Flesh, the owner's pick; b c d kept, 0 = the flurry's). A matrix look
+  (`combat/deathblowMatrix.js`, `?dbmatrix=rain|world`) is built but off.
+- **Consequences:** the dodge streak and its flurry are the dodge's alone; the wyrm keeps the flurry riposte. Suites
+  whose checks measure something else pin `old` (duel PERFECT / STREAK / FXLOOKS part 3, city win, veil).
+  `?parryRiposte=old|planted`, `?parryGrow=0`, `?dbsfx=0` give the earlier behaviour back.
+
 ## ADR-210 — The perfect dodge's flurry: smear, floor sparks, aerial cuts and four looks behind `?dodgefx` (2026-11-25)
 
 - **Context:** the owner: the perfect dodge should not have "random like hops over the character and should be

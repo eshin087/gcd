@@ -1139,6 +1139,9 @@ async function scenarioWin() {
   const { STREAK_FX } = await imp('src/combat/streak.js');
   const chain0 = STREAK_FX.chain, dodge0 = STREAK_FX.dodgefx;
   STREAK_FX.chain = false;
+  // (and the old riposte: the fight's length was set with the flurry answering each parry; the default deathblow, ADR-211, is a different pace)
+  const RC = await imp('src/entities/player/riposteCut.js');
+  RC.setRiposteMode('old');
   STREAK_FX.dodgefx = ''; // (likewise the dodge looks, 2026-11-25: the window measures his fight)
   try {
   for (const seed of SEEDS) {
@@ -1166,6 +1169,7 @@ async function scenarioWin() {
   }
   } finally {
     STREAK_FX.chain = chain0;
+    RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
     STREAK_FX.dodgefx = dodge0;
   }
 }

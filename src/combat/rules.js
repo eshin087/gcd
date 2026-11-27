@@ -318,6 +318,46 @@ export const DEFENSE = Object.freeze({
   // of them the COUNTER BLOW: `damage` (final) and `posture`, he reels. Only within the riposte's
   // range. `posture`: on top of the parry's own (POSTURE.parry.blue)
   flareCounter: { damage: 64, posture: 30 },
+  // --- THE PLANTED RIPOSTE (?parryRiposte=planted; src/entities/player/riposteCut.js): a parried last blow
+  // against a duelist is answered where the hero stands, with his own heavy cut. `step`: the most he
+  // steps in (m; never nearer than `minGap` m to the foe's centre). `wind` / `active` / `recover`: the
+  // cut's timeline (s); the contact is at the end of the wind. The one blow deals what the flurry's n
+  // flash cuts would (n x DEFENSE.flurry.cut; the counter's last replaced by flareCounter), reels the
+  // foe, `flash` its hurt flash. The weight: the flurry's last blow (the freeze `stopK` x
+  // plunge.impactStop, the shake plunge.impactShake + `shakePerN` n, the punch `punch` + `punchPerN` n),
+  // scaled by flurry.ground. He cannot be hurt from the start to `iframePad` s after the end.
+  riposteCut: Object.freeze({ step: 0.6, minGap: 1.0, wind: 0.14, active: 0.1, recover: 0.32, iframePad: 0.05, stopK: 1.25, shakePerN: 0.06, punch: 2.2, punchPerN: 0.25, flash: 0.7 }),
+  // --- THE DEATHBLOW COMBO (?parryRiposte=deathblow; src/entities/player/deathblow.js): against a duelist, a
+  // parry that BREAKS his posture, or any parry of a BLUE-tell blow (the flare included), is answered where
+  // the hero stands by a planted combo of N blows, N = min(player.parryRun, cap) (at least 1). Parries of
+  // blows no longer count in the dodge streak: `player.parryRun` counts the PERFECT parries (reset when
+  // hurt, when his posture is back to 0, spent by a deathblow). Each blow is one of his own attack clips.
+  // cap: the most blows; mid / fin: damage (final, exact, crit) of each non-final blow = mid.base + mid.per x
+  // N, of the finisher = fin.base + fin.per x N (N 1: 55; N 7: 6 x 36 + 145 = 361); hold: the hit-pause (REAL s: the world
+  // and the hero stand still at `holdScale`, the blade inside him) of the first and of the last non-final blow (it grows
+  // with the blow), finHold the finisher's long one; ease: after each pause the time runs at `scale` and eases back
+  // to 1 over `dur` real s while the follow-through snaps on, then the next blow starts; jolt: how hard each
+  // blow jolts him (0..1; the finisher 1.2);
+  // wind0 / windK / windMin: the first blow's wind-up (s), each next one x windK, never under windMin;
+  // finWind: the finisher's held wind-up; active / recover: a blow's timeline after it (s), finActive /
+  // finRecover the finisher's; gap: the next blow starts this many s after the last one's active window and
+  // its freeze are over; step: the hero stays within this many m of where he parried (the disc), stepMid the
+  // most a non-final blow steps in, minGap the nearest he comes to his centre (m); turn: the least and most
+  // (rad) he turns to alternating sides between blows; slow: the cinematic beat at the start (real s, the
+  // camera's lean `weight`, no zoom); wMid / wLast: a blow's weight x riposteCut's (freeze, shake, punch; the
+  // finisher about the flurry's last blow), scaled by flurry.ground; flash: the foe's hurt flash;
+  // iframePad: s he stays unhurt after the end
+  deathblow: Object.freeze({
+    cap: 7,
+    mid: Object.freeze({ base: 22, per: 2 }),
+    fin: Object.freeze({ base: 40, per: 15 }),
+    wind0: 0.12, windK: 0.85, windMin: 0.05, finWind: 0.2,
+    active: 0.05, recover: 0.2, finActive: 0.1, finRecover: 0.3, gap: 0,
+    hold: Object.freeze([0.16, 0.2]), finHold: 0.38, holdScale: 0.03, ease: Object.freeze({ scale: 0.35, dur: 0.1 }), jolt: 0.9,
+    step: 0.6, stepMid: 0.3, minGap: 1.0,
+    slow: Object.freeze({ slowmo: 1, dur: 0.4, zoom: -12, weight: 0.6 }), // the camera leans 12 m in (of 36) for the combo (+ dur s after it), the rig scales it for the phone; slowmo 1: no slow motion
+    wMid: 0.4, wLast: 1.35, flash: 0.8, iframePad: 0.05,
+  }),
 });
 
 /**
