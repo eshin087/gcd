@@ -17,8 +17,8 @@ export const TUNING = {
   name: 'BAI WUJI, THE UNTOUCHED',
   // the bar. Round 3 (the owner after playing: "takes forever to do damage to him"; their answer, "the
   // barrier opens easier", hp back near 20000; a good player wins in about three minutes): 26000 -> 20000
-  // with wjBarrier's cracks 2, longer openings and openDamage (bench.mjs, six seeds, the table in ADR-243's
-  // round 3). Round 2: 26000 put the perfect answerer at 234 - 245 s and the fencing bot at 2 wins in 6.
+  // with wjBarrier's cracks 2, longer openings and openDamage (bench.mjs, six seeds, the table in
+  // ADR-250). Round 2: 26000 put the perfect answerer at 234 - 245 s and the fencing bot at 2 wins in 6.
   hp: 20000,
   // one bar, three phases: 66 % THE BLINDFOLD COMES OFF, 30 % THE MEASURELESS
   phaseAt: [1, 0.66, 0.3],
