@@ -1361,6 +1361,7 @@ const S = {
   },
   // motion: scenarios
   motion: scenarioMotion,
+  polish: scenarioPolish,
   // body: scenarios
   body: scenarioBody,
   // fx: scenarios
@@ -1370,9 +1371,10 @@ const S = {
 // (the tuning pass: the bench, tests/integration/bench.mjs: mortal bots, whole fights, opt-in)
 S.bench = async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'veil'); };
 S.motionaudit = scenarioMotionAudit; // (motion: opt-in, printed)
+S.anatomy = scenarioAnatomy; // (ADR-255: opt-in, printed)
 // (motion: WJ_MOTION=a|b|c plays every scenario with that take of his melee motion, ?wjMotion)
 if (process.env.WJ_MOTION) (await imp('src/entities/enemies/duelist/lookSwitch.js')).setLook('wjMotion', process.env.WJ_MOTION);
-const OPT_IN = new Set(['bench', 'motionaudit']);
+const OPT_IN = new Set(['bench', 'motionaudit', 'anatomy']);
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');
 for (const k of list) {
@@ -2827,7 +2829,7 @@ function wjMeasure(G, name, { dist = 2.2, how = 'block' } = {}) {
   const R = d.rig, inv = new THREE.Matrix4(), pinv = new THREE.Matrix4(), V = () => new THREE.Vector3();
   const L = (o, x = 0, y = 0, z = 0) => V().set(x, y, z).applyMatrix4(o.matrixWorld);
   const samp = () => {
-    R.root.updateMatrixWorld(true);
+    R.root.updateWorldMatrix(true, true); // (from the scene down: the parent's own matrix may be a frame old)
     inv.copy(R.root.matrixWorld).invert();
     const W = {
       wrR: L(R.arms.R.fore, 0, -0.26, 0), wrL: L(R.arms.L.wrist), shR: L(R.arms.R.upper), shL: L(R.arms.L.upper), elR: L(R.arms.R.fore), elL: L(R.arms.L.fore),
@@ -2835,10 +2837,11 @@ function wjMeasure(G, name, { dist = 2.2, how = 'block' } = {}) {
     };
     const B = {};
     for (const k in W) B[k] = W[k].clone().applyMatrix4(inv);
+    const hB = V().set(p.position.x, 1.15, p.position.z).applyMatrix4(inv); // (the hero's chest in his frame)
     // (the wrists in the pelvis's frame: in his pockets they go where his hips go)
     pinv.copy(R.pelvis.matrixWorld).invert();
     const Pv = { wrR: W.wrR.clone().applyMatrix4(pinv), wrL: W.wrL.clone().applyMatrix4(pinv) };
-    return { W, B, Pv, x: d.position.x, z: d.position.z, t: d.brain.act?.t ?? 0 };
+    return { W, B, hB, scl: R.root.getWorldScale(V()).x || 1, Pv, x: d.position.x, z: d.position.z, t: d.brain.act?.t ?? 0, hx: p.position.x, hz: p.position.z, yaw: d.yaw, ryaw: (() => { const e = R.root.matrixWorld.elements; return Math.atan2(e[8], e[10]); })(), cyaw: (() => { const e = R.chest?.matrixWorld?.elements ?? R.root.matrixWorld.elements; return Math.atan2(e[8], e[10]); })() };
   };
   const ang = (a, b, c) => { const u = V().subVectors(a, b).normalize(), w = V().subVectors(c, b).normalize(); return (Math.acos(Math.max(-1, Math.min(1, u.dot(w)))) * 180) / Math.PI; };
   const rest = samp();
@@ -2855,6 +2858,11 @@ function wjMeasure(G, name, { dist = 2.2, how = 'block' } = {}) {
     const s = samp();
     for (const k in s.W) if (!Number.isFinite(s.W[k].x + s.W[k].y + s.W[k].z)) nan = true;
     F.push(s);
+    if (process.env.GCD_ANAT_TRACE) {
+      const bi = A.beats.findIndex((b) => s.t < b.end + 1e-6), b = A.beats[bi], u = null;
+      const q = (k) => s.B[k].toArray().map((x) => x.toFixed(2)).join(',');
+      out(`    t ${s.t.toFixed(3)} beat ${bi} ${b ? (s.t < b.impact ? 'wind' : s.t < b.impact + (b.def.active ?? 0.1) ? 'live' : 'rec') : '-'}${u != null ? ' u ' + u.toFixed(2) : ''}  anR ${q('anR')}  anL ${q('anL')}  wrR ${q('wrR')}  root ${s.x.toFixed(2)},${s.z.toFixed(2)} pelvisW ${s.W.pelvis.x.toFixed(2)},${s.W.pelvis.z.toFixed(2)} rigRoot ${R.root.getWorldPosition(new THREE.Vector3()).toArray().map((v) => v.toFixed(2)).join(",")} mw ${[12,13,14,0,5,10].map((i) => inv.clone().invert().elements[i].toFixed(2)).join(",")} pW ${s.W.pelvis.toArray().map((v) => v.toFixed(2)).join(",")} again ${s.W.pelvis.clone().applyMatrix4(inv).toArray().map((v) => v.toFixed(2)).join(",")} pelvisNow ${R.pelvis.getWorldPosition(new THREE.Vector3()).toArray().map((v) => v.toFixed(2)).join(",")} par ${R.pelvis.parent?.name ?? "?"}/${R.pelvis.parent === R.root} rootEuler ${new THREE.Euler().setFromQuaternion(R.root.getWorldQuaternion(new THREE.Quaternion()), "YXZ").toArray().slice(0, 3).map((v) => (+v).toFixed(2)).join(",")} scl ${R.root.getWorldScale(new THREE.Vector3()).toArray().map((v) => v.toFixed(2)).join(",")} pq ${new THREE.Euler().setFromQuaternion(R.pelvis.getWorldQuaternion(new THREE.Quaternion()), "YXZ").toArray().slice(0, 3).map((v) => (+v).toFixed(2)).join(",")} pelvisB ${s.B.pelvis.toArray().map((v) => v.toFixed(2)).join(",")} hero ${s.hx.toFixed(2)},${s.hz.toFixed(2)}`);
+    }
   }
   input.up(1);
   const near = (t) => F.reduce((best, s) => (Math.abs(s.t - t) < Math.abs(best.t - t) ? s : best), F[0]);
@@ -2867,12 +2875,12 @@ function wjMeasure(G, name, { dist = 2.2, how = 'block' } = {}) {
   }
   handOut = Math.max(outR, outL);
   // the largest pop: a joint that changes its speed in one frame (his frame; m; frames round a blink left out)
-  let pop = 0, popK = '';
+  let pop = 0, popK = '', popT = 0;
   for (let i = 2; i < F.length; i++) {
     if (Math.hypot(F[i].x - F[i - 1].x, F[i].z - F[i - 1].z) > 0.4 || Math.hypot(F[i - 1].x - F[i - 2].x, F[i - 1].z - F[i - 2].z) > 0.4) continue;
     for (const k of ['wrR', 'wrL', 'anR', 'anL', 'head', 'pelvis']) {
       const a2 = V().copy(F[i].B[k]).addScaledVector(F[i - 1].B[k], -2).add(F[i - 2].B[k]).length();
-      if (a2 > pop) { pop = a2; popK = k; }
+      if (a2 > pop) { pop = a2; popK = k; popT = F[i].t; }
     }
   }
   const beats = [];
@@ -2900,9 +2908,30 @@ function wjMeasure(G, name, { dist = 2.2, how = 'block' } = {}) {
       elbow: !foot ? ang(imp.W[`sh${side}`], imp.W[`el${side}`], imp.W[`wr${side}`]) : null,
       travel: Math.hypot(imp.x - st.x, imp.z - st.z),
       footY: foot ? imp.W[`an${side}`].y : null,
+      // (ADR-255) the striking arm's line: degrees off the line from his shoulder to the hero, flat on the
+      // ground (aim) and up / down (elev, + up), at the contact and at the release out of the cock; the
+      // elbow at the release
+      ...(!foot ? (() => {
+        // (in his own frame, the root's: the root carries a world tilt toward the camera, so world lines skew)
+        // (the hero where he stood the frame before the contact: the blow's own throw moves him in its frame)
+        const i0 = F.findIndex((f) => f.t >= b.impact - 1e-6), hRef = F[Math.max(0, i0 - 1)] ?? imp;
+        const rl = near(rel), line = (s) => {
+          // (the hero in his frame WITHOUT the root's world tilt: his place, his yaw, his scale only)
+          const dx = hRef.hx - s.x, dz = hRef.hz - s.z, cy = Math.cos(s.ryaw), sy = Math.sin(s.ryaw), k = s.scl;
+          const hc = { x: (dx * cy - dz * sy) / k, z: (dx * sy + dz * cy) / k };
+          const sh = s.B[`sh${side}`], wr = s.B[`wr${side}`], ax = wr.x - sh.x, az = wr.z - sh.z, tx = hc.x - sh.x, tz = hc.z - sh.z;
+          const a = Math.abs(((Math.atan2(ax, az) - Math.atan2(tx, tz) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+          return { aim: (a * 180) / Math.PI, elev: (Math.atan2(wr.y - sh.y, Math.hypot(ax, az)) * 180) / Math.PI };
+        };
+        const c = line(imp), r0 = line(rl);
+        if (process.env.GCD_ANAT_LINE) out(`      [line] t ${imp.t.toFixed(3)} sh ${imp.B[`sh${side}`].toArray().map((v) => v.toFixed(2))} wr ${imp.B[`wr${side}`].toArray().map((v) => v.toFixed(2))} hero ${imp.hB.toArray().map((v) => v.toFixed(2))} heroAt ${hRef.hx.toFixed(2)},${hRef.hz.toFixed(2)} from ${imp.x.toFixed(2)},${imp.z.toFixed(2)}`);
+        const fo = Math.abs(((imp.yaw - Math.atan2(imp.hx - imp.x, imp.hz - imp.z) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+        const brg = Math.atan2(imp.hx - imp.x, imp.hz - imp.z), off = (y) => Math.round((Math.abs(((y - brg + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) * 180) / Math.PI);
+        return { rig: off(imp.ryaw), chest: off(imp.cyaw), gap: Math.hypot(imp.hx - imp.x, imp.hz - imp.z), face: (fo * 180) / Math.PI, aim: c.aim, elev: c.elev, aimRel: r0.aim, elevRel: r0.elev, elRel: ang(rl.W[`sh${side}`], rl.W[`el${side}`], rl.W[`wr${side}`]) };
+      })() : {}),
     });
   }
-  return { name, phase: d.phase, frames: F.length, nan, handOut, outR, outL, pop, popK, recovery: A.end - A.recoveryStart, dur: A.end, beats, impacts: A.beats.filter((b) => !b.feint).map((b) => b.impact) };
+  return { name, phase: d.phase, frames: F.length, nan, handOut, outR, outL, pop, popK, popT, recovery: A.end - A.recoveryStart, dur: A.end, beats, impacts: A.beats.filter((b) => !b.feint).map((b) => b.impact) };
 }
 
 /** MOTIONAUDIT (opt-in): every melee move in every phase it is used in, measured (wjMeasure), printed per take. */
@@ -2927,6 +2956,91 @@ async function scenarioMotionAudit() {
     }
   }
   setLook('wjMotion', null);
+}
+
+/** ANATOMY (opt-in; ADR-255, the boss motion audit): EVERY move of his (melee, spells, terrain, the
+ *  transitions) in every phase it is used in, on the rig with the hero standing (god mode, no guard): each
+ *  blow's striking limb at its contact (a kick's knee, an arm's elbow: 180 = straight), and for an arm its
+ *  LINE: how many degrees it points off the line from his shoulder to the hero, flat (aim) and up / down
+ *  (elev), at the contact and at the release out of the cock (a spell's cast pose); the largest pop and
+ *  when (t in the move; the beats' impacts after it). `GCD_MOVES` a comma list, `WJ_TAKES` the takes,
+ *  `GCD_ANAT_OUT` the rows as JSON. */
+async function scenarioAnatomy() {
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); }
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : MOVE_NAMES;
+  const rows = [];
+  for (const tk of (process.env.WJ_TAKES ?? 'b').split(',')) {
+    setLook('wjMotion', tk);
+    out(`
+== scenario ANATOMY (take ${tk}: every blow's limb at its contact, an arm's line to the hero, pops) ==`);
+    for (const ph of [1, 2, 3]) {
+      for (const name of names) {
+        const def = MOVES[name];
+        if (!def || !phasesOf(name).includes(ph) || def.transition) continue;
+        const G = build();
+        duel(G, { dist: 2.2, form: ph });
+        const band = def.band ?? [0, 4];
+        const dist = process.env.GCD_ANAT_DIST ? +process.env.GCD_ANAT_DIST : Math.max(1.8, Math.min(7, band[0] + 0.6 > 2.2 ? band[0] + 0.6 : 2.2));
+        const r = wjMeasure(G, name, { dist, how: 'none' });
+        rows.push({ take: tk, ph, ...r });
+        if (r.fail) { out(`  P${ph} ${name} FAIL ${r.fail}`); continue; }
+        out(`  P${ph} ${name.padEnd(13)} d ${dist.toFixed(1)}  pop ${r.pop.toFixed(2)} ${r.popK} @${r.popT.toFixed(2)}  impacts ${r.impacts.map((t) => t.toFixed(2)).join(' ')}${r.nan ? '  NaN' : ''}`);
+        for (const b of r.beats) {
+          const limb = b.knee != null ? `knee ${Math.round(b.knee)}° footY ${b.footY.toFixed(2)}` : `elbow ${Math.round(b.elbow)}° (cock ${Math.round(b.elRel)}°)  line off ${Math.round(b.aim)}° / ${Math.round(b.elev)}° facing off ${Math.round(b.face)}° hero at ${b.gap.toFixed(2)} m rig ${b.rig}° chest ${b.chest}° (cock ${Math.round(b.aimRel)}° / ${Math.round(b.elevRel)}°)`;
+          out(`       ${String(b.tell).padEnd(6)} ${b.part.padEnd(6)} W ${b.W.toFixed(2)}  held ${b.held.toFixed(2)}  ${limb}`);
+        }
+      }
+    }
+  }
+  setLook('wjMotion', null);
+  if (process.env.GCD_ANAT_OUT) fs.writeFileSync(process.env.GCD_ANAT_OUT, JSON.stringify(rows, null, 1));
+}
+
+/** POLISH (ADR-255, the boss motion audit; `?wjPolish=0|a`, `?wjCastHand=0|a|b`): measured on the rig with
+ *  wjMeasure, take b. With the polish: every straight hand blow (the palm, the poke, Dark Spark, the Yank's
+ *  fist) lands with the arm on the line from his shoulder to the hero's chest (within 12 deg; round 3 had
+ *  12 - 31), and a kicking string's worst one-frame jump drops (Three Count: the foot no longer snaps back off
+ *  a dead stop). The casting hand: phase 1's Azure Draw and Yank cast with the right arm out (elbow open,
+ *  pointing at the hero at the contact) under 'a' and 'b', kept in the pocket under '0'. */
+async function scenarioPolish() {
+  out('\n== scenario POLISH (ADR-255: straight blows on the line, kick returns, the phase-1 casting hand) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  setLook('wjMotion', 'b');
+  const run1 = (name, ph, looks, dist = 2.2) => {
+    for (const [k, v] of Object.entries(looks)) setLook(k, v);
+    const G = build();
+    duel(G, { dist: 2.2, form: ph });
+    return wjMeasure(G, name, { dist, how: 'none' });
+  };
+  const lines = { 0: [], a: [] }, pops = {};
+  for (const pol of ['0', 'a']) {
+    for (const [name, ph] of [['palm', 2], ['notEvenClose', 1], ['darkSpark', 2], ['fiveSides', 3], ['azureYank', 2]]) {
+      const r = run1(name, ph, { wjPolish: pol, wjCastHand: 'a' }, name === 'azureYank' ? 3.4 : 2.2);
+      if (r.fail) { assert(false, `polish ${pol}: ${name} ran (${r.fail})`); continue; }
+      const b = r.beats.find((x) => x.aim != null && /^fist/.test(x.part));
+      if (b) lines[pol].push([`${name}`, Math.round(b.aim), Math.round(b.elbow)]);
+    }
+    const t = run1('threeCount', 2, { wjPolish: pol });
+    pops[pol] = t.pop;
+  }
+  const fmt = (L) => L.map(([n, a, e]) => `${n} ${a}°/${e}°`).join(', ');
+  assert(lines.a.length === 5 && lines.a.every(([, a, e]) => a <= 12 && e >= 150), `?wjPolish=a: every straight hand blow on the line to the hero, off <= 12 deg, elbow >= 150 (${fmt(lines.a)})`);
+  assert(lines['0'].some(([, a]) => a >= 20), `?wjPolish=0: round 3's lines as built (Dark Spark / the Yank 20+ deg off: ${fmt(lines['0'])})`);
+  assert(pops.a < pops['0'] - 0.08 && pops.a <= 0.4, `?wjPolish=a: Three Count's worst one-frame jump ${pops['0'].toFixed(2)} -> ${pops.a.toFixed(2)} m (<= 0.4)`);
+  // the casting hand (phase 1)
+  const cast = {};
+  for (const ch of ['0', 'a', 'b']) {
+    for (const name of ['azureDraw', 'azureYank']) {
+      const r = run1(name, 1, { wjPolish: 'a', wjCastHand: ch }, name === 'azureYank' ? 3.4 : 2.2);
+      const b = r.beats?.[0];
+      cast[ch + name] = b ? { el: Math.round(b.elbow), aim: Math.round(b.aim), elev: Math.round(b.elev) } : null;
+    }
+  }
+  const out3 = (ch) => ['azureDraw', 'azureYank'].map((n) => `${n} ${cast[ch + n]?.el}° off ${cast[ch + n]?.aim}° / ${cast[ch + n]?.elev}°`).join(', ');
+  for (const ch of ['a', 'b']) assert(['azureDraw', 'azureYank'].every((n) => cast[ch + n] && cast[ch + n].elev > -30 && cast[ch + n].aim <= 15), `?wjCastHand=${ch}: the arm out at the cast's contact, pointing at the hero (${out3(ch)})`);
+  assert(['azureDraw', 'azureYank'].every((n) => cast['0' + n] && cast['0' + n].elev < -60), `?wjCastHand=0: the hand kept in its pocket (${out3('0')})`);
+  for (const k of ['wjMotion', 'wjPolish', 'wjCastHand']) setLook(k, null);
 }
 
 /** MOTION: every take of his melee motion (?wjMotion=a|b|c): it loads, every melee move runs in every phase it
