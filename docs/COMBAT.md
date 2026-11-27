@@ -2916,6 +2916,24 @@ string out of a short blink round the hero (his flank, behind, the other flank).
 unless the blow uses them: both in phase 1, the left in phase 2, none in phase 3. The table's windups are the
 take '0''s; the take's floors are checked by `veil.mjs` MOTION.
 
+**His motion audit (ADR-255, 2026-11-27).** Measured on the rig (`veil.mjs . anatomy`: every blow's limb at its
+contact, an arm's line to the hero, the largest one-frame jump), over the glide. Kicks land straight (knee 166 -
+175 deg at the contact; 107 - 132 before round 3); straight hand blows land open (elbow 152 - 169 deg). Two
+fixes, `?wjPolish=a` (`0` = round 3 as built; no tell, timing, zone or damage moves):
+- **On the line.** The palm, the poke, Dark Spark's fist and the Yank's fist crossed past his centreline at the
+  contact, 12 - 31 deg off the line from his shoulder to the hero's chest (Dark Spark's fist passed the hero by
+  most of a metre): now 1 - 10 deg.
+- **The kick's return.** Inside a string the leg held its contact pose dead still, then snapped back to the
+  chamber in the last frames of a ~0.15 s follow-through (a 0.51 m one-frame jump in Three Count): now a moving
+  hold that eases into the chamber (0.34 m; what is left is the snap of the strike itself, the glide's pace).
+- **The casting hand** (`?wjCastHand=0|a|b`): round 3's hand layer kept the right hand in its pocket through
+  phase 1's Azure Draw and the Yank, so the Draw had no gesture and the Yank's BLUE fist (the parry cue) glinted
+  inside a pocket. `a` brings the hand out for the whole cast (the finger raised, the reach, the fist on the line);
+  `b` only for the pull and the flick at the end; `0` keeps it in. Curb Pull stays hands-in-pockets by design.
+Measured, not changed: every blow faces the hero at its contact (0 deg off); the cast poses of phases 2 - 3 point
+at their spell (Crimson Cast 14, Point Blank 13, the Null 6, the Draw's flick 1 deg); a stop on the barrier draws
+no reaction from his body (the shell's ripple and the hero's bounce carry it: he is untouched by design).
+
 ### The numbers measured, round 3 (the glide, 2026-11-27, ADR-250)
 Six seeds, god mode off, 600 s cap: the good bot 6 of 6 in 147 / 166 / 191 s (open 51 s a minute); the perfect
 answerer 6 in 106 - 119 s, no hit taken; fencing 3; the roller 4, in 167 - 191 s; the blocker dead at 39 s; the

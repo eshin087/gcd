@@ -1222,6 +1222,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
+- [x] Bai Wuji (ADR-255, on the glide of ADR-250): the anatomy audit (`veil.mjs . anatomy`), straight blows on the
+      line to the hero, a kick's return without the snap, phase 1's casting hand out of its pocket, behind
+      `?wjPolish` / `?wjCastHand`; films sent
+  - [ ] The owner's pick from the films
+  - [ ] A support foot jumps after a blink (Five Sides, Passing Through: anim.js `_feetClip`)
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and

@@ -5,6 +5,11 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and twenty-four pieces of work since 0.4.0:
+- **Bai Wuji's blows land where they aim** (2026-11-27, ADR-255). *Changed:* his palm, his straight poke, Dark
+  Spark's fist and the fist he pulls you onto now land on the line to your chest (they crossed past you by up to
+  30 degrees); his kicks ease back after the contact instead of snapping off a dead stop; in his first phase his
+  right hand comes out of its pocket to cast Azure Draw and the Yank, so the Yank's blue fist is a fist you can
+  see (`?wjPolish=0` and `?wjCastHand=0` as before; `?wjCastHand=b` the hand out only at the end of the cast).
 - **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
   `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
   x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a

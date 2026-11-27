@@ -5,6 +5,29 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — Bai Wuji's motion audit (ADR-255; branch `claude/bai-wuji-motion-bd1653`, built on PR 176)
+
+**Owner:** the boss motion audit (2026-11-26): weird arm angles, unrealistic attacks, bent kicks; every attack
+readable; his spell effects (and the fox's) are the bar. His melee had just been rebuilt (ADR-250, the glide, PR
+176, open): this pass audits the glide and builds on that branch.
+
+**Measured** (`veil.mjs . anatomy`, new, opt-in): every move in every phase, the limb at each contact, an arm's line
+to the hero, the worst one-frame jump. The glide's kicks land straight (166 - 175 deg) and its straight blows
+open (152 - 169 deg). Found: straight hand blows 12 - 31 deg off the line to the hero's chest (Dark Spark's fist
+passed him by most of a metre); a string's kick snapping back off a dead hold (0.4 - 0.57 m in a frame); phase 1's
+Azure Draw and Yank cast from a pocket (the Yank's blue fist cue glinting in it). Measuring a line needs an
+untilted frame (the rig root leans toward the camera) and the hero's place the frame before the contact.
+
+**Changed:** `?wjPolish=a` (straight blows on the line: 1 - 10 deg; the kick's return a moving hold that eases into
+the chamber: Three Count 0.51 -> 0.34 m), `?wjCastHand=a|b` (the casting hand out). `veil.mjs . polish` asserts
+them. Films: before / after at the game camera and close, half speed, and the three casting hands.
+
+**Next:** the owner's picks; then the defaults set and the PR marked ready. **Open:** a support foot jumps after a
+blink (Five Sides, Passing Through: anim.js `_feetClip`, the hero session's); PR 176 and Shen Hui's PR both use
+ADR-250.
+
+---
+
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
 **Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its
