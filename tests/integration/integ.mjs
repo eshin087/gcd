@@ -15160,7 +15160,33 @@ async function scenarioWyrmAudit() {
   return G;
 }
 
+// ================================================================== scenario: wyrmanatomy (opt-in, ADR-257: each blow's anatomy at its contact, printed)
+async function scenarioWyrmAnatomy() {
+  out('\n== scenario WYRMANATOMY (ADR-257: each blow at its contact: the gap to the hero, the limb, the chain order, slides, pops) ==');
+  const { makeWyrmAnatomy } = await import(pathToFileURL(`${ROOT}/tests/integration/wyrmAnatomy.mjs`).href);
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  const { ANATOMY } = await imp('src/entities/dragon/tuning.js');
+  const G = build();
+  fightSetup(G);
+  G.game.player.debug.noRiposte = true;
+  const A = makeWyrmAnatomy({ THREE, G, DT, SCALE, ANATOMY, place, settle, ATTACKS, kindOf: (n, b, a) => a.list?.filter((e) => e[0].startsWith('windup'))[b.hit ?? 0]?.[2]?.spec?.kind ?? n });
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : ['bite', 'swipe', 'snapSwipe', 'clawCombo', 'rendingFlurry', 'hesitantMaw', 'wingBuffet', 'tailLash', 'pounce', 'frenzy', 'stormFlurry', 'cinderFlurry', 'blackMaw', 'wingRend', 'pivotLash', 'rearGuard', 'skyHammer', 'furnaceMaw', 'cinderRake', 'cataclysm', 'tail', 'stomp'];
+  const rows = [];
+  for (const name of names) {
+    if (!ATTACKS[name]) { out(`  ${name}: no such attack`); continue; }
+    const ph = Math.max(1, TUNING.attacks[name]?.phase ?? 1);
+    const back = ['tail', 'tailLash', 'pivotLash', 'rearGuard'].includes(name);
+    const r = A.measure(name, { units: back ? 5 : 5.5, ang: back ? Math.PI * 0.9 : 0, phase: ph });
+    rows.push(r);
+    A.print(out, r);
+  }
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
+  return G;
+}
+
 const SCENARIOS = {
+  wyrmanatomy: scenarioWyrmAnatomy,
   wyrmaudit: scenarioWyrmAudit,
   wyrmheld: scenarioWyrmHeld,
   timestep: scenarioTimestep,
@@ -15245,7 +15271,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'wyrmanatomy']); // run only when named
 // GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }
