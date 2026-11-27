@@ -12,6 +12,7 @@
 //   perf.add(part, ms)        time spent in a part this frame (main.js: every `safe` call, the effects, the render)
 //   perf.endFrame(interval, scriptMs)   the frame ends: `interval` s since the last drawn frame, `scriptMs` the
 //                             frame's own script time
+//   AUTO BENCH (ADR-261)      BENCH also runs by itself in a fight (AUTO_BENCH; `?perf=manual`: only the button)
 //   perf.bench()              BENCH (ADR-215): the frame on screen drawn again and again, each pipeline step left
 //                             out in turn, timed to the GPU's end (a 1-pixel read): what each step costs this
 //                             device's GPU, where no GPU timer exists (Safari). ~4 s; the game holds still
@@ -26,7 +27,13 @@ import { DP_STEP_U } from '../render/dragonStep.js';
 export const PERF_PARTS = ['flow', 'player', 'dragon', 'world', 'fx', 'camera', 'uniforms', 'hud', 'audio', 'render', 'touch', 'gamepad', 'lab', 'view', 'autoQuality', 'other'];
 const INDEX = new Map(PERF_PARTS.map((p, i) => [p, i]));
 
-/** Is the readout asked for in this address (`?perf`, `?perf=1`; `?perf=0` no)? */
+/** AUTO BENCH (ADR-261): BENCH runs by itself in a fight, so the owner only loads the link, plays and taps
+ *  REPORT: once `firstAt` s into the fight (a typical frame), then on a slow burst (`burst` of the last
+ *  `window` frames over 20 ms: the heavy moment, on screen as it is measured), `cooldown` s apart, `max`
+ *  in all. `?perf=manual` leaves BENCH to the button. */
+export const AUTO_BENCH = Object.freeze({ firstAt: 8, window: 30, burst: 6, cooldown: 10, max: 4, k: 3, reps: 2 });
+
+/** Is the readout asked for in this address (`?perf`, `?perf=1`, `?perf=manual`; `?perf=0` no)? */
 export function perfFromSearch(search) {
   try {
     const v = new URLSearchParams(search ?? '').get('perf');
@@ -45,7 +52,7 @@ export class PerfReadout {
    * @param o     { frames: frames kept (default 1800), doc: the document to show the line in (null: none),
    *               longMs: a frame this long (its interval) is kept in the list of the longest (default 20) }
    */
-  constructor(game, { frames = 1800, doc = globalThis.document ?? null, longMs = 20 } = {}) {
+  constructor(game, { frames = 1800, doc = globalThis.document ?? null, longMs = 20, auto = autoFromSearch() } = {}) {
     this.game = game;
     this.N = frames;
     this.n = 0; // frames recorded in all
@@ -59,6 +66,12 @@ export class PerfReadout {
     this.el = null;
     this._shownAt = 0;
     this.benches = []; // BENCH results, newest last (the report lists them)
+    this.auto = !!auto; // AUTO BENCH (AUTO_BENCH)
+    this._fightAt = -1; // s on the readout's clock the fight began (-1: no fight)
+    this._nextAuto = 0; // s before which no auto bench runs
+    this._autoN = 0;
+    this._skip = false; // the next frame's interval holds a bench's freeze: not recorded
+    this._busy = false;
     if (doc?.createElement) this._mount(doc);
   }
 
@@ -72,6 +85,12 @@ export class PerfReadout {
   }
 
   endFrame(intervalS, scriptMs) {
+    if (this._skip) {
+      // (the frame after a bench: its interval is the bench's freeze, not the game's)
+      this._skip = false;
+      return;
+    }
+    if (this.auto) this._autoBench();
     const k = this.n % this.N;
     const iv = Number.isFinite(intervalS) ? intervalS * 1000 : 0;
     this.interval[k] = iv;
@@ -150,6 +169,9 @@ export class PerfReadout {
       state: String(g.state ?? ''),
       hero: String(g.player?.state ?? ''),
       boss: String(g.dragon?.brain?.action?.name ?? g.dragon?.state ?? ''),
+      quality: g.settings?.autoQuality ? `AUTO ${g.autoQ?.scale ?? '?'}x` : `preset ${g.settings?.quality ?? '?'}`,
+      lite: !!g.liteWorld,
+      why: 'BENCH tapped',
       frame: 0,
       steps: {},
       half: null,
@@ -207,6 +229,7 @@ export class PerfReadout {
       r.render = orig;
       P._renderShadowCached = cached;
     }
+    this._skip = true;
     this.benches.push(out);
     if (this.benches.length > 6) this.benches.shift();
     return out;
@@ -245,6 +268,43 @@ export class PerfReadout {
       boxes.forEach((b, i) => (b.z = keep.boxes[i]));
       if (stepK) stepK.w = keep.stepW;
     };
+  }
+
+  /** AUTO BENCH: in a fight, the first bench `firstAt` s in, then one on each slow burst (AUTO_BENCH). */
+  _autoBench() {
+    const A = AUTO_BENCH, g = this.game, now = (performance.now() - this.t0) / 1000;
+    if (g?.state !== 'boss') {
+      this._fightAt = -1;
+      return;
+    }
+    if (this._fightAt < 0) {
+      this._fightAt = now;
+      this._nextAuto = now + A.firstAt;
+    }
+    if (this._busy || this._autoN >= A.max || now < this._nextAuto) return;
+    let why = '';
+    if (this._autoN === 0) why = `${A.firstAt} s into the fight`;
+    else {
+      let slow = 0;
+      const m = Math.min(this.n, A.window);
+      for (let j = 0; j < m; j++) if (this.interval[(this.n - 1 - j) % this.N] > 20) slow++;
+      if (slow >= A.burst) why = `a slow burst (${slow} of the last ${m} frames over 20 ms)`;
+    }
+    if (!why) return;
+    this._busy = true;
+    this._autoN++;
+    // (after this frame: the bench draws the frame on screen as it is now)
+    setTimeout(() => {
+      try {
+        const B = this.bench({ k: A.k, reps: A.reps });
+        if (B) B.why = `auto: ${why}`;
+      } catch {
+        /* a readout never breaks the game */
+      } finally {
+        this._busy = false;
+        this._nextAuto = (performance.now() - this.t0) / 1000 + A.cooldown;
+      }
+    }, 0);
   }
 
   /** Forget what was recorded (the RESET button; a new fight). */
@@ -327,7 +387,7 @@ export class PerfReadout {
     L.push('longest frames (s into the recording: interval, script, the parts over 0.5 ms; hero / boss; steps):');
     for (const x of S.longest.slice(0, 16)) L.push(`  ${x.t}s  ${x.interval} ms  script ${x.script}  ${JSON.stringify(x.parts)}  ${x.hero} / ${x.boss}  x${x.steps}`);
     for (const B of this.benches) {
-      L.push(`bench at ${B.t}s (${B.canvas}, ${B.state}, hero ${B.hero} / boss ${B.boss}): a whole frame ${B.frame} ms (GPU + its submit), each step's share:`);
+      L.push(`bench at ${B.t}s, ${B.why ?? ''} (${B.canvas}, ${B.quality ?? ''}, lite world ${B.lite ? 'on' : 'off'}, ${B.state}, hero ${B.hero} / boss ${B.boss}): a whole frame ${B.frame} ms (GPU + its submit), each step's share:`);
       for (const [k, v] of Object.entries(B.steps).sort((a, b) => b[1] - a[1])) L.push(`  ${k.padEnd(18)} ${f1(v).padStart(5)} ms`);
       if (B.life != null) L.push(`  the living world (its letters, the wind in the trees and grass, the wake and the step flash in the ground; inside the steps above) ${f1(B.life)} ms`);
       if (B.half) L.push(`  the frame at ${B.half.canvas}: ${B.half.frame} ms (a pixel-count step: ${B.half.share})`);
@@ -396,7 +456,7 @@ export class PerfReadout {
       if (this.interval[i] > 20) miss++;
     }
     const aq = this.game?.autoQ;
-    this._line.textContent = `${f1((k / iv) * 1000)} fps  ${f1(iv / k)} ms  script ${f1(sc / k)}  missed ${miss}/${k}` + (this.game?.settings?.autoQuality ? `  ${aq?.scale ?? '?'}x` : '');
+    this._line.textContent = `${f1((k / iv) * 1000)} fps  ${f1(iv / k)} ms  script ${f1(sc / k)}  missed ${miss}/${k}` + (this.game?.settings?.autoQuality ? `  ${aq?.scale ?? '?'}x` : '') + (this.game?.liteWorld ? '  lite' : '') + (this.auto ? `  bench ${this.benches.length}/${AUTO_BENCH.max}` : '');
   }
 
   /** Copy the report (or share it: the phone's share sheet), else show it to copy by hand. */
@@ -424,5 +484,14 @@ export class PerfReadout {
     }
     if (nav?.clipboard?.writeText) nav.clipboard.writeText(text).then(() => done('COPIED'), () => show());
     else show();
+  }
+}
+
+/** AUTO BENCH unless the address says `?perf=manual`. */
+export function autoFromSearch(search = globalThis.location?.search ?? '') {
+  try {
+    return new URLSearchParams(search).get('perf') !== 'manual';
+  } catch {
+    return true;
   }
 }
