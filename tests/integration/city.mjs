@@ -1389,6 +1389,40 @@ function auditMoves(names, orbits = [false, true], TOP = 0) {
     return Math.acos(clamp(u.dot(w), -1, 1)) * DEG;
   };
   const PTS = ['fistR', 'fistL', 'elbowR', 'elbowL', 'kneeR', 'kneeL', 'footR', 'footL', 'head', 'chest', 'pelvis'];
+  // (ADR-254, the anatomy at a blow's contact: the striking arm's reach (shoulder → fist over the arm's
+  // length) and its line against the line from the shoulder to the hero's chest, both knees, a kick's
+  // reach, each foot's trail behind the hip (his own frame: + ahead) and the body line (pelvis → chest
+  // from vertical, + leaning in))
+  // (ADR-254, the anatomy at a blow's contact, in his UPRIGHT frame: the drawn body is sheared toward the
+  // camera (duelist.js lean), so world points read a straight punch 20 - 40° off the hero. The striking
+  // arm's reach (shoulder → fist over the arm's length) and its line against the line from the shoulder to
+  // the hero's chest (`offAz` across, + his left; `offEl` up), both knees, a kick's reach, each foot's
+  // trail behind its hip (+ ahead), the body line (pelvis → chest from vertical, + leaning in), the fist's
+  // height (upright, world m))
+  const limbsAt = (sm, D, pp) => {
+    const B = sm.B, part = D.part ?? 'fistR';
+    const kick = /^foot/.test(part), L = part === 'fistL' || part === 'footL';
+    const sh = B[L ? 'shL' : 'shR'], el = B[L ? 'elbowL' : 'elbowR'], fi = B[L ? 'fistL' : 'fistR'];
+    const armLen = sh.distanceTo(el) + el.distanceTo(fi);
+    // (the hero's chest into his root frame, upright: the root's place, its yaw, its scale)
+    const sc = sm.W.hipR.distanceTo(sm.W.hipL) / Math.max(1e-6, B.hipR.distanceTo(B.hipL));
+    const rp = new THREE.Vector3().setFromMatrixPosition(sm.rootM), dx = pp.x - rp.x, dz = pp.z - rp.z, cy = Math.cos(sm.yaw), sy = Math.sin(sm.yaw);
+    const hero = new THREE.Vector3((dx * cy - dz * sy) / sc, (1.4 - rp.y) / sc, (dx * sy + dz * cy) / sc);
+    const toFist = new THREE.Vector3().subVectors(fi, sh), toHero = hero.sub(sh);
+    const hip = B[L ? 'hipL' : 'hipR'], kn = B[L ? 'kneeL' : 'kneeR'], ft = B[L ? 'footL' : 'footR'];
+    const legLen = hip.distanceTo(kn) + kn.distanceTo(ft);
+    const bodyLine = Math.atan2(B.chest.z - B.pelvis.z, B.chest.y - B.pelvis.y) * DEG;
+    const az = (v) => Math.atan2(v.x, v.z), el2 = (v) => Math.atan2(v.y, Math.hypot(v.x, v.z));
+    return {
+      reach: +(kick ? hip.distanceTo(ft) / legLen : sh.distanceTo(fi) / armLen).toFixed(2),
+      offLine: kick ? null : Math.round(toFist.angleTo(toHero) * DEG),
+      offAz: kick ? null : Math.round(wrapA(az(toFist) - az(toHero)) * DEG),
+      offEl: kick ? null : Math.round((el2(toFist) - el2(toHero)) * DEG),
+      kneeR: Math.round(ang3(B.hipR, B.kneeR, B.footR)), kneeL: Math.round(ang3(B.hipL, B.kneeL, B.footL)),
+      trailR: +(B.footR.z - B.hipR.z).toFixed(2), trailL: +(B.footL.z - B.hipL.z).toFixed(2),
+      bodyLine: Math.round(bodyLine), fistY: +(rp.y + fi.y * sc).toFixed(2),
+    };
+  };
   const sample = (d) => {
     const R = d.rig;
     R.root.updateMatrixWorld(true);
@@ -1406,7 +1440,7 @@ function auditMoves(names, orbits = [false, true], TOP = 0) {
       B[k] = W[k].clone().applyMatrix4(inv);
       Wr[k] = W[k].clone().sub(root);
     }
-    return { W, B, Wr, yaw: d.yaw, x: d.position.x, z: d.position.z, y: d.position.y };
+    return { W, B, Wr, inv: inv.clone(), rootM: R.root.matrixWorld.clone(), yaw: d.yaw, x: d.position.x, z: d.position.z, y: d.position.y };
   };
   const phaseOf = (a, t) => {
     for (const b of a.beats) {
@@ -1468,7 +1502,7 @@ function auditMoves(names, orbits = [false, true], TOP = 0) {
           const sm = sample(d), arm = b.def.part === 'fistL' ? ['shL', 'elbowL', 'fistL'] : ['shR', 'elbowR', 'fistR'];
           const hang = d.position.y - Math.min(sm.W.footR.y, sm.W.footL.y);
           contact.push({ i: b.index ?? A.beats.indexOf(b), part: b.def.part, tell: b.def.tell, gap: flat, y: tp.y, sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2), reachX: +Math.hypot(tp.x - d.position.x, tp.z - d.position.z).toFixed(2), feetZ: +(Math.max(sm.B.footR.z, sm.B.footL.z) - sm.B.pelvis.z).toFixed(2), side: +(((tp.x - d.position.x) * (pp.z - d.position.z) - (tp.z - d.position.z) * (pp.x - d.position.x)) / Math.max(0.01, Math.hypot(pp.x - d.position.x, pp.z - d.position.z))).toFixed(2), face: Math.round(face), root: +d.position.y.toFixed(2),
-            hang: +hang.toFixed(2), feetLow: +Math.min(sm.W.footR.y, sm.W.footL.y).toFixed(2), elbow: Math.round(ang3(sm.B[arm[0]], sm.B[arm[1]], sm.B[arm[2]])) });
+            hang: +hang.toFixed(2), feetLow: +Math.min(sm.W.footR.y, sm.W.footL.y).toFixed(2), elbow: Math.round(ang3(sm.B[arm[0]], sm.B[arm[1]], sm.B[arm[2]])), ...limbsAt(sm, b.def, pp) });
         }
         G.tick(DT);
       }
@@ -1504,7 +1538,16 @@ function auditMoves(names, orbits = [false, true], TOP = 0) {
         hangMin = Math.min(hangMin, h);
         hangMax = Math.max(hangMax, h);
       }
-      rows.push({ name, orbit, f, dist: +dist.toFixed(1), frames: F.length, pb, pw, out: out1, in: in1, yawR: Math.round(yawR), yawAt, elbow: Math.round(elbow), knee: Math.round(knee),
+      // (ADR-254: in flight, frames over 9 m/s: the knees' least angle and the body line's range)
+      let flyKnee = 180, flyLine = [99, -99], nFly = 0;
+      for (const s of F) {
+        if (!s.air || s.jump) continue;
+        nFly++;
+        flyKnee = Math.min(flyKnee, ang3(s.B.hipR, s.B.kneeR, s.B.footR), ang3(s.B.hipL, s.B.kneeL, s.B.footL));
+        const bl = Math.atan2(s.B.chest.z - s.B.pelvis.z, s.B.chest.y - s.B.pelvis.y) * DEG;
+        flyLine = [Math.min(flyLine[0], bl), Math.max(flyLine[1], bl)];
+      }
+      rows.push({ name, orbit, f, dist: +dist.toFixed(1), frames: F.length, fly: nFly ? { n: nFly, knee: Math.round(flyKnee), line: flyLine.map(Math.round) } : null, pb, pw, out: out1, in: in1, yawR: Math.round(yawR), yawAt, elbow: Math.round(elbow), knee: Math.round(knee),
         yMin: +yMin.toFixed(2), yMax: +yMax.toFixed(2), hangMin: +hangMin.toFixed(2), hangMax: +hangMax.toFixed(2), contact });
       if (TOP) worst.push(`   ${name}${orbit ? ' (orbit)' : ''}: ` + jolts.filter((x, i, L) => L.findIndex((y) => y.k === x.k && Math.abs(y.t - x.t) < 0.05) === i).slice(0, TOP).map((x) => `${x.k} ${Math.round(x.j)}${x.w ? 'w' : ''} @${x.t.toFixed(2)} ${x.ph}`).join(' · '));
     }
@@ -1528,6 +1571,15 @@ async function scenarioAudit() {
     out(`   ${r.name.padEnd(16)} ${r.f} ${r.orbit ? 'yes' : '   '}   ${fmt(r.pb).padEnd(31)} ${fmt(r.pw).padEnd(31)} ${fmt(r.in).padEnd(11)} ${fmt(r.out).padEnd(12)} ${String(r.yawR).padStart(5)} (${r.yawAt})`.padEnd(150) + ` ${String(r.elbow).padStart(4)} ${String(r.knee).padStart(4)}  ${r.yMin.toFixed(2)}-${r.yMax.toFixed(2)}  ${r.hangMin.toFixed(2)}-${r.hangMax.toFixed(2)}   ${c}`);
   }
   if (TOP) for (const w of worst) out(w);
+  // (GCD_AUDIT_IMPACT=1, ADR-254: the anatomy at every blow's contact, and in flight)
+  if (process.env.GCD_AUDIT_IMPACT) {
+    out('   at the contact: move #blow part/tell  elbow reach offLine°  knees R/L  feet trail R/L (m, + ahead)  body line°  fist y');
+    for (const r of rows) {
+      if (r.fail || r.orbit) continue;
+      for (const c of r.contact) out(`     ${r.name.padEnd(15)} #${c.i} ${String(c.part).padEnd(6)} ${String(c.tell).padEnd(6)} ${String(c.elbow).padStart(4)} ${c.reach.toFixed(2)} ${String(c.offLine ?? '-').padStart(4)} (${c.offAz ?? '-'}/${c.offEl ?? '-'})  ${c.kneeR}/${c.kneeL}   ${c.trailR}/${c.trailL}   ${c.bodyLine}   ${c.fistY}`);
+      if (r.fly) out(`     ${r.name.padEnd(15)} in flight (${r.fly.n} frames): least knee ${r.fly.knee}°, body line ${r.fly.line[0]}..${r.fly.line[1]}°`);
+    }
+  }
   const J = process.env.GCD_AUDIT_JSON;
   if (J) fs.writeFileSync(J, JSON.stringify(rows, null, 1));
 }
@@ -1585,10 +1637,109 @@ async function scenarioHalMotion() {
   assert(snaps.length === 2 && w0.every((w) => w === 0) && w1.every((w) => w > 0), `the snap blows (${snaps.join(', ')}) weigh 0 without the switch, ${w1.join(', ')} with it`);
 }
 
+/**
+ * LIMBS (ADR-254, `?halMotion=b`): the flier's limbs only move poses: every move realises with `a`'s beats,
+ * windups, impacts and flashes. On the rig (AUDIT's measure, in his upright frame): every straight blow
+ * lands within 12° of the line from its shoulder to the hero's upper chest (`a`: 35 - 66° across) with the
+ * elbow >= 160°; a kick lands with the striking knee >= 165° and the other leg hanging long (>= 140°); at
+ * every punch both knees >= 130° (`a`: 67 - 135°, folded under him); the pass flies level (the body line
+ * >= 65°) with the fist under 1.8 m (`a`: 2.56 m, over the hero's head); the animator's reach opened, a
+ * kick's stretch only through a kick.
+ */
+async function scenarioLimbs() {
+  out("\n== scenario LIMBS (?halMotion=b: the same timings; straight blows on the line, straight kicks, a flier's long legs, a level pass) ==");
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  let n = 0;
+  const diff = [];
+  for (const name of MOVE_NAMES) for (let ph = 1; ph <= 3; ph++) for (const r of [0.001, 0.5, 0.999]) {
+    LS.setLook('halMotion', 'a');
+    const a = realise(name, ph, () => r);
+    LS.setLook('halMotion', 'b');
+    const b = realise(name, ph, () => r);
+    if (!a || !b) continue;
+    n++;
+    const sig = (m) => m.beats.map((x) => [x.start, x.impact, x.end, x.flash, x.W, x.H].map((v) => v.toFixed(5)).join(',')).join(';') + `|${m.end.toFixed(5)}`;
+    if (sig(a) !== sig(b)) diff.push(`${name}/${ph}`);
+  }
+  assert(n > 150 && !diff.length, `${n} realisations: the same beats, windups, impacts, flashes and ends as a (${diff.slice(0, 6).join(', ') || 'all'})`);
+  LS.setLook('halMotion', 'b');
+  const rows = auditMoves(['meetAndGreet', 'backhand', 'tap', 'riposte', 'streakFlurry', 'flyBy', 'blink'], [false]).rows;
+  LS.setLook('halMotion', null);
+  const C = rows.flatMap((r) => r.contact.map((c) => ({ ...c, name: r.name })));
+  const STRAIGHT = new Set(['meetAndGreet', 'backhand', 'tap', 'riposte']);
+  const straight = C.filter((c) => STRAIGHT.has(c.name) || (c.name === 'blink' && c.i !== 1 && c.i !== 3) || (c.name === 'streakFlurry' && c.i === 0));
+  const kicks = C.filter((c) => /^foot/.test(c.part));
+  const punches = C.filter((c) => !/^foot/.test(c.part) && !/^flyBy/.test(c.name));
+  const passes = C.filter((c) => /^flyBy/.test(c.name));
+  const fmt = (L, f) => L.map(f).join(', ');
+  assert(straight.length >= 9 && straight.every((c) => c.offLine <= 12 && c.elbow >= 160), `every straight blow on the line to the hero, <= 12°, the elbow >= 160° (${fmt(straight, (c) => `${c.offLine}°/${c.elbow}°`)})`);
+  assert(kicks.length >= 2 && kicks.every((c) => (c.part === 'footR' ? c.kneeR : c.kneeL) >= 165 && (c.part === 'footR' ? c.kneeL : c.kneeR) >= 140), `a kick lands straight, the other leg hanging long (${fmt(kicks, (c) => `${c.kneeR}/${c.kneeL}`)})`);
+  assert(punches.every((c) => c.kneeR >= 130 && c.kneeL >= 130), `at every punch the legs long, both knees >= 130° (${fmt(punches, (c) => `${c.kneeR}/${c.kneeL}`)})`);
+  assert(passes.length >= 1 && passes.every((c) => c.bodyLine >= 65 && c.fistY < 1.8), `the pass flies level through the hero's chest (body line ${fmt(passes, (c) => `${c.bodyLine}°`)}, fist ${fmt(passes, (c) => c.fistY)} m)`);
+  // the animator: opened under b, a kick's stretch only in a kick
+  const G = build();
+  duel(G, { dist: 1.8 });
+  const d = G.game.dragon;
+  LS.setLook('halMotion', 'b');
+  d.debug.setAI(false);
+  d.brain.trigger('meetAndGreet');
+  run(G, 0.3);
+  const k0 = d.anim.kickStretch, s0 = d.anim.armSoft?.[1];
+  LS.setLook('halMotion', 'a');
+  run(G, 0.05);
+  const s1 = d.anim.armSoft?.[1];
+  LS.setLook('halMotion', null);
+  assert(k0 === null && s0 === TUNING.motion.b.armSoft[1] && s1 === TUNING.motion.armSoft[1], `the animator: b's reach (${s0}), a's back live (${s1}); no kick stretch in a punch (${k0})`);
+}
+
+/**
+ * READABLE (ADR-254, `?halPace=a`): COMBAT.md rule 10's floor: a move's first real blow winds up >= 0.7 s
+ * x the phase's windupScale, every later one lands >= 0.45 s after the one before, the cue 0.35 s before
+ * the impact; the snap blows and the transitions as they were; only holds grow (a blow's own windup, its
+ * active frames never change). Off ('0'), every realisation is as before.
+ */
+async function scenarioReadable() {
+  out("\n== scenario READABLE (?halPace=a: rule 10's floor; off as before) ==");
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const P = TUNING.pace, bad = [], grew = [];
+  let n = 0;
+  for (const name of MOVE_NAMES) for (let ph = 1; ph <= 3; ph++) {
+    const r = () => 0.5;
+    LS.setLook('halPace', '0');
+    const a = realise(name, ph, r);
+    LS.setLook('halPace', 'a');
+    const b = realise(name, ph, r);
+    if (!a || !b) continue;
+    n++;
+    if (b.def.snap || b.def.transition) {
+      if (b.end !== a.end) bad.push(`${name}/${ph} moved`);
+      continue;
+    }
+    const ws = Array.isArray(TUNING.windupScale) ? TUNING.windupScale[ph - 1] : TUNING.windupScale;
+    let last = null;
+    b.beats.forEach((x, i) => {
+      const y = a.beats[i];
+      if (Math.abs(x.W - y.W) > 1e-6 || Math.abs(x.A - y.A) > 1e-6 || x.H < y.H - 1e-6) bad.push(`${name}/${ph} #${i} windup/active changed`);
+      if (x.H > y.H + 1e-6) grew.push(`${name}/${ph}#${i}`);
+      if (x.feint || !(x.def.damage > 0)) return;
+      if (last === null && x.impact - x.start < P.first * ws - 1e-4) bad.push(`${name}/${ph} first ${(x.impact - x.start).toFixed(2)}`);
+      if (last !== null && x.impact - last < P.gap - 1e-4) bad.push(`${name}/${ph} #${i} gap ${(x.impact - last).toFixed(2)}`);
+      if (Math.abs(x.impact - x.flash - Math.min(P.flashLead, x.impact - x.tellAt)) > 1e-4) bad.push(`${name}/${ph} #${i} cue ${(x.impact - x.flash).toFixed(2)}`);
+      last = x.impact;
+    });
+  }
+  LS.setLook('halPace', null);
+  assert(n > 60 && !bad.length, `${n} realisations under the pace: first blows >= ${P.first} s x windupScale, blows >= ${P.gap} s apart, the cue ${P.flashLead} s before (${bad.slice(0, 6).join('; ') || 'all'})`);
+  out(`   held longer: ${grew.length} beats (${grew.slice(0, 10).join(', ')} ...)`);
+  assert(grew.length > 5, 'the pace holds some blows longer (a held cock)');
+}
+
 const S = {
   smoke: scenarioSmoke,
   audit: scenarioAudit,
   halmotion: scenarioHalMotion,
+  limbs: scenarioLimbs,
+  readable: scenarioReadable,
   levels: scenarioLevels,
   data: scenarioData,
   timing: scenarioTiming,

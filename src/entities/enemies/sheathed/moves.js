@@ -6,6 +6,9 @@ import { makeRealise } from '../duelist/realise.js';
 import { GUARD_CLIPS } from '../duelist/guard.js';
 import { makeHeldKeys } from '../duelist/heldTells.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { formOn, makeFormKeys, sweepFeet } from './form.js';
+import { heldKeys } from '../duelist/heldTells.js';
+import { paceOn, buildPace, paceCue } from './pace.js';
 
 // Lu Wusheng's moves and reaction clips, as data (COMBAT.md → "The Sheathed"; the format is the Ash
 // Disciple's: ashDisciple/moves.js header). His weapon in the engine's sense is the SHEATHED sword in his
@@ -118,17 +121,19 @@ const thrustKeys = (k = 1, cock = 0.74) => [
   [1.6, { ...LUNGE, e: 'o', bZ: 0.27, rH: [0.05, -0.03, 0.58] }],
   [2.0, { settle: true, ...LUNGE, bZ: 0.2 }],
 ];
+/** The free hand through a scabbard cut: gathered, cocked, at the strike, the follow-through, settled. */
+const FREE_0 = { gather: [0.04, -0.1, 0.32], cock: [0.0, -0.13, 0.32], strike: [0.26, -0.1, -0.16], follow: [0.3, -0.04, -0.22], settle: [0.28, -0.06, -0.18] };
 /** A cut with the scabbard, as the weapon's path (ashDisciple/moves.js slashKeys). */
 function slashKeys({ from, through, to, yaw: [y0, y1, y2], cock = 0.7, sink = 0, extra = {} }) {
   const dir = Math.sign(to[0] - from[0]) || 0;
   const sw = (w, y) => [W2B(w[0], y), w[1]];
   const gy = (y0 + 0.32) / 2;
   return [
-    [cock * 0.45, { gather: true, arm: 0.7, ext: 0.6, lead: 0.05 * dir, yaw: gy, sw: sw([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.2 - sink * 0.5, bZ: -0.03, lH: [0.04, -0.1, 0.32], lP: [0.6, -0.7, 0.1], ...SET }],
-    [cock, { arm: 1, ext: 0.5, lead: 0.22 * dir, yaw: y0, sw: sw(from, y0), bY: -0.24 - sink, bZ: -0.06, pitch: 0.08, hip: 0.1 * dir, lH: [0.0, -0.13, 0.32], lP: [0.6, -0.8, 0.1], ...SET, ...extra.cocked }],
-    [1.0, { e: 'i', arm: 1, ext: 1, lead: 0, yaw: y1, sw: sw(through, y1), bY: -0.28 - sink, bZ: 0.1, pitch: 0.1, hip: -0.06 * dir, lH: [0.26, -0.1, -0.16], lP: [0.8, -0.4, -0.5], ...STEP_IN, ...extra.strike }],
-    [1.6, { e: 'o', arm: 1, ext: 0.88, lead: -0.32 * dir, yaw: y2, sw: sw(to, y2), bY: -0.24 - sink, bZ: 0.08, pitch: 0.04, hip: -0.12 * dir, lH: [0.3, -0.04, -0.22], ...STEP_IN, ...extra.follow }],
-    [2.0, { settle: true, arm: 1, ext: 0.84, lead: -0.26 * dir, yaw: y2, sw: sw([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.22 - sink, bZ: 0.06, lH: [0.28, -0.06, -0.18], ...STEP_IN }],
+    [cock * 0.45, { gather: true, arm: 0.7, ext: 0.6, lead: 0.05 * dir, yaw: gy, sw: sw([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.2 - sink * 0.5, bZ: -0.03, lH: FREE_0.gather, lP: [0.6, -0.7, 0.1], ...SET }],
+    [cock, { arm: 1, ext: 0.5, lead: 0.22 * dir, yaw: y0, sw: sw(from, y0), bY: -0.24 - sink, bZ: -0.06, pitch: 0.08, hip: 0.1 * dir, lH: FREE_0.cock, lP: [0.6, -0.8, 0.1], ...SET, ...extra.cocked }],
+    [1.0, { e: 'i', arm: 1, ext: 1, lead: 0, yaw: y1, sw: sw(through, y1), bY: -0.28 - sink, bZ: 0.1, pitch: 0.1, hip: -0.06 * dir, lH: FREE_0.strike, lP: [0.8, -0.4, -0.5], ...STEP_IN, ...extra.strike }],
+    [1.6, { e: 'o', arm: 1, ext: 0.88, lead: -0.32 * dir, yaw: y2, sw: sw(to, y2), bY: -0.24 - sink, bZ: 0.08, pitch: 0.04, hip: -0.12 * dir, lH: FREE_0.follow, ...STEP_IN, ...extra.follow }],
+    [2.0, { settle: true, arm: 1, ext: 0.84, lead: -0.26 * dir, yaw: y2, sw: sw([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.22 - sink, bZ: 0.06, lH: FREE_0.settle, ...STEP_IN }],
   ];
 }
 const CUTS = {
@@ -494,8 +499,74 @@ export const CLIPS = {
 export const CLIP = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k, compileClip(c.keys.map(([t, pose]) => ({ t, ...pose })), c.dur, { hold: !!c.hold })]));
 for (const [k, c] of Object.entries(CLIP)) c.name = k;
 
+// ---------------------------------------------------------------- the form (ADR-252, `?sheathForm=a`; form.js)
+// The form's fragments: only the fields that were wrong (form.js header: what the audit measured).
+const FORM = {
+  // the settle and the cock: the right fist closed on the hilt that stands out of the scabbard's mouth at
+  // his left hip (11 - 13 cm off it before), the left hand on the mouth a little forward, thumb on the guard
+  SETTLE_HANDS: { rH: [0.35, -0.44, 0.24], rP: [-0.2, -0.85, 0.3], lH: [0.02, -0.48, 0.18] },
+  LOW_HANDS: { rH: [0.35, -0.47, 0.28], rP: [-0.2, -0.85, 0.3], lH: [0.0, -0.5, 0.2] },
+  // the cut's end: the scabbard hand drawn back past the hip (saya-biki) and the scabbard turned level
+  // behind him, the free elbow out; the lunge's feet and the depth come in form.js
+  END: { lH: [0.22, -0.34, -0.52], lP: [0.5, -0.7, -0.2], lsw: [3.0, -0.3] },
+  // the overhead (ashDisciple's ADR-250 numbers: the same fragments, the same rig): raised over his sword
+  // shoulder, down ACROSS him to low at his left
+  RAISED2: { yaw: 0.1, sw: [W2B(-1.1, 0.1), 1.15], rH: [-0.1, 0.34, 0.08] },
+  CHOP2: { yaw: 0.3, sw: [W2B(0.15, 0.3), -0.3], rH: [0.0, -0.2, 0.44], pitch: 0.18, spX: 0.12, hdX: -0.1 },
+  CHOP2_FOLLOW: { yaw: 0.55, sw: [W2B(1.0, 0.55), -0.85], rH: [0.12, -0.34, 0.34] },
+  // the free hand in the scabbard cuts: gathered by the sternum, split to his left as the scabbard goes out
+  FREE: new Map([
+    [FREE_0.gather, [0.06, -0.08, 0.24]], [FREE_0.cock, [0.05, -0.1, 0.26]], [FREE_0.strike, [0.22, -0.06, -0.02]],
+    [FREE_0.follow, [0.26, -0.03, -0.08]], [FREE_0.settle, [0.24, -0.05, -0.06]],
+  ]),
+};
+const formKey = makeFormKeys({ SETTLE, LOW_SETTLE, CUT_END, LUNGE_FEET, PERIL_LUNGE }, FORM);
+/** Sweeping the Road in the form: the same crouch, the feet carried round with him. */
+const sweepKeysF = (cock = 0.62) => {
+  const k = sweepKeys(cock);
+  const at = (u, ph) => [u, { e: 'l', yaw: 0.9 + ph, ...sweepFeet(ph) }];
+  return [k[0], [1.0, { ...k[1][1], ...sweepFeet(0) }], at(1.25, -TAU * 0.25), at(1.5, -TAU * 0.5), at(1.75, -TAU * 0.75), [2.0, { ...k[2][1], ...sweepFeet(-TAU) }], [2.001, { e: 'h', yaw: 0.9, ...sweepFeet(0) }]];
+};
+for (const def of Object.values(MOVES)) {
+  for (const b of def.beats) if (Array.isArray(b.keys)) b.formKeys = b.keys.map(([u, k]) => [u, formKey(u, k, b)]);
+  if (Array.isArray(def.recoveryKeys)) def.formRecovery = def.recoveryKeys.map(([r, k]) => [r, formKey(1.6, k, null)]);
+}
+MOVES.reedCutter.beats[0].formKeys = sweepKeysF(0.62);
+MOVES.reedCutter.formRecovery = [[0.4, { ...CROUCH, bY: -0.36, yaw: 0.7, arm: 1, ext: 0.8, sw: [-0.9, -0.5], ...sweepFeet(0) }]];
+
+/** What a beat plays this time: its form keys while `?sheathForm` is on, held at the cock while
+ *  `?sheathMotion` is (ADR-223, over whichever keys it plays), and held longer while `?sheathPace` is
+ *  (pace.js: the readable pace's extra hold at the phase being realised). */
+const heldAuthored = makeHeldKeys('sheathMotion', GUARD);
+const heldForm = { a: new WeakMap(), b: new WeakMap() };
+function keysOf0(b) {
+  if (!formOn() || !b?.formKeys) return heldAuthored(b);
+  const mode = lookOf('sheathMotion', '0'), C = heldForm[mode];
+  if (!C) return b.formKeys;
+  if (!C.has(b)) C.set(b, heldKeys({ ...b, keys: b.formKeys }, mode, GUARD) ?? b.formKeys);
+  return C.get(b);
+}
+const PACE = buildPace(MOVES, TUNING);
+let paceAt = 0; // (the phase being realised: realise() sets it for keysOf)
+function keysOf(b) {
+  const k = keysOf0(b);
+  const x = paceOn() ? PACE[paceAt]?.get(b) ?? 0 : 0;
+  if (!(x > 0)) return k;
+  const keys = (Array.isArray(k) ? k : k?.keys) ?? b.keys;
+  return { keys, hold: Math.max(Number(k?.hold) || 0, x) };
+}
+
 /** A move as it will play this time (duelist/realise.js). */
-// (`?sheathMotion=a|b`: his blue and red blows hold their cock, coloured / not; ADR-223, duelist/heldTells.js)
-export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: makeHeldKeys('sheathMotion', GUARD) });
+// (`?sheathMotion=a|b`: his blue and red blows hold their cock, coloured / not; ADR-223, duelist/heldTells.js;
+// `?sheathForm=a`: the form's poses, `?sheathPace=a`: the readable pace, ADR-252)
+const realise0 = makeRealise({
+  TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf,
+  recoveryKeysOf: (def) => (formOn() ? (def.formRecovery ?? null) : null),
+});
+export function realise(name, phase = 1, rnd = Math.random, opts = null) {
+  paceAt = Math.max(0, Math.min(2, (phase | 0) - 1));
+  const A = realise0(name, phase, rnd, opts);
+  return paceOn() ? paceCue(A, TUNING) : A;
+}
 
 export { GUARD, ANK };

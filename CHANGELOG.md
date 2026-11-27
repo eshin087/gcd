@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-five pieces of work since 0.4.0:
+One hundred and thirty pieces of work since 0.4.0:
 - **The Starless Lord fights with better form** (2026-11-27, ADR-251). *Changed (the owner's picks from the films;
   `?lordForm=0` / `?lordPace=0` / `?boltFx=0` / `?igniteFx=0` as before):* in all four forms his thrusts land on a
   long arm with the point on its line, out of a real lunge (front knee bent, back leg long; before, both knees
@@ -16,6 +16,42 @@ One hundred and twenty-five pieces of work since 0.4.0:
   Void Lightning grounds three times along its line, the floor crackling round his feet through the cast
   (`?boltFx=c`); each form's ignition raises a column of violet letters round him that bursts out flat
   (`?igniteFx=a`). The other options stay behind their switches.
+- **The Cinder Wyrm raises its head naturally to rain fire** (2026-11-27, ADR-258). *Fixed:* rearing up to roar
+  the meteors into the sky, the wyrm's head no longer tips back past upright and rolls over on its neck: the neck
+  rises up and forward over its forelegs and the head points up at the sky. `?wyrmHead=0` (the Lab's LOOKS row) as
+  before. *Added:* integ `wyrmhead` (opt-in): every fire move's head angle.
+- **Xin Yi's limbs on the line** (2026-11-27, ADR-253). *Changed (the owner's picks, the default):* his punches land straight down the line to you with the arm long, his kicks stay
+  straight through the hit instead of folding as it lands, his elbow, knee and spin kick reach you instead of
+  striking short, the low sweep passes through you, and his guns point down the line of fire, each shot leaving
+  the muzzle with a kick of the arm (`?oneMoves=a`: as before). Every timing is as before. His gun shots now leave a
+  curtain of falling code (`?oneGunFx=b`; `a` a tracer, `0` as before) and his palm bolts in the Source are a hot core
+  in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
+One hundred and twenty-six pieces of work since 0.4.0:
+One hundred and twenty-seven pieces of work since 0.4.0:
+- **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
+  level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
+  the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the
+  two-handed overhead comes down across him on a diagonal; Sweeping the Road turns on his feet; the free hand in the
+  scabbard cuts moves half as far. Poses only: every windup, cue and window is as before; `?sheathForm=0` gives
+  the old poses. *Added, kept as options (the owner kept today's):* `?sheathPace=a`: COMBAT rule 10's slower floor for his scabbard blows (first blows 0.7 s, blows 0.45 s apart, the cue 0.35 s before, the
+  draws unchanged). `?drawFx=a|b|c`: three looks for the draw (the drawn breath, hanging leaves, the late sound).
+- **The Cinder Wyrm bites with its whole body** (2026-11-27, ADR-257). *Changed (the owner's pick from the films):*
+  in every bite the wyrm's body surges first (the chest drops
+  and pitches in off the hind feet, the body lunging a little toward you) while the head hangs back, then the head
+  snaps onto the impact the flash promised, its jaws now reaching you on the beat. Every windup, cue, impact, hit
+  sphere and number is as before; `?wyrmStrike=0` (the Lab's LOOKS row `wyrmStrike`) bites as before. *Added:* the wyrm's anatomy audit (integ `wyrmanatomy`, opt-in: each blow's gap
+  to the hero at the impact, a foreleg's elbow and reach, the chain's order, the tail's tip, skating feet, pops).
+- **Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap** (2026-11-27, ADR-254).
+  *Changed (the owner's picks from the films):* his straight punches go along the line to you (they ran 35 - 66° off
+  to the side), the arm long (elbow 161 - 171°); his kicks land straight (173°) with the other leg hanging long; his
+  legs trail long behind him in every blow and hang long under his hover, the toes pointed (they sat folded under him,
+  knees 67 - 135°, as if kneeling on air); Fly-By and Through the Tower fly level, the fist out, through your chest
+  instead of over your head (every timing unchanged; `?halMotion=a` plays the motion before). His eye beams are heat
+  vision (twin threads meeting in one hard crimson line, a shimmer rising off it, a molten spot spitting sparks where it
+  lands, red motes drawn into his eyes as he charges; `?halEyes=0` the beam before, `b` a crimson pulse); his clap and
+  his meteor's landing send a crisp ring of air racing out with the dust shoved ahead of it (`?halShock=0` the dust
+  front before, `b` a dome of pressure). *Added, not the default:* `?halPace=a`, COMBAT rule 10's slower pace (the owner
+  kept his fast one). The Lab's LOOKS rows for all four.
 - **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
   `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
   x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a

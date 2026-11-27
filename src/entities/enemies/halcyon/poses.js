@@ -2,6 +2,8 @@ import { DIM } from '../../player/model.js';
 import { P, to3 } from '../../player/anim.js';
 import { createDuelPoses } from '../duelist/poses.js';
 import { GUARDS } from '../ascendant/poses.js';
+import { lookOf } from '../duelist/lookSwitch.js';
+import { TUNING } from './tuning.js';
 
 // Halcyon's stance and the pose functions built round it (duelist/poses.js: the clip format). He fights
 // bare-handed (Tian Lei's way: the hands keyed, the engine's blade channel only turns the right fist)
@@ -36,6 +38,8 @@ export function hoverLoco(p, A) {
   const pl = A.player ?? {};
   const t = A.time ?? 0;
   // the legs: the right knee drawn up, the left hanging straight, the toes pointed
+  // (ADR-254, `?halMotion=b`: both hang long under him, the knees soft, the feet a little back; after
+  // the lean below, so they trail with it: hoverLegs)
   to3(p, P.rF, -0.1, ANK + 0.34, 0.12, 1);
   to3(p, P.lF, 0.12, ANK - 0.02 + 0.02 * Math.sin(t * 1.3), -0.06, 1);
   to3(p, P.rK, -0.1, 0.4, 1, 1);
@@ -65,6 +69,32 @@ export function hoverLoco(p, A) {
     to3(p, P.lH, 0.1, -0.36, -0.3, g);
     p[P.pitch] += 0.25 * g;
   }
+  if (lookOf('halMotion', '0') === 'b') hoverLegs(p, t);
+}
+
+const LEG = DIM.thigh + DIM.shin;
+/** (ADR-254, `?halMotion=b`) His legs hung long under the hover: each foot `k` x the leg from its hip,
+ *  `trail` rad back from straight down plus the body's lean, the knees soft and pointing forward, the
+ *  toes pointed; the left a little longer and further back (no twinning), a slow sway. No allocation. */
+function hoverLegs(p, t) {
+  const H = TUNING.motion.b.hover, pitch = p[P.pitch], yaw = p[P.yaw];
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  // the hip joints: body axes (±hip x, below the pivot) turned by the pitch, then the yaw
+  const hy = DIM.pelvis[1] + DIM.hip[1];
+  for (let i = 0; i < 2; i++) {
+    const side = i ? 1 : -1, x0 = side * DIM.hip[0];
+    const y1 = hy * cp, z1 = hy * sp;
+    const hx = x0 * cy + z1 * sy + p[P.bodyX], hY = DIM.pivot + p[P.bodyY] + y1, hz = -x0 * sy + z1 * cy + p[P.bodyZ];
+    // (a foot is held over his root's floor, anim.js FOOT_FLOOR: a low hip takes its leg further back)
+    const d = H.k[i] * LEG, low = Math.acos(Math.min(1, Math.max(-1, (hY - ANK - 0.04) / d)));
+    const tr = Math.max(H.trail[i] + pitch, low) + 0.03 * Math.sin(t * 1.1 + i * 1.7);
+    const fx = side * 0.03, fz = -Math.sin(tr) * d;
+    to3(p, i ? P.lF : P.rF, hx + fx * cy + fz * sy, Math.max(ANK + 0.02, hY - Math.cos(tr) * d), hz - fx * sy + fz * cy, 1);
+    to3(p, i ? P.lK : P.rK, side * 0.1, -0.35, 1, 1);
+  }
+  p[P.footFlat] = 0.05;
+  p[P.rFy] = -0.08;
+  p[P.lFy] = 0.08;
 }
 
 /** The pose table HeroAnimator takes for him. */

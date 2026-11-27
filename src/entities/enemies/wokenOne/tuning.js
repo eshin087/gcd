@@ -50,6 +50,20 @@ export const TUNING = {
   reach: 1.16,
   travelCut: 0.7, // (the butterflies carry him this much less: moves.js shortTravel)
   legReach: 1.05, // (a kick's contact key: the striking foot this x the leg's length from its hip: moves.js longLeg)
+  // the limbs on the line (ADR-253, `?oneMoves=b`: limbs.js, gunAim.js): a straight blow's hand `armReach` x
+  // the arm out along the line from its shoulder to his centre line `aim.z` m ahead (the double palms
+  // `aim.half` either side); a kick's leg held long `kickHold` of the follow-through past its contact; the
+  // sweep's planted foot `sweepPivot` m from his root, its knee pole `sweepKnee`; a short blow's zone fitted
+  // to its drawn reach (`fit`, m from his root, by blow: he steps in until the limb meets a body circle of
+  // `heroR`, `fitIn` m inside it); the guns (gunAim.js): each barrel down its forearm, turned onto the hero
+  // within `aimCone` rad, a shot's recoil `recoil` [rad of muzzle climb, m back, its halflife s], the shot
+  // leaving the muzzle and falling to `chestY` at the hero; a volley's aim (Iron Rain, Iron in the Air)
+  // reached by `aimBy` of its windup and held (its first slugs leave a flight before the impact)
+  motion: {
+    armReach: 1.12, aim: { z: 0.95, half: 0.1, shot: 2.4 }, kickHold: 0.35, sweepPivot: 0.05, sweepKnee: [0.3, 1, 0.2], sweepStep: 0.5, sweepLift: 0.06,
+    fit: { elbowR: 0.42, elbowL: 0.42, spinBack: 0.9, hook: 0.45, kneeR: 0.55, kneeL: 0.55, cross: 0.84, backfist: 0.53, palm: 0.9, double: 0.84 }, heroR: 0.45, fitIn: 0.08,
+    aimCone: 0.8, aimBy: 0.6, recoil: [0.3, 0.05, 0.05], chestY: 1.3,
+  },
 
   // ---- posture (the Sekiro rule, as Tian Lei's: hard to move while the bar is full)
   posture: {
@@ -133,7 +147,11 @@ export const TUNING = {
     // fire field's peak about 1380 blobs (phase 3). A flurry burst of 6 - 8 blows is ONE cue (the owner's choice),
     // and so is a burst of three bullets: gear 2 counts below the plan's 95 - 105 though its strings run at the
     // 0.32 s floor. Main before the rework: 67.2 / 106.3 / 82.9 by phase (each of Iron Rain's 11 shots a cue)
-    meter: { rampMean: [1, 1.0, 0.82, 0.82], minRate: [70, 78, 65, 62], maxGap: [3.3, 3.0, 3.5, 3.9], dodge: [0.05, 0.3] },
+    // (ADR-253, the limbs on the line the default: seed 4242's phase 3 rolls Pushing Hands then Unwriting, whose
+    // bricks are torn and held before the first is thrown: a gap of 4.52 s; the phase-3 cap re-pinned from it with a
+    // margin. On five other seeds (1 2 3 5 11) b's longest phase-3 gap is 2.91 s, a's 2.67, and a fails phase 2's cap
+    // on seed 1 (4.02): the cap is the worst of three pinned seeds, not a property of the moves)
+    meter: { rampMean: [1, 1.0, 0.82, 0.82], minRate: [70, 78, 65, 62], maxGap: [3.3, 3.0, 3.5, 4.7], dodge: [0.05, 0.3] },
   },
   punish: { weight: 4 },
 

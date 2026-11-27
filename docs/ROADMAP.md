@@ -195,7 +195,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Wen Yao's lifted feet no longer jump (the release ease)
 - [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
 - [x] The owner's picks made the defaults (a for all three, every quick blow)
-- [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
+- [x] Lu Wusheng's free hand in the scabbard cuts (the form, ADR-252); the foot ease for Shen Hui and Varr Nihil
 ## M1.96 — The living world's fast path (2026-11-26, `world/life-perf`, ADR-245)
 - [x] Measured per layer on five levels (GPU at 4K and phone size, CPU at 1x / 4x / 6x)
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
@@ -1222,6 +1222,26 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
   - [x] The owner's picks from the films (2026-11-27): the form, the readable pace (`?lordPace=a`), Void Lightning
         `?boltFx=c` (the storm), the ignitions `?igniteFx=a` (the cocoon)
   - [ ] Grasp and Sever's chop skates 3.4 m over planted feet when the pull is rolled (a dash, as Severance's?)
+- [x] Xin Yi (ADR-253): the audit (`audit`, `guns`, `probe`); straight blows on the line, kicks held straight, blows
+      that reach, the sweep crossing the hero, the guns on the line of fire with a kick, behind `?oneMoves=b`; two
+      redrawn shots and bolts (`?oneGunFx`, `?oneBoltFx`); the `line` test; films sent
+  - [x] The owner's picks from the films: motion `b`, the shots `b` (the script), the bolts `a` (the seed), the default
+  - [ ] The hooks meeting the hero from the side, the sweep's knee at its very contact, Iron Rain's twin arms
+- [x] Lu Wusheng (ADR-252): the form audit (`sheath.mjs form`), the draw's hands (the fist on the hilt, the scabbard
+      drawn back) and its lunge, thrusts in line, the overhead on a diagonal, the sweep's feet, the free hand in the
+      scabbard cuts, behind `?sheathForm`; the readable pace `?sheathPace`; three looks for the draw `?drawFx`; films sent
+  - [x] The owner's picks from the films, made the defaults (the form a; the pace and the draw's look as shipped)
+- [x] The Cinder Wyrm (ADR-257): the anatomy audit at each blow's contact (`wyrmanatomy`), every bite led by the
+      body and snapped onto the beat, behind `?wyrmStrike=a`
+  - [x] The owner's pick from the films (2026-11-27): `a`, the default
+  - [x] The head in the meteors' roar no longer tips back past upright (ADR-258, `?wyrmHead=`)
+  - [ ] The flights' head in a banked body (skyStrafe's recovery, skyCataclysm's wheel) past vertical
+  - [ ] Next: the forelegs straight through the whole rake, the wing blows flapping as one rigid wing, the feet
+        skating up to ~1 m in some strings
+- [x] Halcyon (ADR-254): measured at every blow's contact in his upright frame (city `audit`, `GCD_AUDIT_IMPACT=1`);
+      straight punches on the line to the hero, straight kicks, a flier's long legs, a level pass (`?halMotion=b`),
+      rule 10's pace (`?halPace=a`), two looks each for his eye beams and his shockwaves; draft PR, films sent
+  - [x] The owner's picks made the default (2026-11-27: `halMotion` b, his fast pace kept, `halEyes` a, `halShock` a)
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and
