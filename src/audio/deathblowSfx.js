@@ -1,6 +1,6 @@
 import { env, perc, glide, rnd, num } from './dsp.js';
 
-// THE DEATHBLOW'S SOUND (?dbsfx=0|a|b|c; default 0 = the dodge flurry's own sounds). The parry streak's
+// THE DEATHBLOW'S SOUND (?dbsfx=0|a|b|c|d; default d; 0 = the dodge flurry's own sounds). The parry streak's
 // deathblow is a planted combo of N blows (player:flurry art 'deathblow', player:flurryHit per blow,
 // player:flurryEnd). Three families of hit, each with a blow (i of n) and a finisher; all synthesised,
 // all a plain recipe on a Voice (v.osc / v.noise / v.filter / v.gain / v.out), played through AudioEngine.play
@@ -9,13 +9,17 @@ import { env, perc, glide, rnd, num } from './dsp.js';
 //                little low body; the finisher a deep impact with its upper harmonics (a phone plays them)
 //   b Steel      a dense metal strike: a click and short inharmonic ring (steel-plate ratios, no bell tuning);
 //                the finisher a huge clang whose long dark tail closes down
+//   d Pierce     (the default) a blade PUNCTURING skin and passing through flesh: a tight 3-5 kHz puncture tick,
+//                a wet low-mid push-through with a resonant gurgle, a dull meat thud (with harmonics); a thrust
+//                (the blow's data, else every 3rd) adds a drag as the blade is drawn out; the finisher two
+//                overlapping punctures, a heavy wet pull-out and a low boom
 //   c Cinematic  a muffled thump at the contact and a reverse swell into the next blow; the finisher a deep
 //                boom with a sub drop and its upper harmonics
 // Per-blow variation comes from the audio's own seeded stream (dsp.js rnd), never Math.random; every blow
 // is a little louder than the last (LEVEL.grow); no pitch ladder. The three families are levelled to the
 // same A-weighted loudness (LEVEL.a / b / c, measured on the audition page's OfflineAudioContext).
 
-const OPTS = ['0', 'a', 'b', 'c'];
+const OPTS = ['0', 'a', 'b', 'c', 'd'];
 const q = () => {
   try {
     return typeof location !== 'undefined' ? new URLSearchParams(location.search).get('dbsfx') : null;
@@ -23,14 +27,14 @@ const q = () => {
     return null;
   }
 };
-export const DB_SFX_DEFAULT = '0';
-/** The switch (`?dbsfx=`): read at each blow (the Lab cycles it). '0' = today's flurry sounds. */
+export const DB_SFX_DEFAULT = 'd';
+/** The switch (`?dbsfx=`): read at each blow (the Lab cycles it). '0' = today's flurry sounds, d = Pierce. */
 export const DB_SFX = { opts: OPTS, mode: OPTS.includes(q()) ? q() : DB_SFX_DEFAULT };
 export const getDbSfx = () => DB_SFX.mode;
 export const setDbSfx = (m) => (DB_SFX.mode = OPTS.includes(m) ? m : DB_SFX_DEFAULT);
 
 /** Loudness: per option [a blow, the finisher] (levelled to equal A-weighted energy), and the growth per blow (1 + grow x (i - 1)). */
-export const LEVEL = { a: [1.55, 1.0], b: [0.83, 0.6], c: [1.78, 1.41], grow: 0.05 };
+export const LEVEL = { a: [1.55, 1.0], b: [0.83, 0.6], c: [1.78, 1.41], d: [1.47, 0.99], grow: 0.05 };
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
@@ -162,11 +166,64 @@ const CINE = {
   },
 };
 
-const FAMILY = { a: FLESH, b: STEEL, c: CINE };
+// --- d: Pierce -------------------------------------------------------------------------------
+
+/** The puncture: a very fast click into a narrow band of noise around 3-5 kHz, a few ms. */
+function puncture(v, t, k) {
+  band(v, t, 'white', 'bandpass', rnd(3200, 4800), rnd(3000, 4200), 2.2, [[0, 0], [0.0012, 0.75 * k], [0.005, 0.3 * k], [0.011, 0]]);
+  band(v, t, 'white', 'highpass', 5200, 5200, 0.7, [[0, 0], [0.001, 0.12 * k], [0.004, 0]]);
+}
+/** The wet push-through: low-mid noise (pink / brown, ~400-1400 Hz) in a squelchy jagged envelope, and a gurgle (a Q 6 bandpass swept down). */
+function push(v, t, k, D, f0) {
+  const a = rnd(0.45, 0.8), b = rnd(0.35, 0.7), c = rnd(0.5, 0.85);
+  band(v, t, 'pink', 'bandpass', f0, rnd(400, 520), 1.1, [
+    [0, 0], [0.005, 0.8 * k], [D * 0.22, 0.8 * k * a], [D * 0.34, 0.7 * k], [D * 0.52, 0.7 * k * b], [D * 0.66, 0.55 * k * c], [D * 0.85, 0.3 * k], [D, 0],
+  ]);
+  band(v, t, 'brown', 'lowpass', 900, 380, 0.8, [[0, 0], [0.008, 0.5 * k], [D * 0.7, 0.25 * k], [D, 0]]);
+  band(v, t + 0.01, 'pink', 'bandpass', rnd(950, 1150), rnd(300, 380), 6, [
+    [0, 0], [D * 0.15, 0.4 * k], [D * 0.3, 0.12 * k], [D * 0.5, 0.36 * k], [D * 0.75, 0.1 * k], [D * 0.95, 0],
+  ]);
+}
+/** The blade drawn out: a short swell that builds and is cut as the steel clears the flesh. */
+function drag(v, t, k, S, f0) {
+  band(v, t, 'pink', 'bandpass', f0, f0 * 1.9, 1.4, [[0, 0], [S * 0.55, 0.18 * k], [S * 0.9, 0.42 * k], [S * 0.96, 0.28 * k], [S, 0]]);
+  band(v, t, 'brown', 'lowpass', 600, 300, 0.8, [[0, 0], [S * 0.8, 0.22 * k], [S, 0]]);
+}
+
+const PIERCE = {
+  hit(v, t, o) {
+    const k = o.k, D = rnd(0.07, 0.115);
+    puncture(v, t, k);
+    push(v, t + 0.003, k, D, rnd(1100, 1400));
+    // the dull meat thud under it, with its harmonics so a phone plays it
+    const f = rnd(92, 130);
+    tone(v, t + 0.004, 'sine', f, f * 0.45, 0.07, 0.55 * k, 0.004, 0.15);
+    tone(v, t + 0.004, 'triangle', f * 2, f * 0.9, 0.07, 0.2 * k, 0.004, 0.09);
+    tone(v, t + 0.004, 'sine', f * 3, f * 1.35, 0.06, 0.1 * k, 0.004, 0.06);
+    if (o.thrust) drag(v, t + D + rnd(0.0, 0.03), k * 0.9, rnd(0.08, 0.12), rnd(450, 620));
+  },
+  last(v, t, o) {
+    const k = o.k;
+    puncture(v, t, k);
+    puncture(v, t + 0.038, k * 0.85);
+    push(v, t + 0.003, k * 1.1, 0.24, 1250);
+    push(v, t + 0.04, k * 0.8, 0.2, 950);
+    // the low impact boom with its harmonics
+    tone(v, t + 0.008, 'sine', 78, 32, 0.3, 0.6 * k, 0.005, 0.7);
+    tone(v, t + 0.008, 'triangle', 156, 66, 0.3, 0.4 * k, 0.005, 0.5);
+    tone(v, t + 0.008, 'sine', 234, 100, 0.28, 0.24 * k, 0.005, 0.34);
+    tone(v, t + 0.008, 'sine', 390, 170, 0.22, 0.1 * k, 0.005, 0.2);
+    // the heavy wet pull-out
+    drag(v, t + 0.27, k * 1.5, 0.3, 380);
+    band(v, t + 0.3, 'pink', 'bandpass', 900, 350, 5, [[0, 0], [0.06, 0.3 * k], [0.12, 0.1 * k], [0.2, 0.22 * k], [0.28, 0]]);
+  },
+};
+
+const FAMILY = { a: FLESH, b: STEEL, c: CINE, d: PIERCE };
 
 /**
- * The AudioEngine.play defs: 'dbHit' (a blow) and 'dbLast' (the finisher). opts { mode 'a'|'b'|'c', i, n,
- * swell (s to the next blow, 'c'), gain }. `bus: 'cue'`: crisp while the world is held and muffled round it.
+ * The AudioEngine.play defs: 'dbHit' (a blow) and 'dbLast' (the finisher). opts { mode 'a'|'b'|'c'|'d', i, n,
+ * swell (s to the next blow, 'c'), thrust (d: the blow is a thrust; else every 3rd), gain }. `bus: 'cue'`: crisp while the world is held and muffled round it.
  */
 function build(last) {
   return {
@@ -176,7 +233,7 @@ function build(last) {
       if (!fam) return;
       const n = clamp(Math.round(num(o.n, 1)), 1, 7), i = clamp(Math.round(num(o.i, 1)), 1, n);
       const k = (LEVEL[o.mode]?.[last ? 1 : 0] ?? 1) * (1 + LEVEL.grow * (i - 1)) * Math.max(0, num(o.gain, 1));
-      fam[last ? 'last' : 'hit'](v, t, { k, i, n, swell: num(o.swell, 0) });
+      fam[last ? 'last' : 'hit'](v, t, { k, i, n, swell: num(o.swell, 0), thrust: o.thrust ?? i % 3 === 0 });
     },
   };
 }
@@ -190,5 +247,6 @@ export function deathblowSound(d, mode = DB_SFX.mode, gap = 0.4) {
   if (!FAMILY[mode]) return null;
   const of = num(d?.of, 1), n = num(d?.n, 1), last = !!d?.last || n >= of;
   const opts = { mode, i: n, n: of, swell: last ? 0 : clamp(gap - 0.07, 0.1, 0.38) };
+  if (d?.thrust != null) opts.thrust = !!d.thrust;
   return { name: last ? 'dbLast' : 'dbHit', opts };
 }
