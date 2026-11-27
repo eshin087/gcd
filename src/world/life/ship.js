@@ -55,6 +55,8 @@ const whole = (a) => {
  * then, as LeafPrint does today, nothing is marked while n is 0.
  */
 export function ship(mesh, n, a, b, c, d, always = true) {
+  // (every batch the living world hands over is marked: BENCH leaves them out, dev/perfReadout.js)
+  if (mesh?.userData && mesh.userData.lifeBatch !== true) mesh.userData.lifeBatch = true;
   if (!LIFE.fast || !mesh?.layers) {
     if (mesh) unship(mesh);
     if (always || n > 0) {
