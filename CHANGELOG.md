@@ -4,8 +4,8 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-nine pieces of work since 0.4.0:
-- **A slash of fine digits, and a left hand that stays out of his body** (2026-11-27, ADR-258). *Changed (the owner's pick from the films):*
+One hundred and thirty-one pieces of work since 0.4.0:
+- **A slash of fine digits, and a left hand that stays out of his body** (2026-11-27, ADR-262). *Changed (the owner's pick from the films):*
   every sword attack's slash is now a thin straight line of small steel-blue digits drawn across the foe the way the
   sword crossed the screen as the swing ends, as if the blade cut the world's code open, gone in about 0.2 s, with a
   few digits dripping out of the cut. A landed blow throws the camera along the blade's way and sprays a small burst
@@ -24,6 +24,18 @@ One hundred and twenty-nine pieces of work since 0.4.0:
   (heavier for heavies). The blade smears for a frame or two at the fastest part of every swing. The light combo
   steps in further, holds each finishing pose while its slash flashes, then rises. Checked facing all four ways
   and on the phone camera, upright and sideways.
+- **The Cinder Wyrm raises its head naturally to rain fire** (2026-11-27, ADR-258). *Fixed:* rearing up to roar
+  the meteors into the sky, the wyrm's head no longer tips back past upright and rolls over on its neck: the neck
+  rises up and forward over its forelegs and the head points up at the sky. `?wyrmHead=0` (the Lab's LOOKS row) as
+  before. *Added:* integ `wyrmhead` (opt-in): every fire move's head angle.
+- **Xin Yi's limbs on the line** (2026-11-27, ADR-253). *Changed (the owner's picks, the default):* his punches land straight down the line to you with the arm long, his kicks stay
+  straight through the hit instead of folding as it lands, his elbow, knee and spin kick reach you instead of
+  striking short, the low sweep passes through you, and his guns point down the line of fire, each shot leaving
+  the muzzle with a kick of the arm (`?oneMoves=a`: as before). Every timing is as before. His gun shots now leave a
+  curtain of falling code (`?oneGunFx=b`; `a` a tracer, `0` as before) and his palm bolts in the Source are a hot core
+  in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
+One hundred and twenty-six pieces of work since 0.4.0:
+One hundred and twenty-seven pieces of work since 0.4.0:
 - **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
   level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
   the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the

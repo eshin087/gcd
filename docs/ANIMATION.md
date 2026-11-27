@@ -271,7 +271,7 @@ changes colour. One idea at a time, shown big.
   only, gated by blade speed, with the impact at the contact point along the cut. The hero's swings end in
   the owner's DIGIT SLASH: one straight line of small steel digits across the foe as the swing ends, drawn the
   way the sword crossed the screen, never behind him, gone in ~0.2 s, with a smear on the strike only
-  (`slashFx.js`, ADR-258; `?slash=slice` the digits on the blade's own path, `?slash=line` the ending line in
+  (`slashFx.js`, ADR-262; `?slash=slice` the digits on the blade's own path, `?slash=line` the ending line in
   strokes of ADR-240 / ADR-244, `?slash=arc` the old curved arc)
   **(ours)**.
 - **One smear frame is usually enough**, on the strike only, never on the anticipation or recovery
@@ -401,7 +401,7 @@ responsiveness into the physics first, with poses on top.
 - [ ] No twirls or flourishes the owner didn't ask for.
 - [ ] Cuts are diagonals at the game camera, not upright bars.
 - [ ] The pace sits between 0.25 s (too fast) and 0.42 s (too slow) per light hit, unless the owner moved it.
-- [ ] The digit slash follows the sword on screen, stays in front of him and is gone in ~0.2 s (ADR-258);
+- [ ] The digit slash follows the sword on screen, stays in front of him and is gone in ~0.2 s (ADR-262);
       effects stay at the blade; the background never changes colour.
 - [ ] Defensive play is never punished by the animation (a guard that drops, a dodge that can't be
       cancelled).

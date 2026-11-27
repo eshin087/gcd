@@ -6383,7 +6383,7 @@ async function scenarioHandAudit() {
   return G;
 }
 
-// SLICE (ADR-258; the owner, 2026-11-26: "make sure the slice effect is exactly matching the swords attack swing
+// SLICE (ADR-262; the owner, 2026-11-26: "make sure the slice effect is exactly matching the swords attack swing
 // ... like a cool matrix ascii of his sword cutting the matrix/universe", ~0.2 s): under the default look every
 // swing prints its slice (slashFx.js SLICE): digits on the path the blade's point swept (taken against his body,
 // each within a lattice cell and a frame's step of that path; a heavy's inner seam on its own share of the blade),
@@ -6728,7 +6728,7 @@ async function scenarioOffHand() {
       else assert(!nan && sdIn > 0.95 && sdSlam < 0.05 && twoSlam > 0.9 && far <= 0.6 && step <= 0.7 * prodStep && sdAfter < 0.02,
         `offhand ${mode}: at its rest through hits 1-4 (sd ${sdIn.toFixed(2)}), the slam two-handed (sd ${sdSlam.toFixed(2)}, two ${twoSlam.toFixed(2)}), the wrist at most ${far.toFixed(2)} m from its shoulder, at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4 (production ${(prodStep * 100).toFixed(1)}), home after (sd ${sdAfter.toFixed(2)})${nan ? ', NaN' : ''}`);
     }
-    // combo A's own hand behind his back (ADR-258; the owner: "its yellow fist randomly during the light attack
+    // combo A's own hand behind his back (ADR-262; the owner: "its yellow fist randomly during the light attack
     // combo", "on the 5th attack the left hand angle motion and animation looks unnatural"): while it hangs (sd 1)
     // through hits 1-4 the free wrist stays out of his coat (≥ 0.125 m from the spine between hip and chest: the coat's
     // back is 0.11 from it; it came within 0.07), with the elbow bent (≥ 50°: the hand on the small of his back; a rest
@@ -15528,7 +15528,71 @@ async function scenarioWyrmAnatomy() {
   return G;
 }
 
+// ================================================================== scenario: wyrmhead (opt-in, ADR-258: the head's angle in the fire moves)
+/** Every move that raises its head to fire (and the rest of its fire kit): per move, through the whole move,
+ *  the snout's heading against the body: `up` its highest pitch above the horizon (deg), `back` the most it tips
+ *  past straight up toward the tail (deg, 0 = never past vertical), `bend` the most the head turns off the
+ *  neck's last segment (deg), `behind` how far the head joint sits behind the neck base along the body's
+ *  facing (model units, + = behind), `roll` the head's brow off the chest's up about the snout (deg). */
+async function scenarioWyrmHead() {
+  out('\n== scenario WYRMHEAD (the head in the fire moves: how far up, past vertical, off the neck) ==');
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const G = build();
+  fightSetup(G);
+  G.game.player.debug.noRiposte = true;
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : ['meteorRain', 'roar', 'breath', 'fireball', 'eruptions', 'flameRing', 'flameWall', 'nova', 'emberStorm', 'fanVolley', 'cinderSpit', 'emberRain', 'fireWheel', 'fireLanes', 'drakelings', 'wisps', 'fireSerpent', 'firestorm', 'fireBrand', 'skyStrafe', 'skyHunt', 'diveBomb', 'hoverBarrage', 'skyFurnace', 'skyCataclysm'];
+  const V3 = () => new THREE.Vector3();
+  const qi = new THREE.Quaternion(), f = V3(), u = V3(), last = V3();
+  const deg = (r) => Math.round((r * 180) / Math.PI);
+  const rows = [];
+  for (const name of names) {
+    if (!ATTACKS[name]) { out(`  ${name}: no such attack`); continue; }
+    const ph = Math.max(1, TUNING.attacks[name]?.phase ?? ATTACKS[name].phase ?? 1);
+    settle(G);
+    if (d.phase !== ph) d.enterPhase(ph);
+    d.hazards?.clear?.();
+    place(G, 7, 0);
+    p.debug.god = true;
+    d.brain.startAction(ATTACKS[name]);
+    let up = -90, back = 0, bend = 0, behind = -9, roll = 0, at = '', frames = 0;
+    for (let i = 0; i < Math.round(16 / DT); i++) {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      G.tick(DT);
+      p.debug.heal();
+      if (!d.brain.action || d.brain.action.name !== name) break;
+      frames++;
+      const R = d.rig, pt = R.pt;
+      // the chest's frame: the snout's heading in it
+      qi.copy(R._qChest).invert();
+      f.copy(pt.headFwd).applyQuaternion(qi);
+      const pitch = Math.atan2(f.y, Math.hypot(f.x, f.z));
+      // past vertical: the heading's along-body part pointing back (z < 0) while it points up
+      const pv = f.y > 0 && f.z < 0 ? Math.atan2(-f.z, f.y) : 0;
+      const n = R.neck.n;
+      last.subVectors(R.neck.p[n], R.neck.p[n - 1]).normalize();
+      const b = Math.acos(Math.max(-1, Math.min(1, last.dot(pt.headFwd))));
+      const bh = -((pt.head.x - pt.neckBase.x) * d.fwd.x + (pt.head.z - pt.neckBase.z) * d.fwd.z) / SCALE;
+      // the brow: the head's +Y against the chest's up, about the snout
+      u.set(0, 1, 0).applyQuaternion(R._qHead).applyQuaternion(qi);
+      const rl = Math.atan2(u.x, u.y);
+      if (pitch > up * Math.PI / 180) up = deg(pitch);
+      if (deg(pv) > back) { back = deg(pv); at = `${d.brain.action.phase} ${d.brain.action.k.toFixed(2)}`; }
+      bend = Math.max(bend, deg(b));
+      behind = Math.max(behind, +bh.toFixed(2));
+      roll = Math.max(roll, Math.abs(deg(rl)));
+    }
+    rows.push({ name, up, back, bend, behind, roll });
+    out(`  ${name.padEnd(13)} ${String(frames).padStart(4)}f  up ${String(up).padStart(4)}°  past vertical ${String(back).padStart(3)}°${back ? ` (${at})` : ''}  off the neck ${String(bend).padStart(3)}°  head behind the neck base ${behind} u  brow roll ${roll}°`);
+  }
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
+  return G;
+}
+
 const SCENARIOS = {
+  wyrmhead: scenarioWyrmHead,
   wyrmanatomy: scenarioWyrmAnatomy,
   wyrmaudit: scenarioWyrmAudit,
   wyrmheld: scenarioWyrmHeld,
@@ -15617,7 +15681,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'wyrmanatomy', 'handaudit']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'wyrmanatomy', 'wyrmhead', 'handaudit']); // run only when named
 // GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }
