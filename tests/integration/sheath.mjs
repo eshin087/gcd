@@ -324,6 +324,9 @@ async function scenarioLevel() {
 async function scenarioRules() {
   out('\n== scenario RULES (every move, every phase it is used in, both ends of every roll) ==');
   let checked = 0;
+  // (the quick blows, ADR-223: checked with their switch on; exempt from minFirstWindup, never under flashLead)
+  const { setLook: setQuick } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  setQuick('sheathQuick', 'a');
   // his own bands (the addendum): white 9 - 15, blue 18 - 26, red 22 - 30, one black; the lethal draws exempt
   const BAND = { [TELL.NORMAL]: [9, 15], [TELL.BLUE]: [18, 26], [TELL.RED]: [22, 30], [TELL.BLACK]: [30, 40] };
   for (const name of MOVE_NAMES) {
@@ -337,7 +340,7 @@ async function scenarioRules() {
         const tag = `${name} P${ph} r${r}`;
         if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
         const first = real[0];
-        if (!def.transition && first && !(first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first windup ${(first.impact - first.tellAt).toFixed(3)} >= ${TUNING.minFirstWindup}`);
+        if (!def.transition && first && !(first.impact - first.tellAt >= (def.quick ? TUNING.flashLead : TUNING.minFirstWindup) - 1e-6)) assert(false, `${tag}: first windup ${(first.impact - first.tellAt).toFixed(3)} >= ${TUNING.minFirstWindup}`);
         for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(3)} s apart`);
         for (let i = 1; i < real.length; i++) if (!(real[i].flash >= real[i - 1].impact - 1e-6)) assert(false, `${tag}: hit ${i}'s flash after hit ${i - 1} lands`);
         for (const b of real) if (!(b.def.zone || b.def.release || b.def.cast)) assert(false, `${tag}: hit ${b.hit} has a zone or a cast`);
@@ -362,6 +365,15 @@ async function scenarioRules() {
     for (const b of flat(name)) if (b.feint && b.tell) assert(false, `${name}: a feint carries no tell`);
   }
   assert(checked > 80, `${checked} realisations obey the rules (a tell per hit, first windup >= ${TUNING.minFirstWindup} s, hits >= ${TUNING.minHitGap} s apart, each draw blue / flared / fixed / >= 0.9 s, damage in his bands)`);
+  {
+    // the quick blows (ADR-223): one white hit each, fixed, never under flashLead (the glint as it starts), light; off by default
+    const quick = MOVE_NAMES.filter((n) => MOVES[n].quick);
+    const ok = quick.every((n) => { const a = realise(n, 3, () => 0.5); const r = a.beats.filter((b) => !b.feint); return r.length === 1 && r[0].def.tell === TELL.NORMAL && r[0].def.fixed && r[0].impact - r[0].tellAt >= TUNING.flashLead - 1e-6 && r[0].impact - r[0].tellAt < TUNING.minFirstWindup && r[0].def.damage <= 12; });
+    setQuick('sheathQuick', '0');
+    const off = quick.every((n) => [1, 2, 3].every((f) => !((Array.isArray(MOVES[n].weight) ? MOVES[n].weight[f - 1] : MOVES[n].weight) > 0)));
+    assert(quick.length > 0 && ok && off, `the quick blows (${quick.join(', ')}): one white hit, fixed, windup in [flashLead, minFirstWindup), light; weight 0 with ?sheathQuick=0`);
+    setQuick('sheathQuick', null);
+  }
   const blacks = MOVE_NAMES.filter((n) => flat(n).some((b) => b.tell === TELL.BLACK));
   assert(blacks.length === 1 && blacks[0] === 'lightless', `exactly one black move (${blacks.join(', ')})`);
   assert(MOVE_NAMES.every((n) => flat(n).every((b) => !(b.draw && (b.tell === TELL.RED || b.tell === TELL.BLACK)))), 'no red or black beat is a draw (never lethal)');
@@ -1272,8 +1284,93 @@ async function scenarioLook() {
   opt('sheathMark', '0', (d, M) => assert(meshesOf(d, M.piping).length === 0 && !d._offStrip?.length, '?sheathMark=0: no mark'));
 }
 
-const S = { level: scenarioLevel, rules: scenarioRules, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin, look: scenarioLook };
-const OPT_IN = { strategy: scenarioStrategy, lean: scenarioLean };
+// ================================================================== scenario: motion (ADR-223: held tells, the feet, the quick blows)
+/** With `?sheathMotion=a` every blue / red blow that is not a draw, a cast or a long charge holds its cock
+ *  >= 0.12 s, in a pose that is coloured (blue taller, red lower than as authored); its windup is HELD.hold
+ *  longer, the strike from the cock and the cue as before; '0' plays the authored keys exactly; no foot
+ *  jumps more than 0.3 m in a frame (the release ease). */
+async function scenarioMotion() {
+  out('\n== scenario MOTION (ADR-223: the held blue / red windups, the released feet, the quick blows) ==');
+  const { makeAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/motionAudit.mjs`).href);
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { HELD } = await imp('src/entities/enemies/duelist/heldTells.js');
+  // 1. the data: off = authored; on = the same strike, HELD.hold more at the cock
+  {
+    let n = 0;
+    const bad = [];
+    for (const name of MOVE_NAMES) {
+      const def = MOVES[name];
+      if (def.transition || def.hidden || def.manual) continue;
+      const ph = Math.max(1, def.phase ?? 1);
+      setLook('sheathMotion', '0');
+      const A0 = realise(name, ph, () => 0.5);
+      setLook('sheathMotion', 'a');
+      const A1 = realise(name, ph, () => 0.5);
+      setLook('sheathMotion', null);
+      if (!A0 || !A1 || A0.beats.length !== A1.beats.length) { bad.push(`${name}: beats differ`); continue; }
+      A0.beats.forEach((b0, i) => {
+        const b1 = A1.beats[i], D = b0.def;
+        const held = !b0.feint && (D.tell === TELL.BLUE || D.tell === TELL.RED) && !D.draw && !D.cast && !D.pack && D.windup < HELD.longer;
+        const dW = (b1.impact - b1.start) - (b0.impact - b0.start);
+        if (held) n++;
+        if (Math.abs(dW - (held ? HELD.hold : 0)) > 1e-6) bad.push(`${name} b${i}: windup +${dW.toFixed(3)}`);
+        if (Math.abs((b1.impact - b1.flash) - (b0.impact - b0.flash)) > 1e-6) bad.push(`${name} b${i}: cue moved`);
+      });
+    }
+    assert(n >= 6 && !bad.length, `?sheathMotion=a: ${n} blue / red blows wind up ${HELD.hold} s longer at the cock, every other beat and every cue as authored (${bad.slice(0, 4).join(' | ')})`);
+  }
+  // 2. on the rig: the held blows hold, coloured; the feet do not jump
+  const rows = {};
+  for (const mode of ['0', 'a']) {
+    setLook('sheathMotion', mode);
+    for (const [name, ph, dist] of [['lintel', 1, 3], ['reedCutter', 1, 2.6], ['shutDoor', 1, 3.5], ['tapStone', 1, 5]]) {
+      const G = build();
+      duel(G, { dist: 4 });
+      run(G, 0.5);
+      const A = makeAudit({ THREE, G, DT, place });
+      rows[mode + name] = A.measure(name, { dist, phase: ph });
+    }
+  }
+  setLook('sheathMotion', null);
+  for (const [name] of [['lintel', 1, 3], ['reedCutter', 1, 2.6], ['shutDoor', 1, 3.5], ['tapStone', 1, 5]]) {
+    const r0 = rows['0' + name], r1 = rows['a' + name];
+    const k0 = r0.beats.find((b) => b.tell === TELL.BLUE || b.tell === TELL.RED), k1 = r1.beats.find((b) => b.tell === TELL.BLUE || b.tell === TELL.RED);
+    if (!k0 || !k1) { assert(false, `${name}: a blue / red beat measured`); continue; }
+    const taller = k1.tell === TELL.BLUE ? k1.cock.pel > k0.cock.pel + 0.01 : k1.cock.pel < k0.cock.pel - 0.03;
+    assert(k1.held >= 0.12 && k1.held > k0.held && taller, `${name} (${k1.tell}): held ${k0.held.toFixed(2)} -> ${k1.held.toFixed(2)} s (>= 0.12), the cock's pelvis ${k0.cock.pel} -> ${k1.cock.pel} m (${k1.tell === TELL.BLUE ? 'taller' : 'lower'})`);
+    if (true) assert(r1.pop <= 0.3, `${name}: no joint jumps more than 0.3 m in a frame (${r0.pop.toFixed(2)} ${r0.popK} -> ${r1.pop.toFixed(2)} ${r1.popK})`);
+  }
+}
+
+// ================================================================== scenario: audit (opt-in: every move's motion, printed)
+/** Every move measured on the rig (motionAudit.mjs): a table for the eye, no assertions. GCD_MOVES=a,b to pick. */
+async function scenarioAudit() {
+  out('\n== scenario AUDIT (every move as motion: hand speed, pops, sliding feet, the held windup per tell, facing) ==');
+  const { makeAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/motionAudit.mjs`).href);
+  // (GCD_LOOKS='sheathMotion=a,...': switches set for the run)
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].manual);
+  const rows = [];
+  for (const name of names) {
+    const def = MOVES[name];
+    const phase = def.transition ? def.phase - 1 : Math.max(1, def.phase ?? 1);
+    const G = build();
+    duel(G, { dist: 4 });
+    const d = G.game.dragon;
+    if (phase > 1) { d.enterPhase(phase); d.phase = phase; }
+    run(G, 0.5);
+    const A = makeAudit({ THREE, G, DT, place });
+    const band = def.band ?? [0, 4];
+    const dist = Math.max(2.0, Math.min(6, (band[0] + Math.min(band[1], 8)) / 2));
+    const r = A.measure(name, { dist, phase });
+    rows.push(r);
+    A.print(out, r);
+  }
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
+}
+
+const S = { level: scenarioLevel, rules: scenarioRules, motion: scenarioMotion, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin, look: scenarioLook };
+const OPT_IN = { strategy: scenarioStrategy, lean: scenarioLean, audit: scenarioAudit };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {
   if (OPT_IN[k]) S[k] = OPT_IN[k];

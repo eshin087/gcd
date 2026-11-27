@@ -131,7 +131,8 @@ export class Duelist {
       position: this.position, yaw: 0, state: 'duel', stateT: 0, animT: 0, atk: { def: null },
       groundVel: { x: 0, z: 0 }, kb: { x: 0, z: 0 }, chargeK: 0, releaseK: 0, recoil: 0, lockOn: false, guardHold: 0,
     };
-    this.anim = new HeroAnimator(this.rig, this.pilot, kit.poses);
+    // (kit.animOpts: a boss's own animator options, e.g. its feet's release ease; ADR-223. None: as before)
+    this.anim = new HeroAnimator(this.rig, this.pilot, kit.poses, kit.animOpts);
     // his drawn size (kit.scale; HERO_SCALE by default): visual only, as the hero's
     this.drawScale = kit.scale > 0 ? kit.scale : HERO_SCALE;
     this.pilot.drawScale = this.drawScale;

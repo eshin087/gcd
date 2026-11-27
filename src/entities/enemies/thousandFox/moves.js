@@ -2,6 +2,8 @@ import { TELL } from '../../../combat/rules.js';
 import { compileClip, completeBeat, GUARD } from './poses.js';
 import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
+import { makeHeldKeys } from '../duelist/heldTells.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
 
 // Wen Yao's moves and reaction clips, as data (ADR-147; COMBAT.md → "The Thousand-Body Fox"). He fights
@@ -157,6 +159,19 @@ export const MOVES = {
     beats: [{ ...punch('cross', N, 0.5, 18, { knockback: 1.0 }), ...dash(4.5, 0.35, 1.0), track: 0.6 }],
   },
 
+  /** Fox Snap (`?foxQuick=a`, ADR-223): the open lead hand, already out, snaps shut into a jab: no
+   *  gather, the guard is the warning. White, fast, light; close range. */
+  snapJab: {
+    label: 'Fox Snap', phase: 1, quick: true, cooldown: TUNING.quick.cooldown, band: TUNING.quick.band, recovery: 0.4,
+    get weight() { return lookOf('foxQuick', '0') === 'a' ? TUNING.quick.weight.jab : [0, 0, 0]; },
+    beats: [{ ...punch('jab', N, TUNING.quick.windup, TUNING.quick.damage, { cock: 0.45 }), fixed: true, close: 0, track: 0.9 }],
+  },
+  /** Fox Knee (`?foxQuick=a`): the rear knee driven up from the guard, no step: white, fast; close. */
+  snapKnee: {
+    label: 'Fox Knee', phase: 1, quick: true, cooldown: TUNING.quick.cooldown, band: [0, 1.7], recovery: 0.45,
+    get weight() { return lookOf('foxQuick', '0') === 'a' ? TUNING.quick.weight.knee : [0, 0, 0]; },
+    beats: [{ ...kick('knee', N, TUNING.quick.windup + 0.02, TUNING.quick.damage, { cock: 0.45 }), fixed: true, close: 0, track: 0.9 }],
+  },
   /** Three Paws: jab, cross, then the open palm driven home (a parry moment: the blue flare). */
   brushstrokes: {
     label: 'Three Paws', phase: 1, weight: [2.6, 2.0, 1.4], cooldown: 3.5, band: [0, 3.6], recovery: 0.55,
@@ -415,7 +430,9 @@ for (const [k, c] of Object.entries(CLIP)) c.name = k;
 
 // ---------------------------------------------------------------- realising a move
 const perPhaseN = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v) || 5;
-const realiser = (M) => makeRealise({ TUNING, MOVES: M, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat });
+// (`?foxMotion=a|b`: his blue and red blows hold their cock, coloured / not; ADR-223, duelist/heldTells.js)
+const HELD_KEYS = makeHeldKeys('foxMotion', GUARD);
+const realiser = (M) => makeRealise({ TUNING, MOVES: M, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: HELD_KEYS });
 const base = realiser(MOVES);
 // the Round realised for each live count (its own windup per count; FoxBrain.startAct passes `opts.selves`)
 const ROUNDS = {};

@@ -16,6 +16,10 @@ export const TUNING = {
   flashLead: 0.3,
   minFirstWindup: 0.42,
   minHitGap: 0.32,
+  // the quick blow (`?sheathQuick=a`, ADR-223): snapped out of the carry with no gather, the stance its
+  // tell; a white blow, its windup `fixed` (no phase makes it shorter) and never under flashLead (its glint
+  // shows as it starts); exempt from minFirstWindup, close range only, never a link
+  quick: { windup: 0.32, damage: 9, knockback: 0.6, band: [0, 2.2], cooldown: [6, 5, 4], weight: [1.1, 1.2, 1.3] },
   // harder means more pressure and more kinds of draw, never more damage: the draws are `fixed`
   windupScale: [1, 0.94, 0.92],
   recoveryScale: [0.95, 0.85, 0.8],

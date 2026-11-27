@@ -2900,6 +2900,10 @@ export class HeroAnimator {
     this.armSoft = Array.isArray(opts?.armSoft) ? opts.armSoft : null;
     /** ... and the legs' (null: a leg reaches straight, as always; ADR-162). */
     this.legSoft = Array.isArray(opts?.legSoft) ? opts.legSoft : null;
+    /** () => s: a planted foot the clip lifts is eased from where it stood to the clip's key over this
+     *  long, not handed to the key at once (a boss's clip foot left behind by its root motion jumped up to
+     *  0.46 m in a frame; ADR-223). Bosses only (a function: their motion switch, read live); 0 = as before. */
+    this.liftEase = typeof opts?.liftEase === 'function' ? opts.liftEase : null;
     /** [from, to, add, lift0, lift1] or null: a boss whose kicks land with the leg straight (Xin Yi,
      *  ADR-221; _leg). A lifted foot asked for past `from` of the leg's length is carried out, by up to
      *  `add` of it at `to`, so the leg reaches its full length at a kick's extension. */
@@ -3752,10 +3756,23 @@ export class HeroAnimator {
         F.lock = false;
         F.mode = 2;
       }
+      const ease = this.liftEase ? fin(this.liftEase()) : 0;
       if (air) {
-        // the clip's own: a kick, a leap, a dash
+        // the clip's own: a kick, a leap, a dash (a boss's: eased off the spot it stood on, ADR-223)
+        if (F.lock && ease > 0 && !off) {
+          const wx = (F.wx - px) / HS, wz = (F.wz - pz) / HS;
+          F.rx = wx * c - wz * s;
+          F.rz = wx * s + wz * c;
+          F.ryaw = wrapAngle(F.wyaw - yaw);
+          F.mode = 3;
+          F.s = 0;
+          F.dur = ease;
+        } else if (F.mode !== 3 || off) F.mode = 2;
         F.lock = false;
-        F.mode = 2;
+      } else if (!F.lock && F.mode === 3) {
+        // it comes down while still easing: planted where it is drawn
+        const e = smoothstep(0, 1, Math.min(1, F.s + dt / F.dur));
+        this._plant(F, lerp(F.rx, dx, e), lerp(F.rz, dz, e), F.ryaw + wrapAngle(dyaw - F.ryaw) * e, px, pz, c, s, yaw);
       } else if (!F.lock && F.mode !== 1) {
         this._plant(F, dx, dz, dyaw, px, pz, c, s, yaw); // it comes down: planted where it is
       } else if (F.lock) {
@@ -3780,6 +3797,15 @@ export class HeroAnimator {
         cur[i + 1] = ANK;
         cur[i + 2] = wx * s + wz * c;
         cur[iy] = wrapAngle(F.wyaw - yaw);
+      } else if (F.mode === 3) {
+        // released by the clip: from the spot it stood on to the clip's key (the key moves on meanwhile)
+        F.s = Math.min(1, F.s + dt / F.dur);
+        const e = smoothstep(0, 1, F.s);
+        cur[i] = lerp(F.rx, dx, e);
+        cur[i + 1] = lerp(ANK, dy, e);
+        cur[i + 2] = lerp(F.rz, dz, e);
+        cur[iy] = F.ryaw + wrapAngle(dyaw - F.ryaw) * e;
+        if (F.s >= 1) F.mode = 2;
       } else if (F.mode === 1) {
         F.s = Math.min(1, F.s + dt / F.dur);
         const e = smoothstep(0, 1, F.s);

@@ -8,6 +8,8 @@ import { TERRAIN, TERRAIN_ATTACKS } from './tuningTerrain.js';
 import { LINKS } from './tuningLinks.js';
 import { SPELLS } from './tuningSpells.js';
 import { BROOD } from './tuningBrood.js';
+import { WYRM_QUICK } from './tuningMotion.js';
+import { lookOf } from '../enemies/duelist/lookSwitch.js';
 
 const DEG = Math.PI / 180;
 
@@ -110,7 +112,9 @@ export const TUNING = {
     // suite the same seed's fight went another way and marked 29 %, as `endShare` above had found for
     // the pieces: the lower bound sits under that. Seen when the sims began to reseed at each model's
     // build, tests/integration/integ.mjs onModelBuilt)
-    meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 9, wall: [0.25, 0.75], wallP1: 0.03 },
+    // (2026-11-26, ADR-223: `burnt` from 9: with the held windups and the quick swipe the same seed's fight
+    // rolls other moves and burnt 11 of 184 pieces through; nothing of the fire changed)
+    meter: { endShare: [0.2, 0.7], liftP3: 8, burnt: 12, wall: [0.25, 0.75], wallP1: 0.03 },
   },
   // the root stays inside min(CONFIG.world.dragonBound, bound) (m). CONFIG's 26 was sized for the
   // v0.2 wyrm; at x1.875 the chest / neck-base body circles (~5.8 m ahead of the root) would cross
@@ -548,6 +552,15 @@ export const TUNING = {
           burst: { phase: 2, n: 6, wait: 0.5, stagger: 0.26, speed: 12 } },
       ],
       recovery: 1.3, cooldown: 12, weight: [0, 0, 3.0], range: [3.0, 5.4], maxAng: 0.9,
+    },
+    // THE QUICK BLOW (`?wyrmQuick=a`, ADR-223; tuningMotion.js WYRM_QUICK): a paw snapped out of the
+    // stance with no rear-back (the stance is the tell); white, 0.5 s at phase 1 (0.35 = flashLead at
+    // phase 3: its glint shows as it starts), close and ahead only, light
+    snapSwipe: {
+      label: 'Snap swipe', tell: TELL.NORMAL, phase: 1, quick: true,
+      hits: [{ kind: 'claw', side: 1, tell: TELL.NORMAL, windup: 0.5, active: 0.22, impact: 0.12, damage: 11, knockback: 1.2, turn: 1.0 }],
+      recovery: 0.6, cooldown: 6, range: [0, 4.4], maxAng: 0.7,
+      get weight() { return lookOf('wyrmQuick', '0') === 'a' ? WYRM_QUICK.weight : 0; },
     },
     tail: {
       label: 'Tail sweep', tell: TELL.RED,

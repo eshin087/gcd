@@ -36,12 +36,13 @@ export function perPhase(v, phase) {
 const FOLLOW_MAX = 0.24; // s: the longest follow-through of a blow
 const FOLLOW_RING = 0.3; // … of a spin (a ring zone): its whole turn runs on this clock, 0.18 s was a blur
 const FOLLOW_PART = 0.72; // of the time to the next beat's first pose: the rest is his way into it
-// `keysOf(beat)` (optional, ADR-225): the pose keys a beat plays THIS time, read as each move is realised: a
-// boss whose blows have a second set of keys behind a live look switch (Tian Lei's and Halcyon's motion,
-// ascendant/motion.js, halcyon/motion.js; Shen Hui's and Varr Nihil's held tell poses, `motionKeys`, ADR-226);
-// null or undefined = `beat.keys`. Poses only: timings never move.
+// `keysOf(beat)` (optional): what a beat plays THIS time, read as each move is realised: its pose keys (a
+// boss whose blows have a second set behind a live look switch: Tian Lei's and Halcyon's motion, ADR-225,
+// ascendant/motion.js, halcyon/motion.js; Shen Hui's and Varr Nihil's held tell poses, `motionKeys`,
+// ADR-226), or { keys, hold }: `hold` s more of the cocked pose, added to the beat's bait hold (the held
+// tells, ADR-223, duelist/heldTells.js: Lu Wusheng and Wen Yao); null or undefined = `beat.keys`, no more hold.
 // `recoveryKeysOf(move)` (optional, the same for a move's `recoveryKeys`: the Starless Lord's end-of-string
-// shake); null or undefined = `move.recoveryKeys`. Timings never depend on either.
+// shake); null or undefined = `move.recoveryKeys`. Timings never depend on it.
 export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, keysOf = null, recoveryKeysOf = null }) {
   return function realise(name, phase = 1, rnd = Math.random, opts = null) {
     const def = MOVES[name];
@@ -59,7 +60,8 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, k
       const b = Array.isArray(raw.pick) ? raw.pick[Math.min(raw.pick.length - 1, Math.floor(rnd() * raw.pick.length))] : raw;
       if (b.chance !== undefined && b.chance < 1 && !(rnd() < b.chance)) return;
       const W = b.windup * (b.fixed ? 1 : ws);
-      const H = Array.isArray(b.hold) ? b.hold[0] + (b.hold[1] - b.hold[0]) * rnd() : 0;
+      const alt = keysOf ? keysOf(b) : null;
+      const H = (Array.isArray(b.hold) ? b.hold[0] + (b.hold[1] - b.hold[0]) * rnd() : 0) + Math.max(0, Number(alt?.hold) || 0);
       const A = b.active;
       const S = Math.max(0, Number(b.sustain?.dur) || 0);
       const cock = b.cock ?? 0.8;
@@ -83,7 +85,8 @@ export function makeRealise({ TUNING, MOVES, compileClip, completeBeat = null, k
     const recKeys = (recoveryKeysOf ? recoveryKeysOf(def) : null) ?? def.recoveryKeys;
     const end = t + recovery;
     // the pose keys, beat by beat (see the header: the follow-through's own clock)
-    const own = (b, chained, followed = false) => ((keysOf ? keysOf(b.def) : null) ?? b.def.keys ?? []).filter(([, pose]) => !(chained && pose.gather) && !(followed && pose.settle));
+    const keysNow = (def) => { const k = keysOf ? keysOf(def) : null; return (Array.isArray(k) ? k : k?.keys) ?? def.keys ?? []; };
+    const own = (b, chained, followed = false) => keysNow(b.def).filter(([, pose]) => !(chained && pose.gather) && !(followed && pose.settle));
     beats.forEach((b, i) => {
       const nb = beats[i + 1];
       const mine = own(b, i > 0, !!nb);
