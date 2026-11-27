@@ -18,6 +18,14 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'Lu Wusheng draws like a swordsman, to try',
+        notes: [
+          'Add ?sheathForm=a to the address in the Windless Grove: his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',
+          'Also to try: ?sheathPace=a (his scabbard blows wind up longer) and ?drawFx=a, b or c (three looks for the draw).',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [

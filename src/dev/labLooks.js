@@ -60,6 +60,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
   ['sheathLook', ['a', 'b', 'c', 'd'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve, d the wanderer (a reload)'],
   ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
+  ['drawFx', ['0', 'a', 'b', 'c'], '0', 'a', false, ['grove'], 'the draw\'s look (ADR-252): 0 as shipped; a the drawn breath (the air drawn into the scabbard\'s mouth, thrown out along the cut); b hanging leaves (the blade\'s arc, letters left hanging on the line, dropped on the click); c the late sound (a quiet cut; the line bursts open on the click) (live)', 'awaiting'],
   // --- code: the Hall of Falling Script and Xin Yi (ADR-156, ADR-157; pending: the owner picks from the sheets)
   ['oneLook', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'Xin Yi\'s body: a the long coat, b the cassock, c the grey coat (a reload)'],
   ['hall', ['a', 'b'], 'a', 'a', true, ['code'], 'the hall: a pale marble, green-black inlay; b dark basalt, jade-lit edges (a reload)'],

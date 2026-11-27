@@ -195,7 +195,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Wen Yao's lifted feet no longer jump (the release ease)
 - [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
 - [x] The owner's picks made the defaults (a for all three, every quick blow)
-- [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
+- [~] Lu Wusheng's free hand in the scabbard cuts (`?sheathForm=a`, ADR-252, awaiting the pick); the foot ease for Shen Hui and Varr Nihil
 ## M1.96 — The living world's fast path (2026-11-26, `world/life-perf`, ADR-245)
 - [x] Measured per layer on five levels (GPU at 4K and phone size, CPU at 1x / 4x / 6x)
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
@@ -1216,6 +1216,10 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
+- [x] Lu Wusheng (ADR-252): the form audit (`sheath.mjs form`), the draw's hands (the fist on the hilt, the scabbard
+      drawn back) and its lunge, thrusts in line, the overhead on a diagonal, the sweep's feet, the free hand in the
+      scabbard cuts, behind `?sheathForm`; the readable pace `?sheathPace`; three looks for the draw `?drawFx`; films sent
+  - [ ] The owner's picks from the films, made the defaults
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and

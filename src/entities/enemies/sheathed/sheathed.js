@@ -261,6 +261,8 @@ export class Sheathed extends Duelist {
     if (W.live) {
       W.live = false;
       this.stats.wakes++;
+      // (the draw's look on the click: `?drawFx=b|c`, ADR-252, fx.js)
+      this.fx.drawClick?.(W.ax, W.az, W.cx, W.cz, T.cutY);
       if (Dz?.sweep) {
         const o = (this._wo ??= { kind: 'cut', by: 'boss', dx: 0, dz: 1, y: 1.15, src: -1 });
         o.dx = W.dx;

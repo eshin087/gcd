@@ -42,6 +42,8 @@ if (process.env.GCD_TUNE) {
   const merge = (o, v) => { for (const [k, x] of Object.entries(v)) { if (x && typeof x === 'object' && !Array.isArray(x) && o[k] && typeof o[k] === 'object') merge(o[k], x); else o[k] = x; } };
   merge(TUNING, JSON.parse(process.env.GCD_TUNE));
 }
+// (GCD_LOOKS='sheathForm=a,drawFx=b': look switches set for the whole run)
+{ const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
 const LVL = getLevel('grove');
 const errors = [];
 console.error = (...a) => { errors.push(a.map((x) => (x?.stack ? x.stack.split('\n').slice(0, 3).join(' | ') : String(x))).join(' ')); };
@@ -1451,6 +1453,19 @@ async function scenarioFormPace() {
   const ov = rows.lintel.imp[0];
   assert(ov.tilt !== null && ov.tilt <= 70, `the overhead comes down on a diagonal (its path ${ov.tilt}° off level <= 70)`);
   assert(rows.reedCutter.imp[0].kL >= 30, `the sweep: the legs not wound round each other`);
+  // the draw's looks (`?drawFx`): One Breath dodged, each look: it draws (more heat and letters than '0'),
+  // the same hits and cues, no NaN (build()'s spawn guards)
+  const cost = {};
+  for (const v of ['0', 'a', 'b', 'c']) {
+    setLook('drawFx', v);
+    const G = build();
+    const R = answerDraw(G, 'oneBreath', 'dodge', { dist: 4, early: 0.12 });
+    cost[v] = { spawns: G.counters.spawns, flashes: R?.flashes.length ?? -1, hp: R ? Math.round(R.hp) : -1, clicks: G.game.dragon.stats.clicks };
+  }
+  setLook('drawFx', null);
+  out(`     drawFx spawns (fire blobs + letters through One Breath, dodged): ${Object.entries(cost).map(([k, c]) => `${k} ${c.spawns}`).join(' · ')}`);
+  assert(['a', 'b', 'c'].every((v) => cost[v].spawns > cost['0'].spawns && cost[v].flashes === cost['0'].flashes && cost[v].hp === cost['0'].hp && cost[v].clicks === cost['0'].clicks),
+    `?drawFx=a|b|c: each draws more than '0', the same cue, the same outcome, the click (${JSON.stringify(cost)})`);
 }
 
 const S = { level: scenarioLevel, rules: scenarioRules, motion: scenarioMotion, formpace: scenarioFormPace, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin, look: scenarioLook };
