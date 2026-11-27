@@ -394,6 +394,8 @@ export class Untouched extends Duelist {
     // (the hero's blade reached him, on the shell or through it: he has no reason to stop waiting)
     this.patience?.touch();
     if (this.barrier?.stops(o)) return 0;
+    // (open, his cuts hit harder: barrier.scaled, wjBarrier.openDamage)
+    if (this.barrier) o = this.barrier.scaled(o);
     const first = this.barrier && !this.barrier.up && !this._wjSurprised && this._surpriseOk(o);
     const dmg = super.takeHit(o);
     // the first cut that lands while the barrier is open (once a fight): he is surprised (the body's

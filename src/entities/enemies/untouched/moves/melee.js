@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { RESULT } from '../../../../combat/rules.js';
+import { RESULT, GUARD } from '../../../../combat/rules.js';
 import { TUNING_MELEE } from '../tuningMelee.js';
+import { liveTakes, wjMotionNow, ANIM as MOTION_ANIM } from '../motion.js';
 
 // Bai Wuji's hands and feet (the MELEE AGENT's file; moves.js is the router: its header has the format
 // and the rules). A man who does not take the hero seriously, then does: in phase 1 his hands never leave
@@ -69,6 +70,9 @@ export function moves(X) {
     zone: { kind: 'line', r: 2.6, w: 1.1 }, part: 'fistR', track: 0.72, cock: 0.86, keys: sparkKeys(0.86), wjSpark: 1, wjWeight: 'huge', ...o,
   });
 
+  // (the motion takes, ?wjMotion=a|b|c: every move's beats and recovery read the switch live; motion.js)
+  return liveTakes(shipped(), X);
+  function shipped() {
   return {
     // ================================================================ phase 1: THE BLINDFOLD
     /** Flick: a lazy front kick off the hip, the hands never leave his pockets. */
@@ -243,6 +247,7 @@ export function moves(X) {
       ],
     },
   };
+  }
 }
 
 // ---------------------------------------------------------------- his combo links (and the choice)
@@ -316,6 +321,7 @@ export class WjMelee {
   }
   _frame(dt) {
     const d = this.d;
+    this._motionFrame(dt);
     this.chaseT = Math.max(0, this.chaseT - fin(dt));
     // Dark Spark: over without landing: the fist is buried in whatever stands on its line
     const S = this.spark;
@@ -329,16 +335,50 @@ export class WjMelee {
     }
     if (this.chase) this._chaseFrame(dt);
     // the hero out of his own hands (staggered, guard broken, down): how long in a row (a gap under
-    // `free` s does not end it)
+    // `free` s does not end it), in real time: a hit's freeze holds the hero as long as it holds the clock
     const p = this.game.player, M = this.T.mercy ?? TM.mercy;
+    const rdt = fin(this.game.realDt, fin(dt));
     if (p && OUT.has(p.state)) {
-      this.outT += fin(dt) + (this.freeT < M.free ? this.freeT : 0);
-      if (this.freeT >= M.free) this.outT = fin(dt);
+      this.outT += rdt + (this.freeT < M.free ? this.freeT : 0);
+      if (this.freeT >= M.free) this.outT = rdt;
       this.freeT = 0;
     } else {
-      this.freeT += fin(dt);
+      this.freeT += rdt;
       if (this.freeT >= M.free) this.outT = 0;
     }
+  }
+
+  /** The motion takes (?wjMotion=a|b|c, motion.js): the animator's limb rules (legs that land straight, long
+   *  arms) and THE HAND LAYER's pins (poses.js wjHandsLayer): through a move, the hands the phase keeps in his
+   *  pockets (phase 1 both, phase 2 the left) and the blow does not use (its beat's `wjHands`), eased. */
+  _motionFrame(dt) {
+    const d = this.d, an = d.anim, on = wjMotionNow() !== '0';
+    if (an && (on || this._animOn)) {
+      an.legSoft = on ? MOTION_ANIM.legSoft : null;
+      an.armSoft = on ? MOTION_ANIM.armSoft : null;
+      an.kickStretch = on ? MOTION_ANIM.kickStretch : null;
+    }
+    this._animOn = on;
+    const pl = d.pilot;
+    if (!pl) return;
+    if (!on) {
+      if (pl.wjPin) pl.wjPin = null;
+      return;
+    }
+    const W = (pl.wjPin ??= { R: 0, L: 0 });
+    let R = 0, L = 0;
+    const a = d.brain?.act;
+    if (d.mode === 'act' && a && !a.def?.transition) {
+      const ph = d.phase ?? 1;
+      // (the beat that is on, or the one about to start; its follow-through counts as its own)
+      const b = a.beats.find((x) => a.t < x.end + 0.22) ?? null;
+      const uses = b && a.t >= b.start - 0.06 ? b.def.wjHands ?? '' : '';
+      R = ph <= 1 && !uses.includes('R') ? 1 : 0;
+      L = ph <= 2 && !uses.includes('L') ? 1 : 0;
+    }
+    const k = Math.min(1, fin(dt) * 14);
+    W.R += (R - W.R) * k;
+    W.L += (L - W.L) * k;
   }
 
   /** s the hero has left in the state that holds him now (0: he is his own). */
@@ -363,7 +403,19 @@ export class WjMelee {
     let stretch = 0;
     if (OUT.has(p.state)) stretch = left - outLeft < M.free ? this.outT + left : 0;
     else if (this.outT > 0 && this.freeT + left < M.free) stretch = this.outT + this.freeT + left;
-    return stretch > 0 && stretch + (D.knockdown ? KD : 0.4) > M.lockCap + 1e-3;
+    // what this blow adds: a knockdown, a guard it knocks open (a block that empties the meter: the
+    // open stagger and its hitstop, longer than a plain stagger), else a stagger
+    const adds = D.knockdown ? KD : this._opensGuard(D, p) ? fin(GUARD.openDur, 0.55) + 0.25 : 0.4;
+    return stretch > 0 && stretch + adds > M.lockCap + 1e-3;
+  }
+
+  /** Would this blow, met on the hero's guard, empty the meter (untouched.js _weighted's cost)? */
+  _opensGuard(D, p) {
+    if (!p?.blocking) return false;
+    const T = this.d?.T, max = GUARD.max ?? 100;
+    const gc = Number.isFinite(D?.guardCost) ? D.guardCost : fin(T?.wjWeight?.guardCost, 0) * max;
+    const gp = this.d?.patience?.impatient ? fin(T?.wjPatience?.guardCost, 0) * max : 0;
+    return Math.max(gc, gp) >= fin(p.guard, max) - 1e-3;
   }
 
   /** The missed Dark Spark's fist: a sweep of the line ahead of where it was thrown. */
@@ -396,6 +448,12 @@ export class WjMelee {
   _beatMotion(b, u, s, dt) {
     const d = this.d, D = b.def, p = this.game.player;
     if (b.feint) return;
+    // (the motion takes: a string's later beat blinks only when the hero slid out of reach, `wjBlink.near`)
+    // (decided a moment before the blink is due, where the hero's slide will leave him)
+    if (D.wjBlink?.near > 0 && !b._blinked && p?.position && u >= fin(D.wjBlink.u, 0.12) - 0.12) {
+      const ex = p.position.x + fin(p.kb?.x) / 6, ez = p.position.z + fin(p.kb?.z) / 6;
+      if (Math.hypot(ex - d.position.x, ez - d.position.z) < D.wjBlink.near) b._blinked = true;
+    }
     // MERCY (the owner's rules): a beat is not thrown (it becomes a feint: no cue if it had none yet, no
     // blow) when at its impact the hero would still be DOWN, or when it would keep him out of his own
     // hands (staggered, down) for longer than `lockCap` s in a row (a string that lands blow after blow

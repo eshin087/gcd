@@ -101,8 +101,30 @@ export function wjLoco(p, A) {
   }
 }
 
+/**
+ * THE HAND LAYER (the motion takes, `?wjMotion=a|b|c`, motion.js): over a move's clip, each hand `pilot.wjPin`
+ * says to keep (R / L, 0..1, eased by moves/melee.js WjMelee) is put back in its pocket: in phase 1 both, in
+ * phase 2 the left, unless the blow uses it (a beat's `wjHands`). Without `wjPin` (the take '0') nothing.
+ */
+function wjHandsLayer(p, A) {
+  const W = A.player?.wjPin;
+  if (!W) return;
+  if (W.R > 0.001) {
+    to3(p, P.rH, ...POCKETS.rH, W.R);
+    to3(p, P.rP, ...POCKETS.rP, W.R);
+  }
+  if (W.L > 0.001) {
+    to3(p, P.lH, ...POCKETS.lH, W.L);
+    to3(p, P.lP, ...POCKETS.lP, W.L);
+  }
+}
+function wjDuel(p, A) {
+  K.POSES.duel(p, A);
+  wjHandsLayer(p, A);
+}
+
 /** The pose table HeroAnimator takes for him. */
-export const WJ_POSES = Object.freeze({ loco: wjLoco, duel: K.POSES.duel });
+export const WJ_POSES = Object.freeze({ loco: wjLoco, duel: wjDuel });
 
 // ---------------------------------------------------------------- the body's fragments
 /** A whole pose: the stance's every field, then `p` (so nothing one key set leaks into the next); the

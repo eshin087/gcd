@@ -37,6 +37,37 @@ preview (the film has no sound). With the deathblow merged, a dance-made break m
 banked, so the deathblow can be shorter. Next in P4: the Break finisher, cuts that split the letters, one answer per
 unblockable, a sub-weapon.
 
+---
+
+## 2026-11-27 — Bai Wuji round 3: the glide, a barrier that opens easier (branch `wj2/lead`; ADR-250)
+
+**Owner:** "the fight is pretty hard right now and takes forever to do damage to him. his animations and attacks
+also need to be much more improved. like his kicks and punches do not look natural and look off. he needs to be
+faster and cooler." Their answers: the barrier opens easier (hp near 20000, a good player in ~3 min);
+effortless, one-handed; film takes and they pick. They picked **b, the glide**.
+
+**What changed.**
+- `untouched/motion.js`: three hand-keyed takes behind `?wjMotion=0|a|b|c` (PICKED b; Lab LOOKS row). Why he
+  looked off: his realiser had no `keysOf`, so ADR-225's motion layer never reached him (bent knees at the
+  contact, Tian Lei's boxer fists, lunging strings). The hand layer (`poses.js` `wjHandsLayer`, `pilot.wjPin`)
+  keeps his hands in his pockets by phase.
+- `wjBarrier`: cracks 2, open 6 / 5 / 4.2 s (by cracks 5 / 4.2 / 3.4), cuts x2.5 while open
+  (`barrier.scaled`); hp 20000; patience after 20 s.
+- `bench.mjs`: the bots roll out of falling pieces as their cue comes, keep him in front, hold the guard for two
+  cues 0.3 s apart (the perfect bot's three hits under the glide were its own).
+- `WjMelee` counts the mercy stretch in real time (`game.realDt`; hit freezes held the hero 1.52 s in
+  `downtime` seed 7 while game time said 1.19 s) and counts a guard-emptying block as the open stagger;
+  `destructibles.js`: no falling piece on a downed hero.
+
+**Verification.** The bench (six seeds, take b): good 6 / 6 in 147 - 191 s, perfect 6 / 6 in 106 - 119 s
+untouched (12 seeds), blocker and pace dead. `veil.mjs . all` green; the full `npm test` before the PR.
+
+**Open.** The ordinary-parry band is about a frame since ADR-227, so cracks rarely open him (a wider window
+would touch every level: the owner's call). The ledger forgets a landed red (shared duelist code). Patience
+is slow on a pure defender (his blow lands in the opened guard ~1 in 10). Should x2.5 have its own hit mark?
+
+---
+
 ## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
 
 **Owner:** asked for research into the combat of three sword games and five additions; picked the counter-kill

@@ -6995,3 +6995,46 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The ring is not on the film (no sound): it is the owner's to judge by ear in
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
+
+## ADR-250 — Bai Wuji round 3: the glide (his melee motion, the owner's pick of three takes), the barrier opens easier, cuts x2.5 through it; his mercy counted in real time (2026-11-27)
+
+- **Context:** the owner after playing the shipped fight (ADR-241 - 243): "the fight is pretty hard right now
+  and takes forever to do damage to him"; his kicks and punches "do not look natural and look off"; "faster and
+  cooler", effortless and invincible. Their answers: the barrier opens easier (two ordinary parries crack it
+  open, it stays open longer, the hero's cuts hit harder while it is open, hp near 20000, a good player wins in
+  about three minutes); effortless and one-handed (hands in his pockets most of phase 1, one out in phase 2,
+  both in phase 3; fast snaps, held poses only on blue / red); film 2 - 3 takes, they pick. They picked **b,
+  the glide**. Why his melee looked off: his realiser had no `keysOf`, so ADR-225's motion layer (held blue /
+  red windups, released feet) never reached him; his knees were 96 - 131 deg at the contact, his fists Tian
+  Lei's boxer guard, his strings lunged.
+- **Decision:**
+  1. THE TAKES (`untouched/motion.js`, `?wjMotion=0|a|b|c`; PICKED `b`; `0` = as first shipped): each melee
+     move's `beats` / `recovery` are live getters over the take; a take rebuilds the pose keys (hand-keyed,
+     ADR-236), retimes the windups (normal blows cut toward the engine's floors, blue / red keep most of theirs:
+     the held pose is the read; the cock moves late, a snap), recoveries x 0.66 (b), a string's later beat out
+     of a short blink round the hero (`wjBlink.near`; b blinks every later beat, flank / behind / other flank),
+     and `wjHands` (the hands a blow uses). THE HAND LAYER (`poses.js` `wjHandsLayer`, `pilot.wjPin` eased by
+     `WjMelee`) keeps the others in his pockets. Tells, zones, damage, knockback and the engine's minimums do
+     not move (veil.mjs DATA, MOTION, MOTIONAUDIT).
+  2. THE BARRIER OPENS EASIER (`wjBarrier`): `cracks` 4 -> 2; open after a perfect answer 4.0 / 3.2 / 2.6 ->
+     6 / 5 / 4.2 s; by cracks 2.4 / 2.0 / 1.6 -> 5 / 4.2 / 3.4 s; `openDamage` 2.5 (new; `barrier.scaled(o)`):
+     every cut that is not `exact` deals x2.5 while it is open. No new mark: the open ring and the numbers read
+     it. hp 26000 -> 20000. Patience after 30 -> 20 s.
+  3. THE BENCH WITH THE GLIDE (six seeds, god mode off): openDamage 2.2 gave the good bot 2 wins in 6, 2.35 4
+     in 6, **2.5 6 in 6 in 147 / 166 / 191 s** (2.8 min mean); the perfect bot 6 in 6 in 106 - 119 s, untouched;
+     fencing 3 in 6; roller 4 in 6 in 167 - 191 s; blocker dead at 39 s; the pace defender dead in all six at
+     patience 20 (95 - 553 s; at 30 and 25 one seed lived out 600 s). Longer openings by cracks changed nothing:
+     the good bot opens him by cracks 1 - 3 times a fight (ADR-227's parry windows leave the ordinary-parry band
+     about a frame wide).
+  4. THE PERFECT BOT'S HITS were the bot's, not his: it rolled out of falling pieces too late for the next red,
+     tapped one parry for two cues 0.08 s apart, and rolled away facing off him. The bench's bots now roll out
+     of a falling piece as its cue comes (late once to cover a red that follows within 0.3 s), roll the way that
+     keeps him in front, and hold the guard for two guard cues within 0.3 s: 0 hits on 12 seeds.
+  5. MERCY IN REAL TIME (`WjMelee`): a hit's freeze holds the hero as long as it holds the clock, so the stretch
+     out of his own hands is counted in `game.realDt` (three quick Five Sides blows measured 1.19 s of game time
+     while the hero was held 1.52 s); a blocked blow that would empty the guard meter adds `GUARD.openDur`, not a
+     plain stagger. A falling piece never lands on a hero who is down (`destructibles.js`).
+- **Consequences:** a good player beats him in about three minutes; a pure defender still dies. Open: the
+  ledger forgets a red once it has landed, so the fairness guard never holds a blow that lands while the hero is
+  still in the roll that answered a falling piece (shared duelist code, left); patience is slow against a pure
+  defender because his next blow lands in the knocked-open guard about one time in ten.

@@ -11,6 +11,14 @@ One hundred and twenty-four pieces of work since 0.4.0:
   pause; the parry's ring rises a little with the run; and his posture recovers more slowly as his health drops
   (full speed above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin
   Yi this replaces their own curve, never faster than before). `?clash=0` or no switch: as before.
+- **Bai Wuji glides: quicker, one-handed, and his barrier opens easier** (2026-11-27, ADR-250). *Changed:* Bai Wuji's kicks and punches are
+  rebuilt by hand: his legs land straight, his hands stay in his pockets for most of phase 1 (one comes out in
+  phase 2, both in phase 3), normal blows snap out of the stance, blue and red ones hold a pose you can read, and
+  every later blow of a string comes out of a short blink round you (`?wjMotion=0` as before; `a`, `c` the other
+  takes). His barrier opens easier: two ordinary parries crack it open, it stays open longer (6 / 5 / 4.2 s after a
+  perfect answer), your cuts deal x2.5 through it, and his health is 20000 (was 26000); his patience runs out
+  after 20 s. *Fixed:* a falling piece no longer lands on you while you are down, and his mercy counts the time
+  you are held in real time, so a quick string cannot hold you past the cap through hit freezes.
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
   longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
   bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and

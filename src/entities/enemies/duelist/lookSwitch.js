@@ -96,6 +96,7 @@ export const PICKED = Object.freeze({
   wjShell: 'a', // the barrier: all but invisible until a blade nears it
   wjNull: 'a', // the Violet Null: a hard-edged slab
   wjVoid: 'b', // the void: the stars and one great pale ring on the floor
+  wjMotion: 'b', // his melee motion: glide (the owner's pick of three takes, 2026-11-27; '0' = as first shipped)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS

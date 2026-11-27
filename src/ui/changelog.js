@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'Bai Wuji glides: quicker, one-handed, and his barrier opens easier',
+        notes: [
+          "Bai Wuji fights with his hands in his pockets now: short, sharp kicks that land straight, a hand coming out in his second phase and both in his last. His blue and red blows hold a pose you can read; every later blow of a string comes out of a short blink around you.",
+          'His barrier opens easier: two ordinary parries crack it open, a perfect parry or dodge opens it for longer, and your cuts hit two and a half times as hard while it is open. He has less health, and he loses patience after 20 seconds instead of 30.',
+          'Fixed: a falling piece no longer lands on you while you are down, and a quick string of his can no longer hold you longer than it should.',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [
