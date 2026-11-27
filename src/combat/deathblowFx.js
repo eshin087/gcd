@@ -311,76 +311,44 @@ const SX = new Float32Array(MS), SY = new Float32Array(MS), SA = new Float32Arra
 let SN = 0, SUC = 0.5; // letters placed along it; where along it (0..1) the contact is
 
 /**
- * The cut's line through the contact: `o.path` (world points, tip positions in order, the last at the
- * contact) into the screen plane, then past the contact along its last direction (`ext` m); without a path a
- * straight sweep along `bearing`. straight: only its chord, from the path's first point through the contact,
- * at least `minLen` m long (the web's line). Fills LX / LY / LN / CDA; returns true when it came from a path.
+ * The cut's line: ONE clean straight cut CENTRED ON THE CONTACT, along the swing's direction at the contact.
+ * The direction is the tip's motion over the last stretch of `o.path` (world points, the last at the contact),
+ * in the screen's plane; without a usable path it is the bearing's perpendicular. The raw path samples are
+ * never drawn (they start metres off his body). `len` m long (the web passes at least `minLen`).
+ * Fills LX / LY / LN / CDA; returns true when the direction came from a path.
  */
 function buildLine(o, x, y, z, bearing, last, straight, minLen) {
   const path = o.path;
-  LN = 0;
-  let fromPath = false;
+  let ex = 0, ey = 0, fromPath = false;
   if (path && path.length >= 6) {
-    const k = Math.min(MAXP - 2, Math.floor(path.length / 3));
-    for (let p = 0; p < k; p++) {
+    const k = Math.min(16, Math.floor(path.length / 3));
+    const ex0 = path[(k - 1) * 3] - x, ey0 = path[(k - 1) * 3 + 1] - y, ez0 = path[(k - 1) * 3 + 2] - z;
+    const lx1 = ex0 * AX.rx + ey0 * AX.ry + ez0 * AX.rz, ly1 = ex0 * AX.ux + ey0 * AX.uy + ez0 * AX.uz;
+    for (let p = k - 2; p >= 0; p--) {
       const ax = path[p * 3] - x, ay = path[p * 3 + 1] - y, az = path[p * 3 + 2] - z;
-      if (!fin(ax + ay + az)) continue;
+      if (!fin(ax + ay + az + lx1 + ly1)) continue;
       const lx = ax * AX.rx + ay * AX.ry + az * AX.rz, ly = ax * AX.ux + ay * AX.uy + az * AX.uz;
-      if (LN && Math.hypot(lx - LX[LN - 1], ly - LY[LN - 1]) < 0.02) continue;
-      LX[LN] = lx;
-      LY[LN] = ly;
-      LN++;
-    }
-    if (LN) {
-      if (Math.hypot(LX[LN - 1], LY[LN - 1]) > 0.05 && LN < MAXP - 1) {
-        LX[LN] = 0;
-        LY[LN] = 0;
-        LN++;
-      } else {
-        LX[LN - 1] = 0;
-        LY[LN - 1] = 0;
+      const dx = lx1 - lx, dy = ly1 - ly, l = Math.hypot(dx, dy);
+      if (l >= 0.15 || p === 0) {
+        if (l > 0.02) {
+          ex = dx / l;
+          ey = dy / l;
+          fromPath = true;
+        }
+        break;
       }
     }
-    fromPath = LN >= 2;
   }
-  if (LN < 2) {
-    LN = 2;
-    const c = Math.cos(bearing), s = Math.sin(bearing);
-    LX[0] = -c * 1.1;
-    LY[0] = -s * 1.1;
-    LX[1] = 0;
-    LY[1] = 0;
+  if (!fromPath) {
+    ex = -Math.sin(bearing);
+    ey = Math.cos(bearing);
   }
-  // the direction at the contact
-  let ex = 0, ey = 0;
-  for (let p = LN - 2; p >= 0; p--) {
-    const dx = LX[LN - 1] - LX[p], dy = LY[LN - 1] - LY[p], l = Math.hypot(dx, dy);
-    if (l >= 0.12 || p === 0) {
-      ex = dx / (l || 1);
-      ey = dy / (l || 1);
-      break;
-    }
-  }
-  if (!(ex || ey)) {
-    ex = Math.cos(bearing);
-    ey = Math.sin(bearing);
-  }
-  let ext = last ? 0.95 : 0.65;
-  if (straight) {
-    const sx0 = LX[0], sy0 = LY[0], dist = Math.hypot(sx0, sy0);
-    if (dist > 0.05) {
-      ex = -sx0 / dist;
-      ey = -sy0 / dist;
-    }
-    ext = Math.max(ext, minLen - dist);
-    LX[1] = ex * ext;
-    LY[1] = ey * ext;
-    LN = 2;
-  } else {
-    LX[LN] = ex * ext;
-    LY[LN] = ey * ext;
-    LN++;
-  }
+  const len = Math.max(straight ? minLen : 0, last ? 2.2 : 1.3), h = len / 2;
+  LX[0] = -ex * h;
+  LY[0] = -ey * h;
+  LX[1] = ex * h;
+  LY[1] = ey * h;
+  LN = 2;
   CDA = Math.atan2(ey, ex);
   return fromPath;
 }
@@ -413,10 +381,7 @@ function sampleLine(cellM, rowM) {
       found = true;
     }
   }
-  if (!found) {
-    // (a straight chord: the contact is the origin; its distance from the start)
-    toContact = Math.hypot(LX[0], LY[0]);
-  }
+  if (!found) toContact = total / 2;
   SUC = clamp(toContact / total, 0, 1);
   if (SN < MS && SN > 0 && SU[SN - 1] < 0.97) {
     SX[SN] = LX[LN - 1];
@@ -465,7 +430,9 @@ function blood(game, x, y, z, i, last, floor, dx, dz) {
   const bx = att ? bossP.x : 0, by = att ? bossP.y : 0, bz = att ? bossP.z : 0;
   // the wound: red letters painted along the path across his body, opening along the sweep
   const slife = last ? T.streakLast : T.streak;
+  const wl = last ? 0.6 : 0.5;
   for (let s = 0; s < SN; s++) {
+    if (Math.hypot(SX[s], SY[s]) > wl) continue;
     const px = wx(x, SX[s], SY[s]), py = wy(y, SX[s], SY[s]), pz = wz(z, SX[s], SY[s]);
     const near = 1 - 0.4 * Math.abs(SU[s] - SUC);
     let k = add(px - bx, py - by, pz - bz, 0, 0, 0, slife * R(0.85, 1.1), 0, 0, strokeOf(SA[s]), 5, clamp(near, 0.5, 1), 7, SU[s] * 0.014, -1e9, 0.4);
@@ -511,8 +478,9 @@ function blood(game, x, y, z, i, last, floor, dx, dz) {
       vy = vyw(sx, sy);
       vz = vzw(sx, sy);
     }
-    const o = R(0, 0.2), oa = R(0, TAU);
-    if (add(x + Math.cos(oa) * o * AX.rx, y + R(-0.15, 0.15), z + Math.sin(oa) * o * AX.rz, vx, vy, vz, R(0.9, 1.3), R(0.3, 1.0), -9.8, -1, 4, 1, 6, 0, floor, 0.15) >= 0) P.blood++;
+    // (from a point along the cut, on his body)
+    const t = R(-0.5, 0.5) * (last ? 1.6 : 0.9), cx = Math.cos(ca) * t, cy = Math.sin(ca) * t;
+    if (add(wx(x, cx, cy), wy(y, cx, cy), wz(z, cx, cy), vx, vy, vz, R(0.9, 1.3), R(0.3, 1.0), -9.8, -1, 4, 1, 6, 0, floor, 0.15) >= 0) P.blood++;
   }
 }
 

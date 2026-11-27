@@ -206,13 +206,15 @@ const SCENARIOS = {
         FX.deathblowHit(G.game, o);
         const Rg = G.game.U.uCamRight.value, Up = G.game.U.uCamUp.value;
         const rel = (px, py, pz) => [(px - o.x) * Rg.x + (py - o.y) * Rg.y + (pz - o.z) * Rg.z, (px - o.x) * Up.x + (py - o.y) * Up.y + (pz - o.z) * Up.z];
-        const s0 = rel(o.path[0], o.path[1], o.path[2]);
-        const sl = L.slash;
-        const d0 = Math.hypot(sl[0] - s0[0], sl[1] - s0[1]);
-        const past = sl[2] * sl[4] + sl[3] * sl[5]; // the end's distance past the contact, along the cut
-        assert(L.src === 'path', `${mode} blow ${k}: the line came from the path`);
-        assert(d0 < 0.05, `${mode} blow ${k}: the slash starts on the path's first point (${d0.toFixed(3)} m off)`);
-        assert(past > 0.3, `${mode} blow ${k}: it ends past the contact (${past.toFixed(2)} m)`);
+        const sl = L.slash, len = Math.hypot(sl[2] - sl[0], sl[3] - sl[1]);
+        const m = o.path.length / 3, pa = rel(o.path[(m - 4) * 3], o.path[(m - 4) * 3 + 1], o.path[(m - 4) * 3 + 2]);
+        const pl = Math.hypot(pa[0], pa[1]) || 1;
+        const dot = (-pa[0] / pl) * sl[4] + (-pa[1] / pl) * sl[5]; // (the swing's direction into the contact)
+        assert(L.src === 'path', `${mode} blow ${k}: the direction came from the path`);
+        assert(Math.hypot(sl[0] + sl[2], sl[1] + sl[3]) < 0.12, `${mode} blow ${k}: the cut is centred on the contact`);
+        const want = mode === 'b' ? 2.6 : k === 6 ? 2.2 : 1.3;
+        assert(len >= want - 0.1 && len <= want + 0.7, `${mode} blow ${k}: its length ${len.toFixed(2)} m (${want})`);
+        assert(dot > 0.8, `${mode} blow ${k}: it runs along the swing's direction at the contact (${dot.toFixed(2)})`);
       }
       // the fallback: no path, a straight sweep along the bearing
       FX.deathblowFxClear();
