@@ -490,7 +490,8 @@ export class Training {
           break;
         case 'place':
           this._pin();
-          if (this.t >= 0.3) this._go();
+          // (never starts with the hero down: a knockdown from the last situation's tail is still getting up here)
+          if (this.t >= 0.3 && (this._heroFree() || this.t > 2.5)) this._go();
           break;
         case 'run':
           this._run(dt);
