@@ -16,6 +16,7 @@ import { LINKS } from './links.js';
 import { IronMoves } from './iron.js';
 import { FlurryMoves } from './flurry.js';
 import { SourceMoves } from './source.js';
+import { clashOn, clashRegenK } from '../../../combat/clashDance.js';
 
 // Xin Yi, the One Who Woke: the boss of the Hall of Falling Script (`?level=code`; ADR-156). A duelist on
 // the shared engine (duelist/duelist.js: the body, the contract, the guard, posture, the duel's moments;
@@ -379,7 +380,9 @@ export class WokenOne extends Duelist {
     if (this.broken || this.posture <= 0) return;
     const P = this.T.posture;
     if (this.postureTimer > P.regenDelay) {
-      const k = lerp(P.regenByHp[1], P.regenByHp[0], clamp(this.hp / this.maxHp, 0, 1));
+      // (the clash dance, ADR-247: the steps by his health replace the curve)
+      const f = clamp(this.hp / this.maxHp, 0, 1);
+      const k = clashOn() ? clashRegenK(f) : lerp(P.regenByHp[1], P.regenByHp[0], f);
       this.posture = Math.max(0, this.posture - P.regenRate * k * dt);
       this.emitPosture();
     }

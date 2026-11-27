@@ -792,6 +792,42 @@ async function scenarioTiming() {
   assert(moves >= 30 && worst <= 0.09, `${moves} move × form runs: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${TUNING.flashLead} s, and every move's first hit lands`);
 }
 
+// ================================================================== scenario: clashdance (his posture's recovery by HP)
+// The clash dance (?clash=dance, combat/clashDance.js, ADR-247) on a boss whose recovery already scales by
+// HP (posture.regenByHp, a curve from the full bar to the empty one): off, the curve as it was; on, the
+// dance's steps replace it (DEFENSE.clashDance.regenByHp), never faster than the curve. duel.mjs `clashdance` has the run.
+async function scenarioClashDance() {
+  out('\n== scenario CLASHDANCE (the Lord: his posture recovers by the steps instead of the curve) ==');
+  const { setClashMode, clashRegenK } = await imp('src/combat/clashDance.js');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, P = TUNING.posture;
+  duel(G, { dist: 6 });
+  game.player.debug.god = true;
+  const drain = (frac) => {
+    d.hp = d.maxHp * frac;
+    d.posture = 150;
+    d.postureTimer = P.regenDelay + 0.01;
+    d._updatePosture(0.5);
+    return (150 - d.posture) / (P.regenRate * 0.5);
+  };
+  const fr = [1, 0.7, 0.5, 0.2, 0.05];
+  try {
+    setClashMode('0');
+    const off = fr.map(drain);
+    assert(off.every((v, i) => Math.abs(v - (P.regenByHp[1] + (P.regenByHp[0] - P.regenByHp[1]) * fr[i])) < 1e-6), `off: his curve as it was (x${off.map((v) => v.toFixed(2)).join(', x')} at ${fr.map((f) => f * 100).join(' / ')} % HP)`);
+    setClashMode('dance');
+    const on = fr.map(drain);
+    assert(on.every((v, i) => Math.abs(v - clashRegenK(fr[i])) < 1e-6), `on: the steps replace the curve (x${on.map((v) => v.toFixed(2)).join(', x')})`);
+    assert(on.every((v, i) => v <= off[i] + 1e-9), `never faster than his curve at any HP`);
+  } finally {
+    setClashMode('0');
+    d.hp = d.maxHp;
+    d.posture = 0;
+  }
+  return G;
+}
+
 // ================================================================== scenario: forms (four bars, a deathblow each)
 async function scenarioForms() {
   out('\n== scenario FORMS (four bars: a bar emptied or posture broken → the deathblow → the next form) ==');
@@ -2277,6 +2313,7 @@ const S = {
   moves: scenarioMoves,
   timing: scenarioTiming,
   forms: scenarioForms,
+  clashdance: scenarioClashDance,
   spells: scenarioSpells,
   bounds: scenarioBounds,
   flow: scenarioFlow,

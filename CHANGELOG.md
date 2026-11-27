@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-five pieces of work since 0.4.0:
+One hundred and twenty-six pieces of work since 0.4.0:
 - **A slice of digits along the blade, and a left hand that stays out of his body** (2026-11-26, ADR-252). *Changed:* every
   sword attack's slash is now a thin seam of fine digits printed exactly along the path the blade's point swept,
   as if the sword cut the world's code open: bright where the blade was fastest, a few digits dripping out of
@@ -22,6 +22,12 @@ One hundred and twenty-five pieces of work since 0.4.0:
   (heavier for heavies). The blade smears for a frame or two at the fastest part of every swing. The light combo
   steps in further, holds each finishing pose while its slash flashes, then rises. Checked facing all four ways
   and on the phone camera, upright and sideways.
+- **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
+  `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
+  x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a
+  pause; the parry's ring rises a little with the run; and his posture recovers more slowly as his health drops
+  (full speed above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin
+  Yi this replaces their own curve, never faster than before). `?clash=0` or no switch: as before.
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
   longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
   bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and
