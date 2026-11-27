@@ -6934,3 +6934,31 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Consequences:** a single flash counter under the chain pays less at once than today (no reel, no crit window)
   and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
   `link`, `links`, `last`.
+
+## ADR-249 — Wen Yao's limbs at the contact: straight punches on one line, straight kicks, one cue one meaning (2026-11-26)
+- **Context:** the boss motion audit (the owner: weird arm angles, "kicks aren't straight during the attack and
+  still bended"; every attack readable; effects at the fox's own bar). Measured on the rig with a new opt-in scenario
+  (`fox.mjs . anatomy`: the striking limb at every blow's contact, his paper selves' blows too): his straight punches
+  and palms landed with the elbow at 123 - 139° (a boss without `armSoft` opens at most ~145°, `ARM_SOFT`), the fist
+  0.25 - 0.36 m off the shoulder → hero line; the roundhouse 107 - 111°, the selves' rising kick 126°, the sweep 82°
+  at the contact and 50 - 90° through its turn; the Kite String's heel straight but he landed on the hero, the heel
+  0.8 m past. His uppercut was both white (Paper Rain) and the blue flare (Hand to Hand).
+- **Decision:** a pass in his own folder (`thousandFox/limbs.js`), behind `?foxLimbs=0|a`; his blows stay Tian Lei's
+  builders (`ascendant/moves.js X`, untouched: that session owns them). It rewrites the CONTACT key of his realised
+  beats (Xin Yi's ADR-221 method: a straight blow's hand 1.08 x the arm toward a chest-high point before him, a kick's
+  foot 1.05 x the leg along its line; bent blows keep a bend) and opens his and his selves' animators (`armSoft`,
+  `legSoft`, `kickStretch`: Xin Yi's numbers). The sweep's turn is keyed every 30° with the foot 5 cm off the floor
+  (keys a third of a turn apart cut the chord; a foot on the floor was taken by `_feetClip` for a planted one and
+  walked after the clip). One shared-engine field, opt-in: a beat's `leap.stop` (brain.js `_leap`; 0 / unset = as
+  always) lands a leap short of the hero; his axe heel 0.7 m, his hammer fists 0.45 m. `?foxCues=0|a`: Paper Rain
+  ends on a backfist, so the uppercut always means blue. Both switches in `PICKED` as `a` while the draft PR waits
+  for the owner's pick from the films; `0` plays him as before.
+- **Not changed:** every timing, tell, window, number and effect. His windups stay PBZ-fast (first blows from 0.42 s,
+  COMBAT.md "The Thousand-Body Fox"), under the audit brief's 0.7 s floor: the owner's earlier call, asked again in
+  the PR rather than changed. His effects (the Pearl, the foxfire, the Howl) are the bar the other bosses are measured
+  against: no options offered.
+- **Found, not fixed:** Hand to Hand's opening jab lifts a lead foot the root left behind and it jumps 0.43 m in a
+  frame (on `main` too; `anim.js _feetClip`, the hero session's file).
+- **Consequences:** `fox.mjs motion` asserts the limbs (straight blows >= 155°, kicks >= 155°, hooks and uppercuts
+  95 - 130°, `0` as before); the pace, win, timing and data scenarios are unchanged.
+

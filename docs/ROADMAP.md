@@ -1214,6 +1214,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
+- [x] Wen Yao (ADR-249): the anatomy audit (`fox.mjs . anatomy`), straight punches on one line and straight kicks
+      at the contact (his paper selves too), the sweep straight through its turn, leaps that land the heel / fists
+      on the hero, one cue one meaning (Paper Rain's backfist), behind `?foxLimbs` / `?foxCues`; films sent
+  - [ ] The owner's pick from the films
+  - [ ] Hand to Hand's opening jab: a lead foot the root left behind jumps 0.43 m in a frame (anim.js `_feetClip`)
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and

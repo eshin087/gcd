@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-two pieces of work since 0.4.0:
+One hundred and twenty-three pieces of work since 0.4.0:
+- **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner to pick from the films):* the
+  Thousand-Body Fox's straight punches and palms now land on an open arm along one line to you (the elbow 162 - 167°,
+  was 123 - 139°), his roundhouse, his paper selves' rising kick and both ankle sweeps land on a straight leg (the
+  sweep stays straight through its whole turn), his hooks and uppercuts keep a real bend, and his leaps with the heel
+  or both fists come down short so the heel and fists land on you, not him. Paper Rain ends on a backfist, so the
+  uppercut is only ever the blue flare. Timings, tells and numbers unchanged. `?foxLimbs=0` / `?foxCues=0` play him as
+  before.
 - **The flash chain: counter him three times in a row** (2026-11-26, ADR-246). *Changed (the owner's pick from films of every duelist):* a flash
   counter no longer ends his string at once: he is thrown back and strikes back straight
   away, and a flash counter of that blow is the next link. Three in a row (70, 85, then 100 damage, each freeze
