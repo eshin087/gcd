@@ -1,55 +1,117 @@
-// THE DEATHBLOW (?parryRiposte=deathblow; DEFENSE.deathblow). Against a duelist, parries fill his posture;
-// the parry whose posture damage BREAKS him is answered where the hero stands: a beat of slow motion, a
-// heavy cut, then a thrust through him, final damage that grows with the perfect parries that built it
-// (`player.parryRun`). Planted: a step in of at most DEFENSE.deathblow.step m in all, never nearer than
-// minGap; no vanish, teleport, leap or afterimage; nothing touches the screen's grade (flow.js skips
-// events marked `planted`). Player.js arms it in `_parry`, ticks it from `_tickRiposte`, and its two
-// blows run through the ordinary attack state (`atk.rip` with `db: true`: `_tryHit`, `_applyHit`).
+// THE DEATHBLOW COMBO (?parryRiposte=deathblow; DEFENSE.deathblow). Against a duelist, a parry that BREAKS his
+// posture, or any parry of a BLUE-tell blow (the blue flare included), is answered where the hero stands by a
+// planted combo of N blows (N = the perfect parries behind it, `player.parryRun`, 1..7), each one of his own
+// attack clips, never the same combo twice: the first blow and the finisher come from small pools, the
+// blows between from the lights, no clip twice in a row, from this module's own seeded stream (the last
+// sequence is remembered and not repeated). The tempo quickens blow by blow, the hero turns a little to
+// alternating sides between them (inside a disc of DEFENSE.deathblow.step m round where he parried, never
+// nearer than minGap to his centre) and the finisher is a held, heavy blow. Planted: no vanish, teleport,
+// leap or afterimage; nothing touches the screen's grade (flow.js skips events marked `planted`); unhurt
+// from the start to `iframePad` s after the end. Every blow's contact calls combat/deathblowFx.js (the hit
+// effect, `?dbfx=`). Player.js arms it in `_parry`, ticks it from `_tickRiposte`, and every blow runs through
+// the ordinary attack state (`atk.rip` with `db: true`: `_tryHit`, `_applyHit`).
 //
-// Phases (P.db.phase): 'watch' (armed by the parry; starts when his break is seen and the parry's freeze
-// is over) -> 'cut' (beat 1) -> 'thrust' (beat 2) -> 'tail' (the thrust's recovery: still unhurt) -> ''.
+// Phases (P.db.phase): 'watch' (armed by the parry; starts when the trigger is seen and the parry's freeze is
+// over) -> 'combo' (the blows) -> 'tail' (the finisher's recovery: still unhurt) -> ''.
 import { clamp } from '../../core/math.js';
+import { mulberry32 } from '../../core/rng.js';
 import { DEFENSE } from '../../combat/rules.js';
 import { streakTier } from '../../combat/streak.js';
-import { parrySparks } from '../../combat/parrySparks.js';
-import { HEAVY, THRUST, CHARGE, chargeStats } from './combat.js';
+import { deathblowHit } from '../../combat/deathblowFx.js';
+import { LIGHT, HEAVY, THRUST, CHARGE, chargeStats } from './combat.js';
+import * as THREE from 'three';
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 
-/** Glyphs this module prints: none of its own (the burst is parrySparks'). */
+/** Glyphs this module prints: none of its own (the hit effect is combat/deathblowFx.js'). */
 export const DEATHBLOW_GLYPHS = [];
+
+const SAMPLES = 8; // the blade tip's screen samples kept (a ring), for the swing's angles
 
 /** The deathblow's own state on the player (one object, reused). */
 export function newDeathblowState() {
   return {
-    phase: '', att: null, was: false, t: 0, attack: null, tell: 'normal', run: 0, total: 0, d1: 0, d2: 0, dealt: 0,
-    beat: 0, ox: 0, oz: 0, dx: 0, dz: 1, done: false, rip: null,
+    phase: '', att: null, was: false, blue: false, t: 0, attack: null, tell: 'normal',
+    run: 0, n: 0, i: 0, dealt: 0, done: false, started: false,
+    ox: 0, oz: 0, dx: 0, dz: 1, side: 1, rip: null, point: { x: 0, y: 0, z: 0 },
+    last: '', clips: [], seq: [], rng: mulberry32(0x0db10c5), // (the stream: advances over every combo of the run)
+    tip: new Float32Array(SAMPLES * 3), tipN: 0, tipI: 0, // the blade tip's NDC x, y and the time, a ring
   };
 }
 
-let DEF1 = null, DEF2 = null;
-const def1 = () => {
-  if (DEF1) return DEF1;
-  const C = DEFENSE.deathblow.cut;
-  // the Rising Crescent's clip and look on this timeline, as riposteCut.js has it
-  DEF1 = Object.freeze({ ...HEAVY[1], name: 'deathblowCut', button: null, windup: C.wind, active: C.active, recovery: C.recover, chain: 9, lunge: 0 });
-  return DEF1;
+/** Damage of the blows of a combo of `n`: [each non-final blow, the finisher] (final, exact). */
+export const deathblowDamage = (n) => {
+  const D = DEFENSE.deathblow, k = clamp(Math.round(fin(n, 1)), 1, D.cap);
+  return [D.mid.base + D.mid.per * k, D.fin.base + D.fin.per * k];
 };
-const def2 = () => (DEF2 ??= Object.freeze({ ...THRUST, name: 'deathblowThrust', chain: 9 }));
+/** The whole combo's damage for `n` blows. */
+export const deathblowTotal = (n) => {
+  const k = clamp(Math.round(fin(n, 1)), 1, DEFENSE.deathblow.cap), [m, f] = deathblowDamage(k);
+  return m * (k - 1) + f;
+};
 
-/** Total damage for `run` perfect parries. */
-export const deathblowDamage = (run) => {
+// --- the clip pools (built on first use: nothing exists with the switch off) -------------------------------
+let POOLS = null;
+const entry = (base, anim, kind, name) => ({ base, anim, kind, id: `${base.name}:${anim.clip ?? anim.kind}`, name });
+const looks = (base, kind) => [base.anim, ...(base.variants ?? [])].map((a) => entry(base, a, kind, base.name));
+function pools() {
+  if (POOLS) return POOLS;
+  const lights = [0, 1, 2, 3].flatMap((i) => looks(LIGHT[i], 'light')); // L1..L4 and every look of each
+  POOLS = Object.freeze({
+    open: lights.filter((e) => e.base !== LIGHT[2]), // (the first blow: a cut or the lunge, not a whirl)
+    mid: lights,
+    fin: [...looks(HEAVY[1], 'heavy'), ...looks(HEAVY[3], 'heavy'), ...looks(HEAVY[0], 'heavy'), entry(THRUST, THRUST.anim, 'thrust', THRUST.name)],
+  });
+  return POOLS;
+}
+
+/** The attack definition of blow `e` on this timeline (its own clip and contact look, the combo's weights). */
+function blowDef(e, wind, last) {
+  const D = DEFENSE.deathblow, b = e.base;
+  return Object.freeze({
+    ...b, name: `db:${b.name}`, anim: e.anim, variants: null, button: null, keepYaw: true, chain: 9, lunge: 0, travel: 0,
+    windup: wind, active: last ? D.finActive : D.active, recovery: last ? D.finRecover : D.recover,
+    ...(last ? null : { hitstop: D.mid.stop, shake: D.mid.shake, punch: 0, kick: 0 }),
+  });
+}
+
+/** The tempo: blow `i` (0-based) of `n`: its wind-up (s). */
+export const deathblowWind = (i, n) => {
   const D = DEFENSE.deathblow;
-  return D.base + D.per * Math.min(Math.max(0, Math.round(fin(run))), D.cap);
+  return i === n - 1 ? D.finWind : Math.max(D.windMin, D.wind0 * Math.pow(D.windK, i));
 };
 
-/** Arm the watch: the parry just met a blow of `att` (a duelist); the break, if it comes, comes in this call stack. */
-export function armDeathblow(P, att, attack, tell) {
+/** Pick the sequence of clips for `n` blows (entries), never the last combo's. */
+function pickSeq(S, n) {
+  const P = pools(), r = S.rng, pk = (a, not) => {
+    let e = a[Math.floor(r() * a.length) % a.length], g = 0;
+    while (not && g++ < 8 && (e.id === not.id)) e = a[Math.floor(r() * a.length) % a.length];
+    return e;
+  };
+  const seq = [];
+  for (let tries = 0; tries < 6; tries++) {
+    seq.length = 0;
+    for (let i = 0; i < n; i++) {
+      const prev = seq[i - 1], pool = i === n - 1 ? P.fin : i === 0 ? P.open : P.mid;
+      seq.push(pk(pool, prev));
+    }
+    if (seq.map((e) => e.id).join('|') !== S.last) break;
+    if (tries === 5) { // (stuck on the same one: the finisher moves on by one)
+      const j = P.fin.indexOf(seq[n - 1]);
+      seq[n - 1] = P.fin[(j + 1) % P.fin.length];
+    }
+  }
+  return seq;
+}
+
+/** Arm the watch: the parry just met a blow of `att` (a duelist); a break, if it comes, comes in this call stack. */
+export function armDeathblow(P, att, attack, tell, blue = false) {
   const S = P.db;
   if (S.phase && S.phase !== 'watch') return; // (one running: leave it)
   S.phase = 'watch';
   S.att = att;
   S.was = att?.broken === true;
+  S.blue = !!blue;
   S.t = 0;
   S.attack = attack ?? null;
   S.tell = tell;
@@ -63,6 +125,7 @@ const clear = (P) => {
 
 const AT = [0, 0];
 const FROM = new Set(['parry', 'block', 'idle', 'run', 'sprint']); // (the states a riposte may start from, as player.js)
+const V = new THREE.Vector3();
 
 /** Per frame (player.js `_tickRiposte`). True while it owns the riposte (a new one cannot start). */
 export function tickDeathblow(P, dt) {
@@ -72,8 +135,10 @@ export function tickDeathblow(P, dt) {
   const alive = att && att.mode !== 'dying' && att.mode !== 'dead' && att.state !== 'dying' && att.state !== 'dead';
   if (S.phase === 'watch') {
     S.t += dt > 0 ? fin(g.realDt, dt) : 0;
-    // the break comes in the parry's own call stack: not broken by the first frame = it never will
-    if (!P.alive || !alive || !att.broken || S.was || S.t > 0.6) {
+    // a break comes in the parry's own call stack: not broken by the first frame = it never will (a blue blow needs none)
+    const broke = att?.broken === true && !S.was;
+    // (a foe whose parry has an answer of its own, Halcyon's crash into the cover, is left to it)
+    if (!P.alive || !alive || (!broke && !S.blue) || S.t > 0.6 || att.flight?.cr?.on) {
       clear(P);
       return false;
     }
@@ -82,26 +147,27 @@ export function tickDeathblow(P, dt) {
       clear(P);
       return false;
     }
-    return startCut(P, att);
+    return startCombo(P, att);
   }
-  // running: unhurt until 0.05 s after the end; dropped (ended) when the hero is gone, the foe dead or the state left
+  // running: unhurt until `iframePad` s after the end; ended when the hero is gone, the foe dead or the state left
   P.iframeT = Math.max(fin(P.iframeT), S.phase === 'tail' ? DEFENSE.deathblow.iframePad : DEFENSE.deathblow.iframePad + 0.1);
-  P.buf.action = null; // (the finisher is not cancelled by a press)
+  P.buf.action = null; // (the combo is not cancelled by a press)
   const a = P.atk, inAtk = P.state === 'attack' || P.state === 'heavy';
-  if (S.phase === 'cut') {
+  if (S.phase === 'combo') {
     if (!P.alive || !inAtk || !a?.rip?.db) return finish(P);
+    sampleTip(P, g);
     if (a.hit) {
       const d = a.def;
       if (fin(g.hitstopTimer) > 0 || a.t < d.windup + d.active + DEFENSE.deathblow.gap) return true;
+      if (S.i >= S.n - 1) {
+        S.phase = 'tail';
+        end(P);
+        return true;
+      }
       if (!alive) return finish(P);
-      return startThrust(P, att);
+      return startBlow(P, att, S.i + 1);
     }
     if (a.t > a.def.windup + a.def.active + 0.3) return finish(P); // (no contact: give up)
-    return true;
-  }
-  if (S.phase === 'thrust') {
-    if (!P.alive || !inAtk || !a?.rip?.db) return finish(P);
-    if (!a.hit && a.t > a.def.windup + a.def.active + 0.3) return finish(P);
     return true;
   }
   if (S.phase === 'tail') {
@@ -112,10 +178,43 @@ export function tickDeathblow(P, dt) {
   return false;
 }
 
+/** The blade tip's screen position this frame, into the ring (the swing's angles at contact read it). */
+function sampleTip(P, g) {
+  const cam = g.camera, S = P.db;
+  if (!cam?.isCamera || !(P.sweep?.valid)) return;
+  P._bladePoint(1, V);
+  V.project(cam);
+  if (!Number.isFinite(V.x + V.y)) return;
+  const k = S.tipI * 3;
+  S.tip[k] = V.x;
+  S.tip[k + 1] = V.y;
+  S.tip[k + 2] = fin(g.time, 0);
+  S.tipI = (S.tipI + 1) % SAMPLES;
+  S.tipN = Math.min(SAMPLES, S.tipN + 1);
+}
+
+/** The blade's swing in the screen round a contact at (cx, cy) NDC: start / end angles (y up), NaN when unknown. */
+function swingAngles(S, cx, cy, aspect, now, out) {
+  out[0] = out[1] = NaN;
+  if (S.tipN < 2) return out;
+  let newest = -1, oldest = -1;
+  for (let j = 0; j < S.tipN; j++) {
+    const k = ((S.tipI - 1 - j + SAMPLES * 2) % SAMPLES);
+    if (now - S.tip[k * 3 + 2] > 0.09) break;
+    if (newest < 0) newest = k;
+    oldest = k;
+  }
+  if (newest < 0 || oldest === newest) return out;
+  const ang = (k) => Math.atan2(S.tip[k * 3 + 1] - cy, (S.tip[k * 3] - cx) * aspect);
+  out[0] = ang(oldest);
+  out[1] = ang(newest);
+  return out;
+}
+
 /** The sequence is over early (the hero hurt, a state change, no contact): close it with what it dealt. */
 function finish(P) {
   const S = P.db;
-  if (S.phase === 'cut' || S.phase === 'thrust') end(P);
+  if (S.phase === 'combo') end(P);
   clear(P);
   return false;
 }
@@ -125,7 +224,7 @@ function end(P) {
   if (S.done) return;
   S.done = true;
   P.parryRun = 0;
-  P._emit('player:flurryEnd', { strikes: S.run, damage: Math.round(S.dealt), art: 'deathblow', label: 'Deathblow' });
+  P._emit('player:flurryEnd', { strikes: S.n, damage: Math.round(S.dealt), art: 'deathblow', label: 'Deathblow' });
 }
 
 function aim(P, att, S) {
@@ -134,11 +233,10 @@ function aim(P, att, S) {
   if (!(dist > 1e-3) || !Number.isFinite(dist)) return -1;
   S.dx = dx / dist;
   S.dz = dz / dist;
-  P.yaw = Math.atan2(dx, dz);
   return dist;
 }
 
-function startCut(P, att) {
+function startCombo(P, att) {
   const S = P.db, D = DEFENSE.deathblow, g = P.game, p = P.position;
   const kind = P.flurry.reach(att, true);
   const tp = att?.position;
@@ -147,78 +245,86 @@ function startCut(P, att) {
     return false;
   }
   S.run = clamp(Math.round(fin(P.parryRun)), 0, 99);
-  S.total = deathblowDamage(S.run);
-  S.d1 = Math.round(S.total * D.share);
-  S.d2 = S.total - S.d1;
+  S.n = clamp(S.run, 1, D.cap);
   S.dealt = 0;
   S.done = false;
+  S.started = true;
   S.ox = p.x;
   S.oz = p.z;
-  const dist = aim(P, att, S);
-  if (dist < 0) {
-    clear(P);
-    return false;
-  }
+  S.tipN = 0;
+  S.tipI = 0;
+  S.side = S.rng() < 0.5 ? 1 : -1;
+  const seq = pickSeq(S, S.n);
+  S.seq = seq;
+  S.last = seq.map((e) => e.id).join('|');
+  S.clips.length = 0;
   P.riposte.att = null; // (a flare counter waiting is replaced by this)
   P.kb.x = P.kb.z = 0;
-  if (!P._startAttack(def1())) {
+  if (!startBlow(P, att, 0)) {
     clear(P);
     return false;
   }
+  S.phase = 'combo';
+  P.parryRun = 0; // spent
+  // the beat of slow motion: real-time, no zoom, a light lean (flow.js cinematic; no grade, no tint)
+  g.flow?.cinematic?.({ x: tp.x, z: tp.z, slowmo: D.slow.slowmo, dur: D.slow.dur, zoom: D.slow.zoom, weight: D.slow.weight, kind: 'deathblow' });
+  AT[0] = deathblowWind(0, S.n);
+  AT[1] = AT[0] + D.active + D.gap;
+  P._emit('player:flurry', {
+    strikes: S.n, art: 'deathblow', air: false, dur: AT[0], streak: S.n, tier: streakTier(S.n), storm: false, at: AT, figure: '', planted: true,
+  });
+  return true;
+}
+
+/** Blow `i` (0-based): its clip on its tempo, turned a little to alternating sides, a step inside the disc. */
+function startBlow(P, att, i) {
+  const S = P.db, D = DEFENSE.deathblow, p = P.position, e = S.seq[i], last = i === S.n - 1;
+  const dist = aim(P, att, S);
+  if (dist < 0) return finish(P);
+  const def = blowDef(e, deathblowWind(i, S.n), last);
+  // the turn: the foe's bearing, a little to this blow's side (alternating); the finisher faces him square
+  S.side = -S.side;
+  const off = last ? 0 : S.side * (D.turn[0] + (D.turn[1] - D.turn[0]) * S.rng());
+  const yaw = Math.atan2(S.dx, S.dz) + off;
+  P.yaw = yaw;
   P.quickUntil = -Infinity;
-  P.yaw = Math.atan2(S.dx, S.dz);
+  P.kb.x = P.kb.z = 0;
+  if (e.kind === 'light' || e.kind === 'heavy' ? !P._startAttack(def) : !startThrust(P, def)) return finish(P);
+  P.yaw = yaw;
+  P.object3d.rotation.y = yaw;
   const a = P.atk;
-  a.lunge = clamp(dist - D.minGap, 0, D.step);
-  a.rip = S.rip ??= { db: true, damage: 0, posture: 0, dx: 0, dz: 1, ox: 0, oz: 0, n: 1, counter: false, attack: null, beat: 1 };
-  a.rip.damage = S.d1;
-  a.rip.beat = 1;
+  // the step: forward on every other blow (always on the finisher), as far as the disc round the parry and the
+  // gap to his centre allow
+  const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  const rx = p.x - S.ox, rz = p.z - S.oz, b = rx * fx + rz * fz, c = rx * rx + rz * rz - D.step * D.step;
+  const room = c > 0 ? 0 : -b + Math.sqrt(Math.max(0, b * b - c)); // (to the disc's edge along the facing)
+  const step = i % 2 === 0 || last ? clamp(Math.min(dist - D.minGap, room, last ? D.step : D.stepMid), 0, D.step) : 0;
+  if (def.dash) a.travel = step;
+  else a.lunge = step;
+  a.rip = S.rip ??= { db: true, damage: 0, posture: 0, dx: 0, dz: 1, ox: 0, oz: 0, n: 1, counter: false, attack: null };
+  a.rip.damage = deathblowDamage(S.n)[last ? 1 : 0];
   a.rip.dx = S.dx;
   a.rip.dz = S.dz;
   a.crit = true;
   P.buf.action = null;
   P.critTimer = 0;
-  P.iframeT = Math.max(fin(P.iframeT), D.cut.wind + D.cut.active + D.iframePad + 0.1);
-  S.phase = 'cut';
-  S.beat = 1;
-  // the beat of slow motion: real-time, no zoom, a light lean (flow.js cinematic; no grade, no tint)
-  g.flow?.cinematic?.({ x: tp.x, z: tp.z, slowmo: D.slow.slowmo, dur: D.slow.dur, zoom: D.slow.zoom, weight: D.slow.weight, kind: 'deathblow' });
-  AT[0] = D.cut.wind;
-  AT[1] = D.cut.wind + D.cut.active + D.gap + THRUST.windup;
-  P._emit('player:flurry', {
-    strikes: S.run, art: 'deathblow', air: false, dur: D.cut.wind, streak: S.run, tier: streakTier(S.run), storm: false, at: AT, figure: '', planted: true,
-  });
-  return true;
-}
-
-function startThrust(P, att) {
-  const S = P.db, D = DEFENSE.deathblow, p = P.position;
-  const dist = aim(P, att, S);
-  if (dist < 0) return finish(P);
-  const st = chargeStats(CHARGE.hold, THRUST); // uncharged: a charged thrust's tip streak prints a white blot (the damage is the deathblow's own)
-  P._startHeavy(def2(), st);
-  P.yaw = Math.atan2(S.dx, S.dz);
-  P.object3d.rotation.y = P.yaw;
-  const a = P.atk;
-  // (what is left of the step after the cut's: the whole finisher stays within `step` m of where he parried)
-  const moved = Math.hypot(p.x - S.ox, p.z - S.oz);
-  a.travel = clamp(Math.min(dist - D.minGap, D.step - moved), 0, D.step);
-  a.rip = S.rip;
-  a.rip.damage = S.d2;
-  a.rip.beat = 2;
-  a.rip.dx = S.dx;
-  a.rip.dz = S.dz;
-  a.crit = true;
   P.hb.held = false;
-  P.buf.action = null;
-  P.iframeT = Math.max(fin(P.iframeT), THRUST.windup + THRUST.active + THRUST.recovery + D.iframePad);
-  S.phase = 'thrust';
-  S.beat = 2;
+  P.iframeT = Math.max(fin(P.iframeT), def.windup + def.active + def.recovery + D.iframePad);
+  S.i = i;
+  S.clips.push(e.id);
   return true;
 }
 
-/** What `_applyHit` puts to the duelist's takeHit for a deathblow beat. */
+/** The thrust runs as the heavy's machinery (uncharged: a charged thrust's tip streak prints a white blot). */
+function startThrust(P, def) {
+  const st = chargeStats(CHARGE.hold, THRUST);
+  P._startHeavy(def, st);
+  return !!P.atk;
+}
+
+/** What `_applyHit` puts to the duelist's takeHit for a blow. */
 export function deathblowTakeHit(P, point, out) {
-  const S = P.db, p = P.position;
+  const S = P.db, p = P.position, last = S.i >= S.n - 1;
   out.damage = S.rip.damage;
   out.part = 'body';
   out.point = point;
@@ -228,33 +334,41 @@ export function deathblowTakeHit(P, point, out) {
   out.exact = true;
   out.posture = 0;
   out.flash = DEFENSE.deathblow.flash;
-  if (S.beat === 2) {
-    out.reel = 2;
-    out.away = { x: p.x, z: p.z };
-  }
+  out.reel = last ? 2 : 1;
+  if (last) out.away = { x: p.x, z: p.z };
+  S.point.x = point.x;
+  S.point.y = point.y;
+  S.point.z = point.z;
   return out;
 }
 
-/** A beat's contact weight and its events (after `_applyHit` dealt `dealt`). */
+const ANG = [NaN, NaN];
+/** A blow's contact weight and its events (after `_applyHit` dealt `dealt`), and the hit effect. */
 export function deathblowLanded(P, dealt) {
   const S = P.db, D = DEFENSE.deathblow, R = DEFENSE.riposteCut, g = P.game, G = DEFENSE.flurry.ground, PL = DEFENSE.plunge;
-  const n = Math.max(1, Math.min(D.cap, S.run)), k = S.beat === 2 ? D.w2 : D.w1;
+  const n = S.n, i = S.i, last = i >= n - 1, k = last ? D.wLast : D.wMid;
   dealt = fin(dealt);
   S.dealt += dealt;
   P._hitstop(PL.impactStop * R.stopK * k, 0.03);
   g.shake?.(Math.min(1, (PL.impactShake + R.shakePerN * n) * k) * G.shake);
   g.punch?.((R.punch + R.punchPerN * n) * k * G.kick);
   P.anim?.kickCoat?.(1.1, P.anim.noise);
-  const last = S.beat === 2;
-  P._emit('player:flurryHit', { n: S.beat, of: 2, last, damage: dealt, planted: true });
-  if (!last) return;
-  // the biggest moment of the chain: the growing spit read at a tier-5 streak scaled by the run, with its heat flash
-  const tp = S.att?.position;
-  if (tp) {
-    parrySparks(g, tp.x - S.dx * 0.3, fin(tp.y) + D.reach, tp.z - S.dz * 0.3, {
-      mode: 'a', grow: 'a', met: false, fdx: S.dx, fdz: S.dz, streak: D.burst.base + D.burst.per * S.run, last: true,
-    });
+  P._emit('player:flurryHit', { n: i + 1, of: n, last, damage: dealt, planted: true });
+  // the hit effect at the contact: the blade's own direction, its swing in the screen
+  let a0 = NaN, a1 = NaN;
+  const cam = g.camera, pt = S.point;
+  if (cam?.isCamera) {
+    V.set(pt.x, pt.y, pt.z).project(cam);
+    if (Number.isFinite(V.x + V.y)) {
+      const asp = fin(cam.aspect, 1);
+      swingAngles(S, V.x, V.y, asp, fin(g.time, 0), ANG);
+      a0 = ANG[0];
+      a1 = ANG[1];
+    }
   }
-  S.phase = 'tail';
-  end(P);
+  try {
+    deathblowHit?.(g, { x: pt.x, y: pt.y, z: pt.z, dx: Math.sin(P.yaw), dz: Math.cos(P.yaw), i: i + 1, n, last, a0, a1 });
+  } catch (err) {
+    console.error('[deathblow] fx failed', err);
+  }
 }

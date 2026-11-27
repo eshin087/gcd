@@ -15,6 +15,7 @@ import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
+import { DB_FX, getDbFx, setDbFx } from '../combat/deathblowFx.js';
 import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
 import { RIPOSTE_CUT, riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
@@ -1319,7 +1320,13 @@ export class Lab {
       setRiposteMode(M[(M.indexOf(riposteMode()) + 1) % M.length]);
       this._syncCutBtns();
     });
-    this.ui.riposteBtn.title = "the answer to a parried last blow against a duelist (?parryRiposte=): old (the default) the flurry's flash cuts, planted: he stays where he parried and cuts once, the foe reels; deathblow: parries build posture (not the dodge streak), the one that breaks him is answered by a slow beat, a heavy cut and a thrust. Read as the riposte starts";
+    this.ui.riposteBtn.title = "the answer to a parried last blow against a duelist (?parryRiposte=): old (the default) the flurry's flash cuts, planted: he stays where he parried and cuts once, the foe reels; deathblow: parries build posture (not the dodge streak), a parry that breaks him or meets a blue blow is answered by a planted combo of as many blows as perfect parries behind it. Read as the riposte starts";
+    this.ui.dbfxBtn = button(stkGrid, `dbfx ${getDbFx()}`, () => {
+      const M = DB_FX.opts;
+      setDbFx(M[(M.indexOf(getDbFx()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbfxBtn.title = "the deathblow's hit effect (?dbfx=): a Steel Bloom (orange heat bloom, sparks, embers), b Shatter Web (long cut-lines through him that snap on the finisher), c Storm Crack (lightning crawling over him, a bolt on the finisher), d Gold Crescent (gold arcs along each swing)";
     this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
       setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
       this._syncCutBtns();
@@ -1552,6 +1559,7 @@ export class Lab {
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;
     if (this.ui.riposteBtn) this.ui.riposteBtn.textContent = `riposte ${riposteMode()}`;
+    if (this.ui.dbfxBtn) this.ui.dbfxBtn.textContent = `dbfx ${getDbFx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;

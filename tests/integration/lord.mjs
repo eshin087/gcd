@@ -1196,8 +1196,10 @@ async function scenarioTraining() {
   const cats = new Set(L.map((s) => s.cat));
   out(`   ${L.length} situations in ${cats.size} categories: ${[...cats].join(', ')}`);
   const bad = [];
+  let si = 0;
   for (const s of L) {
     if (s.cat === 'BOSS MOVES' && !true) continue;
+    Math.random = mulberry32(SEED + 0x7a11 + 977 * si++); // (each situation on a stream of its own: its result does not hang on what the ones before it drew)
     T.run(s.id);
     let frames = 0;
     while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++;}
@@ -1829,7 +1831,9 @@ async function scenarioFlare() {
   let pressed = false;
   // a plain parry: Severance is also a `lock` blow, and a perfect parry of it locks the blades first
   const sev = play('severance', 5.0, (fT) => { if (!pressed && at(fT, PLAIN_LEAD + DT)) { pressed = true; input.up(1); input.click(1); } });
-  const cnt = sev.get('player:flareCounter');
+  // (the answer to a blue flare parried: the counter cut, or, in the default deathblow mode, the combo that replaces it)
+  const dbEnd = sev.get('player:flurryEnd')?.art === 'deathblow' ? sev.get('player:flurryEnd') : null;
+  const cnt = sev.get('player:flareCounter') ?? (dbEnd ? { damage: dbEnd.damage, strikes: dbEnd.strikes } : null);
   assert(sev.get('combat:flash')?.flare === true && sev.get('player:parry')?.flare === true && sev.get('dragon:parried')?.last === true && !!cnt && cnt.damage > 0 && sev.lost === 0,
     `Severance (a blue flare) parried: his move ends and the hero counters (${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)}; DEFENSE.flareCounter ${DEFENSE.flareCounter.damage} before his posture rule)`);
   // Nightfall on a held guard: the meter gone, no damage; unanswered it lands

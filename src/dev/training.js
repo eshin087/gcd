@@ -20,7 +20,7 @@ import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.j
 //   'asc' (Tian Lei) | 'fox' (Wen Yao) | 'woke' (Xin Yi) | 'halcyon' (Halcyon) | 'any'), dist (m from the boss; omit = the boss's default), ang (rad off his facing), side (put the
 //   hero beside him, for the camera), streak (the hero's, set before), foe (his streak), art (pin the
 //   flurry's art), riposte (the parry's answer, 'old' | 'planted' | 'deathblow': set for the situation, the
-//   Lab's own restored after), parryRun (the deathblow's count, set before), postureNear (his posture set to
+//   Lab's own restored after), parryRun (the deathblow's count, set before), posture (his posture, so a parryRun is kept), postureNear (his posture set to
 //   just under what ONE perfect parry of his next blow breaks), hp (the hero's), god (default true), answer (mode, or (i, T) → mode for blow i),
 //   go(T) (start it), tick(T, dt) (every frame while it runs), until(T) (done; default: the boss's
 //   move is over and the hero is free), tail (s held after), max (s at most), expect [events]
@@ -38,6 +38,7 @@ const CLEAR_SPOTS = Object.freeze([[0, 0], [0, 6], [0, -6], [6, 0], [-6, 0]]);
 export const ANSWERS = Object.freeze({
   parry: { label: 'Parry', lead: 0.12 },
   perfect: { label: 'Perfect parry', lead: 0.05 },
+  plain: { label: 'Plain parry', lead: 0.2185 }, // (pressed just outside the perfect window: a parry that is not perfect)
   block: { label: 'Block', lead: 0.6 },
   dodge: { label: 'Perfect dodge', lead: 0.1 },
   roll: { label: 'Dodge (early)', lead: 0.34 },
@@ -49,7 +50,7 @@ export const ANSWERS = Object.freeze({
 /** The boss of the level loaded: its kind and the moves the situations ask for by role. */
 const ROLES = {
   cinderwood: { single: 'bite', string: 'clawCombo', long: 'stormFlurry', red: 'tail', area: 'stomp' },
-  ash: { single: 'plumThrust', string: 'swallow', long: 'ashRain', red: 'lotus', lock: 'fallingStar', mikiri: 'piercingAsh' },
+  ash: { single: 'plumThrust', string: 'swallow', long: 'ashRain', red: 'lotus', lock: 'fallingStar', blue: 'fallingAsh', mikiri: 'piercingAsh' },
   starless: { single: 'lunge', string: 'litany', long: 'litany', red: 'reap', lock: 'skyfall' },
   // Tian Lei (the Skybreak Ring): his form-1 lock is Hundred Hands' last blow (Vanishing Step's is form 2's)
   ring: { single: 'meteorStep', string: 'gates', long: 'hundred', red: 'cometHeel', lock: 'hundred', mikiri: 'piercingPalm' },
@@ -112,8 +113,9 @@ add('PARRY & RIPOSTE', [
   { id: 'parry', name: 'Parry a single blow', boss: 'any', streak: 0, role: 'single', answer: 'parry', riposte: 'old', desc: 'A single blow parried with the old riposte (?parryRiposte=old): the clash, then one flash cut and back where you stood. Today a duelist recoils instead and your own counter cut is open (see Parry a string).', expect: ['player:parry', 'player:flurryEnd'] },
   { id: 'perfectParry', name: 'Perfect parry', boss: 'any', streak: 0, role: 'single', answer: 'perfect', desc: `Pressed within ${DEFENSE.perfectParryWindow} s of the impact: the gold clash and a beat of slow motion.`, expect: ['player:parry'] },
   ...[3, 7].map((n) => ({ id: `riposte${n}`, name: `Riposte ${N(n)} (old)`, boss: 'any', streak: n - 1, role: 'single', answer: 'parry', riposte: 'old', desc: `A parry at a streak of ${n}: ${n} flash cuts.`, expect: ['player:flurryEnd'] })),
-  // the deathblow (?parryRiposte=deathblow): parries build his posture; the perfect one that breaks it is answered
-  ...[3, 7].map((n) => ({ id: `deathblow${n}`, name: `Deathblow ${N(n)}`, boss: 'duel', streak: 0, role: 'single', answer: 'perfect', riposte: 'deathblow', parryRun: n - 1, postureNear: true, desc: `${n - 1} perfect parries behind him, his posture one parry from breaking: the perfect parry breaks it, a beat of slow motion, a heavy cut and a thrust through him (${100 + 20 * Math.min(n, 7)} damage).`, expect: ['player:parry', 'player:flurryEnd'] })),
+  // the deathblow combo (?parryRiposte=deathblow): a parry that breaks his posture, or one of a blue blow, is answered by N blows
+  ...[3, 7].map((n) => ({ id: `deathblow${n}`, name: `Deathblow ${N(n)}`, boss: 'duel', streak: 0, role: 'single', answer: 'perfect', riposte: 'deathblow', parryRun: n - 1, postureNear: true, desc: `${n - 1} perfect parries behind him, his posture one parry from breaking: the perfect parry breaks it and a planted combo of ${n} blows follows, every one another clip of your own, the last the heaviest (${(22 + 2 * n) * (n - 1) + 40 + 15 * n} damage).`, expect: ['player:parry', 'player:flurryEnd'] })),
+  { id: 'deathblowBlue', name: 'Deathblow on a blue blow', boss: 'duel', streak: 0, role: 'blue', answer: 'plain', riposte: 'deathblow', parryRun: 4, posture: 30, desc: 'Four perfect parries behind you, then a single BLUE blow parried (a plain parry: a perfect one of this blow locks the blades instead): no posture break needed, a planted combo of four blows answers it and he reels.', expect: ['player:parry', 'player:flurryEnd'] },
   {
     id: 'parryCounter', name: 'Parry a string: recoil + counter cut', boss: 'duel', streak: 0, role: 'string', answer: 'parry', riposte: 'deathblow',
     desc: 'A string parried blow for blow: no automatic riposte. The last parry recoils him and opens a short window; the training presses attack in it for your own quick counter cut.',
@@ -136,11 +138,11 @@ add('PARRY & RIPOSTE', [
 ]);
 
 add('BOSS STREAK', [
-  { id: 'foeBuild', name: 'Build his streak, he answers', boss: 'duel', foe: 4, dist: 2.0, answer: 'parry', ai: true, clear: true, desc: 'Strike into his guard: his streak climbs and his guard answers with his flurry. Parry every blow.', go: (T) => T.tap('@attack'), until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 14, expect: ['dragon:flurry'] },
-  ...[3, 5, 7].map((n) => ({ id: `foe${n}`, name: `His flurry ${N(n)} · parry all`, boss: 'duel', foe: n, dist: 2.6, answer: 'parry', desc: `${n} blows, each from another side. Parry every one and his posture breaks.`, go: (T) => T.d.debug.flurry(n), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] })),
-  { id: 'foePerfect', name: `His flurry ${N(5)} · perfect parries`, boss: 'duel', foe: 5, dist: 2.6, answer: 'perfect', desc: 'Every blow perfect-parried (each counts two toward the total).', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd'] },
-  { id: 'foeBlock', name: `His flurry ${N(5)} · block all`, boss: 'duel', foe: 5, dist: 2.6, answer: 'block', desc: 'A held guard meets them from any side: he breaks too.', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] },
-  { id: 'foeMiss', name: `His flurry ${N(5)} · one let through`, boss: 'duel', foe: 5, dist: 2.6, answer: (i) => (i === 2 ? 'none' : 'parry'), desc: 'The third blow lands: nothing breaks, and your streak is lost.', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd'] },
+  { id: 'foeBuild', name: 'Build his streak, he answers', boss: 'duel', foe: 4, dist: 2.0, riposte: 'planted', answer: 'parry', ai: true, clear: true, desc: 'Strike into his guard: his streak climbs and his guard answers with his flurry. Parry every blow.', go: (T) => T.tap('@attack'), until: (T) => T.t > 1 && !T.moving() && T.heroFree(), max: 14, expect: ['dragon:flurry'] },
+  ...[3, 5, 7].map((n) => ({ id: `foe${n}`, name: `His flurry ${N(n)} · parry all`, boss: 'duel', foe: n, dist: 2.6, riposte: 'planted', answer: 'parry', desc: `${n} blows, each from another side. Parry every one and his posture breaks.`, go: (T) => T.d.debug.flurry(n), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] })),
+  { id: 'foePerfect', name: `His flurry ${N(5)} · perfect parries`, boss: 'duel', foe: 5, dist: 2.6, riposte: 'planted', answer: 'perfect', desc: 'Every blow perfect-parried (each counts two toward the total).', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd'] },
+  { id: 'foeBlock', name: `His flurry ${N(5)} · block all`, boss: 'duel', foe: 5, dist: 2.6, riposte: 'planted', answer: 'block', desc: 'A held guard meets them from any side: he breaks too.', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd', 'dragon:postureBreak'] },
+  { id: 'foeMiss', name: `His flurry ${N(5)} · one let through`, boss: 'duel', foe: 5, dist: 2.6, riposte: 'planted', answer: (i) => (i === 2 ? 'none' : 'parry'), desc: 'The third blow lands: nothing breaks, and your streak is lost.', go: (T) => T.d.debug.flurry(5), expect: ['dragon:flurryEnd'] },
   { id: 'foeDodge', name: `His flurry ${N(4)} · perfect-dodge it`, boss: 'duel', foe: 4, dist: 2.6, answer: 'dodge', desc: 'Perfect dodges of his blows count in your streak (white blows: no flurry) and break nothing of his.', go: (T) => T.d.debug.flurry(4), expect: ['player:perfectDodge'] },
 ]);
 
@@ -642,6 +644,12 @@ export class Training {
       d.postureTimer = 0;
       d.emitPosture?.(true);
     }
+    // a posture that is not empty (the deathblow's parries behind it: parryRun is dropped when his posture is back to 0)
+    if (Number.isFinite(s.posture) && Number.isFinite(d.posture) && !d.broken) {
+      d.posture = clamp(s.posture, 0, d.maxPosture - 2);
+      d.postureTimer = 0;
+      d.emitPosture?.(true);
+    }
     if (s.ai && d.brain) {
       d.brain.gapT = 99; // (his own moves held: only his answers to the hero)
       d.brain.raiseT = 0;
@@ -766,6 +774,7 @@ export class Training {
     switch (mode) {
       case 'parry':
       case 'perfect':
+      case 'plain':
         this.holds.delete('@block');
         this._key('@block', false);
         this.tap('@block', 0.05);

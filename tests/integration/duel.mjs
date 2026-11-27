@@ -946,6 +946,7 @@ async function scenarioClash() {
   settle(G);
   // (4) the blades meet: every blow of two strings parried, the hero's blade lies on his
   const gaps = [], backs = [], stops = [];
+  p.debug.noRiposte = true; // (a parried blue blow would answer with a deathblow combo: this is about the clash)
   for (const mv of ['swallow', 'ashRain']) {
     home(G);
     place(G, 2.2);
@@ -958,6 +959,7 @@ async function scenarioClash() {
     G.watch = null;
     settle(G, 8);
   }
+  p.debug.noRiposte = false;
   const met = gaps.filter((g) => g <= 0.2).length;
   assert(gaps.length === 10 && met >= 7, `the blades meet: ${met} of ${gaps.length} parried blows end with the two blades within 0.2 m (${gaps.map((g) => g.toFixed(2)).join(', ')})`);
   assert(backs.filter((b) => b > 0).length >= 6, `his blade is held where it met the guard, not through the hero (stepped back on ${backs.filter((b) => b > 0).length} of ${backs.length} blows)`);
@@ -3072,6 +3074,7 @@ async function scenarioMoments() {
   assert(!seen.includes('player:mikiri'), 'a roll across it is no mikiri');
   settle(G);
   // ---- the full deflect: parry every hit of the Rain of Ashes (7)
+  p.debug.noRiposte = true; // (a parried blue blow would answer with a deathblow combo: this is about the deflect)
   home(G);
   place(G, 2.6);
   d.posture = 0;
@@ -3089,6 +3092,7 @@ async function scenarioMoments() {
   G.watch = null;
   assert(ok3 && seen.includes('dragon:deflected'), `parrying all seven hits of the Rain of Ashes is the full deflect (${seen.join(', ')}${ok3 ? '' : '; not triggered: ' + d.mode + ' ' + (d.brain.react?.kind ?? '')})`);
   assert(reeled && seen.some((s) => s.startsWith('game:cinematic')), 'he reels and the moment plays in slow motion');
+  p.debug.noRiposte = false;
   // the slow motion is the flow's own: a parry's short freeze doesn't stretch over the moment
   settle(G);
   const C = TUNING.cinematic;
@@ -4162,14 +4166,13 @@ async function scenarioRipostePlanted() {
 // ================================================================== scenario: deathblow (?parryRiposte=deathblow)
 // Against a duelist, in deathblow mode: a parry of a blow no longer counts in the dodge streak
 // (`player.parryRun` counts the PERFECT ones); a parried last blow recoils him and opens the counter cut's
-// window, with no automatic riposte; the parry that BREAKS his posture is answered where the hero stands by
-// a slow beat, a heavy cut and a thrust: 100 + 20 x min(parryRun, 7) damage, never hurt, he stays broken.
+// window, with no automatic riposte; a parry that BREAKS his posture, or a parry of a BLUE blow, is answered
+// where the hero stands by a planted combo of N = min(parryRun, 7) blows (at least 1): each one of his own
+// clips (never the same combo twice), 22 + 2 N each and a finisher of 40 + 15 N, never hurt, he reels.
 // old / planted: unchanged (the parries still count in the streak).
 async function scenarioDeathblow() {
-  out('\n== scenario DEATHBLOW (?parryRiposte=deathblow: posture break -> slow beat, heavy cut, thrust) ==');
+  out('\n== scenario DEATHBLOW (?parryRiposte=deathblow: a posture break or a blue parry -> a planted combo of N blows) ==');
   const RC = await imp('src/entities/player/riposteCut.js');
-  const SP = await imp('src/combat/parrySparks.js');
-  const ST = await imp('src/combat/streak.js');
   const G = build();
   duel(G, { dist: 2.0 });
   const { game, input } = G;
@@ -4182,7 +4185,7 @@ async function scenarioDeathblow() {
     home(G);
     place(G, 2.0);
     run(G, 0.3);
-    d.posture = o.near ? nearBreak() : 0;
+    d.posture = o.near ? nearBreak() : o.posture ?? 0;
     d.postureTimer = 0;
     d.hp = d.maxHp;
     p.hp = p.maxHp;
@@ -4190,33 +4193,37 @@ async function scenarioDeathblow() {
     p.streak = o.streak ?? 0;
     p.streakT = 0;
     p.parryRun = o.run ?? 0;
-    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, streaks: [], sparks: 0, tier: -1, last: false, cine: null, run1: -1, streakAfter: -1, runAfter: -1, sc: 0 };
-    let flashT = null, pressed = false, pressedAtk = false;
+    const move = o.move ?? 'plumThrust';
+    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, brokenAny: false, streaks: [], cine: null, run1: -1, streakAfter: -1, runAfter: -1, clips: [], winds: [], hitT: [], reeled: false, minGap: 99 };
+    let flashT = null, pressed = false, pressedAtk = false, lastAtk = null;
     G.watch = (nm, e) => {
-      if (nm === 'combat:flash' && e?.attack === 'plumThrust' && flashT === null) flashT = game.time;
+      if (nm === 'combat:flash' && e?.attack === move && flashT === null) flashT = game.time;
       if (nm === 'player:parry' && !t.parry) { t.parry = { ...e }; t.ox = p.position.x; t.oz = p.position.z; t.run1 = p.parryRun; }
       if (nm === 'player:flurry') t.ev = { ...e };
-      if (nm === 'player:flurryHit') t.hits.push({ ...e });
+      if (nm === 'player:flurryHit') { t.hits.push({ ...e }); t.hitT.push(game.time); }
       if (nm === 'player:flurryEnd') t.end = { ...e };
       if (nm === 'player:hurt') t.hurt++;
       if (nm === 'player:streak') t.streaks.push(e.count);
+      if (nm === 'dragon:stagger') t.reeled = true;
       if (nm === 'game:cinematic' && e?.kind === 'deathblow') t.cine = { ...e };
     };
-    d.debug.trigger('plumThrust');
+    d.debug.trigger(move);
     const lead = o.perfect === false ? TUNING.flashLead - PLAIN_LEAD - DT : TUNING.flashLead - 0.04 - DT;
-    run(G, o.secs ?? 4, () => {
+    run(G, o.secs ?? 5, () => {
       game.mouseGround.set(d.position.x, 0, d.position.z);
       if (!o.hurt && flashT !== null && !pressed && game.time >= flashT + lead) { pressed = true; input.up(1); input.click(1); }
       if (t.parry) {
         t.far = Math.max(t.far, Math.hypot(p.position.x - t.ox, p.position.z - t.oz));
+        t.minGap = Math.min(t.minGap, Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z));
         t.states.add(p.state);
         if (p.flurry?.on) t.flurry = true;
         if (p.quickUntil > game.time) t.quick = true;
         if (o.press && t.quick && !pressedAtk && p.quickUntil > game.time && p.state !== 'attack') { pressedAtk = true; input.click(0); }
         if (p.atk?.quick) t.atk = true;
+        if (p.atk && p.atk !== lastAtk && p.atk.rip?.db) { lastAtk = p.atk; t.winds.push(p.atk.def.windup); }
+        if (d.broken) t.brokenAny = true;
         if (t.end && t.tEnd < 0) { t.tEnd = game.time; t.brokenAtEnd = d.broken; }
         if (!isFinite(p.position.x + p.position.z)) t.nan = true;
-        if (t.hits.length === 2 && !t.sc) { t.sc = 1; t.tier = SP.PARRY_GROW_LAST.tier; t.last = SP.PARRY_GROW_LAST.last; t.sparks = SP.PARRY_GROW_LAST.sparks; }
       }
     }, o.until ?? (() => !!t.end && game.time > t.tEnd + 1.2 && p.state !== 'attack' && p.state !== 'heavy'));
     G.watch = null;
@@ -4224,58 +4231,87 @@ async function scenarioDeathblow() {
     t.state = p.state;
     t.streakAfter = p.streak;
     t.runAfter = p.parryRun;
+    t.clips = [...p.db.clips];
     return t;
   };
-  // (a) a parried blow, posture not broken: no automatic riposte, the counter window opens, the dodge streak is untouched
+  // (a) a string's plain last blow: no automatic riposte, no combo, the counter window opens, the dodge streak is untouched
   {
     const t = take('deathblow', { perfect: false, press: true, secs: 2.2, until: () => false });
     out(`   (a) plain parry: parry ${JSON.stringify({ p: t.parry?.perfect, last: t.parry?.last })} · flurry events ${t.ev ? 1 : 0} · hits ${t.hits.length} · window ${t.quick} · quick cut ${t.atk} · streak ${t.streakAfter} (events ${t.streaks.join(',')}) · parryRun ${t.runAfter}`);
     assert(t.parry && t.parry.perfect === false && t.parry.last === true, '(a) the blow was parried (not perfect), its last');
-    assert(!t.ev && !t.hits.length && !t.flurry, '(a) no automatic riposte: no flurry event, no flash cut');
+    assert(!t.ev && !t.hits.length && !t.flurry, '(a) no combo, no automatic riposte: no flurry event, no flash cut');
     assert(t.quick, '(a) the counter cut window opens on a parried last blow');
     assert(t.atk === true, '(a) a press in the window starts the quick counter cut');
     assert(t.streakAfter === 0 && !t.streaks.length, `(a) the parry did not count in the dodge streak (streak ${t.streakAfter}, events ${t.streaks.join(',')})`);
     assert(t.runAfter === 0, '(a) a plain parry is no perfect parry: parryRun 0');
   }
-  // (b) perfect parries count in parryRun, not the streak; a hurt resets it; his posture back to 0 resets it
+  // (a2) perfect parries count in parryRun, not the streak; a hurt resets it; his posture back to 0 resets it
   {
     const t = take('deathblow', { run: 0, secs: 1.6, until: () => false });
-    out(`   (b) perfect parry (no break): parryRun ${t.run1} · streak ${t.streakAfter} · hits ${t.hits.length} · posture ${d.posture.toFixed(1)}`);
-    assert(t.parry?.perfect === true && t.run1 === 1 && t.streakAfter === 0, `(b) a perfect parry: parryRun 1, the dodge streak untouched (${t.run1}, ${t.streakAfter})`);
-    assert(!t.ev && !t.hits.length && !d.broken, '(b) no break, no deathblow');
+    out(`   (a2) perfect parry (no break): parryRun ${t.run1} · streak ${t.streakAfter} · hits ${t.hits.length} · posture ${d.posture.toFixed(1)}`);
+    assert(t.parry?.perfect === true && t.run1 === 1 && t.streakAfter === 0, `(a2) a perfect parry: parryRun 1, the dodge streak untouched (${t.run1}, ${t.streakAfter})`);
+    assert(!t.ev && !t.hits.length && !d.broken, '(a2) no break, no deathblow');
     p.parryRun = 3;
     d.posture = 0;
     run(G, 0.2);
-    assert(p.parryRun === 0, `(b) his posture empty again: parryRun reset (${p.parryRun})`);
+    assert(p.parryRun === 0, `(a2) his posture empty again: parryRun reset (${p.parryRun})`);
     const h = take('deathblow', { run: 4, hurt: true, secs: 2.5, until: () => false });
-    out(`   (b) hurt: hurts ${h.hurt} · parryRun ${h.runAfter}`);
-    assert(h.hurt >= 1 && h.runAfter === 0, `(b) a blow that hurts resets parryRun (hurts ${h.hurt}, run ${h.runAfter})`);
+    out(`   (a2) hurt: hurts ${h.hurt} · parryRun ${h.runAfter}`);
+    assert(h.hurt >= 1 && h.runAfter === 0, `(a2) a blow that hurts resets parryRun (hurts ${h.hurt}, run ${h.runAfter})`);
   }
-  // (c) the deathblow: n perfect parries behind it, posture one parry from breaking
-  for (const n of [1, 3, 7, 9]) {
-    const t = take('deathblow', { near: true, run: n - 1 });
-    const exp = DB.base + DB.per * Math.min(n, DB.cap);
-    out(`   (c) n=${n}: event ${JSON.stringify(t.ev && { strikes: t.ev.strikes, art: t.ev.art, tier: t.ev.tier, planted: t.ev.planted })} · hits ${JSON.stringify(t.hits.map((h) => [h.n, h.of, h.last, h.damage]))} · hp lost ${t.hpLost} (expected ${exp}) · far ${t.far.toFixed(2)} m · cinematic ${!!t.cine} · sparks tier ${t.tier} n ${t.sparks} · end ${JSON.stringify(t.end)} · broken at end ${t.brokenAtEnd}`);
-    assert(t.parry?.perfect === true && t.ev?.art === 'deathblow' && t.ev.planted === true && t.ev.strikes === n && t.ev.air === false && t.ev.storm === false, `(c) n=${n}: player:flurry art deathblow (strikes ${t.ev?.strikes})`);
-    assert(t.hits.length === 2 && t.hits[0].n === 1 && t.hits[0].last === false && t.hits[1].n === 2 && t.hits[1].last === true && t.hits.every((h) => h.of === 2 && h.planted === true), `(c) n=${n}: two flurryHits (heavy cut, thrust)`);
-    assert(Math.abs(t.hpLost - exp) < 0.51 && Math.abs(t.hits[0].damage + t.hits[1].damage - exp) < 0.51, `(c) n=${n}: ${t.hpLost} damage = 100 + 20 x min(run, 7) = ${exp}`);
-    assert(Math.abs(t.hits[0].damage - Math.round(exp * DB.share)) < 0.51, `(c) n=${n}: beat 1 deals ${DB.share * 100}% (${t.hits[0].damage})`);
-    assert(t.far <= 0.7 && !t.nan, `(c) n=${n}: within 0.7 m of where he parried (${t.far.toFixed(2)} m)`);
-    assert(t.hurt === 0 && !t.flurry && !t.states.has('flurry') && !t.states.has('ghostep') && !t.states.has('plunge'), `(c) n=${n}: never hurt, no flurry / ghostep (states ${[...t.states].join(',')})`);
-    assert(t.end?.art === 'deathblow' && t.end.label === 'Deathblow' && t.end.strikes === n && Math.abs(t.end.damage - exp) < 0.51, `(c) n=${n}: flurryEnd Deathblow ${t.end?.damage}`);
-    assert(t.brokenAtEnd === true, `(c) n=${n}: he stays broken after it`);
-    assert(t.cine && t.streakAfter === 0 && t.runAfter === 0, `(c) n=${n}: the slow beat ran; the dodge streak untouched (${t.streakAfter}); parryRun spent (${t.runAfter})`);
-    assert(t.tier === ST.streakTier(DB.burst.base + DB.burst.per * n) && t.last === true && t.sparks > 0, `(c) n=${n}: the burst grew to tier ${t.tier} (${t.sparks} sparks, last)`);
+  // the checks every combo shares: n blows, their damage, planted, unhurt, its events
+  const combo = (tag, t, n) => {
+    const k = Math.min(n, DB.cap), mid = DB.mid.base + DB.mid.per * k, fin = DB.fin.base + DB.fin.per * k;
+    const exp = mid * (n - 1) + fin;
+    out(`   ${tag}: event ${JSON.stringify(t.ev && { strikes: t.ev.strikes, art: t.ev.art, planted: t.ev.planted })} · hits ${JSON.stringify(t.hits.map((h) => [h.n, h.of, h.last, h.damage]))} · hp lost ${t.hpLost} (expected ${exp}) · far ${t.far.toFixed(2)} m · nearest ${t.minGap.toFixed(2)} m · winds ${t.winds.map((w) => w.toFixed(2)).join(' ')} · clips ${t.clips.join(' > ')} · end ${JSON.stringify(t.end)} · broken ${t.brokenAtEnd}`);
+    assert(t.ev?.art === 'deathblow' && t.ev.planted === true && t.ev.strikes === n && t.ev.air === false && t.ev.storm === false, `${tag}: one player:flurry art deathblow, strikes ${n} (${t.ev?.strikes})`);
+    assert(t.hits.length === n && t.hits.every((h, i) => h.n === i + 1 && h.of === n && h.planted === true && h.last === (i === n - 1)), `${tag}: ${n} flurryHits, the last flagged (${t.hits.length})`);
+    assert(t.hits.every((h, i) => Math.abs(h.damage - (i === n - 1 ? fin : mid)) < 0.51), `${tag}: ${n - 1} x ${mid} then a finisher of ${fin} (${t.hits.map((h) => h.damage).join(',')})`);
+    assert(Math.abs(t.hpLost - exp) < 0.51, `${tag}: ${t.hpLost} damage in all = ${exp}`);
+    assert(t.far <= 0.7 && !t.nan, `${tag}: within 0.7 m of where he parried (${t.far.toFixed(2)} m)`);
+    assert(t.minGap >= DB.minGap - 0.45, `${tag}: never on top of him (${t.minGap.toFixed(2)} m)`);
+    assert(t.hurt === 0 && !t.flurry && !t.states.has('flurry') && !t.states.has('ghostep') && !t.states.has('plunge'), `${tag}: never hurt, no flurry / ghostep (states ${[...t.states].join(',')})`);
+    assert(t.end?.art === 'deathblow' && t.end.label === 'Deathblow' && t.end.strikes === n && Math.abs(t.end.damage - exp) < 0.51, `${tag}: flurryEnd Deathblow ${t.end?.damage}`);
+    assert(t.clips.length === n && t.clips.every((c, i) => i === 0 || c !== t.clips[i - 1]), `${tag}: ${n} clips, none twice in a row (${t.clips.join(' > ')})`);
+    assert(t.winds.length === n && t.winds.slice(0, n - 1).every((w, i) => (i === 0 || w <= t.winds[i - 1] + 1e-6) && w >= DB.windMin - 1e-6) && (n < 3 || t.winds[1] < t.winds[0]) && Math.abs(t.winds[n - 1] - DB.finWind) < 1e-6, `${tag}: the tempo quickens, the finisher is held (${t.winds.map((w) => w.toFixed(3)).join(' ')})`);
+    assert(t.cine && t.streakAfter === 0 && t.runAfter === 0, `${tag}: the slow beat ran; the dodge streak untouched (${t.streakAfter}); parryRun spent (${t.runAfter})`);
+    assert(t.hitT.every((x, i) => i === 0 || x > t.hitT[i - 1]), `${tag}: the blows land one after the other`);
+  };
+  // (b) a posture-breaking perfect parry: n perfect parries behind it, posture one parry from breaking
+  for (const [run, n] of [[2, 3], [6, 7], [0, 1], [9, 7]]) {
+    const t = take('deathblow', { near: true, run });
+    assert(t.parry?.perfect === true, `(b) run ${run}: the parry was perfect`);
+    combo(`(b) run ${run}`, t, n);
+    assert(t.brokenAtEnd === true, `(b) run ${run}: he stays broken after it`);
   }
-  assert(DB.base + DB.per * DB.cap > DEFENSE.flurry.cut.damage * 7, `the deathblow's top (${DB.base + DB.per * DB.cap}) is above the flurry x7 (${DEFENSE.flurry.cut.damage * 7})`);
-  // (d) old / planted: parries still count in the streak, nothing of the deathblow runs
+  assert((DB.mid.base + DB.mid.per * DB.cap) * (DB.cap - 1) + DB.fin.base + DB.fin.per * DB.cap > DEFENSE.flurry.cut.damage * 7, 'the combo\'s top is above the flurry x7');
+  // (c) a parry of a BLUE blow (the blue flare) without a break: a combo of n, he reels, he is not broken
+  for (const [run, n, perfect] of [[3, 3, false], [0, 1, false], [6, 6, false]]) {
+    const t = take('deathblow', { move: 'fallingAsh', run, perfect, secs: 6, posture: run > 0 ? 20 : 0 });
+    out(`   (c) blue blow run ${run} perfect ${perfect}: parry ${JSON.stringify({ tell: t.parry?.tell, perfect: t.parry?.perfect, flare: t.parry?.flare })} · reeled ${t.reeled} · broken any ${t.brokenAny}`);
+    assert(t.parry && t.parry.tell === 'blue' && t.parry.flare === true, `(c) run ${run}: a blue flare blow parried`);
+    assert(!!t.ev, `(c) run ${run}: the blue parry started a combo`);
+    if (t.ev) {
+      combo(`(c) run ${run}`, t, n);
+      assert(t.brokenAny === false && t.brokenAtEnd === false, `(c) run ${run}: he is not broken (a parry of a blue blow breaks nothing here)`);
+      assert(t.reeled, `(c) run ${run}: he reels`);
+    }
+  }
+  // (d) two combos in a row at the same n: the sequences of clips differ
+  for (const n of [1, 3, 5]) {
+    const seqs = [];
+    for (let k = 0; k < 3; k++) seqs.push(take('deathblow', { near: true, run: n - 1 }).clips.join('|'));
+    out(`   (d) n=${n}: ${seqs.join('  //  ')}`);
+    assert(seqs.every((q, i) => q && (i === 0 || q !== seqs[i - 1])), `(d) n=${n}: no two combos in a row play the same clips`);
+  }
+  // (e) old / planted: parries still count in the streak, nothing of the deathblow runs
   for (const mode of ['old', 'planted']) {
     const t = take(mode, { run: 0, streak: 0, secs: 1.6, until: () => false });
-    out(`   (d) ${mode}: streak events ${t.streaks.join(',')} · parryRun ${t.runAfter} · art ${t.ev?.art}`);
-    assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(d) ${mode}: the parry counts in the streak, no deathblow`);
+    out(`   (e) ${mode}: streak events ${t.streaks.join(',')} · parryRun ${t.runAfter} · art ${t.ev?.art}`);
+    assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(e) ${mode}: the parry counts in the streak, no deathblow`);
   }
   RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
-  assert(RC.RIPOSTE_CUT.opts.includes('old') && RC.RIPOSTE_DEFAULT === 'deathblow', 'deathblow is the default; old stays an option');
+  assert(RC.RIPOSTE_CUT.opts.includes('old') && RC.RIPOSTE_CUT.opts.includes('planted') && RC.RIPOSTE_DEFAULT === 'deathblow', 'deathblow is the default; old and planted stay options');
   return G;
 }
 
@@ -4611,7 +4647,8 @@ async function scenarioFlare() {
   const par = blue.get('player:parry'), dpar = blue.get('dragon:parried'), cnt = blue.get('player:flareCounter'), fend = blue.get('player:flurryEnd');
   assert(blue.get('combat:flash')?.flare === true && blue.get('combat:flash')?.tell === TELL.BLUE, 'Falling Ash is a parry moment: a blue cue marked flare');
   assert(par?.flare === true && par.perfect === false && dpar?.flare === true && dpar.last === true, `a plain parry of it (0.20 - 0.22 s early) is the moment's: player:parry flare, dragon:parried last (${JSON.stringify(dpar)})`);
-  assert(!!cnt && cnt.damage >= DEFENSE.flareCounter.damage - 0.5 && fend?.art === 'counter', `... and the hero counters by himself: ${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)} (${DEFENSE.flareCounter.damage}), art ${fend?.art}`);
+  // (the counter cut, or, in the default deathblow mode, the combo that replaces it: deathblow.js)
+  assert(fend?.art === 'deathblow' || (!!cnt && cnt.damage >= DEFENSE.flareCounter.damage - 0.5 && fend?.art === 'counter'), `... and the hero counters by himself: ${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)} (${DEFENSE.flareCounter.damage}), art ${fend?.art}`);
   assert(blue.lost === 0 && blue.has('player:flurry'), 'the parry cost no HP and the counter ran as flash cuts (player:flurry)');
   // (an ordinary heavy blow, not marked: the plain deflect, no counter)
   pressed = false;

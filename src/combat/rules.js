@@ -316,25 +316,32 @@ export const DEFENSE = Object.freeze({
   // plunge.impactStop, the shake plunge.impactShake + `shakePerN` n, the punch `punch` + `punchPerN` n),
   // scaled by flurry.ground. He cannot be hurt from the start to `iframePad` s after the end.
   riposteCut: Object.freeze({ step: 0.6, minGap: 1.0, wind: 0.14, active: 0.1, recover: 0.32, iframePad: 0.05, stopK: 1.25, shakePerN: 0.06, punch: 2.2, punchPerN: 0.25, flash: 0.7 }),
-  // --- THE DEATHBLOW (?parryRiposte=deathblow; src/entities/player/deathblow.js): against a duelist, a parry
-  // whose posture damage BREAKS him is answered where the hero stands by two planted beats: a heavy cut,
-  // then a thrust through him. Parries of blows no longer count in the dodge streak: `player.parryRun`
-  // counts the PERFECT parries (reset when hurt, when his posture is back to 0, after a deathblow).
-  // base / per / cap: total damage = base + per x min(parryRun, cap) (final, crit; 100 .. 240); share:
-  // beat 1's part of it (beat 2 the rest); step / minGap: as riposteCut (the whole finisher moves the
-  // hero at most `step` m toward him, never nearer than `minGap` m); slow: the cinematic beat at the
-  // start (real s, the camera's lean `weight`, no zoom); cut: beat 1's timeline (s; contact at the end
-  // of the wind); gap: beat 2 starts this many s after beat 1's active window and its freeze are over;
-  // w1 / w2: each beat's weight x riposteCut's (freeze, shake, punch; scaled by run as the riposte's n);
-  // flash: the foe's hurt flash; iframePad: s he stays unhurt after the end; burst: beat 2's spark burst
-  // is parrySparks' growing spit read at a streak of burst.base + burst.per x run (tier 5 from 15), `last`;
-  // reach: the contact's height above his feet (m)
+  // --- THE DEATHBLOW COMBO (?parryRiposte=deathblow; src/entities/player/deathblow.js): against a duelist, a
+  // parry that BREAKS his posture, or any parry of a BLUE-tell blow (the flare included), is answered where
+  // the hero stands by a planted combo of N blows, N = min(player.parryRun, cap) (at least 1). Parries of
+  // blows no longer count in the dodge streak: `player.parryRun` counts the PERFECT parries (reset when
+  // hurt, when his posture is back to 0, spent by a deathblow). Each blow is one of his own attack clips.
+  // cap: the most blows; mid / fin: damage (final, exact, crit) of each non-final blow = mid.base + mid.per x
+  // N, of the finisher = fin.base + fin.per x N (N 1: 55; N 7: 6 x 36 + 145 = 361); mid.stop / mid.shake: the
+  // contact's own freeze (s) and shake of a non-final blow (the finisher keeps its clip's);
+  // wind0 / windK / windMin: the first blow's wind-up (s), each next one x windK, never under windMin;
+  // finWind: the finisher's held wind-up; active / recover: a blow's timeline after it (s), finActive /
+  // finRecover the finisher's; gap: the next blow starts this many s after the last one's active window and
+  // its freeze are over; step: the hero stays within this many m of where he parried (the disc), stepMid the
+  // most a non-final blow steps in, minGap the nearest he comes to his centre (m); turn: the least and most
+  // (rad) he turns to alternating sides between blows; slow: the cinematic beat at the start (real s, the
+  // camera's lean `weight`, no zoom); wMid / wLast: a blow's weight x riposteCut's (freeze, shake, punch; the
+  // finisher about the flurry's last blow), scaled by flurry.ground; flash: the foe's hurt flash;
+  // iframePad: s he stays unhurt after the end
   deathblow: Object.freeze({
-    base: 100, per: 20, cap: 7, share: 0.4, step: 0.6, minGap: 1.0,
-    slow: Object.freeze({ slowmo: 0.3, dur: 0.35, zoom: 0, weight: 0.3 }),
-    cut: Object.freeze({ wind: 0.16, active: 0.1, recover: 0.3 }),
-    gap: 0.02, w1: 0.55, w2: 1.35, flash: 0.8, iframePad: 0.05, reach: 1.2,
-    burst: Object.freeze({ base: 3, per: 2 }),
+    cap: 7,
+    mid: Object.freeze({ base: 22, per: 2, stop: 0.03, shake: 0.08 }),
+    fin: Object.freeze({ base: 40, per: 15 }),
+    wind0: 0.16, windK: 0.85, windMin: 0.07, finWind: 0.18,
+    active: 0.07, recover: 0.22, finActive: 0.1, finRecover: 0.3, gap: 0.02,
+    step: 0.6, stepMid: 0.3, minGap: 1.0, turn: Object.freeze([0.15, 0.4]),
+    slow: Object.freeze({ slowmo: 0.3, dur: 0.25, zoom: 0, weight: 0.3 }),
+    wMid: 0.4, wLast: 1.35, flash: 0.8, iframePad: 0.05,
   }),
 });
 

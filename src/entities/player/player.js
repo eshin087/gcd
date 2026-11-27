@@ -15,6 +15,7 @@ import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
 import { riposteMode, startRiposteCut, riposteTakeHit, riposteCutLanded, riposteContact } from './riposteCut.js';
 import { newDeathblowState, armDeathblow, tickDeathblow, deathblowTakeHit, deathblowLanded } from './deathblow.js';
+import { deathblowFxUpdate, deathblowFxClear } from '../../combat/deathblowFx.js';
 import { SwordMystic } from './swordMystic.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
@@ -726,6 +727,7 @@ export class Player {
     this.parryRun = 0;
     this.db.phase = '';
     this.db.att = null;
+    deathblowFxClear?.(this.game);
     this.guard = this.maxGuard;
     this.guardWait = 0;
     this.riposte.att = null;
@@ -1349,8 +1351,9 @@ export class Player {
         if (perfect) this.parryRun = Math.min(99, this.parryRun + 1);
       } else this._streakUp();
       const att = hit?.attacker ?? null, R = this.riposte;
-      R.att = (db ? moment : last || moment) && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
-      if (db && !this.debug.noRiposte) armDeathblow(this, att, attack, tell);
+      // (the deathblow: a flare moment is a blue parry, and the combo answers it: no counter cut of its own)
+      R.att = !db && (last || moment) && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
+      if (db && !this.debug.noRiposte) armDeathblow(this, att, attack, tell, tell === TELL.BLUE);
       R.counter = moment;
       R.t = 0;
       R.attack = attack;
@@ -1366,7 +1369,7 @@ export class Player {
   _tickRiposte(dt) {
     const R = this.riposte, g = this.game;
     if (this.db.phase && tickDeathblow(this, dt)) return;
-    if (this.parryRun > 0 && !(g.dragon?.posture > 0) && !g.dragon?.broken && this.db.phase !== 'cut' && this.db.phase !== 'thrust') this.parryRun = 0; // his posture is back to empty
+    if (this.parryRun > 0 && !(g.dragon?.posture > 0) && !g.dragon?.broken && this.db.phase !== 'combo') this.parryRun = 0; // his posture is back to empty
     if (!R.att) return;
     R.t += dt > 0 ? fin(g.realDt, dt) : 0;
     if (!this.alive || R.t > 0.5 || !RIPOSTE_FROM.has(this.state)) {
@@ -3676,6 +3679,7 @@ export class Player {
 
   _updateFx(dt) {
     const p = this.position;
+    deathblowFxUpdate?.(this.game, fin(this.game.realDt, dt));
     if (this.state === 'heal') {
       const t = this.stateT;
       this.fx.healTick(dt, p.x, p.z, smoothstep(0.27, 0.5, t) * (1 - smoothstep(0.7, 0.84, t)));

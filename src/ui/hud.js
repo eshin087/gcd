@@ -182,7 +182,7 @@ export class Hud {
     on('player:flurryEnd', (d) => {
       // the deathblow (?parryRiposte=deathblow): its own banner and its damage, whatever the run
       if (d.art === 'deathblow') {
-        this.calls.banner('DEATHBLOW', `${Math.round(num(d.damage))} damage`);
+        this.calls.banner(`DEATHBLOW ×${Math.round(num(d.strikes, 1))}`, `${Math.round(num(d.damage))} damage`);
         return;
       }
       const n = Math.round(num(d.strikes));
