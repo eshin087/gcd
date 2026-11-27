@@ -6238,6 +6238,70 @@ async function scenarioFeel() {
   return last;
 }
 
+// COMBOS (ADR-240; `?combo=a|b|c|d`, combos.js): four light combos for the ending slash. Each wears five hits on
+// LIGHT (its clips, its timings, a finisher's kind), its feel and its own free hand; every other number of each
+// def (damage, posture, reach, lunge, hit-stop ...) is production's; '0' gives production's five defs back
+// exactly. Played in rhythm (each press in the hit before's recovery) each hit lands on the wyrm 2 m ahead inside its own active frames, and
+// each draws one ending slash (a beat after the swing, at the target place).
+async function scenarioCombos() {
+  out('\n== scenario COMBOS (four light combos for the ending slash: combos.js, ?combo=) ==');
+  const CO = await imp('src/entities/player/combos.js');
+  const FE = await imp('src/entities/player/feel.js');
+  const OH = await imp('src/entities/player/offHand.js');
+  const CB = await imp('src/entities/player/combat.js');
+  const combo0 = CO.comboMode();
+  let last = null;
+  const snap = () => JSON.stringify(CB.LIGHT);
+  const KEEP = ['name', 'combo', 'damage', 'poise', 'reach', 'lunge', 'hitstop', 'shake', 'bite', 'punch', 'kick'];
+  try {
+    CO.setCombo('0');
+    const prod = snap(), keep0 = CB.LIGHT.map((d) => KEEP.map((k) => JSON.stringify(d[k])).join());
+    for (const id of CO.COMBO_IDS.slice(1)) {
+      CO.setCombo(id);
+      const C = CO.COMBOS[id];
+      const worn = CB.LIGHT.every((d, i) => d.anim.clip === C.hits[i].anim.clip && d.windup === C.hits[i].windup && !d.variants.length)
+        && CB.LIGHT.every((d, i) => KEEP.map((k) => JSON.stringify(d[k])).join() === keep0[i]) && FE.feelMode() === C.feel && OH.offHandMode() === 'auto' && OH.offHandLook() === OH.OFFHAND[C.hand];
+      assert(worn, `combo ${id} (${C.name}) wears its five hits, its feel ${FE.feelMode()} and its hand ${C.hand}, every other number production's`);
+      const res = [];
+      for (let n = 1; n <= 5; n++) {
+        const G = (last = build());
+        fightSetup(G);
+        settle(G);
+        const { game, input } = G, d = game.dragon, p = game.player;
+        const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+        const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+        p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+        p.debug.god = true;
+        aimAt(G);
+        let hit = null, lines = 0;
+        p.slashFx.onLine = () => lines++;
+        for (let k = 0; k < n; k++) {
+          if (k === n - 1) {
+            p.debug.teleport(c.x + fx * (c.r + 2), c.z + fz * (c.r + 2));
+            p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+            lines = 0;
+            G.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { combo: p.atk?.def?.combo, t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded }; };
+          }
+          aimAt(G);
+          input.click(0);
+          // (in rhythm: the next press in this hit's recovery, past its `chain`)
+          const dk = CB.LIGHT[k];
+          run(G, k < n - 1 ? dk.windup + dk.active + dk.recovery * Math.max(0.6, dk.chain + 0.1) : 1.2, { passive: true });
+        }
+        G.watch = null;
+        const ok = hit && hit.combo === n && !hit.guarded && hit.t >= hit.def.windup - 1e-6 && hit.t <= hit.def.windup + hit.def.active + 1e-6 && lines >= 1;
+        res.push(ok ? `${n}@${((hit.t - hit.def.windup) / hit.def.active).toFixed(2)}` : `${n}:MISS(${hit ? hit.combo : '-'}, ${lines} line)`);
+      }
+      assert(res.every((x) => !x.includes('MISS')), `combo ${id}: each hit lands in its active frames and draws its ending slash (${res.join(', ')})`);
+    }
+    CO.setCombo('0');
+    assert(snap() === prod && FE.feelMode() === '0' && OH.offHandLook() === null, 'combo 0 gives production its five defs, its feel and its hand back exactly');
+  } finally {
+    CO.setCombo(combo0);
+  }
+  return last;
+}
+
 // INSTANTSLASH (ADR-240; the owner, 2026-11-26: "remove the curvy slashes with the instant slashes", every
 // attack and the flurry): with the default `slash` look every swing draws its straight line (slashFx.js) and
 // no crescent (fx.trail is never called through an attack); the light combo's five hits (their first looks)
@@ -15043,6 +15107,7 @@ const SCENARIOS = {
   wyrmlook: scenarioWyrmLook,
   herolife: pinAdr186(scenarioHeroLife),
   instantslash: scenarioInstantSlash,
+  combos: scenarioCombos,
   feel: scenarioFeel,
   offhand: scenarioOffHand,
   streakfx: scenarioStreakFx,
