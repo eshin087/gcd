@@ -1216,6 +1216,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
+- [x] The Cinder Wyrm (ADR-257): the anatomy audit at each blow's contact (`wyrmanatomy`), every bite led by the
+      body and snapped onto the beat, behind `?wyrmStrike=a`
+  - [ ] The owner's pick from the films
+  - [ ] Next: the forelegs straight through the whole rake, the wing blows flapping as one rigid wing, the feet
+        skating up to ~1 m in some strings
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and

@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-four pieces of work since 0.4.0:
+One hundred and twenty-five pieces of work since 0.4.0:
+- **The Cinder Wyrm's bites, to try** (2026-11-27, ADR-257). *Added, to compare (not the default):*
+  `?wyrmStrike=a` (the Lab's LOOKS row `wyrmStrike`): in every bite the wyrm's body surges first (the chest drops
+  and pitches in off the hind feet, the body lunging a little toward you) while the head hangs back, then the head
+  snaps onto the impact the flash promised, its jaws now reaching you on the beat. Every windup, cue, impact, hit
+  sphere and number is as before. *Added:* the wyrm's anatomy audit (integ `wyrmanatomy`, opt-in: each blow's gap
+  to the hero at the impact, a foreleg's elbow and reach, the chain's order, the tail's tip, skating feet, pops).
 - **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
   `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
   x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a

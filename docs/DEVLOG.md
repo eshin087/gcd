@@ -5,6 +5,33 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The Cinder Wyrm's motion audit: the bites (ADR-257; branch `claude/wyrm-motion-ccc88f`)
+
+**Owner:** the boss motion audit (one session and one draft PR per fighter, the shared brief): weird limb angles,
+unrealistic attacks, every attack readable; for the wyrm, keep its look (the owner's "perfect ascii look") and
+change motion and tells only, in small steps.
+
+**What changed:**
+- `tests/integration/wyrmAnatomy.mjs` + integ `wyrmanatomy` (opt-in): each blow measured at its contact: the gap
+  to the hero at the announced impact, a foreleg's elbow and reach, a bite's neck, the order the chain reaches top
+  speed, the tail's tip against its middle, the planted feet's skating, pops (hit-stop frames left out).
+- `dragon/strike.js` behind `?wyrmStrike=a` ('0' default until the owner picks; the Lab's LOOKS row): every bite's
+  body surges first (the chest drops and pitches in, the body lunges 0.4 units) while the head hangs, then the head
+  snaps onto the impact. Measured: the body 50 - 117 ms ahead of the head (was on one frame); the jaws 0.17 - 2.07 m
+  from the hero at the impact (was 0.79 - 3.10).
+- Films (before / after, the game camera and a close front three-quarter view, all three phases, real and half
+  speed) sent to the owner; the before set covers every melee move and the flights.
+
+**Found and left (ROADMAP):** the forelegs straight through the whole rake (the paw's path is beyond reach); the
+wing blows flap as one rigid wing; feet skate up to ~1 m in some strings. A tail with a softer tip was tried and
+dropped: the shipped tail already trails its middle by 44 - 123° and the film showed no difference. The first
+reading ("the tail swings as one rod") came from comparing top-speed times in a spin, where every point peaks
+together: measure the tip's bearing against the middle's instead.
+
+**Verification:** integ green with the switch off and forced on (`GCD_STRIKE_DEF`, a temporary hook, removed).
+
+**Next:** the owner's pick; then the forelegs and the wings, each with its hit spheres measured before and after.
+
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
 **Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its

@@ -2803,6 +2803,24 @@ starts; read from the stance, no gather; close range; light; exempt from the fir
 **Found on the way** (the wyrm's seeded fights with the picks on): the sky hunt's crash landing now stays on
 the wyrm's ground; a drakeling's dive released onto a blow after its longest wait is ADR-237's (on `main`).
 
+### The wyrm's bites (2026-11-27, ADR-257; `?wyrmStrike=a`, '0' as shipped until the owner picks)
+The motion audit's second pass on the wyrm measured each blow AT ITS CONTACT (`node tests/integration/integ.mjs .
+wyrmanatomy`; `GCD_LOOKS=wyrmStrike=a` for the pass, `GCD_MOVES=` a list, `GCD_TRACE=1` the frames round a blow):
+
+| Every bite | As shipped | With `a` |
+|---|---|---|
+| the chain (hips, chest, neck base, head reach top speed) | on one frame (the head 0 - 17 ms after) | the body 50 - 117 ms before the head |
+| the jaws' gap to the hero's chest at the impact | 0.79 - 3.10 m | 0.17 - 2.07 m |
+| the single bite / the claw combo's lunge bite / the Hesitant Maw's rear bite | 1.77 / 3.10 / 2.33 m | 0.99 / 2.07 / 1.16 m |
+
+- The last 0.1 s of the windup the chest drops and pitches into the strike off the locked hind feet and the body
+  surges 0.4 units toward the hero (not within 4 units of it) while the head hangs where it was; the snap runs the
+  head to its goal and arrives on the impact; the body settles from just past its strike pose. The windup, the cue,
+  the impact and the hit spheres are as before.
+- **Measured, not changed:** the forelegs rake at full reach (elbow 177°) and stay straight through the sweep; the
+  wing blows flap as one rigid wing; planted feet skate up to ~1 m through some strings; the tail blows already
+  overlap (the tip trails the tail's middle by 44 - 123°).
+
 ## Bai Wuji (2026-11-26, ADR-241; `?level=veil`)
 
 Bai Wuji, the Untouched: a tall, relaxed man in a bone-white coat, his eyes covered, his hands in his pockets,
