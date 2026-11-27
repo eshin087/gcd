@@ -204,6 +204,12 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
   `[Unreleased]` to a version heading in the changelog (and the LATEST release in `changelog.js` to
   that version), tag `vX.Y.Z`.
 
+## Vercel preview builds (cost control)
+* Vercel only builds a branch preview when the branch name or the latest commit message contains "motion", "anim", "playtest", or "[preview]". Pushes to main always deploy. All other branch pushes are skipped on purpose to keep Vercel usage under the $20 monthly credit.
+* When the owner asks for a preview, or a change needs a playtest (animation work, anything they want to try in the browser), push an empty commit on that branch: `git commit --allow-empty -m "chore: preview [preview]"`, then push. A preview URL appears a few seconds later.
+* Do not push extra commits just to refresh a preview. Batch changes and push less often. Do not add "[preview]" to ordinary commits.
+* If a branch push shows a skipped or canceled deployment on Vercel, that is expected, not a failure.
+
 ## Layout
 ```
 src/core       config, input, camera rig, math, rng, events
