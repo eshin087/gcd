@@ -42,20 +42,20 @@ function mote(F, x, y, z, vx, vy, vz, life, size, glyphs, color, colorEnd, drag 
 function drawSun(F, s, hang) {
   const lf = F._frame(), k = s.size ?? 1, ret = s.returned, t = F._now() + s.seed;
   const grow = hang ? Math.min(1, s.age / Math.max(0.15, s.delay)) : 1;
-  const R0 = 0.34 * k * (0.45 + 0.55 * grow), x = s.x, y = s.y, z = s.z;
+  const R0 = 0.46 * k * (0.45 + 0.55 * grow), x = s.x, y = s.y, z = s.z;
   if (lf > 0) {
     // the heart and the body turning tight round it
     const P = F._toCamera(x, y, z);
-    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.22 * k, 0.22 * k, ret ? 1.6 : 1.35, ret ? 1.6 : 1.35, K_STEEL);
-    F._disc(x, y, z, R0, 16, 0.2 * k, 0.55, K_VOID);
+    F._blob(P.x, P.y, P.z, 0, 0, 0, lf, 0.3 * k, 0.3 * k, ret ? 1.8 : 1.6, ret ? 1.8 : 1.6, K_STEEL);
+    F._disc(x, y, z, R0, 20, 0.26 * k, 0.8, K_VOID);
     for (let i = 0; i < 7; i++) {
       const a = t * 11 + (i / 7) * TAU, rr = R0 * (1.0 + 0.18 * Math.sin(t * 9 + i * 1.7));
-      F._blob(x + Math.cos(a) * rr, y + Math.sin(a * 2 + i) * 0.1 * k, z + Math.sin(a) * rr, 0, 0, 0, lf, 0.2 * k, 0.2 * k, 0.6, 0.6, K_VOID);
+      F._blob(x + Math.cos(a) * rr, y + Math.sin(a * 2 + i) * 0.1 * k, z + Math.sin(a) * rr, 0, 0, 0, lf, 0.26 * k, 0.26 * k, 0.85, 0.85, K_VOID);
     }
     // the torn ring, spinning the other way
-    F._ring(x, y, z, R0 + 0.2 * k, 12, 0.18 * k, 0.42, K_VOID, 3, -t * 8);
+    F._ring(x, y, z, R0 + 0.28 * k, 14, 0.22 * k, 0.7, K_VOID, 3, -t * 8);
     // its pool on the floor, under it (a blast over 2.5 m up throws none)
-    if (y < 2.5) F._ring(x, GROUND_Y, z, 0.55 * k, 10, 0.4, 0.18 * GROUND_GAIN * (1 - y / 3), K_VOID, 3, t * 4);
+    if (y < 2.5) F._ring(x, GROUND_Y, z, 0.7 * k, 12, 0.45, 0.3 * GROUND_GAIN * (1 - y / 3), K_VOID, 3, t * 4);
   }
   // the air drawn in on spirals (more while it hangs and gathers)
   const n = hang ? 3 : 1;
@@ -68,14 +68,16 @@ function drawSun(F, s, hang) {
   }
   if (hang) return;
   // the wake: two strands winding back along its way
-  const dx = s.dx ?? 0, dz = s.dz ?? 0, px = -dz, pz = dx, L = Math.min(1.3 * k, 0.08 * (s.speed ?? 10) * (0.4 + Math.min(1, s.age * 4)));
+  const dx = s.dx ?? 0, dz = s.dz ?? 0, px = -dz, pz = dx, L = Math.min(2.2 * k, 0.14 * (s.speed ?? 10) * (0.4 + Math.min(1, s.age * 4)));
   if (lf > 0) {
+    // (its way, written on the letter grid: a hot line back from the body, as the blast's own tail)
+    F._ink(x - dx * L, y, z - dz * L, x - dx * R0 * 0.8, y, z - dz * R0 * 0.8, 0, 0.12, 0, 0.75);
     for (let st = 0; st < 2; st++) {
       let ax = x, ay = y, az = z;
       for (let j = 1; j <= 5; j++) {
         const u = j / 5, a = t * 14 + st * Math.PI + u * 5, w = 0.22 * k * (1 - u * 0.4);
         const bx = x - dx * L * u + px * Math.cos(a) * w, by = y + Math.sin(a) * w, bz = z - dz * L * u + pz * Math.cos(a) * w;
-        F._ink(ax, ay, az, bx, by, bz, 0, 0.5 * (1 - u), 0, 0.5 * (1 - u) * 0.8, 0, K_VOID);
+        F._ink(ax, ay, az, bx, by, bz, 0, 0.85 * (1 - u * 0.8), 0, 0.85 * (1 - u * 0.8) * 0.85, 0, K_VOID);
         ax = bx;
         ay = by;
         az = bz;
@@ -133,11 +135,17 @@ function drawComet(F, s, hang) {
     const L = hang ? 0 : Math.min(1.1 * k, 0.07 * (s.speed ?? 10) * (0.4 + Math.min(1, s.age * 4)));
     for (let i = 0; i < 6; i++) {
       const u = i / 5, w = 0.42 * k * grow * (1 - 0.75 * u) * (1 + 0.1 * Math.sin(t * 30 + i));
-      F._blob(x - dx * L * u, y - sl * L * u, z - dz * L * u, 0, 0, 0, lf, w, w, 0.75 * (1 - 0.6 * u), 0.75 * (1 - 0.6 * u), K_VOID);
+      F._blob(x - dx * L * u, y - sl * L * u, z - dz * L * u, 0, 0, 0, lf, w, w, 0.95 * (1 - 0.5 * u), 0.95 * (1 - 0.5 * u), K_VOID);
+    }
+    // the tail written on the letter grid: a hot line twice the teardrop's length back along its way
+    if (!hang) {
+      const T2 = Math.min(2.8 * k, 0.18 * (s.speed ?? 10) * (0.4 + Math.min(1, s.age * 4)));
+      F._ink(x - dx * T2, y - sl * T2, z - dz * T2, x, y, z, 0, 0.08, 0, 0.95);
+      F._ink(x - dx * T2 * 0.6, y - sl * T2 * 0.6 + 0.06, z - dz * T2 * 0.6, x, y + 0.03, z, 0, 0.1, 0, 0.7, 0, K_VOID);
     }
     // the floor lit in a streak under its way
     if (!hang && y < 2.6) {
-      const h = 0.22 * GROUND_GAIN * (1 - y / 3);
+      const h = 0.36 * GROUND_GAIN * (1 - y / 3);
       F._ink(x, GROUND_Y, z, x - dx * (L + 1.6 * k), GROUND_Y, z - dz * (L + 1.6 * k), 0, h, 0, h * 0.2, 0, K_VOID);
     }
   }
@@ -152,7 +160,7 @@ function drawComet(F, s, hang) {
   // the tail: tiny letters shed where it passes, left hanging in the air (they drift on the wind a little)
   const W = F.game?.world?.life?.wind;
   const wx = (W?.dirX ?? 0) * (W?.speed ?? 0) * 0.15, wz = (W?.dirZ ?? 0) * (W?.speed ?? 0) * 0.15;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     const r = F.lrand(0, 0.2) * k, a = F.lr() * TAU, back = F.lrand(0.1, 0.5) * k;
     mote(F, x - dx * back + Math.cos(a) * r, y - sl * back + Math.sin(a) * r, z - dz * back + Math.sin(a) * r * 0.5, wx + F.lrand(-0.2, 0.2), F.lrand(-0.1, 0.3), wz + F.lrand(-0.2, 0.2), F.lrand(0.35, 0.6), F.lrand(0.08, 0.12), ".'`,", i ? GOLD : WHITE, GOLD_END, 1.5, 0.8);
   }
