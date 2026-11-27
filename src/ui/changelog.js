@@ -27,6 +27,40 @@ export const RELEASES = [
         ],
       },
       {
+        date: '2026-11-27',
+        title: "Xin Yi's limbs on the line",
+        notes: [
+          'Xin Yi moves more cleanly: his punches land straight at you, his kicks stay straight through the hit, his elbows and spinning kicks reach you instead of striking short, and his low sweep passes right through you. The timing of every attack is unchanged.',
+          'His guns now point where they fire, each shot leaving the muzzle with a kick of his arm and a curtain of falling code behind it. His palm bolts in the last phase are a hot core in turning rings of digits.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Lu Wusheng draws like a swordsman',
+        notes: [
+          'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',
+          'To try: ?sheathPace=a (his scabbard blows wind up longer) and ?drawFx=a, b or c (three looks for the draw).',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Cinder Wyrm bites with its whole body',
+        notes: [
+          'The wyrm drives its body into a bite first, the head hanging back, then snaps onto the beat of its warning, its jaws reaching you as the hit lands.',
+          'No change to any warning, timing or damage.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap',
+        notes: [
+          'Halcyon fights like a flier now: his punches go straight at you with the arm long, his kicks land straight, his legs trail long behind him instead of folding under him, and Fly-By comes through your chest instead of over your head.',
+          'His eye beams are heat vision: two threads meeting in one hard crimson line, a shimmer rising off it, the ground molten and spitting sparks where it lands.',
+          'His clap and his meteor landing send a ring of air racing out across the plaza, shoving the dust ahead of it.',
+          'Being tried out: add ?halPace=a to the address for a slower, easier-to-read pace.',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [

@@ -50,6 +50,11 @@ export class IronMoves {
     this.wheel = null;
   }
 
+  /** `?oneMoves=b` (ADR-253): the guns fire from their drawn muzzles, the arms kicking (gunAim.js). */
+  _b() {
+    return !!this.d.gunAim?.on();
+  }
+
   /** Everything in flight of his is the fx pool's: nothing held here to drop. */
   drop() {
     this.rain = null;
@@ -92,14 +97,33 @@ export class IronMoves {
       return true;
     }
     if (D.iron === 'point') {
-      const h = d.handPoint(false, this._h);
-      d.fx.muzzle?.(h.x, h.y, h.z, Math.sin(d.yaw), Math.cos(d.yaw), 0.9, 2);
+      const b2 = this._b();
+      const h = b2 ? d.muzzlePoint(false, this._h) : d.handPoint(false, this._h);
+      let fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+      const p = this.game.player?.position;
+      if (b2 && p) {
+        // (?oneMoves=b: the flash along the gun's line to the hero, the arm kicking)
+        const l = Math.hypot(p.x - h.x, p.z - h.z) || 1;
+        fx = (p.x - h.x) / l;
+        fz = (p.z - h.z) / l;
+        d.gunAim?.fire(false);
+      }
+      d.fx.muzzle?.(h.x, h.y, h.z, fx, fz, 0.9, 2);
       this.game.events?.emit?.('dragon:shot', { attack: a?.name ?? 'closeIron', heavy: true });
       return false; // (the brain's blow decides the rest)
     }
     if (D.iron === 'wheel') {
       // the line along the floor: shots drawn on it, the world bitten along it
       const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), r = D.zone?.r ?? 9;
+      // (?oneMoves=b: both guns fire it, a flash at each muzzle down the line, both arms kicking: the line
+      // was drawn along the floor alone, nothing at the guns)
+      if (this._b()) {
+        for (const left of [false, true]) {
+          const h = d.muzzlePoint(left, this._h);
+          d.fx.muzzle?.(h.x, h.y, h.z, fx, fz, 0.6, 2);
+          d.gunAim?.fire(left);
+        }
+      }
       for (let i = 1; i <= 4; i++) {
         const k = (i / 4) * r;
         d.fx.muzzle?.(d.position.x + fx * k, 0.35, d.position.z + fz * k, fx, fz, 0.5, 2);
@@ -238,7 +262,10 @@ export class IronMoves {
     if (!p) return null;
     const left = this.hand === 1 && d.phase >= 2;
     this.hand = 1 - this.hand;
-    const h = d.handPoint(left, this._h);
+    // (?oneMoves=b: from the drawn muzzle, the arm kicking; see below for its height)
+    const b2 = this._b();
+    const h = b2 ? d.muzzlePoint(left, this._h) : d.handPoint(left, this._h);
+    if (b2) d.gunAim?.fire(left);
     let x = h.x, y = h.y, z = h.z;
     if (!Number.isFinite(x + y + z)) {
       x = d.position.x;
@@ -258,8 +285,13 @@ export class IronMoves {
     const dx = tx - x, dz = tz - z, l = Math.hypot(dx, dz) || 1;
     // (the fairness guard: it hangs a moment at the muzzle, or goes uncued and harmless)
     const w = d.fairThrow(Math.max(0, dist - C.radius - 0.45) / speed, tell, a?.name ?? 'shot');
-    const s = d.fx.throwShot?.({ delay: w > 0 ? w : 0,
-      kind: 'blast', x, y: Math.max(0.9, Math.min(1.4, y)), z, dx: dx / l, dz: dz / l, speed, radius: C.radius, size: C.size, range: C.range,
+    // (?oneMoves=b: it leaves the muzzle where it is drawn and falls along its way to the hero's chest
+    // (the blasts' `yTo`): held between 0.9 and 1.4 m it left 0.2 - 0.9 m under the gun; its flight and its
+    // hit are flat, as they were)
+    const yB = b2 ? Math.max(0.9, Math.min(2.6, y)) : Math.max(0.9, Math.min(1.4, y));
+    const fall = b2 ? { yTo: this.T.motion.chestY, yLen: Math.max(1, dist) } : null;
+    const s = d.fx.throwShot?.({ delay: w > 0 ? w : 0, ...fall,
+      kind: 'blast', x, y: yB, z, dx: dx / l, dz: dz / l, speed, radius: C.radius, size: C.size, range: C.range,
       tell, damage, knockback: heavy ? 1.6 : 0.3, attack: a?.name ?? (heavy ? 'twoThunders' : 'ironRain'), returnable: heavy, hitKind: 'shot',
     });
     if (s) {

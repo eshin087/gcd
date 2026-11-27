@@ -2,6 +2,8 @@ import { AscFx } from '../ascendant/fx.js';
 import { K_SMOKE, K_VOID, K_STEEL, K_FIRE } from '../duelist/fx.js';
 import { FIRE_PALETTES } from '../../../render/firePalettes.js';
 import { halLook } from './look.js';
+import { eyesLook, eyeBeam, eyeCharge, eyesAxis } from './fxEyes.js';
+import { shockwave, shockUpdate, shockReset } from './fxShock.js';
 
 // Halcyon's effects: Tian Lei's (AscFx: the beam's body, the splash, the muzzle, the crater, the vanish,
 // the limb trails; every drawing method on its own stream) with his eyes' heat in place of the gold. The
@@ -16,6 +18,10 @@ import { halLook } from './look.js';
 //   skyMark(x, z, r, u)                      a dark disc with a red rim on the ground (The Falling Sky)
 //   avenueMark(ax, az, bx, bz, k)            red strokes along the road (Scorched Avenue's line)
 //   crashBurst(x, y, z, dx, dz)              his body through a storefront: debris, dust, a ring of air
+//   shockwave(x, z, r, y, land)              (ADR-254) Applause's ring / Meteor's landing under `?halShock=a|b`
+//                                            (fxShock.js); false under '0' (the caller draws the dust front)
+// (ADR-254) `beam` / `beamSplash` / `eyes` draw his own eye beams and their charge under `?halEyes=a|b`
+// (fxEyes.js); '0' Tian Lei's beam in his crimson.
 
 /** ?glare=: the palette the void slot takes. a crimson with a white-hot steel core (the beam body draws a
  *  steel core over it), b crimson alone, c the engine's orange fire. */
@@ -48,9 +54,39 @@ export class HalFx extends AscFx {
     return super._light(o);
   }
 
+  // ---------------------------------------------------------------- the redrawn options (ADR-254)
+  /** A beam (glare.js): under `?halEyes=a|b` his eyes' own (fxEyes.js); '0' Tian Lei's, in his crimson. */
+  beam(ax, ay, az, bx, by, bz, w, k, dt, form = 1) {
+    const L = eyesLook();
+    if (L === '0' || !this.fire || !Number.isFinite(ax + ay + az + bx + by + bz + w + k) || !(k > 0.01)) return super.beam(ax, ay, az, bx, by, bz, w, k, dt, form);
+    eyeBeam(this, L, ax, ay, az, bx, by, bz, Math.max(0.4, w), Math.min(1, k), Math.max(0, dt || 0));
+  }
+  /** Its end: drawn by the beam's own foot under a / b. */
+  beamSplash(x, y, z, k, dt, form = 1) {
+    if (eyesLook() === '0') super.beamSplash(x, y, z, k, dt, form);
+  }
+  /** A shockwave (Applause, Meteor's landing): true when an option drew it (`?halShock=a|b`, fxShock.js). */
+  shockwave(x, z, r, y, land = false) {
+    return shockwave(this, x, z, r, y, land);
+  }
+  update(dt, d) {
+    super.update(dt, d);
+    shockUpdate(this, dt);
+  }
+  reset() {
+    super.reset();
+    shockReset(this);
+  }
+
   /** His eyes this frame: two crimson points (steel hearts as k rises). */
   eyes(x, y, z, k, rx = 1, rz = 0) {
     if (!this.fire || !Number.isFinite(x + y + z + k) || !(k > 0.02)) return;
+    // (the redrawn beams: the eyes' axis for the two threads, the charge through a windup)
+    const L = eyesLook();
+    if (L !== '0') {
+      eyesAxis(this, rx, rz);
+      if (this.d?.glare && !this.d.glare.busy && this.d.mode === 'act') eyeCharge(this, L, x, y, z, k, Math.max(0, this.game.fxDt ?? this.game.dt ?? 0.016));
+    }
     const life = this._frame();
     if (!(life > 0)) return;
     for (const s of [-1, 1]) {

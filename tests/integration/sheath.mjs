@@ -42,6 +42,8 @@ if (process.env.GCD_TUNE) {
   const merge = (o, v) => { for (const [k, x] of Object.entries(v)) { if (x && typeof x === 'object' && !Array.isArray(x) && o[k] && typeof o[k] === 'object') merge(o[k], x); else o[k] = x; } };
   merge(TUNING, JSON.parse(process.env.GCD_TUNE));
 }
+// (GCD_LOOKS='sheathForm=a,drawFx=b': look switches set for the whole run)
+{ const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
 const LVL = getLevel('grove');
 const errors = [];
 console.error = (...a) => { errors.push(a.map((x) => (x?.stack ? x.stack.split('\n').slice(0, 3).join(' | ') : String(x))).join(' ')); };
@@ -1369,8 +1371,105 @@ async function scenarioAudit() {
   if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
 }
 
-const S = { level: scenarioLevel, rules: scenarioRules, motion: scenarioMotion, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin, look: scenarioLook };
-const OPT_IN = { strategy: scenarioStrategy, lean: scenarioLean, audit: scenarioAudit };
+// ================================================================== scenario: form (opt-in: ADR-252's audit, printed)
+/** Every move's limbs and weapon at each impact, and the draw's hands (sheathAudit.mjs), plus the sword audit's
+ *  table (swordAudit.mjs). GCD_MOVES=a,b to pick; GCD_LOOKS='sheathForm=a' switches; GCD_AUDIT_OUT=file. */
+async function scenarioForm() {
+  out('\n== scenario FORM (every move: the limbs and the scabbard at the impact, the draw\'s hands; a table, no assertions) ==');
+  const { sheathAudit, printSheathAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/sheathAudit.mjs`).href);
+  const { swordAudit, printAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/swordAudit.mjs`).href);
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].manual);
+  const phaseOf = (n) => (MOVES[n].transition ? MOVES[n].phase - 1 : Math.max(1, MOVES[n].phase ?? 1));
+  const setPhase = (G, f) => { const d = G.game.dragon; d.enterPhase(f); d.phase = f; };
+  const rows = sheathAudit({ THREE, build, duel, run, DT, MOVES, names, phaseOf, setPhase });
+  printSheathAudit(rows, out);
+  const sw = swordAudit({ THREE, build, duel: (G, o) => duel(G, o), run, DT, MOVES, names, formOf: phaseOf, setForm: setPhase });
+  printAudit(sw, out);
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify({ rows, sw }, null, 1));
+}
+
+// ================================================================== scenario: formpace (ADR-252: the form, the pace)
+/** `?sheathForm=a` changes poses only (every beat's impact, cue and end, every recovery as with '0'), and at the
+ *  impacts: a thrust's arm long and in line, a draw's fist on the hilt at the cock and its cut ending in a lunge
+ *  (not a split), the overhead a diagonal, the sweep's legs uncrossed. `?sheathPace=a`: every move's first real
+ *  blow >= pace.first s (x windupScale), real blows >= pace.gap apart, the cue pace.flashLead before; the draws,
+ *  the quick blow and the transitions as before. */
+async function scenarioFormPace() {
+  out('\n== scenario FORMPACE (ADR-252: the form changes poses only; the pace meets rule 10; the draws keep their time) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { sheathAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/sheathAudit.mjs`).href);
+  const T3 = (A) => A.beats.map((b) => `${b.impact.toFixed(4)}/${b.flash.toFixed(4)}/${b.end.toFixed(4)}`).join(' ') + ` | ${A.end.toFixed(4)}`;
+  const timing = (look, val) => {
+    const bad = [];
+    for (const name of MOVE_NAMES) for (const ph of [1, 2, 3]) {
+      setLook(look, '0');
+      const A0 = realise(name, ph, () => 0.5);
+      setLook(look, val);
+      const A1 = realise(name, ph, () => 0.5);
+      setLook(look, null);
+      if (!A0 || !A1) continue;
+      if (look === 'sheathForm' && T3(A0) !== T3(A1)) bad.push(`${name} P${ph}`);
+      if (look === 'sheathPace') {
+        const def = MOVES[name], ws = TUNING.windupScale[ph - 1];
+        const keep = def.transition || def.quick || def.manual;
+        let last = null, first = true;
+        A1.beats.forEach((b, i) => {
+          const b0 = A0.beats[i], D = b.def, own = D.draw || D.cast || D.hazard;
+          if (b.feint || !(D.damage > 0)) return;
+          if (keep || own) { if (Math.abs(b.impact - b.start - (b0.impact - b0.start)) > 1e-6 || Math.abs(b.impact - b.flash - (b0.impact - b0.flash)) > 1e-6) bad.push(`${name} P${ph} b${i} (keeps its own time) moved`); }
+          else {
+            if (first && b.impact + 1e-6 < TUNING.pace.first * ws) bad.push(`${name} P${ph} b${i} first at ${b.impact.toFixed(2)}`);
+            if (!first && last !== null && b.impact - last + 1e-6 < TUNING.pace.gap) bad.push(`${name} P${ph} b${i} ${(b.impact - last).toFixed(2)} after`);
+            if (Math.abs(b.impact - b.flash - TUNING.pace.flashLead) > 1e-6 && b.flash > b.tellAt + 1e-6) bad.push(`${name} P${ph} b${i} cue ${(b.impact - b.flash).toFixed(2)}`);
+          }
+          first = false;
+          last = b.impact;
+        });
+      }
+    }
+    return bad;
+  };
+  {
+    const bad = timing('sheathForm', 'a');
+    assert(!bad.length, `?sheathForm=a: every move in every phase has the same impacts, cues, ends and recovery as '0' (${bad.slice(0, 4).join(' | ')})`);
+  }
+  {
+    const bad = timing('sheathPace', 'a');
+    assert(!bad.length, `?sheathPace=a: first blows >= ${TUNING.pace.first} s x windupScale, blows >= ${TUNING.pace.gap} s apart, the cue ${TUNING.pace.flashLead} s before; draws / the quick blow / transitions as before (${bad.slice(0, 4).join(' | ')})`);
+  }
+  // the form at the impacts, measured on the rig (sheathAudit.mjs)
+  setLook('sheathForm', 'a');
+  const names = ['knock', 'refusals', 'tapStone', 'lintel', 'reedCutter', 'oneBreath', 'lightless', 'thousandLi'];
+  const phaseOf = (n) => Math.max(1, MOVES[n].phase ?? 1);
+  const setPhase = (G, f) => { const d = G.game.dragon; d.enterPhase(f); d.phase = f; };
+  const rows = Object.fromEntries(sheathAudit({ THREE, build, duel, run, DT, MOVES, names, phaseOf, setPhase }).map((r) => [r.name, r]));
+  setLook('sheathForm', null);
+  const thr = ['knock', 'refusals', 'tapStone'].map((n) => rows[n].imp.filter((x) => x.part === 'tip' && MOVES[n].beats[x.i].zone?.kind === 'line')).flat();
+  assert(thr.length >= 3 && thr.every((x) => x.el >= 150 && x.line <= 10), `thrusts: the arm long and on the scabbard's line (elbow ${thr.map((x) => x.el).join(' ')}° >= 150, off the line ${thr.map((x) => x.line).join(' ')}° <= 10)`);
+  const dr = ['oneBreath', 'lightless', 'thousandLi'].map((n) => rows[n].imp[0]);
+  assert(dr.every((x) => x.hilt <= 5), `draws: the fist on the hilt at the cock (${dr.map((x) => x.hilt).join(' ')} cm <= 5)`);
+  assert(dr.every((x) => Math.min(x.kR, x.kL) <= 130 && Math.max(x.kR, x.kL) <= 170 && x.el >= 140), `draws: the cut ends in a lunge, the front knee bent, the back leg long but not locked, the arm open (knees ${dr.map((x) => `${x.kR}/${x.kL}`).join(' ')}, elbow ${dr.map((x) => x.el).join(' ')})`);
+  const ov = rows.lintel.imp[0];
+  assert(ov.tilt !== null && ov.tilt <= 70, `the overhead comes down on a diagonal (its path ${ov.tilt}° off level <= 70)`);
+  assert(rows.reedCutter.imp[0].kL >= 30, `the sweep: the legs not wound round each other`);
+  // the draw's looks (`?drawFx`): One Breath dodged, each look: it draws (more heat and letters than '0'),
+  // the same hits and cues, no NaN (build()'s spawn guards)
+  const cost = {};
+  for (const v of ['0', 'a', 'b', 'c']) {
+    setLook('drawFx', v);
+    const G = build();
+    const R = answerDraw(G, 'oneBreath', 'dodge', { dist: 4, early: 0.12 });
+    cost[v] = { spawns: G.counters.spawns, flashes: R?.flashes.length ?? -1, hp: R ? Math.round(R.hp) : -1, clicks: G.game.dragon.stats.clicks };
+  }
+  setLook('drawFx', null);
+  out(`     drawFx spawns (fire blobs + letters through One Breath, dodged): ${Object.entries(cost).map(([k, c]) => `${k} ${c.spawns}`).join(' · ')}`);
+  assert(['a', 'b', 'c'].every((v) => cost[v].spawns > cost['0'].spawns && cost[v].flashes === cost['0'].flashes && cost[v].hp === cost['0'].hp && cost[v].clicks === cost['0'].clicks),
+    `?drawFx=a|b|c: each draws more than '0', the same cue, the same outcome, the click (${JSON.stringify(cost)})`);
+}
+
+const S = { level: scenarioLevel, rules: scenarioRules, motion: scenarioMotion, formpace: scenarioFormPace, draw: scenarioDraw, honor: scenarioHonor, sheath: scenarioSheath, world: scenarioWorld, timing: scenarioTiming, phases: scenarioPhases, late: scenarioLate, pace: scenarioPace, training: scenarioTraining, reward: scenarioReward, win: scenarioWin, look: scenarioLook };
+const OPT_IN = { strategy: scenarioStrategy, lean: scenarioLean, audit: scenarioAudit, form: scenarioForm };
 const list = SCEN === 'all' ? Object.keys(S) : SCEN.split(',');
 for (const k of list) {
   if (OPT_IN[k]) S[k] = OPT_IN[k];
