@@ -2530,6 +2530,27 @@ phase 3 dipped under its phase 2 (0.93), the mean's ramp is 1.09. Slower than Sh
 66 s, block-only 49 / 57 s; the block-only bot is never killed by a draw, mortal too. TIMING: every contact
 within 0 ms of its flash + 0.3 s. Not measured: a human on the phone; the draw's read at the phone's camera
 was judged from stills only.
+### The audit (2026-11-27, ADR-252; the owner's picks: the form `a`, the default; `?sheathPace=a` and `?drawFx=a|b|c` kept as options, `0` the default)
+Measured at every impact (`node tests/integration/sheath.mjs . form`; sheathAudit.mjs) before -> with `?sheathForm=a`:
+
+| | before | form |
+|---|---|---|
+| thrusts' elbow / the scabbard off the arm's line | 121 - 124° / 24° | 157° / 2° |
+| The Walking Staff's knees (front / back) | 176 / 176 | 86 / 176 |
+| a draw's cut end: knees (front / back), the arm | 176 / 176, 129 - 141° | 109 - 115 / 143 - 145, 145 - 162° |
+| the fist off the hilt at the cock | 11 - 13 cm | 2 - 3 cm |
+| the scabbard hand from the cock to the cut | 26 - 51 cm forward | 0 - 17 cm (drawn back level behind him) |
+| the overhead's path off level | 75 - 87° (an upright bar) | 60 - 62° (a diagonal) |
+| Sweeping the Road | the legs crossed (-0.86 m), a knee pop | the feet go round with him |
+| the free hand in the scabbard cuts | 0.5 m in the strike | half the travel |
+
+Every impact, cue, end and recovery is the same with the form (sheath.mjs FORMPACE). His kick (Three Steps' second
+word) was already straight at contact (176°, the support knee bent) and is left. `?sheathPace=a`: COMBAT rule 10's
+floor, a move's first blow >= 0.7 s (x windupScale), blows >= 0.45 s apart, the cue 0.35 s before, the time a held
+cock; the draws, Before the Word, the transitions and the hanging cuts as before. `?drawFx`: the draw's look (a the
+drawn breath, b hanging leaves, c the late sound; pale steel at the cut's line, no cue of their own; +150 - 500
+letters and blobs over a whole draw).
+
 ## The One Who Woke (2026-11-22, ADR-156 – ADR-158; `?level=code`)
 
 Xin Yi, a BARE-HANDED fighter in a long black coat (wokenOne/): a recognizable homage to the hero of the

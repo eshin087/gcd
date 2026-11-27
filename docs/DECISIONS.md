@@ -6996,6 +6996,48 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
 
+## ADR-252 — Lu Wusheng audited: the draw's hands and lunge, thrusts in line, a diagonal overhead, the readable pace, three looks for the draw (`?sheathForm=` `?sheathPace=` `?drawFx=`) (2026-11-27)
+
+- **Context:** the owner asked for every boss's motion to be audited against `docs/ANIMATION.md` and the Sekiro /
+  Phantom Blade Zero / Onimusha lessons ("weird arm angles and sword positioning", "attacks that look unrealistic"),
+  every attack to read, and the special moves' effects at the fox / Bai Wuji bar, as one draft PR per boss with
+  films. The audit (`sheath.mjs form`, `tests/integration/sheathAudit.mjs`: the limbs and the weapon at every
+  impact, the draw's hands through the windup) measured on Lu Wusheng: thrusts on a bent arm (elbow 121 - 124°)
+  with the scabbard 24° off the arm's line; every draw ending in a split with both knees locked (176 / 176°), the
+  cut's arm short (129 - 141°), the right fist 11 - 13 cm off the hilt at the cock and the scabbard hand going
+  FORWARD 26 - 51 cm as he drew (the hips' turn carrying it; an iai draw pulls the scabbard back, saya-biki); the
+  two-handed overhead an upright bar at the game camera (the point's path 75 - 87° off level); Sweeping the Road's
+  legs crossed (-0.86 m) and a knee pop; the free hand in the scabbard cuts swung 0.5 m inside the strike (the
+  ROADMAP's open item). His blunt blows' windups (0.46 s, strings 0.34 s apart) sit under COMBAT rule 10's floor.
+- **Decision:** three switches, `0` (today) the default until the owner picks from the films:
+  - `?sheathForm=a` (`sheathed/form.js`, the form's keys built beside the authored ones in `moves.js`, played through
+    the realiser's `keysOf` / `recoveryKeysOf`; his arms' soft reach `TUNING.form.armSoft` through `kit.motion`): the
+    fist closed on the hilt in the settle and the cock (2 - 3 cm), the scabbard drawn back level behind him as the
+    blade leaves, the cut's end a lunge (the front knee ~110°, the back leg ~143°), the arm open (145 - 162°); thrusts
+    on the scabbard's line (157°, 2° off) out of a lunge; the overhead raised over his sword shoulder and brought
+    down across him (62° off level); the sweep's feet carried round with him; the free hand gathered by the sternum
+    and split back in opposition, half the travel (Shen Hui's ADR-250 fragments: the same rig, the same values).
+    Poses only: every impact, cue, end and recovery identical (`sheath.mjs formpace`).
+  - `?sheathPace=a` (`sheathed/pace.js`, Tian Lei's ADR-248 method): a move's first blow >= 0.7 s (x windupScale),
+    blows >= 0.45 s apart, the cue 0.35 s before, the time added as a held cock (the larger of it and the held
+    tells' hold); the draws, Before the Word, the transitions and the hanging cuts keep their own timing.
+  - `?drawFx=a|b|c` (`sheathed/fx.js`): the draw's look, one idea each, pale steel letters and heat at the cut's line
+    (never blue: the blue flare stays the one cue): a the drawn breath (the air drawn into the scabbard's mouth
+    through the stillness, thrown out along the cut, a ripple where it ended); b hanging leaves (the blade's arc for
+    an instant, letters left hanging along the line that drop on the click); c the late sound (a quiet cut; on the
+    re-sheathe's click a white seam along the line, the air split to both sides, two ripples).
+- **Why this way:** the kit already had every hook (`keysOf`, `recoveryKeysOf`, `kit.motion`), so no shared engine
+  code changed; the form recognises a pose by the fragment it was spread from (shared arrays) instead of copying
+  every move; the time a slower pace adds is a still cocked pose, the house pattern for a readable tell (ADR-223).
+  One Breath's timing (the hero's technique, ADR-146) and the draw's rule are untouched; the flash chain's answer
+  (ADR-246) still opens on a meetable scabbard cut.
+- **Not taken:** keying the draw's hand off the blade instead of `arm: 1` (the arm would lose the chest's turn with
+  the cut); a coloured draw effect (a second colour at the cue would muddy the blue flare); restyling his look.
+- **The owner's picks (2026-11-27, from the films and the preview):** the form `a`, the default; the pace as shipped
+  (`sheathPace` 0: his fast openers stay); the draw's look as shipped (`drawFx` 0: the one white line). The other
+  options stay behind their switches.
+- **Consequences / open:** The planted foot's one-frame jumps live in the hero's animator (`_feetClip`; the hero session's).
+  PR 170 (draft) also names an ADR-252 for the hero's slice; the batch's brief reserves 252 for Lu Wusheng.
 ## ADR-254 — Halcyon audited: a flier's limbs, the readable pace, two looks for his eyes and his shockwaves (`?halMotion=b`, `?halPace=a`, `?halEyes`, `?halShock`) (2026-11-27)
 
 - **Context:** the boss motion audit (the owner: "weird looking arm angles ... kicks aren't straight during the

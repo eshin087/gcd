@@ -82,6 +82,10 @@ export const PICKED = Object.freeze({
   foxMotion: 'a', // Wen Yao's, the same, and his lifted feet eased off their spot
   wyrmMotion: 'a', // the wyrm's string hits held, blue rearing its head, red sunk with the tail up
   sheathQuick: 'a', // Before the Word
+  // Lu Wusheng's audit (ADR-252; the owner's picks, 2026-11-27, from the before / after films)
+  sheathForm: 'a', // the fist on the hilt, the scabbard drawn back, the draw's lunge, thrusts in line, the diagonal overhead, the sweep's feet
+  sheathPace: '0', // his fast pace kept (a: COMBAT rule 10's floor as held cocks)
+  drawFx: '0', // the draw's one white line kept (a the drawn breath, b hanging leaves, c the late sound)
   foxQuick: 'a', // Fox Snap, Fox Knee
   wyrmQuick: 'a', // Snap swipe
   wyrmStrike: 'a', // the wyrm's bites: the body surges first, the head snaps onto the beat (the owner's pick, 2026-11-27, from the films; ADR-257)

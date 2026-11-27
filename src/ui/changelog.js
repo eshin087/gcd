@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: 'Lu Wusheng draws like a swordsman',
+        notes: [
+          'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',
+          'To try: ?sheathPace=a (his scabbard blows wind up longer) and ?drawFx=a, b or c (three looks for the draw).',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'The Cinder Wyrm bites with its whole body',
         notes: [
           'The wyrm drives its body into a bite first, the head hanging back, then snaps onto the beat of its warning, its jaws reaching you as the hit lands.',
