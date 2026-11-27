@@ -19,10 +19,10 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
-        title: "The Cinder Wyrm's bites, to try",
+        title: 'The Cinder Wyrm bites with its whole body',
         notes: [
-          'Add ?wyrmStrike=a to the address to try it: the wyrm drives its body into a bite first, the head hanging back, then snaps onto the beat of its warning, its jaws reaching you as the hit lands.',
-          'No change to any warning, timing or damage. Without the switch the wyrm moves as before.',
+          'The wyrm drives its body into a bite first, the head hanging back, then snaps onto the beat of its warning, its jaws reaching you as the hit lands.',
+          'No change to any warning, timing or damage.',
         ],
       },
       {

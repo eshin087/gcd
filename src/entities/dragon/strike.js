@@ -3,7 +3,7 @@ import { clamp, lerp, smoothstep } from '../../core/math.js';
 import { WYRM_STRIKE } from './tuningMotion.js';
 import { SCALE as S } from './tuning.js';
 
-// The wyrm's strike pass (ADR-257; tuningMotion.js WYRM_STRIKE; `?wyrmStrike=a`, '0' as it shipped):
+// The wyrm's strike pass (ADR-257; tuningMotion.js WYRM_STRIKE; `?wyrmStrike=a`, the owner's pick, the default; '0' as it shipped):
 // the order a bite travels through its body. The anatomy audit (integ.mjs `wyrmanatomy`) found every bite
 // moving hips, chest, neck and head on the same frame (the front of the wyrm one block), its jaws still
 // 1.2 - 3.3 m short of the hero when the flash's impact came (closest 0.07 - 0.27 s after it: the head's

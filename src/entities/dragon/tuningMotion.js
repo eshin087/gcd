@@ -29,7 +29,7 @@ export const WYRM_QUICK = Object.freeze({
   weight: [1.1, 1.2, 1.3], // (×0 with the switch off)
 });
 
-/** THE STRIKE PASS (ADR-257, strike.js; `?wyrmStrike=a`, '0' as it shipped): the order a blow runs
+/** THE STRIKE PASS (ADR-257, strike.js; `?wyrmStrike=a`, the owner's pick, the default; '0' as it shipped): the order a blow runs
  *  through the body. Measured by integ.mjs `wyrmanatomy`. Model units / pose fields / seconds. */
 export const WYRM_STRIKE = Object.freeze({
   // BITES: over the last `lead` s of the windup the chest drops to `lower` and pitches to `pitch` (the
