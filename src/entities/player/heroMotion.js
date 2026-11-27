@@ -12,6 +12,12 @@
 //                      within ~30° of the forearm, 28° / 33° measured (a thrust extends from the shoulder along one line,
 //                      docs/ANIMATION.md), aimed a little lower (36° / 24° up, from 45° / 36°)
 //
+//   ?parryFlick=0|a|b  the parry tap. A tap raised the guard for one frame (the state goes back to idle as the button
+//                      comes up), so nothing showed until a blow met it and the deflect pose arrived in one frame.
+//                      a: the guard is SHOWN at least 0.16 s from the press (b: 0.24 s); only the pose waits: the
+//                      state is idle at once as before, so blocks, parries, windows and actions are unchanged
+//                      (player.js _toLocoAfter). Default 0 until the owner picks from the films.
+//
 // Read live: the player sets its animator's `wristSoft` every frame (player.js), setHeroThrust patches the two clips'
 // keys in place (swings.js SWINGS; '0' puts production's back). The Lab's 'hero' row switches both.
 
@@ -72,6 +78,19 @@ export function setHeroThrust(m) {
   return true;
 }
 
+export const FLICK = { 0: 0, a: 0.16, b: 0.24 };
+export const FLICK_IDS = ['0', 'a', 'b'];
+let flickNow = '0';
+export const heroFlick = () => flickNow;
+/** s the guard is shown after a block press at least (0: as before). */
+export const parryFlick = () => FLICK[flickNow] ?? 0;
+export function setParryFlick(m) {
+  const id = String(m);
+  if (!FLICK_IDS.includes(id)) return false;
+  flickNow = id;
+  return true;
+}
+
 // (in the game the fixes are on unless a switch turns them off; the headless sims start from the motion before,
 //  which their checks are written for, and the audit names what it measures)
 export const DEFAULT_WRIST = 'a';
@@ -81,6 +100,7 @@ export const DEFAULT_THRUST = 'a';
   if (q) {
     setHeroWrist(q.get('heroWrist') ?? DEFAULT_WRIST);
     setHeroThrust(q.get('heroThrust') ?? DEFAULT_THRUST);
+    setParryFlick(q.get('parryFlick') ?? '0');
   } else {
     setHeroWrist('0');
   }

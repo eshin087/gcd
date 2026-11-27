@@ -15214,6 +15214,36 @@ async function scenarioHeroMotion() {
   const L0 = tally('0'), L1 = tally('a');
   out(`   lands (Piercing Gale at 1 / 1.8 / 2.6 m, combo A's hit 4 at 0.6 / 1.2 m from the chest): off ${L0.join('')} · a ${L1.join('')}`);
   assert(L1.every((x, i) => x >= L0[i]), `the thrusts land wherever they landed before (${L0.join('')} → ${L1.join('')})`);
+  // the parry flick (?parryFlick): a tap SHOWS the guard a moment; the state, the parry and its window are unchanged
+  const tapTake = (id) => {
+    HM.setParryFlick(id);
+    far(); go(0.6);
+    input.click(1);
+    let shown = 0, idleAt = -1;
+    for (let i = 0; i < 40; i++) { G.tick(DT); if (A.key === 'block') shown++; if (idleAt < 0 && p.state === 'idle') idleAt = i; }
+    return { shown: shown * DT, idleAt };
+  };
+  const t0 = tapTake('0'), ta = tapTake('a');
+  out(`   a lone tap: the guard shown ${t0.shown.toFixed(2)} s (old) → ${ta.shown.toFixed(2)} s (a); back to idle on frame ${t0.idleAt} → ${ta.idleAt}`);
+  assert(t0.shown <= 0.04 && ta.shown >= 0.14 && ta.shown <= 0.2, `parryFlick a: a tap shows the guard ~0.16 s (${ta.shown.toFixed(2)} s; before ${t0.shown.toFixed(2)} s)`);
+  assert(ta.idleAt === t0.idleAt, `... only the pose: the state is idle as soon as before (frame ${t0.idleAt} → ${ta.idleAt})`);
+  const parryTake = (id) => {
+    HM.setParryFlick(id);
+    settle(G); d.hp = d.maxHp; place(G, 6);
+    const F = [];
+    const tick0 = G.tick;
+    G.tick = (dt) => { tick0(dt); const f = H.sample(); f.state = p.state; F.push(f); };
+    const rec = forceAttack(G, 'bite', { answer: 'parry', settle: 1 });
+    G.tick = tick0;
+    const i = F.findIndex((f) => f.state === 'parry');
+    // the free and the sword elbow's change into the deflect pose (the frame before it → its first)
+    const jump = i > 0 ? Math.max(Math.abs(F[i].elL - F[i - 1].elL), Math.abs(F[i].elR - F[i - 1].elR)) : NaN;
+    return { res: rec.res, jump };
+  };
+  const p0 = parryTake('0'), pa = parryTake('a');
+  out(`   a parry on the wyrm's bite: ${p0.res} → ${pa.res}; the elbows' jump into the deflect pose ${p0.jump.toFixed(0)}° → ${pa.jump.toFixed(0)}°`);
+  assert(p0.res === pa.res, `parryFlick a: the parry's outcome is the same (${p0.res} → ${pa.res})`);
+  HM.setParryFlick('0');
   HM.setHeroWrist('0'); HM.setHeroThrust('0');
   assert(JSON.stringify([SWINGS.risingThrust.keys, SWINGS.heavyThrust.keys]) === before, "heroThrust '0' puts production's keys back exactly");
   G.tick(DT);

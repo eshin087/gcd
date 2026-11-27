@@ -23,7 +23,7 @@ import { SwordMystic } from './swordMystic.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
 import { mowSwing } from '../../world/grass.js';
-import { wristSoft } from './heroMotion.js';
+import { wristSoft, parryFlick } from './heroMotion.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -245,6 +245,7 @@ export class Player {
     this.chargeFull = false;
     this.releaseK = 0; // charge of the thrust in flight (blade glow, thrust pose)
     this.recoil = 0; // block impact 0..1 (anim)
+    this.flickT = 0; // s the parry flick still shows the guard (heroMotion.js, _toLocoAfter)
     this.blockStunT = 0;
     this.blockEvt = { t: -Infinity, attack: null, stream: false, acc: 0 };
     this.iframeT = 0; // Ghostep i-frames
@@ -908,6 +909,7 @@ export class Player {
     this.yaw = wrapAngle(fin(this.yaw, Math.PI));
     this.object3d.rotation.y = this.yaw;
     this._updateLean();
+    if (this.flickT > 0 && (this.flickT -= dt) <= 0) this.anim.play('loco', 0.14); // (the parry flick ends)
     // the animator poses the plain upright body; the drawn one (lean, drawScale) is applied after
     this.lean.on = false;
     this.anim.wristSoft = wristSoft(); // (heroMotion.js, ADR-256: the soft wrist, live)
@@ -1103,6 +1105,7 @@ export class Player {
     this.stateT = 0;
     this.onceMask = 0;
     this.enterN++;
+    this.flickT = 0;
     if (state === 'stagger') this.staggerLen = TUNE.staggerDur; // (_guardOpen sets its own after)
     this.anim.play(animKey, blend, easeOut);
   }
@@ -1110,6 +1113,14 @@ export class Player {
   _toLoco(blend = 0.16) {
     this.atk = null;
     this._enter('idle', 'loco', blend);
+  }
+
+  /** Back to idle as _toLoco, but the animator keeps the guard `t` s more before it lets go (the parry flick,
+   *  ADR-256): only the pose waits. Anything that enters a state meanwhile plays its own pose (_enter clears it). */
+  _toLocoAfter(t) {
+    this._toLoco(0.12);
+    this.anim.play('block', 0.06);
+    this.flickT = t;
   }
 
   /** Drop the current action (hit reactions). */
@@ -1264,7 +1275,11 @@ export class Player {
       return;
     }
     if (!this.rmb.held) {
-      this._toLoco(0.12);
+      // (the parry flick, heroMotion.js ?parryFlick: a tap's guard is SHOWN for a moment more; the state is
+      // idle at once as before, so what blocks, parries and acts is unchanged)
+      const hold = parryFlick() - this.stateT;
+      if (hold > 0) this._toLocoAfter(hold);
+      else this._toLoco(0.12);
       return;
     }
     if (this._tryAction(true, true, true)) return; // attack / roll / drink out of the guard
