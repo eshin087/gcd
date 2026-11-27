@@ -296,7 +296,7 @@ export const DEFENSE = Object.freeze({
   // once, he reels (attacker.onCounter: his string is over), the crit window opens. `stop` / `shake`
   // / `punch`: the freeze, the camera
   counter: { window: 0.03, damage: 70, posture: 60, stop: 0.16, shake: 0.55, punch: 3.8 },
-  // --- the flash chain (`?counter=chain`, combat/flashChain.js; ADR-245): `links` flash counters in a
+  // --- the flash chain (`?counter=chain`, combat/flashChain.js; ADR-246): `links` flash counters in a
   // row on one duelist, each link's `damage` (final) / `posture` / `stop` / `shake` / `punch` by link.
   // Before the last he is thrown back (`react`, `push` m) and strikes back at once with his counter move;
   // the last is the flash counter's own ending (he reels, the cinematic, the crit window). Same window

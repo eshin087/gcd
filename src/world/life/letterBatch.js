@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createWyrmLetterAtlas } from '../../render/wyrmGlyphs.js';
+import { ship } from './ship.js';
 
 // THE AIR'S LETTERS: the living world's letters in the air (the wind's wisps, the weather's mist,
 // devils, rain, snow, embers) printed in THE HOUSE LETTER: the wyrm's pixel font (render/wyrmGlyphs.js,
@@ -232,13 +233,15 @@ export class LetterBatch {
   end() {
     this.count = this.n;
     this.geometry.instanceCount = this.n;
-    this.iPos.needsUpdate = this.iData.needsUpdate = this.iColor.needsUpdate = true;
+    // (the fast path, ship.js: only the n letters drawn go to the GPU, an empty batch leaves the frame)
+    ship(this.mesh, this.n, this.iPos, this.iData, this.iColor);
   }
 
   /** Nothing stays (the piece off, the world hidden, a reset). */
   empty() {
     this.n = this.count = this.np = 0;
     this.geometry.instanceCount = 0;
+    ship(this.mesh, 0, null, null, null, null, false);
   }
 
   /** (the pipeline's particle frame does not age these: their owner writes them) */

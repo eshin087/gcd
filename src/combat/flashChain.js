@@ -1,4 +1,4 @@
-// THE FLASH CHAIN (`?counter=chain`; ADR-245). The owner, 2026-11-26, after research into counter-kill
+// THE FLASH CHAIN (`?counter=chain`; ADR-246). The owner, 2026-11-26, after research into counter-kill
 // chains in other sword games: "Issen chain first", then "show me current and show me ... he strikes back
 // ... video comparison"; then, having seen every duelist both ways on film: "strikes back". So in the game
 // the chain is the default; `?counter=0` gives the flash counter as it was (he reels at once).

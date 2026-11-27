@@ -196,6 +196,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
 - [x] The owner's picks made the defaults (a for all three, every quick blow)
 - [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
+## M1.96 — The living world's fast path (2026-11-26, `world/life-perf`, ADR-245)
+- [x] Measured per layer on five levels (GPU at 4K and phone size, CPU at 1x / 4x / 6x)
+- [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
+- [x] BENCH (`?perf`) reads the living world's share
+- [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+
 ## M1.94 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-241 – ADR-243)
 - [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
       fallen tower in sections, two scenes (`crossing`, `void`: the city's pieces let go, the void's float),
@@ -1226,7 +1232,7 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 ### P4 — Combat additions from research into three sword games (2026-11-26)
 Research into Sekiro, Phantom Blade Zero and Onimusha: Way of the Sword found most of their core already here;
 five additions proposed to the owner, who picked the order:
-- [x] The flash chain: three flash counters in a row, he strikes back after each (ADR-245): the default, picked by
+- [x] The flash chain: three flash counters in a row, he strikes back after each (ADR-246): the default, picked by
       the owner from films of every duelist (`?counter=0` for the single counter)
 - [ ] The owner's playtest of the flash chain (and on the iPhone)
 - [ ] The Break finisher: on a posture-broken boss, choose where to cut (head for damage, legs for guard back)

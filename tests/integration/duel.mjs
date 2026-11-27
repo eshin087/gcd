@@ -1156,7 +1156,7 @@ async function scenarioTrade() {
 }
 
 // ================================================================== scenario: flashchain
-// The flash chain (?counter=chain, combat/flashChain.js, ADR-245): a flash counter that is not the last
+// The flash chain (?counter=chain, combat/flashChain.js, ADR-246): a flash counter that is not the last
 // link throws him back and he strikes back at once with his counter move; a flash counter of one of its
 // blows is the next link; the last link is the flash counter's own ending (he reels, the crit window).
 async function scenarioFlashChain() {

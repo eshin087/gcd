@@ -1,6 +1,7 @@
 import { TRAIL_N, TRAIL_CH, TRAIL_SEG } from '../render/shaderLib.js';
 import { lookOf } from '../entities/enemies/duelist/lookSwitch.js';
 import { GRASS } from './grassTuning.js';
+import { LIFE } from './life/lifeSwitch.js';
 
 // THE HERO'S WAKE THROUGH THE GRASS (`?bend=a|b|c`; `?bend=0`: today, the trodden trail in the scorch map's
 // B that the steps write, darker, standing up over 10 s). The owner (2026-11-24): the trodden trail went
@@ -36,7 +37,10 @@ const B = GRASS.bend;
  *   (0..1: the drop and the shade).
  */
 export const TRAIL_BEND_GLSL = /* glsl */ `
+uniform vec4 uTrailAll;
 vec4 trailBend(vec2 p, float hsh) {
+  // (the fast path: outside the circle round every chunk nothing is bent; the chunks would skip it all too)
+  if (uTrailAll.w > 0.5 && (uTrailAll.z <= 0.0 || distance(p, uTrailAll.xy) > uTrailAll.z)) return vec4(0.0);
   float best = 0.0, bf = 0.0, bs = 0.0, bage = 0.0;
   vec2 bo = vec2(0.0), bt = vec2(0.0);
   int n = int(uBend.y + 0.5);
@@ -279,6 +283,8 @@ export class GrassTrail {
     if (!o || n < 2) {
       Bd.set(0, 0, 0, 0);
       for (let c = 0; c < Bx.length; c++) Bx[c].set(0, 0, 0, 0);
+      // (the fast path: no wake, every cell returns at once; off: as before)
+      U.uTrailAll?.value?.set(0, 0, 0, LIFE.fast ? 1 : 0);
       return;
     }
     const q = this._q;
@@ -304,10 +310,43 @@ export class GrassTrail {
       }
       Bx[c].set((x0 + x1) / 2, (z0 + z1) / 2, rm > 0 ? Math.hypot(x1 - x0, z1 - z0) / 2 + rm + 0.01 : 0, 0);
     }
+    this._all(Bx);
     Bd.set(1, n, 0, 0);
     U.uBendT?.value?.set(o.hold, o.tau, o.omega, o.stagger);
     U.uBendS?.value?.set(o.amp, o.along, o.out, o.drop);
     U.uBendE?.value?.set(o.dark, o.edge, o.jitter, 0);
+  }
+
+  /** The fast path's circle round every chunk's circle (uTrailAll): a cell outside it is outside them all, so
+   *  trailBend can return at once and draw what it drew. Off the fast path: w 0, no circle. */
+  _all(Bx) {
+    const A = this.U?.uTrailAll?.value;
+    if (!A) return;
+    if (!LIFE.fast) {
+      A.set(0, 0, 0, 0);
+      return;
+    }
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let c = 0; c < TRAIL_CH && c < Bx.length; c++) {
+      const C = Bx[c];
+      if (!(C.z > 0)) continue;
+      if (C.x - C.z < x0) x0 = C.x - C.z;
+      if (C.x + C.z > x1) x1 = C.x + C.z;
+      if (C.y - C.z < z0) z0 = C.y - C.z;
+      if (C.y + C.z > z1) z1 = C.y + C.z;
+    }
+    if (!(x1 >= x0)) {
+      A.set(0, 0, 0, 1);
+      return;
+    }
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    let R = 0;
+    for (let c = 0; c < TRAIL_CH && c < Bx.length; c++) {
+      const C = Bx[c];
+      if (C.z > 0) R = Math.max(R, Math.hypot(C.x - cx, C.y - cz) + C.z);
+    }
+    // (a hair wider than the chunks: float rounding must never cut a bent cell)
+    A.set(cx, cz, R + 0.02, 1);
   }
 
   /**

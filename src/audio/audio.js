@@ -1006,7 +1006,7 @@ export class AudioEngine {
       this.streakSound?.onDefence('mikiri');
     });
     on('player:counter', (e) => {
-      // the flash chain's links (?counter=chain, ADR-245): each link's steel rings higher and louder
+      // the flash chain's links (?counter=chain, ADR-246): each link's steel rings higher and louder
       const L = e?.links > 1 ? e.link | 0 : 0;
       if (L > 1 && sfxMode() !== 'old' && this._sample('parry-blue', null, 1 + CHAIN_RING.gain * (L - 1), 1 + CHAIN_RING.rate * (L - 1))) return;
       this._parryAlso({ tell: 'blue', chain: 7, perfect: true });
