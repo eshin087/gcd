@@ -27,7 +27,7 @@ const q = () => {
     return null;
   }
 };
-export const DB_SFX_DEFAULT = 'd';
+export const DB_SFX_DEFAULT = 'a'; // Flesh: the owner's pick (2026-11-26)
 /** The switch (`?dbsfx=`): read at each blow (the Lab cycles it). '0' = today's flurry sounds, d = Pierce. */
 export const DB_SFX = { opts: OPTS, mode: OPTS.includes(q()) ? q() : DB_SFX_DEFAULT };
 export const getDbSfx = () => DB_SFX.mode;

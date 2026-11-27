@@ -38,7 +38,7 @@ const q = (name) => {
     return null;
   }
 };
-export const DB_MATRIX_DEFAULT = 'rain';
+export const DB_MATRIX_DEFAULT = '0'; // off: the owner skipped the matrix effect (2026-11-26); ?dbmatrix=rain|world keeps it to try
 /** The switch: read at the moment the combo starts (the Lab cycles it). */
 export const DB_MATRIX = { opts: OPTS, mode: OPTS.includes(q('dbmatrix')) ? q('dbmatrix') : DB_MATRIX_DEFAULT };
 export const getDbMatrix = () => DB_MATRIX.mode;
