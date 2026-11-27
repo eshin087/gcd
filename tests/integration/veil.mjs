@@ -2744,6 +2744,12 @@ async function scenarioSpellFight() {
   const { STREAK_FX } = await imp('src/combat/streak.js');
   const chain0 = STREAK_FX.chain;
   STREAK_FX.chain = false;
+  // (the spells' share is sampled over a fight as long as before round 3's numbers: the god-mode fencer
+  // parries every blow perfectly, so his barrier is always open, and at hp 20000 x openDamage the fight
+  // lasts 118 s, too few picks to measure a mix by)
+  const hp0 = TUNING.hp, od0 = TUNING.wjBarrier.openDamage;
+  TUNING.hp = 26000;
+  TUNING.wjBarrier.openDamage = 1;
   try {
     const G = build(Number(process.env.GCD_SEED ?? 4242), true);
     const { game } = G;
@@ -2769,6 +2775,8 @@ async function scenarioSpellFight() {
     assert(G.payload.size === 0, `no NaN in any event (${[...G.payload].join(', ')})`);
   } finally {
     STREAK_FX.chain = chain0;
+    TUNING.hp = hp0;
+    TUNING.wjBarrier.openDamage = od0;
   }
 }
 
