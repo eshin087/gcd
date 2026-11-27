@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-four pieces of work since 0.4.0:
+One hundred and twenty-five pieces of work since 0.4.0:
+- **The hero's wrist and thrusts, natural** (2026-11-27, ADR-256). *Fixed:* his sword wrist no longer bends past
+  what a wrist can (it reached 128° off the forearm between the keys of a cut, through every roll and in the held
+  charge): past 60° the blade eases toward 80°, the hand's path and every timing as before. The rising thrust (combo
+  A's fourth hit) and Piercing Gale now extend the arm along the point's line, the wrist in line with the forearm.
+  `?heroWrist=0` / `?heroThrust=0` show them as before, `?heroWrist=b` a tighter wrist (the Lab's `heroWrist` /
+  `heroThrust` rows). *Added:* the hero's motion audit (integ.mjs `heroaudit`, `heromotion`).
 - **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
   `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
   x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a

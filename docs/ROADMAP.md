@@ -1215,6 +1215,12 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       opening, held blue / red tell poses, the Lord's end-of-string shake, two quick blows each, behind
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
+- [~] The hero, gcd (ADR-256): the motion audit (`heroaudit`: every move, joints, snaps, pops, the wrist, the feet),
+      the soft wrist (`?heroWrist`: the blade never folds more than ~80° off the sword forearm, was 128°) and the
+      thrusts on the point's line (`?heroThrust`); films sent, draft PR
+  - [ ] The owner's pick from the films
+  - [ ] Left for later: combo A's snap windup moves the sword hand 0.5-0.6 m in its first frame (the approved
+        feel); a light parry tap shows nothing until a blow meets it, then the deflect pose arrives in one frame
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction

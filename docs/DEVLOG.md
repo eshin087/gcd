@@ -5,6 +5,36 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The hero's motion audit: a soft sword wrist, the thrusts on the point's line (ADR-256; branch `claude/hero-motion-b0e298`)
+
+**Owner:** a motion audit of every boss and the hero, one draft PR each (docs/ANIMATION.md; "weird looking arm
+angles and sword positioning and attacks that look unrealistic"). For the hero: keep combo A, the pace, the arc, the
+dark blade and the run; change only what is broken; films from all four sides.
+
+**What changed:**
+- `tests/integration/heroAudit.mjs` + integ.mjs `heroaudit` (opt-in): every move frame by frame on the unleaned body
+  (joints, elbows, knees, the sword wrist, the blade's elevation, the turns, the feet; snaps, pops, slides; the pose at
+  each cut's contact). `GCD_HA_WRIST` / `GCD_HA_THRUST` / `GCD_COMBO` / `GCD_HA_TRACE` / `GCD_AUDIT_OUT`.
+- `player/heroMotion.js`: `?heroWrist=a|b|0` (`HeroAnimator.wristSoft`, `anim.js _wristEase`: past 60° the blade eases
+  toward 80° off the forearm; b 50 → 70) and `?heroThrust=a|0` (the rising thrust's and Piercing Gale's extension keys
+  on the point's line; `anim.js forgetSwing`). On in the game, off in the sims. The Lab's `heroWrist` / `heroThrust` rows.
+- integ.mjs `heromotion` (asserted): the wrist ≤ 80° (≤ 100° where the grass lifts the point), no faster hand, the
+  thrusts straighter and still landing, `0` exact, duelists without `wristSoft`.
+
+**Numbers (before → after):** the most the sword wrist bends 128° → 97° (80° but in rolls and the draw cut's low coil,
+where the grass floor lifts the point); the charge hold 75-104° → 73-80°; the rising thrust (combo A hit 4) elbow 135°
+→ 156°, wrist 47° → 28°; Piercing Gale 123° → 133°, 43° → 33°; the sword hand's fastest frame 0.61 → 0.62 m.
+
+**Found, not changed (in the PR, for the owner):** combo A's snap windup moves the sword hand 0.5-0.6 m in its first
+frame; hit 3 → 4 turns the chest 68° in a frame (PR 170 saw it too); a parry tap shows nothing until a blow meets it,
+then the deflect pose in one frame; combo A's free hand is PR 170's; the hero's feet never use `_feetClip` and do not
+jump. Tried and dropped: the bosses' `gripMax` on the hero (the hand jumped 0.72 m a frame).
+
+**Verification:** `heromotion` green; duel / lord / asc / fox suites unchanged; films at the game camera, four
+facings, before | after, real and half speed. **Next:** the owner's picks become the defaults, then ready.
+
+---
+
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
 **Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its

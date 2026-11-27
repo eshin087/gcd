@@ -6995,3 +6995,41 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The ring is not on the film (no sound): it is the owner's to judge by ear in
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
+
+## ADR-256 — The hero's motion audit: a soft sword wrist and the thrusts on the point's line (2026-11-27)
+
+- **Context:** the owner asked for a motion audit of every boss and the hero (docs/ANIMATION.md; "weird looking arm
+  angles and sword positioning and attacks that look unrealistic"). The hero's approved work stays as it is: combo A
+  with its moves, order and timing (ADR-240), the attack pace, the curved arc, the dark blade, the run (PR 159). The
+  audit (`integ.mjs heroaudit`, opt-in, `tests/integration/heroAudit.mjs`) samples every move frame by frame on the
+  unleaned body: both arms, the sword's point, head, pelvis, feet; elbows, knees, the sword wrist (the forearm,
+  elbow → grip, against the blade), the blade's elevation, the hips' and chest's turn.
+- **Found:** (1) the sword wrist: the clips key the hand and the blade as two splines, so between keys the fist bent
+  as far as `WRIST_BACK` (128°) lets it: in every cut's turn (combo A's hits 1 and 3: 127° / 119°), every roll
+  (128-135° through the tumble), the sprint and roll cuts, the slam, and the held charge (75-104°, the angle the owner
+  called unnatural on 2026-11-14); it changed up to 65-72° in one frame. (2) The thrusts landed with a bent arm and a
+  cocked wrist: combo A's hit 4 at elbow 135° / wrist 47°, Piercing Gale 123° / 43° (means through the extension).
+  (3) Not changed, reported: combo A's snap windup moves the sword hand 0.5-0.6 m and the chest 53° in its first
+  frame (the approved feel); the chest's 68° frame from hit 3 into hit 4 (PR 170 found it too); a parry tap shows
+  nothing until a blow meets it, then the deflect pose arrives in one frame and the freeze holds it; the free hand's
+  flicks in combo A are PR 170's (held); the hero's feet never go through `_feetClip` (bosses only; their opt-in
+  fix is `liftEase`, ADR-223), and no foot of his jumps in a frame beyond the roll's and the dash's own travel.
+- **Decision:** two switches in `player/heroMotion.js`, on by default in the game, off in the headless sims (like
+  combo A): `?heroWrist=a` (`HeroAnimator.wristSoft = [60°, 80°]`: past 60° the blade's fold off the forearm eases
+  toward 80° on a tanh knee, `_wristEase`, before `WRIST_BACK` and on the two-handed grip's line; `b` 50° → 70°; `0`
+  as before) and `?heroThrust=a` (two keys each of `risingThrust` and `heavyThrust`: the hand at the arm's full
+  stretch along the point's line, the point a little lower, 36° / 24° up from 45° / 36°; `0` puts production's keys
+  back, `anim.js forgetSwing` drops the compiled tracks). Result: the wrist ≤ 80° everywhere except where the grass
+  floor (`_tipFloor`, after the ease) lifts a low point over a low hand (rolls, the draw cut's coil: ≤ 97°); the
+  charge hold 73-80°; the thrusts 156° / 28° and 133° / 33°; no sword-hand frame faster and no new pop (0.61 → 0.62
+  m); both thrusts land where they did.
+- **Why this way:** the bosses' grip fix (`gripMax`, ADR-226) turns the forearm and moves the hand to the blade; on
+  the hero's whipping cuts that threw the hand 0.72 m in one frame (0.54 before). Turning the blade instead keeps the
+  hand's path and the cut's timing, and the hit test still reads the drawn blade. `wristSoft` is an instance field
+  that only the player sets, so no duelist's output changes (duel, lord, asc and fox suites unchanged).
+- **Not taken:** re-keying every clip's in-betweens (the owner approved these swings; the ease fixes them all at
+  once); a hard clamp at 80° (the blade would stop on the limit and catch up, a hitch); slowing the snap windup or
+  adding a guard flick on the parry press (both change approved feel or gameplay: shown to the owner as findings).
+- **Consequences / open:** the owner picks a / b / 0 and the thrust from the films. The sims keep production's motion
+  (`heromotion` checks the fixes: the wrist, the thrusts, no faster hand, the thrusts still land, `0` exact, duelists
+  without `wristSoft`).
