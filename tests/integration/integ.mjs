@@ -6362,7 +6362,7 @@ async function scenarioHandAudit() {
   return G;
 }
 
-// SLICE (ADR-247; the owner, 2026-11-26: "make sure the slice effect is exactly matching the swords attack swing
+// SLICE (ADR-252; the owner, 2026-11-26: "make sure the slice effect is exactly matching the swords attack swing
 // ... like a cool matrix ascii of his sword cutting the matrix/universe", ~0.2 s): under the default look every
 // swing prints its slice (slashFx.js SLICE): digits on the path the blade's point swept (taken against his body,
 // each within a lattice cell and a frame's step of that path; a heavy's inner seam on its own share of the blade),
@@ -6483,6 +6483,29 @@ async function scenarioSlice() {
     {
       const r = run1(0, [[0, 'L']], 'trace', 'steel', true);
       assert(r.hitF >= 0 && r.kickF === r.hitF && r.bursts >= 1, `a landed blow kicks the camera on the contact's frame (hit ${r.hitF}, kick ${r.kickF}) and sprays its sparks (${r.bursts})`);
+    }
+    // ?slash=dline (the owner, 2026-11-27): the ending line printed in the slice's digits, no strokes, no crescent
+    {
+      SX.setSlash('dline');
+      const G = (last = build());
+      fightSetup(G);
+      settle(G);
+      const { game, input } = G, d = game.dragon, p = game.player;
+      p.debug.god = true;
+      p.debug.teleport(d.position.x + 40, d.position.z + 40);
+      game.mouseGround.set(p.position.x, 0, p.position.z - 6);
+      for (let i = 0; i < 20; i++) G.tick(DT);
+      let strokes = 0, bad = 0;
+      const sp = game.fx.add.spawn.bind(game.fx.add);
+      game.fx.add.spawn = (o) => { if (o === p.slashFx._o) strokes++; return sp(o); };
+      p.slashFx.onSlice = (x, y, z) => { if (!Number.isFinite(x + y + z)) bad++; };
+      const n0 = p.slashFx.seamN, l0 = p.slashFx.lines;
+      for (let i = 0, N = Math.round(1.4 / DT); i < N; i++) {
+        if (i === 0 || i === Math.round(0.42 / DT)) input.click(0);
+        G.tick(DT);
+      }
+      const n = p.slashFx.seamN - n0, l = p.slashFx.lines - l0;
+      assert(n >= 10 && l >= 2 && strokes === 0 && !bad, `?slash=dline: the ending lines (${l}) print in the slice's digits (${n}), no strokes (${strokes})`);
     }
   } finally {
     SX.setSlash(m0[0]);
@@ -6682,7 +6705,7 @@ async function scenarioOffHand() {
       else assert(!nan && sdIn > 0.95 && sdSlam < 0.05 && twoSlam > 0.9 && far <= 0.6 && step <= 0.7 * prodStep && sdAfter < 0.02,
         `offhand ${mode}: at its rest through hits 1-4 (sd ${sdIn.toFixed(2)}), the slam two-handed (sd ${sdSlam.toFixed(2)}, two ${twoSlam.toFixed(2)}), the wrist at most ${far.toFixed(2)} m from its shoulder, at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4 (production ${(prodStep * 100).toFixed(1)}), home after (sd ${sdAfter.toFixed(2)})${nan ? ', NaN' : ''}`);
     }
-    // combo A's own hand behind his back (ADR-247; the owner: "its yellow fist randomly during the light attack
+    // combo A's own hand behind his back (ADR-252; the owner: "its yellow fist randomly during the light attack
     // combo", "on the 5th attack the left hand angle motion and animation looks unnatural"): while it hangs (sd 1)
     // through hits 1-4 the free wrist stays out of his coat (≥ 0.18 m from the spine between hip and chest; it came
     // within 0.07), and hit 5 takes it to the grip round his side, no frame stepping more than 22 cm (it snapped 34)
