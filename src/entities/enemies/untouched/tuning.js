@@ -114,9 +114,12 @@ export const TUNING = {
     openCracked: [5, 4.2, 3.4], // s open by cracks (2.4 / 2.0 / 1.6 before)
     // x the damage of every cut of the hero's that is not exact while it is open (barrier.scaled; round 3:
     // the owner's "the hero's cuts hit harder while it is open"; no new mark: the open ring and the damage
-    // numbers read it). 1.3: the good bot 241 - 249 s; 1.6: 195 - 240 s; 2: 179 - 211 s; 2.2: the pick
-    // (the motion pass's faster blows to come: about 15 % slack on the good bot's time)
-    openDamage: 2.2,
+    // numbers read it). Round 3: 1.3: the good bot 241 - 249 s; 1.6: 195 - 240 s; 2: 179 - 211 s; 2.2 shipped.
+    // Round 3b (take b, the glide, his default: faster strings out of blinks): 2.2 gave the good bot 2 wins
+    // in 6 (159 - 173 s, its deaths with 3 - 30 % of his bar left); 2.35: 4 in 6, 153 - 199 s; 2.5: 6 in 6,
+    // 147 / 166 / 191 s, the perfect bot 106 - 119 s untouched; hp 18000 at 2.2: 3 in 6; longer openings by
+    // cracks (6 / 5 / 4): no change (the good bot opens him by cracks 1 - 3 times a fight)
+    openDamage: 2.5,
     crackFade: 9, // s without a new crack: the cracks are gone
     // the stop on the hero's side: he is thrown back off the shell by this much (player.onGuarded push)
     push: 0.9,
@@ -162,7 +165,11 @@ export const TUNING = {
   // it alive in every seed; after 20: dead in 102 - 383 s; after 30: 201 - 525 s (mean 363); after 40: 83 -
   // 518 s. guardCost 0.7 (two blocks): alive in every seed. (His later phases' moves picked early were tried as
   // the press: they made him easier to wait out.) No other bot goes 20 s without reaching him.
-  wjPatience: { after: 30, cue: 1.2, guardCost: 1 },
+  // Round 3b (take b, the glide): after 30 the pace defender lived out 600 s on one seed of six (588 s; the
+  // others 53 - 575 s); after 25: one alive too; after 20: dead in all six, 95 - 553 s (mean 325). A hero who
+  // fights is never 20 s without reaching him (the bench's bots: 13 s at most). Why it is slow even so: one
+  // block knocks the guard open, but his next blow lands in the opening about one time in ten.
+  wjPatience: { after: 20, cue: 1.2, guardCost: 1 },
 
   // ---- the beam's drawing borrows Tian Lei's (fxBeam.js reads d.T.beam.look)
   beam: { ...BEAM_TUNING },
