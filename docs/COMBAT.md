@@ -1216,7 +1216,7 @@ overhead, Three Tolls' last) comes down ONE-handed on a steep diagonal across yo
 diagonal; a low sweep turns on his feet (the right leg sweeping the stones); his free hand stays near his chest
 and opens to his left as he cuts; and the front foot comes down with the blade. Looks to pick for two specials:
 Ember Whirl `?whirlFx=a|b|c` (a ring of fire, a cyclone of fire, a disc of fire) and Heaven-Splitting Fall
-`?fallFx=a|b|c` (a comet's tail and column, a split of fire, ember rain on the ring); they carry no cue of their own.
+`?fallFx=a|b|c` (a comet's tail and column, a seam of fire and the floor split in fire ahead and behind, fire raining on the ring); they carry no cue of their own.
 
 
 **Every phase asks for dodges** (the tuning pass): a red blow sits inside eight strings (Drifting

@@ -6983,8 +6983,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     fire field and one-cell embers at the blade, his body or the landing spot, no hit and no cue of their own:
     `?whirlFx=` Ember Whirl (a the wheel: the point leaves a burning ring; b the cyclone: fire whirling up round him,
     embers off the point; c the disc: the swept width burns an instant) and `?fallFx=` Heaven-Splitting Fall (a the
-    comet: a tail of fire down, a column where he lands; b the split: a line of fire down the cut, the floor split in
-    fire ahead; c ember rain on the locked ring). `0` = as they ship. The Kindling keeps its picked look (ADR-118's
+    comet: a tail of fire down, a column where he lands; b the split: a seam of fire down the cut, the floor split in
+    fire ahead and behind, out past the burning ring; c fire raining on the locked ring). `0` = as they ship. The Kindling keeps its picked look (ADR-118's
     three, `kindle=a`).
 - **Kept:** his pace (the owner's PBZ-fast openers ~0.46 s and strings 0.34 s apart, his TUNING floors 0.42 / 0.32 s:
   the brief's 0.7 / 0.45 s floor would slow every move of his, which the owner chose fast; asked, not changed);

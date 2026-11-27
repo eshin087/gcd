@@ -14,10 +14,10 @@ import { lookOf } from '../duelist/lookSwitch.js';
 //   `?fallFx=`   Heaven-Splitting Fall (the great leap, the red ring, two-handed down on it)
 //     a  THE COMET    from the top of the leap a tail of fire follows him down; where he lands a column
 //                     of fire stands up and falls back as embers
-//     b  THE SPLIT    the cut as he comes down draws a tall line of fire down to the stones, and where
-//                     it lands the floor splits in fire ahead of him for a moment
-//     c  EMBER RAIN   once the ring locks, embers fall onto it from above until he lands, and his
-//                     landing throws them out across the stones
+//     b  THE SPLIT    the cut as he comes down draws a tall seam of fire down to the stones, and where
+//                     it lands the floor splits in fire ahead of him and behind, out past the burning ring
+//     c  FIRE RAIN    once the ring locks, fire rains onto it from above until he lands, and his
+//                     landing throws embers out across the stones
 //
 // All of it is heat in the fire field (STYLE.md "The fire field": the same small letters) and glyph
 // particles of one letter cell (embers), at the blade or his body or the spot the blow lands: never the
@@ -99,23 +99,23 @@ export class AshSpecialFx {
       }
     } else if (L === 'b') {
       // the cyclone: a whirl of fire rising round him, and embers off the point along the turn
-      this._acc += dt * (low ? 90 : 70);
+      this._acc += dt * (low ? 130 : 110);
       let g = 0;
-      while (this._acc >= 1 && g++ < 6) {
+      while (this._acc >= 1 && g++ < 8) {
         this._acc -= 1;
         const h = F.lrand(0.1, low ? 1.0 : 2.0), ang = a.t * 11 + F.lr() * TAU, r = 0.75 + 0.35 * h, ca = Math.cos(ang), sa = Math.sin(ang), sp = 4.2;
-        F._blob(d.position.x + ca * r, 0.35 + h, d.position.z + sa * r, -sa * sp, F.lrand(1.2, 2.6), ca * sp, F.lrand(0.22, 0.36), 0.4, 0.18, 0.46, 0, K_FIRE, 1.6, 1.2);
+        F._blob(d.position.x + ca * r, 0.35 + h, d.position.z + sa * r, -sa * sp, F.lrand(1.2, 2.6), ca * sp, F.lrand(0.26, 0.4), 0.44, 0.2, 0.58, 0, K_FIRE, 1.6, 1.2);
       }
       const vx = (t1.x - t0.x) / dt, vz = (t1.z - t0.z) / dt;
       if (F.lr() < 0.7) this._ember(t1.x, t1.y, t1.z, vx * 0.35, F.lrand(0.5, 2), vz * 0.35);
     } else {
       // the disc: the area the blade swept this frame, filled thin with fire for an instant
-      for (let i = 0; i < n * 2; i++) {
+      for (let i = 0; i < n * 3; i++) {
         const u = F.lr(), f = 0.25 + 0.75 * F.lr();
         const hx = h0.x + (h1.x - h0.x) * u, hy = h0.y + (h1.y - h0.y) * u, hz = h0.z + (h1.z - h0.z) * u;
         const tx = t0.x + (t1.x - t0.x) * u, ty = t0.y + (t1.y - t0.y) * u, tz = t0.z + (t1.z - t0.z) * u;
         const x = hx + (tx - hx) * f, y = hy + (ty - hy) * f, z = hz + (tz - hz) * f;
-        F._blob(x, Math.max(low ? GROUND_Y : 0.2, y), z, 0, F.lrand(0.05, 0.3), 0, F.lrand(0.14, 0.22), 0.36, 0.3, (low ? 0.36 * GROUND_GAIN * 0.6 : 0.36) * (0.6 + 0.4 * f), 0, K_FIRE, 1, 0.5);
+        F._blob(x, Math.max(low ? GROUND_Y : 0.2, y), z, 0, F.lrand(0.05, 0.3), 0, F.lrand(0.16, 0.24), 0.38, 0.3, (low ? 0.5 * GROUND_GAIN * 0.6 : 0.5) * (0.6 + 0.4 * f), 0, K_FIRE, 1, 0.5);
       }
     }
   }
@@ -134,20 +134,24 @@ export class AshSpecialFx {
         F._blob(d.position.x + F.lrand(-0.25, 0.25), d.position.y + F.lrand(0.5, 1.5), d.position.z + F.lrand(-0.25, 0.25), F.lrand(-0.3, 0.3), F.lrand(1.5, 3), F.lrand(-0.3, 0.3), F.lrand(0.3, 0.45), 0.5, 0.2, 0.6, 0, K_FIRE, 1.5, 0);
       }
       if (F.lr() < 0.6) this._ember(d.position.x, d.position.y + 1, d.position.z, F.lrand(-1, 1), F.lrand(1, 3), F.lrand(-1, 1));
-    } else if (L === 'b' && u > 0.86) {
-      // the split: a tall line of fire down the cut's way, from high over the spot to the stones
-      const tx = J?.target?.x ?? d.position.x, tz = J?.target?.z ?? d.position.z, k = (u - 0.86) / 0.14;
-      F._line(tx, 0.4, tz, tx, 0.4 + 5.5 * (1 - 0.6 * k), tz, 0.04, 0.3, 0.75, 0, K_FIRE, 0.18);
-      F._ink(tx, 0.3, tz, tx, 4.5, tz, 0.04, 0.7 * (0.5 + 0.5 * k));
+    } else if (L === 'b' && u > 0.8) {
+      // the split: a tall line of fire down the cut's way, from high over the spot to the stones, growing
+      // brighter as he comes down on it (two lines a hand apart: a seam, not a hair)
+      const tx = J?.target?.x ?? d.position.x, tz = J?.target?.z ?? d.position.z, k = (u - 0.8) / 0.2;
+      const top = 0.4 + 6 * (1 - 0.5 * k), ox = 0.08 * Math.cos(d.yaw), oz = -0.08 * Math.sin(d.yaw);
+      F._line(tx - ox, 0.4, tz - oz, tx - ox, top, tz - oz, 0.05, 0.42, 0.9 + 0.5 * k, 0, K_FIRE, 0.16);
+      F._line(tx + ox, 0.4, tz + oz, tx + ox, top, tz + oz, 0.05, 0.3, 0.6 + 0.4 * k, 0, K_FIRE, 0.16);
+      F._ink(tx, 0.3, tz, tx, top, tz, 0.04, 0.9 * (0.5 + 0.5 * k));
     } else if (L === 'c' && u > Lp.lock) {
-      // ember rain onto the locked ring
+      // fire raining onto the locked ring: streaks of heat falling from over it (and an ember in some)
       const tx = J?.target?.x ?? d.position.x, tz = J?.target?.z ?? d.position.z, R = fin(b.def?.ring, 2.6);
-      this._rain += dt * 70;
+      this._rain += dt * 90;
       let g = 0;
       while (this._rain >= 1 && g++ < 8) {
         this._rain -= 1;
-        const ang = F.lr() * TAU, r = R * Math.sqrt(F.lr());
-        this._ember(tx + Math.cos(ang) * r, F.lrand(3.2, 4.6), tz + Math.sin(ang) * r, F.lrand(-0.3, 0.3), F.lrand(-7, -4), F.lrand(-0.3, 0.3), 0.6);
+        const ang = F.lr() * TAU, r = R * Math.sqrt(F.lr()), x = tx + Math.cos(ang) * r, z = tz + Math.sin(ang) * r;
+        F._blob(x, F.lrand(2.6, 4.2), z, 0, F.lrand(-9, -6), 0, F.lrand(0.32, 0.45), 0.3, 0.22, 0.6, 0.2, K_FIRE, 0, -3);
+        if (F.lr() < 0.3) this._ember(x, F.lrand(2.6, 4.2), z, F.lrand(-0.3, 0.3), F.lrand(-8, -5), F.lrand(-0.3, 0.3), 0.5);
       }
     }
   }
@@ -163,16 +167,19 @@ export class AshSpecialFx {
     F._lookLight({ x, y: 2, z, color: [1, 0.5, 0.2], intensity: 5, radius: 6, life: 0.5, fade: 0.45 });
   }
 
-  /** The split's landing: the floor torn in fire ahead of him along his facing, 3.6 m, for a moment. */
+  /** The split's landing: the floor torn in fire ahead of him and behind along his facing, out past the
+   *  ring of burning ground (6 m ahead, 3 behind), the crack running out from him over 0.2 s. */
   _split(x, z, yaw) {
-    const F = this.fx, dx = Math.sin(yaw), dz = Math.cos(yaw), len = 3.6;
-    for (let i = 0; i < 36; i++) {
-      const s = 0.3 + (i / 36) * len, j = F.lrand(-0.12, 0.12) * (1 + s * 0.15);
-      const px = x + dx * s + dz * j, pz = z + dz * s - dx * j;
-      F._blob(px, GROUND_Y, pz, 0, F.lrand(0.3, 1.0), 0, F.lrand(0.5, 0.8) * (1 - 0.4 * (s / len)), 0.34, 0.2, 0.55 * GROUND_GAIN * 0.7, 0, K_FIRE, 1, 0.2);
-      if (i % 3 === 0) F._blob(px, 0.5, pz, 0, F.lrand(1.5, 3), 0, F.lrand(0.25, 0.4), 0.36, 0.14, 0.42, 0, K_FIRE, 1.5, 1);
+    const F = this.fx, dx = Math.sin(yaw), dz = Math.cos(yaw);
+    for (const [len, sgn, n] of [[6, 1, 54], [3, -1, 24]]) {
+      for (let i = 0; i < n; i++) {
+        const s = 0.3 + (i / n) * len, j = F.lrand(-0.14, 0.14) * (1 + s * 0.12), fade = 1 - 0.35 * (s / len);
+        const px = x + sgn * dx * s + dz * j, pz = z + sgn * dz * s - dx * j;
+        F._blob(px, GROUND_Y, pz, 0, F.lrand(0.3, 1.0), 0, F.lrand(0.7, 1.0) * fade, 0.36, 0.22, 0.62 * GROUND_GAIN * 0.75, 0, K_FIRE, 1, 0.2);
+        if (i % 2 === 0) F._blob(px, 0.45, pz, 0, F.lrand(2, 3.5), 0, F.lrand(0.3, 0.45), 0.38, 0.14, 0.5, 0, K_FIRE, 1.5, 1);
+      }
+      F._ink(x + sgn * dx * 0.3, GROUND_Y, z + sgn * dz * 0.3, x + sgn * dx * len, GROUND_Y, z + sgn * dz * len, 0.4, 1.2);
     }
-    F._ink(x + dx * 0.3, GROUND_Y, z + dz * 0.3, x + dx * len, GROUND_Y, z + dz * len, 0.22, 1.1);
     F._lookLight({ x: x + dx * 1.5, y: 0.6, z: z + dz * 1.5, color: [1, 0.45, 0.15], intensity: 4, radius: 5, life: 0.5, fade: 0.45 });
   }
 
