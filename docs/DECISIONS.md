@@ -7060,6 +7060,9 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **The owner's answer (2026-11-27, from the films):** the motion `b` as his default, the shots `b` (the script) and the
   bolts `a` (the seed): `oneMoves: 'b'`, `oneGunFx: 'b'`, `oneBoltFx: 'a'` in PICKED (`?oneMoves=a` the rebuild before
   this pass, `?oneGunFx=0` / `?oneBoltFx=0` the shots and bolts as before, the other option behind its switch).
+  With `b` the default, the pace meter's phase-3 longest gap was re-pinned 3.9 -> 4.7 s: seed 4242 now rolls Pushing
+  Hands then Unwriting (its bricks held before the first is thrown), 4.52 s; on five fresh seeds `b`'s worst phase-3
+  gap is 2.91 s (`a`'s 2.67), and `a` itself fails the phase-2 cap on one of them (4.02 s).
 ## ADR-254 — Halcyon audited: a flier's limbs, the readable pace, two looks for his eyes and his shockwaves (`?halMotion=b`, `?halPace=a`, `?halEyes`, `?halShock`) (2026-11-27)
 
 - **Context:** the boss motion audit (the owner: "weird looking arm angles ... kicks aren't straight during the

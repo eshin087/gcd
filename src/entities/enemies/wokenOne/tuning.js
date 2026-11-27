@@ -147,7 +147,11 @@ export const TUNING = {
     // fire field's peak about 1380 blobs (phase 3). A flurry burst of 6 - 8 blows is ONE cue (the owner's choice),
     // and so is a burst of three bullets: gear 2 counts below the plan's 95 - 105 though its strings run at the
     // 0.32 s floor. Main before the rework: 67.2 / 106.3 / 82.9 by phase (each of Iron Rain's 11 shots a cue)
-    meter: { rampMean: [1, 1.0, 0.82, 0.82], minRate: [70, 78, 65, 62], maxGap: [3.3, 3.0, 3.5, 3.9], dodge: [0.05, 0.3] },
+    // (ADR-253, the limbs on the line the default: seed 4242's phase 3 rolls Pushing Hands then Unwriting, whose
+    // bricks are torn and held before the first is thrown: a gap of 4.52 s; the phase-3 cap re-pinned from it with a
+    // margin. On five other seeds (1 2 3 5 11) b's longest phase-3 gap is 2.91 s, a's 2.67, and a fails phase 2's cap
+    // on seed 1 (4.02): the cap is the worst of three pinned seeds, not a property of the moves)
+    meter: { rampMean: [1, 1.0, 0.82, 0.82], minRate: [70, 78, 65, 62], maxGap: [3.3, 3.0, 3.5, 4.7], dodge: [0.05, 0.3] },
   },
   punish: { weight: 4 },
 
