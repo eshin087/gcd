@@ -5,13 +5,12 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and twenty-five pieces of work since 0.4.0:
-- **Lu Wusheng draws like a swordsman, to try** (2026-11-27, ADR-252). *Added, to compare (not the default):*
-  `?sheathForm=a` (the Lab's LOOKS rows): his fist closes on the hilt as he settles, the scabbard is pulled back
+- **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
   level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
   the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the
   two-handed overhead comes down across him on a diagonal; Sweeping the Road turns on his feet; the free hand in the
-  scabbard cuts moves half as far. Poses only: every windup, cue and window is as before. `?sheathPace=a`: COMBAT
-  rule 10's slower floor for his scabbard blows (first blows 0.7 s, blows 0.45 s apart, the cue 0.35 s before, the
+  scabbard cuts moves half as far. Poses only: every windup, cue and window is as before; `?sheathForm=0` gives
+  the old poses. *Added, kept as options (the owner kept today's):* `?sheathPace=a`: COMBAT rule 10's slower floor for his scabbard blows (first blows 0.7 s, blows 0.45 s apart, the cue 0.35 s before, the
   draws unchanged). `?drawFx=a|b|c`: three looks for the draw (the drawn breath, hanging leaves, the late sound).
 - **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
   `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,

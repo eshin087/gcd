@@ -7033,6 +7033,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   (ADR-246) still opens on a meetable scabbard cut.
 - **Not taken:** keying the draw's hand off the blade instead of `arm: 1` (the arm would lose the chest's turn with
   the cut); a coloured draw effect (a second colour at the cue would muddy the blue flare); restyling his look.
-- **Consequences / open:** the owner's picks; then they become the defaults (lookSwitch PICKED, the Lab rows out of
-  `awaiting`). The planted foot's one-frame jumps live in the hero's animator (`_feetClip`; the hero session's).
+- **The owner's picks (2026-11-27, from the films and the preview):** the form `a`, the default; the pace as shipped
+  (`sheathPace` 0: his fast openers stay); the draw's look as shipped (`drawFx` 0: the one white line). The other
+  options stay behind their switches.
+- **Consequences / open:** The planted foot's one-frame jumps live in the hero's animator (`_feetClip`; the hero session's).
   PR 170 (draft) also names an ADR-252 for the hero's slice; the batch's brief reserves 252 for Lu Wusheng.

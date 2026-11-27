@@ -2530,7 +2530,7 @@ phase 3 dipped under its phase 2 (0.93), the mean's ramp is 1.09. Slower than Sh
 66 s, block-only 49 / 57 s; the block-only bot is never killed by a draw, mortal too. TIMING: every contact
 within 0 ms of its flash + 0.3 s. Not measured: a human on the phone; the draw's read at the phone's camera
 was judged from stills only.
-### The audit (2026-11-27, ADR-252; `?sheathForm=a` `?sheathPace=a` `?drawFx=a|b|c`, `0` the default until the owner picks)
+### The audit (2026-11-27, ADR-252; the owner's picks: the form `a`, the default; `?sheathPace=a` and `?drawFx=a|b|c` kept as options, `0` the default)
 Measured at every impact (`node tests/integration/sheath.mjs . form`; sheathAudit.mjs) before -> with `?sheathForm=a`:
 
 | | before | form |

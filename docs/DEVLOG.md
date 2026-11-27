@@ -17,7 +17,7 @@ off the scabbard's line; every draw ending in a locked split (176 / 176°) with 
 the hilt at the cock, the scabbard hand going forward 26 - 51 cm through the draw; the overhead an upright bar
 (75 - 87° off level); the sweep's legs crossed; the free hand's 0.5 m swing in the scabbard cuts.
 
-**Changed** (all behind switches, `0` = today the default until the owner picks):
+**Changed** (behind switches; the owner's picks below):
 - `?sheathForm=a` (`sheathed/form.js`; the form's keys beside the authored ones; `kit.motion` opens his arms): the
   numbers in COMBAT.md "The Sheathed" → "The audit". Poses only (FORMPACE: every timing identical).
 - `?sheathPace=a` (`sheathed/pace.js`, Tian Lei's method): rule 10's floor as held cocks, the draws untouched.
@@ -28,7 +28,10 @@ the hilt at the cock, the scabbard hand going forward 26 - 51 cm through the dra
 **Verification:** `sheath.mjs` green with the defaults and with `GCD_LOOKS=sheathForm=a,drawFx=c`; films of every
 move before / after at the game camera and side-on, the draw looks at both cameras (sent to the owner).
 
-**Open:** the owner's picks; a planted foot's one-frame jumps (the hero's `_feetClip`, the hero session's). PR 170
+**The owner's picks** (from the films and the preview): the form `a` (now the default), the pace and the draw's
+look as shipped (their options stay behind `?sheathPace` / `?drawFx`).
+
+**Open:** a planted foot's one-frame jumps (the hero's `_feetClip`, the hero session's). PR 170
 (draft) also uses ADR-252.
 
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)

@@ -79,6 +79,10 @@ export const PICKED = Object.freeze({
   foxMotion: 'a', // Wen Yao's, the same, and his lifted feet eased off their spot
   wyrmMotion: 'a', // the wyrm's string hits held, blue rearing its head, red sunk with the tail up
   sheathQuick: 'a', // Before the Word
+  // Lu Wusheng's audit (ADR-252; the owner's picks, 2026-11-27, from the before / after films)
+  sheathForm: 'a', // the fist on the hilt, the scabbard drawn back, the draw's lunge, thrusts in line, the diagonal overhead, the sweep's feet
+  sheathPace: '0', // his fast pace kept (a: COMBAT rule 10's floor as held cocks)
+  drawFx: '0', // the draw's one white line kept (a the drawn breath, b hanging leaves, c the late sound)
   foxQuick: 'a', // Fox Snap, Fox Knee
   wyrmQuick: 'a', // Snap swipe
   // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
@@ -101,7 +105,7 @@ export const PICKED = Object.freeze({
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', 'sheathForm', 'sheathPace', 'drawFx']); // Lu Wusheng's audit (ADR-252: awaiting the owner's pick from the films); Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
 
 const fromUrl = new Map();
 const forced = new Map();
