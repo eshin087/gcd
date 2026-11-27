@@ -7025,3 +7025,37 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   `ashMotion=0` already: MOTION's two-handed overhead, REACT's layer under the raised blade). Open: the sweeping
   foot counts as sliding in the audit (it is the sweep); feet still slide 0.15 - 0.5 m over a long string where the
   close-in carries his root under a planted foot.
+
+## ADR-247 — The clash dance: parries in a row pay more posture, the ring rises, his recovery slows with his health (`?clash=dance`) (2026-11-26)
+
+- **Context:** research into Sekiro, Phantom Blade Zero and Onimusha: Way of the Sword proposed five combat additions
+  (ROADMAP P4); the owner picked the flash chain first (ADR-246), then "the clash dance". In Sekiro deflects close
+  together deal more posture damage than the same deflects spread out, the deflect's ring is the fight's rhythm,
+  and a boss's posture recovers more slowly as his health drops, so cutting his health makes a break stick. Here
+  every parry paid the same posture, and only the Lord, Tian Lei and Xin Yi scaled their recovery by HP (a curve).
+  PR 145 (the deathblow, ADR-211; merged while this was built) counts perfect parries across strings for the deathblow's
+  length and answers any parried blue blow with the deathblow; the owner
+  asked what the clash dance is and approved building it standing on its own, a small ring and the steps for every
+  duelist.
+- **Decision:** behind `?clash=dance` (`combat/clashDance.js`, `DEFENSE.clashDance`; the Lab's `clash` row), off by
+  default until the owner picks from film. (1) A duelist keeps the run of parries inside one of his moves; the
+  run's n-th parry's posture x `mult` [1, 1.25, 1.5, 1.75] (the cap); it starts over on a new move, a blow landing
+  on the hero (`player.hurtN`), or a 1.5 s gap. Bodies and blades only, not thrown things. (2) The recorded parry
+  rises half a semitone and 0.8 dB a parry of the run (2 semitones / 2.4 dB at most) on top of the deflect chain's
+  weight; `player:parry` carries the run as `clash` (the hero asks the duelist's `clashPeek()` as he parries, since
+  the sound plays before the duelist counts it). (3) His posture recovery x a step by HP: 1 from 75 %, 0.85 from
+  66 %, 0.75 from 33 %, 0.5 from 10 %, 0.25 below; for the three with a curve the steps replace it.
+- **Why this way:** the run lives on his move, beside the deflect chain's own count (`act.chain`, the "DEFLECT
+  xN" call-out), so "his string ends" needs no extra state and the call-out keeps its meaning; a hurt counter on the
+  hero (not an event listener) keeps the duelist free of subscriptions. It never reads PR 145's `parryRun`, so
+  either can land first. For the Lord's family the first try kept their x1.5 full-bar rate under the steps, but that
+  made them recover FASTER than today at 50 - 70 % HP (x1.28 against x1.2): replacing the curve outright is never
+  faster at any HP, and is what the owner approved.
+- **Not taken:** a bigger ladder (the owner asked for about x1.25 steps; a 7-blow string from an empty bar already
+  breaks Shen Hui through the full deflect, so the dance mostly shortens the 3 - 4 blow strings that make up most
+  of a kit); a pitch climb on the bell or a new layer (the owner turned a climbing parry down before: "sounds like
+  its for kids").
+- **Consequences / open:** the film (a plain-parry bot on all-white strings, the same strings both ways):
+  Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The ring is not on the film (no sound): it is the owner's to judge by ear in
+  the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
+  shorter. Tests: duel `clashdance`, lord `clashdance`.

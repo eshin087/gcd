@@ -34,6 +34,7 @@ import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.j
 import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
+import { CLASH_IDS, clashMode, setClashMode } from '../combat/clashDance.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
 import { RUN_SWORD_IDS, RUN_SWORD_NAMES, runSwordMode, setRunSword } from '../entities/player/runSword.js';
 import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
@@ -1487,6 +1488,7 @@ export class Lab {
       ['endbeat', BEAT_IDS, setBeat, 'beatBtns', 'when the ending slash comes: beat = a short pause after the swing, 0 = as it ends (?endbeat=)', (m) => m],
       ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
       ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', "the free hand in a one-handed swing: auto = the feel's own, prod = as it ships, side = loose at his side, back = behind his back, quiet = its gestures pulled in (?offhand=)", (m) => (m === '0' ? 'prod' : m)],
+      ['clash', CLASH_IDS, setClashMode, 'clashBtns', "the clash dance against the duelists (?clash=): dance = parries in a row inside one of his moves pay more posture each (x1, x1.25, x1.5, x1.75), their ring rises a little, and his posture recovers more slowly as his health drops; old = today's numbers. Read at each parry", (m) => (m === '0' ? 'old' : m)],
     ]) {
       const r = el('div', 'lab-row', null, body);
       el('span', 'lab-lbl', lbl, r).title = tip;
@@ -1618,6 +1620,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.counterBtns ?? []) setClass(b, 'on', counterMode() === m);
     for (const { m, el: b } of this.ui.placeBtns ?? []) setClass(b, 'on', placeMode() === m);
     for (const { m, el: b } of this.ui.beatBtns ?? []) setClass(b, 'on', beatMode() === m);
+    for (const { m, el: b } of this.ui.clashBtns ?? []) setClass(b, 'on', clashMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;

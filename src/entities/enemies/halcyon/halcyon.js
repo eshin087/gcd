@@ -426,7 +426,7 @@ export class Halcyon extends Duelist {
     this.emit('dragon:parried', { attack: info?.attack ?? a.name, tell, hit: fin(b.hit, 0), last: true, flare: true });
     this.flash = Math.max(this.flash, 0.6);
     this.jolt = Math.max(this.jolt, 0.8);
-    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1));
+    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1) * this._clashMult());
     if (this.mode !== 'act') return;
     // the way he was going (a pass: his line; otherwise his facing)
     const G = b._go;

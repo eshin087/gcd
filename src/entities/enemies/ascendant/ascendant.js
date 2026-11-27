@@ -19,6 +19,7 @@ import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
 import { KiMoves } from './ki.js';
 import { TerrainMoves } from './terrain.js';
+import { clashOn, clashRegenK } from '../../../combat/clashDance.js';
 
 // Tian Lei, the Last Ascendant: the boss of the Skybreak Ring (`?level=ring`; MOVES.md). A duelist
 // (duelist/duelist.js: the body, the contract, the guard, posture, the duel's moments; brain.js: the
@@ -266,7 +267,9 @@ export class Ascendant extends Duelist {
     if (this.broken || this.posture <= 0) return;
     const P = TUNING.posture;
     if (this.postureTimer > P.regenDelay) {
-      const k = lerp(P.regenByHp[1], P.regenByHp[0], clamp(this.hp / this.maxHp, 0, 1));
+      // (the clash dance, ADR-247: the steps by his health replace the curve)
+      const f = clamp(this.hp / this.maxHp, 0, 1);
+      const k = clashOn() ? clashRegenK(f) : lerp(P.regenByHp[1], P.regenByHp[0], f);
       this.posture = Math.max(0, this.posture - P.regenRate * k * dt);
       this.emitPosture();
     }

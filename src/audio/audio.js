@@ -6,6 +6,7 @@ import { SFX, bladeWhooshPeak, CUT_SND, cutPitch, RX_FIRE } from './sfx.js';
 import { SampleBank, sfxMode, chainMode } from './samples.js';
 import { SLOT, HEAVY, BLOWS, HERO, BEAST, blowSlot, HERO_SLOT, HURT, HIT_HEAVY, CUT_SLOT, CUT_REF, FLURRY, EXEC, GUARD_HEAVY, CLASH_HEAVY } from './sampleList.js';
 import { PARRY_CHAIN, chainRate, chainGain, chainLayers } from './parryChain.js';
+import { clashRing } from '../combat/clashDance.js';
 import { ForestAmbience, BreathLoop } from './ambience.js';
 import { Air } from './air.js';
 import { ChargeHum } from './charge.js';
@@ -371,7 +372,10 @@ export class AudioEngine {
     const ch = clamp(Math.round(num(o.chain, 1)), 1, 8);
     const V = ch >= 2 ? PARRY_CHAIN[chainMode()] : null;
     const layer = V ? (v, t, r, rate) => chainLayers(this, V, ch, v, t, r, rate, this.samples, o.tune) : null;
-    if (!this._sample(slot, null, V ? chainGain(V, ch) : 1, V ? chainRate(V, ch) : 1, undefined, layer)) return false;
+    // the clash dance's ring (?clash=dance; combat/clashDance.js, ADR-247): the run's parries a little higher
+    // and louder, on top of the chain's weight ([1, 1] with it off or on a run's first parry)
+    const [rg, rr] = clashRing(o.clash);
+    if (!this._sample(slot, null, (V ? chainGain(V, ch) : 1) * rg, (V ? chainRate(V, ch) : 1) * rr, undefined, layer)) return false;
     // (its pitch as a single parry: the perfect bell does not climb with the chain)
     if (o.perfectMelee) this.play('parryPerfect', { tell: o.tell, chain: 1, tune: o.tune, ring: o.ring });
     return true;
@@ -1002,7 +1006,7 @@ export class AudioEngine {
       // (the streak's sound on: the chain climbs the track's scale; a perfect one's ring per perfectMode())
       // (a blade's parry recorded: _parry; a bullet's, light, keeps the synth)
       const pm = !d.light && d.perfect ? perfectSound() : null;
-      const o = { tell: d.tell, chain: d.chain, perfect: !!(d.light && d.perfect), melee: !d.light, perfectMelee: !d.light && !!d.perfect, tune: d.light ? null : this.streakSound?.parryTune() ?? null, ring: pm ? pm.ring : 1 };
+      const o = { tell: d.tell, chain: d.chain, clash: d.clash | 0, perfect: !!(d.light && d.perfect), melee: !d.light, perfectMelee: !d.light && !!d.perfect, tune: d.light ? null : this.streakSound?.parryTune() ?? null, ring: pm ? pm.ring : 1 };
       if (d.light || !this._parry(o)) this.play('parry', o);
       if (!d.light) this.streakSound?.onDefence('parry');
     });

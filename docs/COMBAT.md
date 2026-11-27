@@ -758,6 +758,30 @@ once (rule 4). A red hit inside a string can't be parried or blocked: dodge it (
 the plunge, which cancels the string). Rending flurry parried hit by hit: `dragon:parried` [0, f],
 [1, f], [2, f], [3, true], chain 2 → 3 → 4, +148 posture, no damage (STRINGS scenario).
 
+## The clash dance (2026-11-26, ADR-247; `?clash=dance`, off by default until the owner picks from film)
+From research into Sekiro's deflects: the ring of the steel is the fight's rhythm, and parries close together pay
+more than the same parries spread out. The duelists only (`duelist.js` and every boss built on it; the wyrm keeps
+its own); every number is `DEFENSE.clashDance` (`combat/rules.js`), the logic `combat/clashDance.js`.
+
+- **The run.** Every parry (plain or perfect) of a blow of his body or his blade inside ONE of his moves (a string,
+  his flurry) counts one more. Its posture (`POSTURE.parry` x `POSTURE.perfect`, as before, and a boss's own
+  `gainByHp` after it) is multiplied by `mult`: **x1, x1.25, x1.5, then x1.75** from the 4th on. Thrown things
+  (sword qi, bolts, bullets) neither count nor break it; a red blow dodged does not break it.
+- **It starts over** when his move ends (the next move's first parry is x1 again), when a blow lands on the hero
+  (a hit or a guard broken; a contact stream's chip is no blow), or after `gap` (1.5 s) with no parry.
+- **The ring.** Each parry of the run plays the recorded parry `ring.semis` (half a semitone) higher, two
+  semitones at most, and `ring.db` (0.8 dB) louder, 2.4 dB at most, on top of the deflect chain's weight
+  (`audio/parryChain.js`). The run's first parry sounds as today.
+- **His recovery by his health.** His posture drains back at his rate x the first step he is at or above:
+  **x1 from 75 % HP, x0.85 from 66 %, x0.75 from 33 %, x0.5 from 10 %, x0.25 below**. The Starless Lord, Tian
+  Lei and Xin Yi recovered by a curve of their own (x1.5 on a full bar to x0.5 on an empty one); the steps
+  replace it, never faster than the curve at any HP.
+- **Off** (`?clash=0`, the Lab's `clash` row `old`): every number as before.
+
+Measured with a bot making plain parries of all-white strings (a parried blue blow starts the deathblow either way,
+ADR-211), red blows rolled, the same strings both ways (the film, 2026-11-26): Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. A string of 7 blows
+from an empty bar breaks Shen Hui either way (the full deflect's bonus).
+
 ## Three phases (2026-11-09, ADR-028; the pressure: 2026-11-15, ADR-119)
 P1 100–66 %, P2 66–33 %, P3 33–0 % of 4500 HP, each threshold a gate until its transition roar
 (always phase-1 timings; the red shock ring, 12 damage, which also clears the hazards). Later phases

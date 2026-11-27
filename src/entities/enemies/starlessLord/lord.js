@@ -16,6 +16,7 @@ import { LINKS } from './links.js';
 import { LordSpells } from './spells.js';
 import { dressFrame as dressLord } from './look.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { clashOn, clashRegenK } from '../../../combat/clashDance.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
 // crater of the Obsidian Throne, who fills the boss slot of the Starless level. A duelist (duelist/duelist.js:
@@ -244,7 +245,9 @@ export class StarlessLord extends Duelist {
     if (this.broken || this.posture <= 0) return;
     const P = TUNING.posture;
     if (this.postureTimer > P.regenDelay) {
-      const k = lerp(P.regenByHp[1], P.regenByHp[0], clamp(this.hp / this.maxHp, 0, 1));
+      // (the clash dance, ADR-247: the steps by his health replace the curve)
+      const f = clamp(this.hp / this.maxHp, 0, 1);
+      const k = clashOn() ? clashRegenK(f) : lerp(P.regenByHp[1], P.regenByHp[0], f);
       this.posture = Math.max(0, this.posture - P.regenRate * k * dt);
       this.emitPosture();
     }
