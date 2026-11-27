@@ -7060,20 +7060,26 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   its pocket through any phase-1 move whose beat names no `wjHands`, so phase 1's Azure Draw lost its finger and
   the Yank's BLUE fist (a parry cue) glinted inside a pocket (elbow 112 deg, the arm 81 deg down).
 - **Decision:**
-  1. `?wjPolish=0|a` (PICKED `a`, the proposal; `untouched/motion.js` POLISH, built into a second set of takes,
+  1. `?wjPolish=0|a` (PICKED `a`, the owner's pick from the films; `untouched/motion.js` POLISH, built into a second set of takes,
      read live): (1) each straight hand blow's contact hand moved back toward his centreline by AIM (palm -0.12,
      poke -0.1, Dark Spark -0.2 m; the Yank's fist -0.14 through its own `wjKeysP`, played by his realiser's
      `keysOf`): now 1 - 10 deg off; (2) a kick's follow-through is a moving hold (12 % back toward the chamber by
      u 1.14) that eases into the chamber at u 1.7: Three Count's worst jump 0.51 -> 0.34 m, Everywhere's 0.48 ->
      0.25. What is left is the snap of the strike itself (the owner's fast glide). A follow-through past the
      contact was tried and dropped (it drove the axe heel into the road: 0.50 m).
-  2. `?wjCastHand=0|a|b` (PICKED `a`, the proposal; `WjMelee._motionFrame`): a phase-1 beat of Azure Draw or the
+  2. `?wjCastHand=0|a|b` (PICKED `a`, the owner's pick from the films; `WjMelee._motionFrame`): a phase-1 beat of Azure Draw or the
      Yank uses the right hand: `a` for the whole cast, `b` from 0.55 of its windup (the pull and the flick), `0`
      round 3's pocket. Curb Pull keeps both hands in (its own design).
   3. No effect is upgraded: his spells are the owner's bar for the game, and no special of his reads weaker than
      the rest of his set on film.
   4. Tests: `veil.mjs . polish` (default) asserts the lines, the return and the casting hand; `anatomy` (opt-in)
      prints the table. No tell, windup, zone, damage or timing moves.
-- **Consequences:** the default (`a`, `a`) is the proposal until the owner picks from the films. Left for the hero
+  5. THE MERCY FOR SPELLS AND PIECES: the full run's DOWNTIME (seed 7, on the fight path these poses gave it) found
+     Crimson Cast's burst landing 0.05 s after the hero stood up from Overhead's knockdown: 2.92 s out of his own
+     hands (the cap 1.5). His melee beats spare such a blow (`WjMelee._spare`), his spells and thrown pieces only
+     spared a hero who was still down. Now `WjMelee.chainsLock(knockdown)` asks the same rule, and the spells'
+     `_strike` and terrain's `_heroDown` pass a blow over a hero it would chain (the blow still flies, cued; it
+     only does not land).
+- **Consequences:** the owner picked `a` and `a` from the films (2026-11-27): the defaults. Left for the hero
   session: one-frame jumps of a SUPPORT foot after a blink (Five Sides 0.47 m, Passing Through 0.55 m) come from
   the hero animator's `_feetClip`.

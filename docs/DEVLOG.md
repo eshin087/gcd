@@ -22,7 +22,8 @@ untilted frame (the rig root leans toward the camera) and the hero's place the f
 the chamber: Three Count 0.51 -> 0.34 m), `?wjCastHand=a|b` (the casting hand out). `veil.mjs . polish` asserts
 them. Films: before / after at the game camera and close, half speed, and the three casting hands.
 
-**Next:** the owner's picks; then the defaults set and the PR marked ready. **Open:** a support foot jumps after a
+**Picked:** the owner kept the polish (`a`) and the casting hand out for the whole cast (`a`): the defaults.
+**Open:** a support foot jumps after a
 blink (Five Sides, Passing Through: anim.js `_feetClip`, the hero session's); PR 176 and Shen Hui's PR both use
 ADR-250.
 

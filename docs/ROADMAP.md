@@ -1225,7 +1225,7 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [x] Bai Wuji (ADR-255, on the glide of ADR-250): the anatomy audit (`veil.mjs . anatomy`), straight blows on the
       line to the hero, a kick's return without the snap, phase 1's casting hand out of its pocket, behind
       `?wjPolish` / `?wjCastHand`; films sent
-  - [ ] The owner's pick from the films
+  - [x] The owner's pick from the films: both `a`, as the default
   - [ ] A support foot jumps after a blink (Five Sides, Passing Through: anim.js `_feetClip`)
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
