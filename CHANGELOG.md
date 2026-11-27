@@ -12,6 +12,14 @@ One hundred and twenty-four pieces of work since 0.4.0:
   curtain of falling code (`?oneGunFx=b`; `a` a tracer, `0` as before) and his palm bolts in the Source are a hot core
   in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
 One hundred and twenty-six pieces of work since 0.4.0:
+One hundred and twenty-seven pieces of work since 0.4.0:
+- **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
+  level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
+  the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the
+  two-handed overhead comes down across him on a diagonal; Sweeping the Road turns on his feet; the free hand in the
+  scabbard cuts moves half as far. Poses only: every windup, cue and window is as before; `?sheathForm=0` gives
+  the old poses. *Added, kept as options (the owner kept today's):* `?sheathPace=a`: COMBAT rule 10's slower floor for his scabbard blows (first blows 0.7 s, blows 0.45 s apart, the cue 0.35 s before, the
+  draws unchanged). `?drawFx=a|b|c`: three looks for the draw (the drawn breath, hanging leaves, the late sound).
 - **The Cinder Wyrm bites with its whole body** (2026-11-27, ADR-257). *Changed (the owner's pick from the films):*
   in every bite the wyrm's body surges first (the chest drops
   and pitches in off the hind feet, the body lunging a little toward you) while the head hangs back, then the head

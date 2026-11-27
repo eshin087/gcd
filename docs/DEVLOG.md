@@ -32,6 +32,34 @@ at the game camera.
 **Open / next:** the hooks from the side, the
 sweep's knee at its very contact, Iron Rain's twin arms; the feet jump in `anim.js _feetClip` belongs to the hero
 session.
+## 2026-11-27 — Lu Wusheng audited: the form, the pace, three looks for the draw (ADR-252; branch `claude/lu-wusheng-motion`)
+
+**Goal:** the owner's motion audit of every boss (one session and one draft PR each, batch 2), for Lu Wusheng:
+measure every move against `docs/ANIMATION.md`, fix the anatomy and the strikes, keep every tell readable, and
+offer 2-3 looks for his special move.
+
+**Measured** (new opt-in `sheath.mjs form`, `tests/integration/sheathAudit.mjs`: the limbs and the weapon at every
+impact, the draw's hands through the windup; plus the sword audit's table): thrusts on a bent arm (121 - 124°) 24°
+off the scabbard's line; every draw ending in a locked split (176 / 176°) with a short arm, the fist 11 - 13 cm off
+the hilt at the cock, the scabbard hand going forward 26 - 51 cm through the draw; the overhead an upright bar
+(75 - 87° off level); the sweep's legs crossed; the free hand's 0.5 m swing in the scabbard cuts.
+
+**Changed** (behind switches; the owner's picks below):
+- `?sheathForm=a` (`sheathed/form.js`; the form's keys beside the authored ones; `kit.motion` opens his arms): the
+  numbers in COMBAT.md "The Sheathed" → "The audit". Poses only (FORMPACE: every timing identical).
+- `?sheathPace=a` (`sheathed/pace.js`, Tian Lei's method): rule 10's floor as held cocks, the draws untouched.
+- `?drawFx=a|b|c` (`sheathed/fx.js`; the click hook in `sheathed.js _onClick`): the drawn breath, hanging leaves,
+  the late sound.
+- Tests: `sheath.mjs formpace` (in the default run), `form` (opt-in table); `GCD_LOOKS` now applies to the whole run.
+
+**Verification:** `sheath.mjs` green with the defaults and with `GCD_LOOKS=sheathForm=a,drawFx=c`; films of every
+move before / after at the game camera and side-on, the draw looks at both cameras (sent to the owner).
+
+**The owner's picks** (from the films and the preview): the form `a` (now the default), the pace and the draw's
+look as shipped (their options stay behind `?sheathPace` / `?drawFx`).
+
+**Open:** a planted foot's one-frame jumps (the hero's `_feetClip`, the hero session's). PR 170
+(draft) also uses ADR-252.
 ## 2026-11-27 — The Cinder Wyrm's motion audit: the bites (ADR-257; branch `claude/wyrm-motion-ccc88f`)
 
 **Owner:** the boss motion audit (one session and one draft PR per fighter, the shared brief): weird limb angles,

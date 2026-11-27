@@ -60,6 +60,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
   ['sheathLook', ['a', 'b', 'c', 'd'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve, d the wanderer (a reload)'],
   ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
+  ['drawFx', ['0', 'a', 'b', 'c'], '0', '0', false, ['grove'], 'the draw\'s look (ADR-252): 0 as shipped; a the drawn breath (the air drawn into the scabbard\'s mouth, thrown out along the cut); b hanging leaves (the blade\'s arc, letters left hanging on the line, dropped on the click); c the late sound (a quiet cut; the line bursts open on the click) (0 the owner\'s pick, the default; live)'],
   // --- code: the Hall of Falling Script and Xin Yi (ADR-156, ADR-157; pending: the owner picks from the sheets)
   ['oneLook', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'Xin Yi\'s body: a the long coat, b the cassock, c the grey coat (a reload)'],
   ['hall', ['a', 'b'], 'a', 'a', true, ['code'], 'the hall: a pale marble, green-black inlay; b dark basalt, jade-lit edges (a reload)'],
@@ -79,6 +80,9 @@ export const LOOK_SWITCHES = Object.freeze([
   // --- the motion pass (ADR-223; live; the owner picked a for all, 2026-11-26): held blue / red windups, the quick blows
   ['sheathMotion', ['0', 'a', 'b'], '0', 'a', false, ['grove'], "Lu Wusheng's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk; b held only"],
   ['sheathQuick', ['0', 'a'], '0', 'a', false, ['grove'], 'Before the Word: a quick white pommel snap from his carry (a: in his moves)'],
+  // --- Lu Wusheng's audit (ADR-252; the owner's picks, 2026-11-27: the form a, the pace and the draw's look as shipped)
+  ['sheathForm', ['0', 'a'], '0', 'a', false, ['grove'], 'Lu Wusheng\'s form: 0 as shipped; a the fist on the hilt, the scabbard pulled back as he draws, a real lunge at the cut\'s end, thrusts on a long arm in line, the overhead on a diagonal, the sweep turning on his feet, the free hand half the travel (the owner\'s pick, the default; live, from his next move)'],
+  ['sheathPace', ['0', 'a'], '0', '0', false, ['grove'], 'Lu Wusheng\'s pace: 0 as shipped; a COMBAT rule 10\'s floor: a move\'s first blow >= 0.7 s, blows >= 0.45 s apart, the cue 0.35 s before, the time a held cock; the draws as before (0 the owner\'s pick, the default; live, from his next move)'],
   ['foxMotion', ['0', 'a', 'b'], '0', 'a', false, ['fox'], "Wen Yao's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk, the feet no longer jump; b held only"],
   ['foxQuick', ['0', 'a'], '0', 'a', false, ['fox'], 'Fox Snap and Fox Knee: quick white blows from his guard (a: in his moves)'],
   ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
