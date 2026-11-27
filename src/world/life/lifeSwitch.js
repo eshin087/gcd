@@ -13,6 +13,9 @@
 //   arrival    the camera opens wide over the level as the player enters (game/arrival.js)
 //   answer     the world answers the fight (a roar's gust front, the hush before a great blow)
 //
+//   ?lifeFast=0         today's drawing paths exactly (the fast path, the default, hands the GPU only the
+//                       letters drawn this frame and skips an empty batch's draw; the same picture)
+//
 // DEFAULT: everything on (the owner, 2026-11-23, after the preview: "Looks right" / "Turn it on");
 // `?life=off` turns it all off. Headless (no `location`): OFF, so the seeded suites are untouched;
 // tests/integration/life.mjs turns pieces on with setLife().
@@ -40,15 +43,15 @@ const clampK = (v) => {
 /** The switch a page's query string asks for (`?life=`, `?lifeK=`); no `?life=` gives the default. */
 export function lifeFromSearch(search) {
   const q = new URLSearchParams(search ?? '');
-  return { on: parse(q.has('life') ? q.get('life') : DEFAULT), k: q.has('lifeK') ? clampK(q.get('lifeK')) : 1 };
+  return { on: parse(q.has('life') ? q.get('life') : DEFAULT), k: q.has('lifeK') ? clampK(q.get('lifeK')) : 1, fast: q.get('lifeFast') !== '0' };
 }
 
 const fromUrl = () => {
   try {
-    if (typeof location === 'undefined') return { on: parse(HEADLESS), k: 1 };
+    if (typeof location === 'undefined') return { on: parse(HEADLESS), k: 1, fast: true };
     return lifeFromSearch(location.search);
   } catch {
-    return { on: parse(HEADLESS), k: 1 };
+    return { on: parse(HEADLESS), k: 1, fast: true };
   }
 };
 
@@ -60,6 +63,8 @@ export const LIFE = {
   on: first.on,
   /** the strength of all of it, 0.25..2 */
   k: first.k,
+  /** the fast path (`?lifeFast=0`: false, today's paths exactly); read every frame, so it can be flipped live */
+  fast: first.fast,
 };
 
 /** Is a piece switched on? (A level may still leave it out: ask `game.world.life.on(piece)`.) */
@@ -72,6 +77,12 @@ export function setLife(spec) {
   const on = parse(spec ?? HEADLESS);
   for (const p of LIFE_PIECES) LIFE.on[p] = on[p];
   return LIFE;
+}
+
+/** The fast path on / off (the tests and the Lab; `?lifeFast=0` at load). */
+export function setLifeFast(on) {
+  LIFE.fast = on !== false && on !== 0 && on !== '0';
+  return LIFE.fast;
 }
 
 /** Set the strength (clamped 0.25..2). */
