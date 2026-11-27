@@ -6909,6 +6909,57 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   replace it). Scenario `slashfeel` (four facings: no line behind him, a whiff carried, a landed blow's burst and
   event, the smear).
 
+## ADR-245 — The living world's fast path: the same picture for less (`?lifeFast=`) (2026-11-26)
+
+- **Context:** the owner: "i feel like the ascii atmosphere effects is causing a lot of performance issues. is
+  there a way we can improve the performance while still making it look as good and alive?" (target: 60 fps
+  on every device; their iPhone and their integrated-graphics laptop are GPU-bound). Measured on origin/main
+  in fights on five levels (RTX 4090 / i9, the machine shared): the living world's own letters are nearly free
+  on the GPU (about 0.02 - 0.04 ms of the effects pass at the phone's size; hiding them all moved the frame
+  within the noise). What did cost: the dragon-printed ground's step flash walked 12 prints with a `cos` and a
+  `sin` each on EVERY pixel while any print lived, and the grass wake walked its chunk circles on every pixel
+  (together 9 - 21 % of the ground pass at 4K); and every batch re-uploaded its whole instance arrays each
+  frame (62 KB to draw 77 mist letters; 115 - 231 KB a frame in all), with empty batches still drawn. The
+  life update itself is 0.06 - 0.34 ms of CPU at 1x (1 - 3 ms at a 4 - 6x throttle), spread thinly over litter,
+  creatures, weather and wind.
+- **Decision:** a fast path, on by default, `?lifeFast=0` today's paths: the batches send only the first n
+  instances they draw and an empty one leaves the frame (`life/ship.js`); the step flash and the wake return at
+  once outside one circle round all of their prints / chunks, and skip a print out of a foot's reach before
+  its trigonometry. BENCH (`?perf`) gains a living-world reading so the phone can report its share.
+- **Why this way:** each change leaves the picture identical (frozen frames: 0 of 2 073 600 pixels differ on
+  fox, grove, code and ash, 3 px at 1 level on cinderwood, the same as drawing twice; 8 s films drawn both ways
+  from one simulation: within the game's own draw-twice noise), so no look had to be chosen. In one page, fast
+  against today: the ground pass 0.83 - 0.89 of before with prints live; the effects pass's render CPU and
+  buffer uploads 0.7 - 0.97.
+- **Not taken:** tighter quads for the leaf lens (saved nothing measurable: that draw is overhead-bound, and it
+  moved ~1 000 pixels); thinning the letters on a struggling phone (they are almost free, so it would buy
+  nothing); moving the wisps' and mist's motion into the vertex shader (a large rewrite, not pixel-exact, for a
+  CPU share of 0.01 - 0.04 ms a layer).
+- **Consequences / open:** the wind in the trees' vertex shaders (889k vertices on cinderwood) could not be
+  measured cleanly on the shared GPU; the lamps keep the fire field running on fox and grove (the look); none of
+  it is measured on a phone: the owner's BENCH "living world" line will say.
+## ADR-246 — The flash chain: three flash counters in a row, he strikes back after each (2026-11-26)
+- **Context:** research into the combat of three sword games (Sekiro; Phantom Blade Zero; Onimusha: Way of the
+  Sword) found that this game already has most of their core (posture and deathblows, the mikiri, blade locks, the
+  flash counter, blue / red / black tells). One thing it lacked was the counter-kill CHAIN: a re-timed counter
+  after each counter, a beat-by-beat exchange that escalates. Of five proposals the owner chose it first, and picked:
+  he strikes back after each counter; 3 links with rising damage; the same window every link; the
+  choose-where-to-cut finisher later. They asked to see today's flash counter and the new one side by side on film.
+- **Decision:** built behind a switch and filmed on all eight duelists, today's flash counter beside the chain;
+  the owner picked "strikes back", so the chain is the game's default (`?counter=0` / the Lab's `counter` row:
+  old gives the single counter; the headless sims keep the single counter their checks are written for, duel
+  FLASHCHAIN plays the chain). A flash counter before the last
+  link throws the duelist back (`clash`) and queues his counter move (the riposte the engine already throws out of a
+  guard), tagged with the link (`act.flashLink`); a flash counter of that move is the next link. The last link is
+  today's flash counter ending (reel, cinematic, crit window). Numbers in `DEFENSE.counterChain`: 70 / 85 / 100
+  damage, 45 / 55 / 70 posture, rising freeze, shake, punch; the steel's ring rises in pitch per link.
+- **Why the strike-back is the counter move:** every duelist already has one per phase, built and tuned, and every
+  one opens on a melee blow a cut can meet (checked for all eight; Tian Lei's form-3 bolt is the one exception, where
+  the chain simply stops). No new boss animation was needed for the prototype.
+- **Consequences:** a single flash counter under the chain pays less at once than today (no reel, no crit window)
+  and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
+  `link`, `links`, `last`.
+
 ## ADR-247 — The slice: a seam of digits on the blade's own path, ~0.2 s; the free hand kept out of his body (2026-11-26)
 
 - **Context:** after the impact pass (ADR-244) the owner: the left arm "clipping sometimes as i see its yellow fist

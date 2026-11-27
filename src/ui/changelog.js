@@ -35,6 +35,19 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'The flash chain: counter him three times in a row',
+        notes: ['A flash counter (attack just before his blow lands) no longer ends his combo. He is knocked back and strikes back at once; counter that too, and once more. The third counter in a row hits hardest and leaves him reeling. Add ?counter=0 for the old single counter.'],
+      },
+      {
+        date: '2026-11-26',
+        title: 'The living world draws for less',
+        notes: [
+          'The wind, the weather, the footprints and the grass look exactly the same but take less work to draw, so fights run smoother.',
+          'With ?perf in the address, BENCH now shows how much the living world costs on your device.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'Instant slashes, and a quieter left hand to choose',
         notes: [
           'Every sword attack now leaves one straight slash line where the blade passed, instead of the curved arc: a turning cut leaves three straight cuts around you, a thrust a short streak, a heavy blow a thicker violet line. Add ?slash=arc to the address for the arc as before.',

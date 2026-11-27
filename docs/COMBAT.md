@@ -129,6 +129,7 @@ The riskier the answer, the more it pays. From safest to riskiest:
 | Perfect dodge | red, black | the flurry (the plunge on the wyrm): as many blows as the streak counts, the crit window |
 | Perfect parry (≤ 0.20 s; ADR-227) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
 | Flash counter (attack ≤ ~0.14 s before his blow) | a blade's white or heavy blow | 70 damage and 60 posture at once, he reels, the crit window; too late and his blow lands |
+| The flash chain (ADR-246; the default, `?counter=0` for the single counter above) | the same | links 1 and 2: 70 / 85 damage, 45 / 55 posture, he is thrown back and strikes back at once; link 3: 100 and 70, he reels, the crit window |
 | Held guard (ADR-144) | the Sheathed's draw | no health; the whole guard meter, the guard knocked open 0.8 s, thrown back; he re-sheathes unpunished |
 | Parry (ADR-144) | the Sheathed's draw | as any blue flare blow (the counter), and he is caught with the blade out for 1.5 s |
 | Nothing (ADR-144) | the Sheathed's draw | death (`TUNING.draw.lethal`; off: 110) |
@@ -1360,6 +1361,21 @@ Sekiro / Phantom Blade Zero beats, each read from his data (`moves.js` beat flag
     (2.2 s) opens, a gold burst, a 0.16 s freeze, "FLASH COUNTER" (`player:counter`). The swing
     itself lands nothing more. Only in the half the hero's press decides (his blow arriving in the
     cut); a cut that connects before his blow is the plain clash.
+  - **The flash chain** (ADR-246; the default in the game since the owner picked it from films of every
+    duelist, `?counter=0` / the Lab's `counter` row: old gives the single counter; the headless sims keep
+    the single counter unless a scenario sets the chain; `DEFENSE.counterChain`, `combat/flashChain.js`). Flash counters in a row on one
+    duelist are LINKS of a chain of 3. Links 1 and 2 deal 70 / 85 (final) and 45 / 55 posture with a
+    rising freeze (0.16 / 0.19 s) and shake; he is thrown back 0.6 m (the short `clash` reaction) and
+    **strikes back at once** with his counter move (`kit.counterMove`: the riposte he throws out of a
+    guard), its first blow landing ~0.75 s after the counter (no sooner than a trade's 0.6 s re-arm);
+    no crit window. A flash counter of any blow of that strike-back is the next link. Link 3 deals 100
+    and 70 posture, freezes 0.24 s and ends as the flash counter does today: he reels, the cinematic,
+    the crit window, "THREE FLASHES". The window is the same for every link (the owner's pick). Missing
+    a link costs nothing more: the strike-back is an ordinary blow, answered as any, and the next flash
+    counter starts a new chain. The steel rings higher each link. A strike-back that is a ki bolt (Tian
+    Lei's `riposteBolt`, form 3) cannot be met by a cut: the chain stops there. Every duelist plays it
+    (Bai Wuji's barrier opens on each link); the wyrm has no flash counter. Checked by `npm test`: duel
+    FLASHCHAIN.
 - **Mikiri (perilous thrust)** — a red thrust marked `mikiri` (Piercing Ash; the last hit of Hundred
   Petals) flashes `combat:flash` with `perilous: true`. A roll **into** it (the roll's direction
   against his facing, dot ≥ 0.55) whose impact comes within 0.3 s of the roll's start steps on the

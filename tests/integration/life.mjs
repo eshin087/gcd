@@ -181,7 +181,7 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
     spawned: { ...spawned }, lifeSpawned: { ...lifeSpawned }, random: lifeRandom,
   });
   return {
-    game, world, life, set, U, level, step, counts, own,
+    game, world, life, set, U, level, step, counts, own, ownBase,
     walk(vx, vz) { vel.x = vx; vel.z = vz; },
     place(x, z) { game.player.position.set(x, 0, z); },
     emit: (n, d) => events.emit(n, d),
@@ -191,7 +191,7 @@ function build(levelId = 'cinderwood', spec = 'all', o = {}) {
 const T = { THREE, CONFIG, LEVELS, LEVEL_IDS, LIFE, LIFE_PIECES, LIFE_TUNE, setLife, setLifeK, build, assert, out, near, imp, ROOT, countingRandom };
 
 // one file per piece (its owner's): a missing or broken file fails the suite
-const FILES = ['core', 'wind', 'weather', 'litter', 'leaves', 'steps', 'creatures', 'answer', 'air', 'arrival', 'hang', 'tremor', 'aftermath', 'lamps'];
+const FILES = ['core', 'wind', 'weather', 'litter', 'leaves', 'steps', 'creatures', 'answer', 'air', 'arrival', 'hang', 'tremor', 'aftermath', 'lamps', 'fast'];
 const S = {};
 for (const f of FILES) {
   try {

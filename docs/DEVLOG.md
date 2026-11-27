@@ -66,6 +66,51 @@ landscape and portrait.
 
 **Open / next:** the owner's verdict; the sound is a synth recipe (a recorded one to pick by ear if wanted).
 
+## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
+
+**Owner:** asked for research into the combat of three sword games and five additions; picked the counter-kill
+chain first ("Issen chain first"), then: he strikes back after each counter, 3 links rising, the same window every
+link, the choose-where-to-cut finisher later, and "show me current and ... he strikes back ... video comparison".
+
+**What.** `combat/flashChain.js` (the switch), `DEFENSE.counterChain` (the numbers), `Duelist.onCounter` (the link
+from the act he is throwing; before the last link a `clash` throw-back and his counter move queued with the link),
+`DuelBrain._foot` (the queued move carries `act.flashLink`), the hero's `_trade` (each link's freeze / shake /
+punch; the crit window on the last link only; `player:counter` gains `link / links / last`), the call-outs
+("FLASH COUNTER ×2", "THREE FLASHES"), the ring rising per link (audio), the Lab's `counter` row. Test: duel
+FLASHCHAIN (off: he reels; on: links 1-3 with their damage, the strike-back's first blow 0.75 s after the counter,
+the crit window only on the last, a new chain starting at 1).
+
+**Film.** Every duelist, today beside the chain, at the game camera with a close crop (a bot pressing for the flash
+counter; all eight chained three links: 70 / 85 / 100). The owner picked "strikes back": the chain is the game's
+default (`?counter=0` for the single counter); the headless sims keep the single counter unless a scenario sets it.
+
+**Next.** The owner's playtest of the chain (and on the iPhone); then the "Break" finisher (choose where to cut
+a broken boss).
+Not measured: how much the chain shortens fights for a human (the strategy bots do not flash-counter).
+## 2026-11-26 — The living world's fast path: the same picture for less (ADR-245; Opus agent; `world/life-perf`)
+
+**Owner:** "i feel like the ascii atmosphere effects is causing a lot of performance issues. is there a way we
+can improve the performance while still making it look as good and alive?"
+
+- **Measured first** (five levels, fights, GPU at 4K and the phone's size, CPU at 1x / 4x / 6x throttle): the
+  air's letters themselves are nearly free on the GPU; the cost was the ground's step flash and the grass
+  wake looping on every pixel (9 - 21 % of the ground pass at 4K), whole-array uploads every frame (115 - 231 KB)
+  and empty batches still drawn; the life update 0.06 - 0.34 ms of CPU at 1x.
+- **Changed** (`?lifeFast=0` = before): only the drawn letters are uploaded, empty batches leave the frame
+  (`life/ship.js`); the step flash and the wake return at once outside their reach; BENCH reads the living
+  world's share.
+- **Result** (one page, fast vs before): the ground pass 0.83 - 0.89; the effects pass's render CPU and uploads
+  0.7 - 0.97; the picture identical (pixel counts and side-by-side films per level).
+
+**Verified.** `life.mjs . all` (new `fast`: same letters, ranges, bounds, off-is-free), `world.mjs . all`
+(the allocation `budget` check failed once under machine load, passed alone on the branch and on main),
+`world.mjs . perfreadout`, the glyph check; the seeded wyrm fight's trace byte-identical.
+
+**Open.** Not measured on a phone (the owner's BENCH "living world" line); the trees' wind vertex cost on a
+quiet GPU; the wisps' and mist's motion on the GPU if the phone's CPU turns out to be the limit.
+
+---
+
 ## 2026-11-26 — The animation guide (`docs/ANIMATION.md`; branch `docs/animation-guide`)
 
 **Owner:** "can you research online and find the material that will be helpful for future agents to follow
