@@ -1234,7 +1234,7 @@ speed and his place; `_sliceSeg(i0, i1)` prints the point's path between two fra
 both against his body now) through `_sliceCell` (snapped to a screen-plane lattice of `SLICE.cell`, one digit a cell
 per swing: `cells`); traced each frame from `SLICE.from` × the windup, or all at once in `_sliceEnd` as the swing ends
 (which also calls `onLine` with the path's ends and emits `player:slash`); `_sliceHit` (from the `player:hitDragon`
-handler, the contact's own frame) kicks and shakes along the blade's way and sprays `_burst(…, SLICE.burst)`. Tests:
+handler, the contact's own frame; not on a guarded strike) kicks and shakes along the blade's way and sprays `_burst(…, SLICE.burst)`. Tests:
 `onSlice(x, y, z, w, row)`, `seamN`, `drips`. While a free-hand
 look holds the hand (`P.sd`), the free wrist is `BLADE_PTS[13]` in the coat's sheet test (`_bladePts`). **The light combos** (ADR-240, `combos.js` `COMBOS`, `setCombo` /
 `comboMode`, `?combo=`, the Lab's `combo` row): `setCombo` writes a combo's `anim`, `variants`, timings and a

@@ -6983,7 +6983,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   strength by the point's speed (`SLICE.v`), one in `drip` dripping, `life` 0.2 / 0.24 s; laid against his body (his
   travel through the swing taken off) and carried at his ground speed. `?slice=steel|green`, `?slicewhen=trace|end`
   (defaults steel, trace, until the owner picks). The landed blow's kick and shake move to the contact's own frame
-  (the hit test runs after the slice's update: done in the `player:hitDragon` handler), with IMPACT × 0.45 sparks
+  (the hit test runs after the slice's update: done in the `player:hitDragon` handler; none on a guarded strike), with IMPACT × 0.45 sparks
   there and no scar line. `?slash=line` keeps the ending line (ADR-240, ADR-244), `?slash=arc` the crescent.
 - **Consequences:** the slice's digits are glyph particles (one letter cell, the afterimage's cell size), not heat in
   the fire field: the green the owner asked to see is not one of the field's palettes (its void slot is borrowed per
