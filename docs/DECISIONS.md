@@ -7066,8 +7066,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   - Planted feet skate 0.4 - 1.0 m through some strings (the gait's re-step under a turning, lunging body).
   - The tail blows already overlap: the tip trails the tail's middle by 44 - 123° through the turn and runs past
     it as the body stops (a softer tip was tried and changed nothing a film could show: dropped).
-- **Decision** (behind `?wyrmStrike=0|a`, `dragon/strike.js`, `tuningMotion.js` `WYRM_STRIKE.bite`; '0' as shipped
-  until the owner picks from the films; the Lab's LOOKS row `wyrmStrike`), for every bite (the bite, a string's
+- **Decision** (behind `?wyrmStrike=0|a`, `dragon/strike.js`, `tuningMotion.js` `WYRM_STRIKE.bite`; `a` the default,
+  the owner's pick from the before / after films, 2026-11-27; '0' as shipped; the Lab's LOOKS row `wyrmStrike`), for every bite (the bite, a string's
   bite, the lunge bite, the rear bite): over the windup's last 0.1 s the chest drops and pitches into the strike off
   the locked hind feet, a little past the strike's own body, and the whole body surges 0.4 model units toward the
   hero (not when it is already within 4 units: a lunge reads from the high camera where a neck reaching at the

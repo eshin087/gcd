@@ -15,7 +15,7 @@ change motion and tells only, in small steps.
 - `tests/integration/wyrmAnatomy.mjs` + integ `wyrmanatomy` (opt-in): each blow measured at its contact: the gap
   to the hero at the announced impact, a foreleg's elbow and reach, a bite's neck, the order the chain reaches top
   speed, the tail's tip against its middle, the planted feet's skating, pops (hit-stop frames left out).
-- `dragon/strike.js` behind `?wyrmStrike=a` ('0' default until the owner picks; the Lab's LOOKS row): every bite's
+- `dragon/strike.js` behind `?wyrmStrike=a` (the owner's pick from the films, the default; `0` as before; the Lab's LOOKS row): every bite's
   body surges first (the chest drops and pitches in, the body lunges 0.4 units) while the head hangs, then the head
   snaps onto the impact. Measured: the body 50 - 117 ms ahead of the head (was on one frame); the jaws 0.17 - 2.07 m
   from the hero at the impact (was 0.79 - 3.10).
@@ -30,7 +30,9 @@ together: measure the tip's bearing against the middle's instead.
 
 **Verification:** integ green with the switch off and forced on (`GCD_STRIKE_DEF`, a temporary hook, removed).
 
-**Next:** the owner's pick; then the forelegs and the wings, each with its hit spheres measured before and after.
+**Owner's pick:** `a` ("AFTER, make it default"), 2026-11-27.
+
+**Next:** the forelegs and the wings, each with its hit spheres measured before and after.
 ## 2026-11-27 — Halcyon's motion audit: a flier's limbs, the readable pace, eye-beam and shockwave looks (ADR-254; branch `claude/halcyon-motion-7d73eb`)
 
 **Owner (through the audit's lead session):** every boss audited with docs/ANIMATION.md; "weird looking arm angles

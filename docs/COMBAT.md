@@ -2826,7 +2826,7 @@ starts; read from the stance, no gather; close range; light; exempt from the fir
 **Found on the way** (the wyrm's seeded fights with the picks on): the sky hunt's crash landing now stays on
 the wyrm's ground; a drakeling's dive released onto a blow after its longest wait is ADR-237's (on `main`).
 
-### The wyrm's bites (2026-11-27, ADR-257; `?wyrmStrike=a`, '0' as shipped until the owner picks)
+### The wyrm's bites (2026-11-27, ADR-257; the owner's pick, the default; `?wyrmStrike=0` as shipped)
 The motion audit's second pass on the wyrm measured each blow AT ITS CONTACT (`node tests/integration/integ.mjs .
 wyrmanatomy`; `GCD_LOOKS=wyrmStrike=a` for the pass, `GCD_MOVES=` a list, `GCD_TRACE=1` the frames round a blow):
 
