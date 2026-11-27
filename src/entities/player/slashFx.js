@@ -32,11 +32,11 @@ import * as THREE from 'three';
 
 const _pv = new THREE.Vector3(), _OUT = [0, 0, 0];
 
-/** 'slice' (the default): the seam of digits along the blade's path (SLICE); 'line': the instant (ending) slash
- *  line; 'dline': that ending line printed as the slice's thin seam of digits (its colour `?slice=`); 'arc': the
- *  curved crescent as before. */
-export const SLASH_IDS = ['slice', 'line', 'dline', 'arc'];
-let slashNow = 'slice';
+/** 'dline' (the default, the owner's pick): the ending slash printed as the slice's thin seam of digits (its colour
+ *  `?slice=`, steel by default); 'slice': the seam of digits along the blade's path (SLICE); 'line': the instant
+ *  (ending) slash line in strokes; 'arc': the curved crescent as before. */
+export const SLASH_IDS = ['dline', 'slice', 'line', 'arc'];
+let slashNow = 'dline';
 export const slashMode = () => slashNow;
 /** Pick the look of every swing's mark; false for an unknown id. */
 export function setSlash(m) {

@@ -6374,6 +6374,8 @@ async function scenarioSlice() {
   const SX = await imp('src/entities/player/slashFx.js');
   const { DIM: MD } = await imp('src/entities/player/model.js');
   const m0 = [SX.slashMode(), SX.sliceMode(), SX.sliceWhenMode()];
+  // the owner's pick (2026-11-27): the digit slash, steel, is what plays with no parameter
+  assert(m0[0] === 'dline' && m0[1] === 'steel', `the default slash is the digit slash in steel (${m0[0]}, ${m0[1]})`);
   let last = null;
   const run1 = (yaw, plan, when, col, boss) => {
     SX.setSlash('slice');
