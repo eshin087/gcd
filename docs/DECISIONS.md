@@ -7007,7 +7007,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   135°: a man kneeling on air); the round kick landed at 105°, the side kick at 130°, the other leg folded at ~92°;
   the pass flew pitched 54° with the knees at 54° and the fist at 2.56 m, over the hero's head. His pace is Tian
   Lei's (first blows from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s), under COMBAT rule 10.
-- **Decision:** four switches, none the default until the owner picks from film:
+- **Decision:** four switches, filmed, then the owner's picks (2026-11-27) made the defaults: `halMotion` b, `halPace` 0 (his fast pace kept), `halEyes` a, `halShock` a (lookSwitch.js PICKED):
   1. `?halMotion=b` (`halcyon/limbs.js`, through `motion.js` halKeys, his realiser's `keysOf`): `a`'s keys, then a
      straight blow's hand 1.08 x the arm on the line from its shoulder to the hero's upper chest (his model space at
      the dip, `motion.b.aim`), the keys after it moved with it; a kick's foot 1.05 x the leg along its own line;
@@ -7040,7 +7040,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   stream; nothing of a beam's or a blow's gameplay moves.
 - **Not taken:** changing `anim.js` (the hero session's) to let a flier's feet below his root; raising his body
   and lowering his root (it moves gameplay heights the flight tests hold); a pace change without the owner's pick.
-- **Consequences / open:** under `b` every straight blow lands within 9° of the line (elbow 161 - 171°), the knees
+- **Consequences / open:** the owner kept his Phantom Blade Zero-fast openers under COMBAT rule 10 (as Tian Lei's and the Fox's); `?halPace=a` stays behind its switch. Under `b` every straight blow lands within 9° of the line (elbow 161 - 171°), the knees
   141 - 156° at every punch, a kick 173° with the other leg at 154°, the pass level (77°) with the fist at 1.55 m;
   a longer limb snaps harder at the contact (the largest frame jolt: Faster Than Sound's kick 282 → 424 mm/f², the
   riposte's palm 174 → 236). His own beats (the eyes, the car, the clap, the grab, the statue's arm, the falling

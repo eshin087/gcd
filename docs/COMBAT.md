@@ -2690,7 +2690,8 @@ the blow is aimed down at the hero (his fists met the air over the hero's head a
 his legs a flier's (trailing behind him, never a planted stance in the air), his arm opening at the end;
 Tian Lei's held windups for his blue and red blows; the snap blows Flick and Tap (below). Timings unchanged.
 
-**His limbs and his pace, to choose (2026-11-27, ADR-254; not the default yet).** `?halMotion=b` is `a` with a
+**His limbs (2026-11-27, ADR-254; the owner's picks: `b`, his fast pace kept, the eyes `a`, the shock `a`; `?halMotion=a`
+plays ADR-225's motion).** `?halMotion=b` is `a` with a
 flier's limbs, poses only (every timing as `a`; city.mjs `limbs`; `halcyon/limbs.js`). Measured at each blow's
 contact in his upright frame (city.mjs `audit`, `GCD_AUDIT_IMPACT=1`; the drawn body is sheared toward the
 camera, so world points read a straight punch 20 - 40° off). Under `a`: straight blows 35 - 66° across the line
@@ -2705,11 +2706,12 @@ limb snaps harder at the contact (the largest frame jolt, mm/f²: Faster Than So
 palm 174 → 236, Meet and Greet orbited 330 → 369); the other moves' are as `a`'s or lower (Flick 109 → 88).
 `?halPace=a` is COMBAT rule 10's floor (`halcyon/pace.js`, Tian Lei's ADR-248 rule): a move's first real blow
 >= 0.7 s x the phase's windupScale, later blows >= 0.45 s apart, the cue 0.35 s before; the time is a held cock
-(the realiser's `hold`); the snap blows and the transitions keep theirs (city.mjs `readable`). '0', his shipped
-pace (a first blow from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s), stays the default until the owner
-picks. Two effect options, gameplay untouched: `?halEyes=a|b` (his beams: a heat vision, b a crimson pulse;
-`fxEyes.js`) and `?halShock=a|b` (Applause's ring and Meteor's landing: a a thunderclap ring, b a dome of
-pressure; `fxShock.js`).
+(the realiser's `hold`); the snap blows and the transitions keep theirs (city.mjs `readable`). The owner kept '0',
+his shipped pace (a first blow from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s): his PBZ-fast openers are a
+deliberate exception to rule 10's floor; `a` stays behind its switch. Two effect looks, gameplay untouched:
+`?halEyes` (his beams: a heat vision, the default; b a crimson pulse; 0 Tian Lei's beam; `fxEyes.js`) and
+`?halShock` (Applause's ring and Meteor's landing: a a thunderclap ring, the default; b a dome of pressure; 0 the
+dust front; `fxShock.js`).
 
 **The crash.** A parry of a flying blow (a Fly-By pass, Blink of an Eye's flying cross) or a perfect dodge
 of a red flying blow (Through the Tower, See the World, the last pass of phase 3) throws him off his line

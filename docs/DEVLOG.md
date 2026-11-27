@@ -29,9 +29,13 @@ contact anatomy.
 further back rather than shorter where the hip is low (the animator keeps a foot over his root's floor, anim.js,
 the hero session's); `kickStretch` only through a kick (it locked his trailing legs straight).
 
-**Open:** the owner's picks (then PICKED, the `awaiting` rows cleared, the PR marked ready); the kick and the
-palm snap harder at the contact (largest frame jolt 282 → 424, 174 → 236 mm/f²); `npm run perf` for the effect the
-owner picks.
+**The owner's picks** (from the films, 2026-11-27): `halMotion` b, his fast pace kept (`halPace` 0), `halEyes` a
+(heat vision), `halShock` a (the thunderclap): in PICKED, the Lab rows out of `awaiting`. The first cut of both
+effect options printed a white core the whole time (they read as white beams, his crimson lost): redrawn as crimson
+strokes, white only at the first peak, before the films were sent.
+
+**Open:** the kick and the palm snap harder at the contact (largest frame jolt 282 → 424, 174 → 236 mm/f²); the
+lead foot's step lives in the hero's animator (anim.js) and was left alone.
 
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
