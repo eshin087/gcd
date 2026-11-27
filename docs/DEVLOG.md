@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
+
+**Owner:** asked for research into the combat of three sword games and five additions; picked the counter-kill
+chain first ("Issen chain first"), then: he strikes back after each counter, 3 links rising, the same window every
+link, the choose-where-to-cut finisher later, and "show me current and ... he strikes back ... video comparison".
+
+**What.** `combat/flashChain.js` (the switch), `DEFENSE.counterChain` (the numbers), `Duelist.onCounter` (the link
+from the act he is throwing; before the last link a `clash` throw-back and his counter move queued with the link),
+`DuelBrain._foot` (the queued move carries `act.flashLink`), the hero's `_trade` (each link's freeze / shake /
+punch; the crit window on the last link only; `player:counter` gains `link / links / last`), the call-outs
+("FLASH COUNTER ×2", "THREE FLASHES"), the ring rising per link (audio), the Lab's `counter` row. Test: duel
+FLASHCHAIN (off: he reels; on: links 1-3 with their damage, the strike-back's first blow 0.75 s after the counter,
+the crit window only on the last, a new chain starting at 1).
+
+**Film.** Every duelist, today beside the chain, at the game camera with a close crop (a bot pressing for the flash
+counter; all eight chained three links: 70 / 85 / 100). The owner picked "strikes back": the chain is the game's
+default (`?counter=0` for the single counter); the headless sims keep the single counter unless a scenario sets it.
+
+**Next.** The owner's playtest of the chain (and on the iPhone); then the "Break" finisher (choose where to cut
+a broken boss).
+Not measured: how much the chain shortens fights for a human (the strategy bots do not flash-counter).
 ## 2026-11-26 — The living world's fast path: the same picture for less (ADR-245; Opus agent; `world/life-perf`)
 
 **Owner:** "i feel like the ascii atmosphere effects is causing a lot of performance issues. is there a way we

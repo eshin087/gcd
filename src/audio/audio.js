@@ -14,6 +14,9 @@ import { FIRE_SFX, subscribeFire } from './fire.js';
 import { TrackBank, TrackLoop } from './tracks.js';
 import { THUMP_SFX, Thump } from './thump.js';
 import { LIFE_SFX } from './lifeSfx.js';
+
+// the flash chain's ring (player:counter with a link > 1): + gain and + playback rate (pitch) per link past the first
+const CHAIN_RING = { gain: 0.12, rate: 0.07 };
 import { StreakSound, perfectSound } from './streakSound.js';
 
 // WebAudio engine: the sound effects are synthesised at runtime, except the attack sounds, the red cues
@@ -1002,7 +1005,12 @@ export class AudioEngine {
       this._parryAlso({ tell: 'blue', chain: 5 });
       this.streakSound?.onDefence('mikiri');
     });
-    on('player:counter', () => this._parryAlso({ tell: 'blue', chain: 7, perfect: true }));
+    on('player:counter', (e) => {
+      // the flash chain's links (?counter=chain, ADR-246): each link's steel rings higher and louder
+      const L = e?.links > 1 ? e.link | 0 : 0;
+      if (L > 1 && sfxMode() !== 'old' && this._sample('parry-blue', null, 1 + CHAIN_RING.gain * (L - 1), 1 + CHAIN_RING.rate * (L - 1))) return;
+      this._parryAlso({ tell: 'blue', chain: 7, perfect: true });
+    });
     // a deep gong under the slow motion (the blade lock's camera push-in has its own clash and no slow-mo)
     on('game:cinematic', (e) => { if (e?.kind !== 'lock' && e?.kind !== 'perfectParry' && e?.kind !== 'flurry') this.play('gong'); });
     on('dragon:deflected', () => this._parryAlso({ tell: 'blue', chain: 8 }));

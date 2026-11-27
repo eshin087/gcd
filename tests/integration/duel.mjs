@@ -1155,6 +1155,98 @@ async function scenarioTrade() {
   return G;
 }
 
+// ================================================================== scenario: flashchain
+// The flash chain (?counter=chain, combat/flashChain.js, ADR-246): a flash counter that is not the last
+// link throws him back and he strikes back at once with his counter move; a flash counter of one of its
+// blows is the next link; the last link is the flash counter's own ending (he reels, the crit window).
+async function scenarioFlashChain() {
+  out('\n== scenario FLASHCHAIN (three flash counters in a row: he strikes back after each, the third ends it) ==');
+  const { setCounterMode } = await imp('src/combat/flashChain.js');
+  const { LIGHT } = await imp('src/entities/player/combat.js');
+  const CH = DEFENSE.counterChain, K = DEFENSE.counter;
+  const G = build();
+  duel(G, { dist: 2.0 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  // the press that makes a flash counter: his blow arrives just after the cut becomes a cut
+  const LEAD = LIGHT[0].windup + K.window / 2;
+  const counters = [];
+  G.watch = (n, e) => { if (n === 'player:counter') counters.push({ ...e, t: game.time, hp: d.hp }); };
+  /** Press attack LEAD s before the next real blow of whatever he is throwing; run until a counter
+   *  lands or `max` s pass. Returns the counter event or null. */
+  const counterNext = (max = 3) => {
+    const n0 = counters.length;
+    let clicked = null;
+    run(G, max, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      const A = d.brain.act, b = A?.beats.find((x) => !x.feint && x.impact > A.t);
+      if (b && clicked !== b && b.impact - A.t <= LEAD) { clicked = b; input.click(0); }
+    }, () => counters.length > n0);
+    return counters.length > n0 ? counters[counters.length - 1] : null;
+  };
+  try {
+    // (0) the switch off: the flash counter as it ships (he reels at once)
+    setCounterMode('0');
+    settle(G, 8);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    d.brain.trigger('swallow');
+    let c = counterNext();
+    assert(!!c && !c.links && d.brain.react?.kind === 'reeling' && p.critTimer > 0, `chain off: a flash counter ends his string, he reels (${d.brain.react?.kind}), the crit window opens (${p.critTimer.toFixed(2)} s)`);
+    settle(G, 8);
+    // (1) the chain on: three in a row
+    setCounterMode('chain');
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    p.debug.heal();
+    d.posture = 0;
+    const counterMove = TUNING.counterMove ?? 'riposte';
+    d.brain.trigger('swallow');
+    d.debug.setAI(true); // (his strike-back comes out of his footwork, which runs with the AI on)
+    const hp0 = d.hp;
+    c = counterNext();
+    assert(c?.link === 1 && c.links === CH.links && !c.last, `chain on: the first flash counter is link 1 of ${CH.links} (${c?.link} / ${c?.links})`);
+    assert(c && Math.abs(hp0 - c.hp - CH.damage[0]) < 0.5 && d.brain.react?.kind === CH.react && p.critTimer <= 0, `... it deals ${CH.damage[0]} (${(hp0 - (c?.hp ?? hp0)).toFixed(0)}), throws him back (${d.brain.react?.kind}) and opens no crit window (${p.critTimer.toFixed(2)})`);
+    const t1 = game.time;
+    run(G, 1.5, () => game.mouseGround.set(d.position.x, 0, d.position.z), () => d.mode === 'act');
+    const A1 = d.brain.act, b1 = A1?.beats.find((x) => !x.feint);
+    const gap1 = A1 && b1 ? game.time - t1 + (b1.impact - A1.t) : NaN;
+    assert(A1?.name === counterMove && A1.flashLink === 1, `... and he strikes back at once: ${A1?.name} (link ${A1?.flashLink})`);
+    assert(gap1 >= DEFENSE.trade.rearm && gap1 <= 1.4, `his strike-back's first blow lands ${gap1.toFixed(2)} s after the counter (no sooner than a trade's re-arm, ${DEFENSE.trade.rearm} s)`);
+    const hp1 = d.hp;
+    c = counterNext();
+    assert(c?.link === 2 && !c.last && Math.abs(hp1 - c.hp - CH.damage[1]) < 0.5, `a flash counter of his strike-back is link 2: ${(hp1 - (c?.hp ?? hp1)).toFixed(0)} damage (${CH.damage[1]})`);
+    run(G, 1.5, () => game.mouseGround.set(d.position.x, 0, d.position.z), () => d.mode === 'act');
+    assert(d.brain.act?.flashLink === 2, `... he strikes back again (link ${d.brain.act?.flashLink})`);
+    const hp2 = d.hp;
+    c = counterNext();
+    const broke = d.mode === 'broken';
+    assert(c?.link === 3 && c.last && Math.abs(hp2 - c.hp - CH.damage[2]) < 0.5, `the third is the last link: ${(hp2 - (c?.hp ?? hp2)).toFixed(0)} damage (${CH.damage[2]})`);
+    assert((broke || d.brain.react?.kind === 'reeling') && p.critTimer >= DEFENSE.ghostep.critWindow - 0.05, `... he reels (${broke ? 'broken' : d.brain.react?.kind}) and the crit window opens (${p.critTimer.toFixed(2)} s)`);
+    assert(game.hitstopTimer >= CH.stop[2] - 0.03 || broke, `the last link freezes longest (${game.hitstopTimer.toFixed(3)} s, ${CH.stop[2]})`);
+    // (2) a chain starts over: the next flash counter, on a move that is not a strike-back, is link 1
+    d.debug.setAI(false);
+    settle(G, 8);
+    home(G);
+    place(G, 2.0);
+    run(G, 0.3);
+    p.debug.heal();
+    d.posture = 0;
+    d.brain.trigger('swallow');
+    d.debug.setAI(true);
+    c = counterNext();
+    assert(c?.link === 1, `a new chain starts at link 1 (${c?.link})`);
+    d.debug.setAI(false);
+    settle(G, 8);
+  } finally {
+    setCounterMode('0');
+    G.watch = null;
+  }
+  return G;
+}
+
 // ================================================================== scenario: deflect
 async function scenarioDeflect() {
   out('\n== scenario DEFLECT (a string parried hit by hit, the last recoils him) ==');
@@ -5071,6 +5163,7 @@ const SCENARIOS = {
   guard: scenarioGuard,
   clash: scenarioClash,
   trade: scenarioTrade,
+  flashchain: scenarioFlashChain,
   deflect: scenarioDeflect,
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
