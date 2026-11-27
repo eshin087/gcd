@@ -21,8 +21,9 @@ export const RELEASES = [
         date: '2026-11-26',
         title: 'Shen Hui fights with better form',
         notes: [
-          'Being tried out: add ?ashForm=a and the Ash Disciple thrusts on a straight arm out of a real lunge, brings his overheads down one-handed on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quiet and lands his front foot with the blade. Same timings, same cues.',
-          'Also to choose from: three looks for Ember Whirl (?whirlFx=a, b or c) and for Heaven-Splitting Fall (?fallFx=a, b or c).',
+          'The Ash Disciple thrusts on a straight arm out of a real lunge, brings his overheads down one-handed on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quiet and lands his front foot with the blade. Same timings, same cues.',
+          'Heaven-Splitting Fall is a real jump now: he tucks high with the blade raised, reaches his legs down and lands into the cut.',
+          'Ember Whirl raises a cyclone of fire round him, and Heaven-Splitting Fall splits the floor in fire ahead of and behind him.',
         ],
       },
       {

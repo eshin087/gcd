@@ -1205,6 +1205,37 @@ delete MOVES.piercingAsh.beats[0].formMotionKeys; // (as its motionKeys: the own
   const b = MOVES.wristFlick.beats[0], up = [-0.04, 0.36, 0.04], mid = [0.08, 0.14, 0.12];
   b.formKeys = b.formKeys.map(([u, k]) => (k.lH ? [u, { ...k, lH: u < 0.7 ? up : u < 1.3 ? mid : [0.14, 0.06, 0.06] }] : [u, k]));
 }
+// Heaven-Splitting Fall, a jump (the owner, 2026-11-27: "doesn't look natural in his motion"). The held red
+// coil (ADR-226) spans 0.36 - 0.72 of its windup, which is his whole flight: he flew 3.6 m up in a ground
+// crouch, feet set in a lunge, and whipped the blade from behind him to the chop in the last 0.3 s. In the
+// form it is a jump: he loads (sinks, the blade swung down behind his right hip), drives up off both feet
+// as the arms swing the blade up, tucks his knees at the top with the blade raised over his sword shoulder
+// (held through the ring's lock: the red tell reads there), reaches his legs down as the blade starts
+// over, and lands INTO the cut (the root's arc ends at the impact), the knees taking it as he sinks on.
+{
+  const b = MOVES.heavenFall.beats[0], Y = 0.1; // (the jump's facing: the leap turns him to where he lands)
+  const RAISE = { two: 1, yaw: Y, rH: [-0.1, 0.36, 0.06], rP: [-0.8, 0.4, -0.3], sw: [W2B(-1.15, Y), 1.2], swF: [1, 0, 0], spX: -0.08, hdX: 0.04, hdY: 0 };
+  const keys = [
+    // the load: down onto both feet, the blade swung low behind him (the arms' backswing)
+    [0.26, { two: 1, yaw: 0.2, bY: -0.5, pitch: 0.34, spX: 0.14, hdX: -0.2, hdY: -0.05, rH: [-0.04, -0.3, 0.12], rP: [-0.6, -0.4, -0.5], sw: [W2B(-2.3, 0.2), -0.55], swF: [1, 0, 0], rF: [-0.14, 0.22], lF: [0.16, -0.22], rK: [-0.25, 0.3, 1], lK: [0.3, 0.3, 1], flat: 0.8 }],
+    // the drive: legs straight, up on his toes, the arms bringing the blade forward and up
+    [0.36, { two: 1, yaw: 0.15, bY: 0.02, pitch: -0.06, spX: -0.02, hdX: 0.06, hdY: 0, rH: [0.06, 0.12, 0.26], rP: [-0.8, 0.2, -0.2], sw: [W2B(-0.5, 0.15), 0.75], swF: [1, 0, 0], rF: [-0.12, 0.16], lF: [0.15, -0.2], flat: 0 }],
+    // off the stones: the legs trailing long below him, toes down
+    [0.46, { ...RAISE, bY: 0.04, pitch: -0.1, sw: [W2B(-0.9, Y), 1.05], rF: [-0.1, ANK + 0.02, 0.04], lF: [0.15, ANK + 0.08, -0.2], rK: [-0.2, 0.2, 1], lK: [0.3, 0.2, 1] }],
+    // the top: knees drawn up, back arched, the blade high over his sword shoulder; held through the lock
+    [0.6, { ...RAISE, bY: -0.06, pitch: -0.16, rF: [-0.12, 0.36, 0.16], lF: [0.15, 0.3, -0.08], rK: [-0.2, 0.4, 1], lK: [0.3, 0.4, 1] }],
+    [0.8, { ...RAISE, bY: -0.08, pitch: -0.12, rF: [-0.12, 0.34, 0.2], lF: [0.15, 0.3, -0.06], rK: [-0.2, 0.4, 1], lK: [0.3, 0.4, 1] }],
+    // the fall: the legs reach for the ground (the front foot ahead), the blade starts over
+    [0.93, { ...RAISE, bY: 0.0, pitch: 0.06, sw: [W2B(-0.7, 0.2), 0.75], yaw: 0.2, rH: [-0.02, 0.24, 0.24], rF: [-0.1, ANK + 0.1, 0.42], lF: [0.2, ANK + 0.16, -0.5], rK: [-0.2, 0.1, 1], lK: [0.35, 0, 0.9] }],
+    // the landing is the cut; the knees take it on through the active frames
+    [1.0, { e: 'i', two: 1, ...CHOP2_F, bY: -0.42, rP: [-0.8, -0.3, 0], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56], rK: [-0.2, 0.1, 1], lK: [0.35, -0.1, 0.9], flat: 0.6 }],
+    [2.0, { two: 1, ...CHOP2_FOLLOW, bY: -0.52, pitch: 0.42, spX: 0.18, hdX: -0.14, rP: [-0.8, -0.3, 0], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56], rK: [-0.2, 0.1, 1], lK: [0.35, -0.1, 0.9], flat: 0.8 }],
+  ];
+  b.formKeys = keys;
+  if (b.formMotionKeys) b.formMotionKeys = keys;
+  // and he rises out of it where he landed (no step: the feet stay)
+  MOVES.heavenFall.formRecovery = [[0.5, { two: 0.5, yaw: 0.45, bY: -0.3, pitch: 0.24, spX: 0.14, hdX: -0.1, rH: [0.1, -0.3, 0.42], rP: [-0.8, -0.3, 0], sw: [W2B(0.5, 0.45), -0.6], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56] }]];
+}
 export const MOVE_NAMES = Object.keys(MOVES);
 
 // ---------------------------------------------------------------- reaction clips (no hits)

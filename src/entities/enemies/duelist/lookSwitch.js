@@ -71,6 +71,9 @@ export const PICKED = Object.freeze({
   oneMoves: 'a', // his moves: straight kicks, long punches, held blue / red windups, the side-on aim, two fast strings (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped)
   // the sword motion pass (ADR-226; the owner's pick, 2026-11-26, from the before / after films)
   ashMotion: 'a', // Shen Hui: the jian in line with the arm, held blue / red windups (Piercing Ash keeps its thrust), quick blows
+  ashForm: 'a', // Shen Hui's form: thrusts in a lunge, overheads on a diagonal, sweeps on his feet, the Fall a jump (ADR-250; the owner's pick)
+  whirlFx: 'b', // Ember Whirl: the cyclone (ADR-250; the owner's pick)
+  fallFx: 'b', // Heaven-Splitting Fall: the split (ADR-250; the owner's pick)
   lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl
   // every human boss
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
