@@ -6349,10 +6349,11 @@ async function scenarioInstantSlash() {
     const C5 = [[0, 'L'], [0.42, 'L'], [0.84, 'L'], [1.26, 'L'], [1.68, 'L']];
     {
       const r = play('line', C5);
-      const per = [1, 2, 3, 4, 5].map((c) => r.lines.filter((l) => l.combo === c));
-      const ok = per[0].length === 1 && per[1].length === 1 && per[2].length === 3 && per[2].every((l) => l.kind === 1) && per[3].length === 1 && per[3][0].kind === 2 && per[4].length === 1 && per[4][0].look === 'heavy'
+      // (counted by what each line is: a turn's later cuts and the ending slash's beat may land in the next hit)
+      const per = [r.lines.filter((l) => l.kind === 0 && l.look === 'light'), r.lines.filter((l) => l.kind === 1), r.lines.filter((l) => l.kind === 2), r.lines.filter((l) => l.look === 'heavy')];
+      const ok = r.lines.length === 7 && per[0].length === 2 && per[1].length === 3 && per[2].length === 1 && per[3].length === 1
         && r.lines.every((l) => l.ok && l.len > 0.2 && l.len <= 7.01) && r.trails === 0 && r.kicks >= 1;
-      assert(ok, `the combo draws straight lines, no crescent: hits 1-5 ${per.map((x) => x.length).join(', ')} line(s) (the whirl 3, the stab a streak, the slam heavy), ${r.trails} crescent calls, ${r.kicks} camera kick(s), lengths ${r.lines.map((l) => l.len.toFixed(1)).join(' ')}, drawn at ${r.lines.map((l) => l.at.toFixed(2)).join(' ')} of the active window`);
+      assert(ok, `the combo draws straight lines, no crescent: ${r.lines.length} lines: ${per.map((x) => x.length).join(', ')} (two cuts, the whirl's 3, the stab's streak, the slam's heavy), ${r.trails} crescent calls, ${r.kicks} camera kick(s), lengths ${r.lines.map((l) => l.len.toFixed(1)).join(' ')}, drawn at ${r.lines.map((l) => l.at.toFixed(2)).join(' ')} of the active window`);
     }
     {
       const r = play('line', [[0, 'L'], [0.42, 'L'], [0.84, 'H']]);
