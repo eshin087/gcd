@@ -1211,7 +1211,11 @@ inside the active window (scenario `feel`).
 **The ending slash** (ADR-240, `slashFx.js` `END`, `setPlace` / `placeMode`, `setBeat` / `beatMode`, `?endslash=`,
 `?endbeat=`): `_end` moves the cut's line to its place (`target` ahead of him, `body` his chest, `enemy` the last
 `player:hitDragon` point of this attack, `blade` the chord itself) and queues it `END.beat` s on (`game.time`);
-`_flush` draws what is due each frame. **The light combos** (ADR-240, `combos.js` `COMBOS`, `setCombo` /
+`_flush` draws what is due each frame. The direction (every place but `blade`): the blade's point `END.at` along
+it, projected by the camera each buffered frame, its steps weighted by the point's speed² (`_swing`), laid in the
+screen's plane (`_screen`); the line is queued in `END.reveal` pieces `END.step` apart from the swing's start
+side. The swing's end waits out a landed blow's bite (`SWING.bite`). Defaults: `enemy`, `0`. While a free-hand
+look holds the hand (`P.sd`), the free wrist is `BLADE_PTS[13]` in the coat's sheet test (`_bladePts`). **The light combos** (ADR-240, `combos.js` `COMBOS`, `setCombo` /
 `comboMode`, `?combo=`, the Lab's `combo` row): `setCombo` writes a combo's `anim`, `variants`, timings and a
 finisher's `kind` / `heavy` / `contact` onto `LIGHT` (production's kept in `BASE` and restored by '0'), and sets
 its feel and hand (`feel.js` `setFeel`, `setFeelHand`). Imported by player.js for the URL.

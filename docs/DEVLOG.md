@@ -35,7 +35,13 @@ for it (timing may change). `slashFx.js` places a fixed-length line a beat after
 its timing, feel and hand; scenario `combos`. Films: the four combos beside production, and the 3 places × 2
 timings at the wyrm.
 
-**Open / next:** the owner's pick of a combo (with its feel and hand) and of the slash's place and timing.
+**Round 4:** baseline combo A + the slash on the enemy as the swing ends (now the defaults; the sims keep
+production's chain). The yellow flicker was the free hand behind his back passing through the coat's back
+panels: the free wrist joins the coat's sheet test. The slash came at the contact from the windup's motion (the
+bite read as the swing's end): it now waits out the bite and follows the blade's on-screen motion (camera
+projection, speed-weighted), revealed from the swing's start side; measured per light hit and heavy branch.
+
+**Open / next:** the owner's verdict on the revised baseline.
 
 ## 2026-11-26 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (ADR-241 – ADR-243; branch `enemies/untouched`; planned by the lead, built by Opus agents)
 

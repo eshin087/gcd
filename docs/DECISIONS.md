@@ -6813,3 +6813,18 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   feel and a hand (`feel.js` `setFeelHand`). Damage, posture and reach stay; '0' restores production's defs
   exactly (scenario `combos`). No new swings were keyed: production's are the natural ones the owner kept; a
   combo they like may want one, next.
+- **Round 4 (same day):** the owner picked combo A with the slash on the enemy ("lets use this as the
+  baseline"), saw "a spark of yellow" (the left hand clipping) and found the slashes still not following the
+  swing ("the heavy slash cut to be the opposite ... from top right to bottom left to follow the motion of the
+  sword"). Found and fixed: (1) the free hand behind his back slipped in and out through the coat's back panels
+  (its bare hand flashing): while a look holds it (`P.sd`) the free wrist joins the coat's sheet test with the
+  grip and the blade (anim.js `_bladePts`, `BLADE_PTS[13]`), so the cloth keeps to one side of it. (2) The line
+  was decided at the contact: the hit-pause and the bite slow the blade for a few frames and read as the
+  swing's end, so the finisher's line came from its raise alone (upward). The end now waits out the bite
+  (`SWING.bite`); the direction is the blade's motion near the hand ACROSS THE SCREEN through the camera's own
+  projection, each frame's step weighted by its speed² (a chop running away from the camera moves down the
+  picture; laid in the screen's plane by its depth it pointed up); the line is laid in the screen's plane and
+  drawn in three pieces a frame apart from the swing's start side (`END.reveal`). Measured on every light hit
+  and heavy branch: each line's on-screen direction now has its blade's. (3) The baseline is the default:
+  `?endslash=enemy`, `?endbeat=0`; combo A in the game (`DEFAULT_COMBO`; the headless sims keep production's
+  defs, which their checks are written for; `?combo=0` plays production's).

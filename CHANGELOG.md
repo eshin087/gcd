@@ -28,6 +28,10 @@ One hundred and nineteen pieces of work since 0.4.0:
   Tempest (quick strokes back and forth, a full turn to finish), c Mountain (slow, heavy, the leaping slam), d
   Dancer (a skip, a turn, a lunge, a rising two-handed finisher), each from today's swings in a new order on its
   own timing, feel and hand. Their timings differ from today's; damage and reach do not.
+  The baseline (the owner's pick): combo A with the ending slash on the enemy as the swing ends, the game's
+  default on the site (`?combo=0` plays today's chain). Each ending slash now runs the way the sword crossed the
+  screen, drawn from where the swing began to where it ended over three frames, once the swing is over (a landed
+  blow's bite no longer reads as its end). The free hand no longer flickers through the coat behind his back.
 - **A ninth level: the Veiled Crossing and Bai Wuji, the Untouched** (2026-11-26, ADR-241 – ADR-243). *Added:* a ninth
   level, `?level=veil` (the title screen lists it). **The Veiled Crossing**: a city crossing at night after the fight
   has already levelled it, under a black veil: cracked asphalt with a great diagonal crossing's white bars, craters,
