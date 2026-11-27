@@ -3,7 +3,7 @@ import { clamp } from '../../../core/math.js';
 import { TELL, RESULT } from '../../../combat/rules.js';
 import { perPhase } from '../duelist/realise.js';
 import { TUNE as HERO_TUNE } from '../../player/player.js';
-import { halMotionOn } from './motion.js';
+import { halMotionOn, halLimbsOn } from './motion.js';
 
 // Halcyon's flight (ADR-160): the rule that keeps a sword fight fair, the pass, the crash, the carry.
 //
@@ -236,7 +236,9 @@ export class Flight {
     const along = G.len * k;
     d.position.x = G.x + G.dx * along;
     d.position.z = G.z + G.dz * along;
-    d.position.y = G.y + (P.y - G.y) * clamp(k, 0, 1);
+    // (ADR-254, `?halMotion=b`: lower, his body level, so the fist meets the hero's chest)
+    const py = halLimbsOn() ? this.T.motion.b.passY : P.y;
+    d.position.y = G.y + (py - G.y) * clamp(k, 0, 1);
     d.yaw = Math.atan2(G.dx, G.dz);
     // what stands on his line is thrown aside (his body through it)
     this._sweepLine(G.x + G.dx * Math.max(0, along - P.speed * dt), G.z + G.dz * Math.max(0, along - P.speed * dt), d.position.x, d.position.z, G.dx, G.dz);

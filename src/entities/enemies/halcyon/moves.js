@@ -4,6 +4,7 @@ import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
 import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
 import { halKeys } from './motion.js';
+import { buildPace, paceCue, paceOn } from './pace.js';
 import { SNAP_KEYS } from '../ascendant/motion.js';
 
 // Halcyon's moves and reaction clips, as data (ADR-160; COMBAT.md → "Halcyon"). Every name is his own
@@ -319,8 +320,21 @@ export const CLIP = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k,
 for (const [k, c] of Object.entries(CLIP)) c.name = k;
 
 // ---------------------------------------------------------------- realising a move
-// (ADR-225: `?halMotion=a` plays his reworked motion through `keysOf`: motion.js)
-export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: (b) => halKeys(b) });
+// (ADR-225: `?halMotion=a` plays his reworked motion through `keysOf`: motion.js; ADR-254: `?halMotion=b`
+// the flier's limbs on top, limbs.js; `?halPace=a` the readable pace, pace.js: a held cock, a later cue)
+const PACE = buildPace(MOVES, TUNING);
+let PH = 1;
+const keysOf = (b) => {
+  const k = halKeys(b);
+  const h = paceOn() ? PACE[Math.min(3, Math.max(1, PH)) - 1].get(b) ?? 0 : 0;
+  return h > 0 ? { keys: k, hold: h } : k;
+};
+const base = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf });
+export function realise(name, phase = 1, rnd = Math.random, opts = null) {
+  PH = phase;
+  const A = base(name, phase, rnd, opts);
+  return A && paceOn() ? paceCue(A, TUNING) : A;
+}
 
 /** The guard pose (for tools). */
 export { GUARD };

@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'Halcyon audited: a flier\'s limbs, a readable pace, two looks for his eyes and his shockwaves',
+        notes: [
+          'Being tried out: add ?halMotion=b to the address and Halcyon fights like a flier: his punches go straight at you with the arm long, his kicks land straight, his legs trail long behind him instead of folding under him, and Fly-By comes through your chest instead of over your head.',
+          'Add ?halPace=a for a slower, easier-to-read pace: every first blow winds up at least 0.7 s and his blows come at least 0.45 s apart.',
+          'Two new looks for his eye beams (?halEyes=a or b) and for his clap and meteor landing (?halShock=a or b).',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [
