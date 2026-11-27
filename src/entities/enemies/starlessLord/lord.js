@@ -13,7 +13,7 @@ import { TUNING } from './tuning.js';
 import { LordFx } from './fx.js';
 import { LordTerrain } from './terrain.js';
 import { LINKS } from './links.js';
-import { LordSpecialFx } from './specialFx.js';
+import { LordSpecialFx, boltLook } from './specialFx.js';
 import { LordSpells } from './spells.js';
 import { dressFrame as dressLord } from './look.js';
 import { lookOf } from '../duelist/lookSwitch.js';
@@ -657,7 +657,8 @@ export class StarlessLord extends Duelist {
         // round the hero stay as they are
         const D = cur.def, k = clamp((a.t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1), h = this._hand;
         const kind = D.bolt ? 'bolt' : D.pull ? 'pull' : D.grip ? 'grip' : D.cast?.kind === 'star' ? 'star' : D.release?.style === 'rift' ? 'rift' : D.release?.style === 'push' ? 'push' : D.cast?.kind === 'debris' ? 'debris' : D.cast?.kind === 'storm' ? 'storm' : null;
-        if (kind) fx.gather(kind, h, k, dt);
+        // (a Void Lightning look, ?boltFx, draws its own windup in place of the bolt's gather: specialFx.js)
+        if (kind && !(kind === 'bolt' && boltLook() !== '0')) fx.gather(kind, h, k, dt);
         if (D.pull) {
           const p = this.game.player;
           if (p?.getChestPos && k > 0.25) {
@@ -673,7 +674,7 @@ export class StarlessLord extends Duelist {
         }
       } else if (cur && !cur.feint) {
         const D = cur.def, k = clamp((a.t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1), h = this._hand;
-        if (D.bolt) fx.crackle(h.x, h.y, h.z, k, dt);
+        if (D.bolt) { if (boltLook() === '0') fx.crackle(h.x, h.y, h.z, k, dt); }
         else if (D.pull) {
           fx.crackle(h.x, h.y, h.z, k, dt, [2.8, 0.2, 0.3]);
           const p = this.game.player;

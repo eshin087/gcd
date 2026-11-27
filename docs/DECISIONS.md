@@ -7043,7 +7043,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   - `?boltFx=` Void Lightning: `a` the thread (motes spiral into a white heart at his fingers, the bolt braided with
     two violet strands, a ring punched out at the hand), `b` the tear (arcs crawl up the casting arm, the bolt leaves
     a dark seam with violet lips that comes apart upward), `c` the storm (arcs creep along the floor round his feet,
-    the bolt grounds three times along its line);
+    the bolt grounds three times along its line); a chosen look draws the windup at his hand in place of the shipped
+    gather (the two together were one white flare);
   - `?igniteFx=` a form's ignition, over the shipped `?ignite=a`: `a` the cocoon (a column of letters rises round
     him and bursts out flat), `b` the writ (the new steel written in light where it will stand), `c` the eclipse (a
     ring of dark spreads round him, its red rim stands up as a wall).

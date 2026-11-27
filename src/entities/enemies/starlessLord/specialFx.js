@@ -2,8 +2,9 @@ import { K_VOID, K_STEEL, K_SMOKE, K_FIRE, GROUND_Y } from '../duelist/fx.js';
 import { lookOf } from '../duelist/lookSwitch.js';
 
 // The upgraded looks of two of the Starless Lord's specials (ADR-251), three options each for the owner to
-// pick from, '0' = as they ship (Void Lightning's crackle and bolt, the ignition the owner picked in ADR-122,
-// `?ignite=a`; these draw OVER it):
+// pick from, '0' = as they ship (Void Lightning's gather and bolt, the ignition the owner picked in ADR-122,
+// `?ignite=a`; these draw over the bolt and the ignition, and a bolt's look draws its windup in place of the
+// shipped gather at his hand):
 //
 //   `?boltFx=`   Void Lightning (every bolt from his free hand: Void Lightning, the bolts inside Void
 //                Cadence, Lightning Verse, Chained Lightning, Thunder Verse, ...)
@@ -117,10 +118,10 @@ export class LordSpecialFx {
       for (let arm = 0; arm < 2; arm++) for (let i = 0; i < 8; i++) {
         const u = i / 7, r = R0 * (1 - u) + 0.04, ang = arm * Math.PI + u * 5.5 - t * (7 + 7 * k);
         const c = Math.cos(ang) * r, s = Math.sin(ang) * r;
-        F._dot(h.x + A.rx * c + A.ux * s, h.y + A.ry * c + A.uy * s, h.z + A.rz * c + A.uz * s, 0.16 + 0.06 * u, 0.3 + 0.55 * u * (0.5 + 0.5 * k), K_VOID);
+        F._dot(h.x + A.rx * c + A.ux * s, h.y + A.ry * c + A.uy * s, h.z + A.rz * c + A.uz * s, 0.22 + 0.08 * u, 0.55 + 0.6 * u * (0.5 + 0.5 * k), K_VOID);
       }
       // the heart: white, swelling
-      F._dot(h.x, h.y, h.z, 0.18 + 0.2 * k, 0.7 + 0.65 * k, K_STEEL);
+      F._dot(h.x, h.y, h.z, 0.22 + 0.24 * k, 0.8 + 0.6 * k, K_STEEL);
       this._acc += dt * (10 + 24 * k);
       while (this._acc >= 1) {
         this._acc -= 1;
@@ -138,7 +139,7 @@ export class LordSpecialFx {
         const p0 = pts[i], p1 = pts[i + 1];
         for (let q = 0; q <= 2; q++) {
           const u = q / 2;
-          F._dot(p0.x + (p1.x - p0.x) * u, p0.y + (p1.y - p0.y) * u, p0.z + (p1.z - p0.z) * u, 0.2, (0.2 + 0.45 * k) * (1 - i * 0.2), K_VOID);
+          F._dot(p0.x + (p1.x - p0.x) * u, p0.y + (p1.y - p0.y) * u, p0.z + (p1.z - p0.z) * u, 0.26, (0.5 + 0.5 * k) * (1 - i * 0.15), K_VOID);
         }
       }
       this._acc += dt * (6 + 26 * k);
@@ -160,7 +161,7 @@ export class LordSpecialFx {
         if (k > 0.5 && F.lr() < 0.35) F.arc(h.x, h.y, h.z, h.x + F.lrand(-0.6, 0.6), GROUND_Y, h.z + F.lrand(-0.6, 0.6), 0.22, null, null, 4);
       }
       F._dot(h.x, h.y, h.z, 0.25 + 0.15 * k, 0.5 + 0.5 * k, K_VOID);
-      F._dot(x, GROUND_Y + 0.05, z, 0.9 + 0.8 * k, 0.12 + 0.22 * k, K_VOID);
+      F._dot(x, GROUND_Y + 0.08, z, 0.9 + 0.8 * k, 0.3 + 0.35 * k, K_VOID);
     }
   }
 
@@ -251,19 +252,22 @@ export class LordSpecialFx {
     const d = this.d, F = this.fx, x = fin(d.position.x), z = fin(d.position.z), t = fin(d.time);
     if (L === 'a') {
       // a column of tiny letters rising round him, drawing in
-      this._acc += dt * (30 + 70 * k);
+      this._acc += dt * (60 + 110 * k);
       const r = 1.3 - 0.75 * k;
       while (this._acc >= 1) {
         this._acc -= 1;
         const a = F.lr() * TAU, rr = r * F.lrand(0.85, 1.15);
-        F._blob(x + Math.cos(a) * rr, F.lrand(0.05, 0.4), z + Math.sin(a) * rr, -Math.sin(a) * 1.4, F.lrand(1.6, 3.2), Math.cos(a) * 1.4, F.lrand(0.5, 0.8), 0.22, 0.14, 0.42 + 0.35 * k, 0, K_VOID, 0.6);
+        F._blob(x + Math.cos(a) * rr, F.lrand(0.05, 0.4), z + Math.sin(a) * rr, -Math.sin(a) * 1.4, F.lrand(1.6, 3.2), Math.cos(a) * 1.4, F.lrand(0.5, 0.8), 0.3, 0.2, 0.75 + 0.35 * k, 0, K_VOID, 0.6);
       }
     } else if (L === 'b') {
       // the new steel written in light where it will stand, cell by cell from the hand out
       const yaw = fin(d.yaw), fx = Math.sin(yaw), fz = Math.cos(yaw), sx = -fz, sz = fx;
       const reach = Math.min(1, k * 1.25);
+      const A = F._axes();
       const line = (ax, ay, az, bx, by, bz) => {
-        F._ink(ax, ay, az, ax + (bx - ax) * reach, ay + (by - ay) * reach, az + (bz - az) * reach, 0, 0.75 + 0.35 * k);
+        F._ink(ax, ay, az, ax + (bx - ax) * reach, ay + (by - ay) * reach, az + (bz - az) * reach, 0, 1.1 + 0.15 * k);
+        F._ink(ax + A.ux * 0.09, ay + A.uy * 0.09, az + A.uz * 0.09, ax + (bx - ax) * reach + A.ux * 0.09, ay + (by - ay) * reach + A.uy * 0.09, az + (bz - az) * reach + A.uz * 0.09, 0, 0.9 + 0.2 * k);
+        F._dot(ax + (bx - ax) * reach, ay + (by - ay) * reach, az + (bz - az) * reach, 0.3, 1.3, K_STEEL);
       };
       const y = 1.0;
       if (form === 2) {
@@ -286,8 +290,9 @@ export class LordSpecialFx {
       const R = 0.6 + 2.2 * k, n = Math.round(14 + 26 * k);
       for (let i = 0; i < n; i++) {
         const a = (i / n) * TAU + t * 0.4;
-        F._dot(x + Math.cos(a) * R, GROUND_Y + 0.04, z + Math.sin(a) * R, 0.32, 0.35 + 0.45 * k, K_FIRE);
-        F._dot(x + Math.cos(a) * R * 0.7, GROUND_Y + 0.03, z + Math.sin(a) * R * 0.7, 0.6, 0.35 + 0.3 * k, K_SMOKE);
+        F._dot(x + Math.cos(a) * R, GROUND_Y + 0.12, z + Math.sin(a) * R, 0.36, 0.75 + 0.45 * k, K_FIRE);
+        F._dot(x + Math.cos(a) * R * 0.94, GROUND_Y + 0.1, z + Math.sin(a) * R * 0.94, 0.3, 0.5 + 0.3 * k, K_VOID);
+        F._dot(x + Math.cos(a) * R * 0.7, GROUND_Y + 0.06, z + Math.sin(a) * R * 0.7, 0.6, 0.6 + 0.3 * k, K_SMOKE);
       }
       F._dot(x, GROUND_Y + 0.03, z, R * 0.9, 0.3 + 0.3 * k, K_SMOKE);
     }
