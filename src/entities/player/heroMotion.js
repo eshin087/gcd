@@ -9,7 +9,7 @@
 //   ?heroThrust=0|a    the thrusts' extension (combo A's hit 4, the rising thrust; Piercing Gale, the lone heavy):
 //                      they landed with the elbow at 127-143° and the blade 41-44° off the forearm, a cocked wrist
 //                      on a bent arm. a: the hand at the arm's full stretch along the point's own line, the blade
-//                      within ~15-20° of the forearm (a thrust extends from the shoulder along one line,
+//                      within ~30° of the forearm, 28° / 33° measured (a thrust extends from the shoulder along one line,
 //                      docs/ANIMATION.md), aimed a little lower (36° / 24° up, from 45° / 36°)
 //
 // Read live: the player sets its animator's `wristSoft` every frame (player.js), setHeroThrust patches the two clips'
