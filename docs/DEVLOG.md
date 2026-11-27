@@ -5,6 +5,32 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The Starless Lord's form, a readable pace, looks for two specials (ADR-251; branch `claude/lord-motion`)
+
+**Owner:** the motion audit of every boss (weird arm angles and sword positions, unrealistic attacks, readable
+tells, special effects at the fox's and Bai Wuji's bar), one session and one draft PR per fighter; batch 2.
+
+**Measured first**, every move in every form it is used in (`lord.mjs . formaudit`, new: the shared sword audit's
+impact table, the feet's true slide on the floor, the form-2 off-hand blade's arm): thrusts on a bent arm (121 -
+140°) 18 - 23° off the arm's line, the long lunges on two locked knees, the two-handed overheads straight down (71 -
+80° off level), the low sweeps' legs crossing (-0.73 m, a knee pop), the front foot still up at half the impacts.
+Fine already: the wrist on the blade, the blade clear of his body, the off-hand blade at its own blows.
+
+**Changed** behind `?lordForm=a` (moves.js: each key helper pairs its keys with the form's; a post-pass makes
+`formKeys` / `formMotionKeys` / `formRecovery`, picks included; the realisers pick them; ADR-250's recipe, the
+overheads kept two-handed): after, thrusts 154 - 157° and 2 - 5° off the line, the lunge's front knee 95°, the
+sweeps' feet never cross, the overheads 43 - 61° off level, the front foot down at nearly every cut; timings
+identical (LORDFORM). `?lordPace=a` (pace.js, Tian Lei's recipe: rule 10 as a held cock). Effects to pick:
+`?boltFx=a|b|c`, `?igniteFx=a|b|c` (specialFx.js). Lab LOOKS rows.
+
+**Film.** Forms 1 - 4, before / after, at the game camera (cropped round the pair) and close from his side, real and
+half speed; the effect options as 2 × 2 grids. Rig: the batch's film server and `move.js`, my ports 5284 / 9484.
+
+**Next.** The owner's picks (the form, the pace, one look per special); then the defaults flip and the PR goes
+ready. Open: Grasp and Sever's chop skates 3.4 m when its pull is rolled (needs a root-motion change: asked); the
+strings' close-in slides the feet (the hero animator's planner); the off-hand blade points back along the forearm
+through form 2's two-handed chops.
+
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
 **Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its

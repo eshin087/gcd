@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
 import { attachMarks, marksCheck } from './marks.mjs';
-import { swordAudit, printAudit, heldTip } from './swordAudit.mjs';
+import { swordAudit, printAudit, printImpacts, heldTip } from './swordAudit.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -2335,6 +2335,7 @@ const S = {
   flare: scenarioFlare,
   fxlooks: scenarioFxlooks,
   swordmotion: scenarioSwordMotion,
+  lordform: scenarioLordForm,
 };
 /**
  * SWORDMOTION (ADR-226): the sword motion pass behind `?lordMotion=a`. On: his sword held in line with his
@@ -2391,6 +2392,89 @@ async function scenarioSwordMotion() {
   setLook('lordMotion', null);
   return last;
 }
+/**
+ * LORDFORM (ADR-251): his form behind `?lordForm=a`, measured at each blow's impact (swordAudit.mjs, the impact
+ * table): a thrust lands on a long arm (the elbow past 150°, before 121 - 140°) with the point on the arm's line
+ * (≤ 8°, before 18 - 23°) and the lunge's front knee bent (≤ 120°, before 176° locked); a low sweep turns on his
+ * feet (they never cross: before -0.73 m); a two-handed overhead comes down on a diagonal (the point's path
+ * ≤ 65° off level, before 71 - 80°); the front foot is down at most cuts. Every move's windups, impacts and ends
+ * the same to the frame on and off (only poses change). Void Lightning's and the ignitions' looks (`?boltFx`
+ * / `?igniteFx`, every option) finite and cheap (< 300 blobs over today's peak).
+ */
+async function scenarioLordForm() {
+  out('\n== scenario LORDFORM (the form pass, ADR-251: thrusts, lunges, sweeps, overheads, the footfall; the specials\' looks) ==');
+  const { setLook, lookOf: lookOfF } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const keep = lookOfF('lordForm', '0');
+  setLook('lordForm', 'a');
+  let last = null;
+  const H = { THREE, build: (...a) => (last = build(...a)), duel, run, DT, MOVES, names: ['lunge', 'riposte', 'reap', 'meridian', 'severance', 'grasp', 'litany'], formOf: () => 1 };
+  const rows = swordAudit(H);
+  printImpacts(rows, out);
+  const ok = rows.filter((r) => !r.fail);
+  assert(ok.length === H.names.length, `${ok.length} of ${H.names.length} moves audited`);
+  const imps = ok.flatMap((r) => r.impacts.map((x) => ({ ...x, name: r.name })));
+  const spell = (x) => { const raw = MOVES[x.name].beats[x.i]; return !!raw && (raw.pick ?? [raw]).some((b) => b.bolt || b.pull || b.grip); };
+  const thr = imps.filter((x) => x.thrust && !spell(x));
+  const thrOk = thr.filter((x) => x.elbow >= 150 && x.armLine <= 8);
+  assert(thr.length >= 3 && thrOk.length === thr.length, `thrusts on a long straight arm: ${thr.map((x) => `${x.name} b${x.i} ${x.elbow}°/${x.armLine}°`).join(', ')} (elbow ≥ 150, off the line ≤ 8)`);
+  const lungeR = ok.find((r) => r.name === 'lunge').impacts[0];
+  assert(Math.min(lungeR.knR, lungeR.knL) <= 120, `the lunge on a bent front knee: ${lungeR.knR}° / ${lungeR.knL}° (one ≤ 120; before both 176)`);
+  const sweeps = ok.filter((r) => r.name === 'reap' || r.name === 'meridian');
+  assert(sweeps.every((r) => r.feet.cross >= 0), `the low sweeps turn on his feet: crossing ${sweeps.map((r) => `${r.name} ${r.feet.cross} m`).join(', ')} (≥ 0; before -0.73)`);
+  const over = ['severance', 'grasp'].map((n) => ok.find((r) => r.name === n)).map((r) => r.impacts.find((x) => x.tell === 'blue'));
+  assert(over.every((x) => x && x.tilt <= 65), `overheads on a diagonal: the point's path ${over.map((x) => x?.tilt).join(' / ')}° off level (≤ 65; before 71 - 80)`);
+  const cuts = imps.filter((x) => !x.thrust);
+  const down = cuts.filter((x) => /down/.test(x.front)).length;
+  assert(down / cuts.length >= 0.75, `the front foot down as the blow lands: ${down} of ${cuts.length} cuts (≥ 75 %)`);
+  // the timings: only poses change
+  let same = 0;
+  const diff = [];
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    for (const ph of [1, 2, 3, 4]) {
+      if ((def.phase ?? 1) > ph) continue;
+      setLook('lordForm', 'a');
+      const A = realise(name, ph, () => 0.37);
+      setLook('lordForm', '0');
+      const B = realise(name, ph, () => 0.37);
+      if (!A || !B) continue;
+      const k = (X) => X.beats.map((x) => `${x.start.toFixed(4)}/${x.impact.toFixed(4)}/${x.end.toFixed(4)}`).join(' ') + ` ${X.end.toFixed(4)}`;
+      if (k(A) === k(B)) same++;
+      else diff.push(`${name} P${ph}`);
+    }
+  }
+  assert(!diff.length && same > 100, `${same} realisations time every beat the same on and off (${diff.join(', ') || 'none differ'})`);
+  // the specials' looks: every option draws, finite, and costs the field little more than today
+  const peaks = [];
+  for (const [move, sw, form] of [['voidBolt', 'boltFx', 1], ['ignite2', 'igniteFx', 1], ['ignite4', 'igniteFx', 3]]) {
+    const base = [];
+    for (const o of ['0', 'a', 'b', 'c']) {
+      setLook(sw, o);
+      const G = build();
+      duel(G, { dist: move === 'voidBolt' ? 6 : 3, form });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      run(G, 0.5);
+      const trig = d.debug.trigger(move);
+      let peak = 0, bad = false;
+      run(G, 3.2, () => {
+        p.hp = p.maxHp;
+        peak = Math.max(peak, game.fx.fire.count);
+        if (!Number.isFinite(d.position.x + d.position.y + d.position.z)) bad = true;
+      });
+      base.push(peak);
+      peaks.push(`${sw}=${o} ${move} ${peak}${bad ? ' NaN' : ''}${trig ? '' : ' (not triggered)'}`);
+      assert(!bad && trig, `${sw}=${o} (${move}): triggered, finite throughout`);
+      last = G;
+    }
+    assert(base.slice(1).every((x) => x - base[0] < 300), `${move}'s looks cost the field < 300 blobs over today's ${base[0]} (${base.slice(1).join(' / ')})`);
+    setLook(sw, null);
+  }
+  out(`     blob peaks: ${peaks.join(' | ')}`);
+  setLook('lordForm', /lordForm=/.test(process.env.GCD_LOOKS ?? '') ? keep : null);
+  return last;
+}
 /** AUDIT (opt-in, ADR-226): every move's sword motion in its own form (tests/integration/swordAudit.mjs). */
 async function scenarioAudit() {
   out('\n== scenario AUDIT (every move in its form: the sword wrist, the blade off his body, facing, elbows, the free hand, feet, pops) ==');
@@ -2398,9 +2482,115 @@ async function scenarioAudit() {
   const names = MOVE_NAMES.filter((n) => !only.length || only.includes(n));
   const rows = swordAudit({ THREE, build, duel, run, DT, MOVES, names, formOf: (n) => Math.min(4, Math.max(1, MOVES[n].phase ?? 1)) });
   printAudit(rows, out);
+  if (process.env.GCD_AUDIT_IMPACT) printImpacts(rows, out);
   if (process.env.GCD_AUDIT_JSON) fs.writeFileSync(process.env.GCD_AUDIT_JSON, JSON.stringify(rows, null, 1));
 }
-const OPT_IN = { strategy: scenarioStrategy, probe: scenarioProbe, defend: scenarioDefend, audit: scenarioAudit }; // run only when named
+/**
+ * FORMAUDIT (opt-in, ADR-251): every move in EVERY form it is used in (a move compiled round another form's
+ * guard is not the move he plays there), through the sword audit (GCD_AUDIT_IMPACT=1 prints its impact
+ * table), and two things the shared audit does not read: the planted feet's true slide (an ankle on the floor
+ * in both frames, within 1.5 cm of its height standing, its travel summed: a step in the air is not a slide)
+ * and, in form 2, the off-hand blade's arm: the left elbow at each off-hand blow's impact and the angle of
+ * that blade off the left forearm (the hero holds ≤ 60°). `GCD_AUDIT=a,b` picks moves, GCD_AUDIT_FORMS=1,2
+ * forms, GCD_AUDIT_JSON a file for the rows.
+ */
+const phaseOfA = (a, t) => {
+  for (const b of a.beats) {
+    if (t < b.start) continue;
+    const i = b.index ?? a.beats.indexOf(b);
+    if (t < b.impact - 0.12) return `b${i} windup`;
+    if (t <= b.impact + 0.06) return `b${i} strike`;
+    if (t <= b.end + 1e-6) return `b${i} active`;
+  }
+  return t < (a.recoveryStart ?? a.end) ? 'follow' : 'recovery';
+};
+async function scenarioFormAudit() {
+  out('\n== scenario FORMAUDIT (every move in every form it is used in: the sword audit, the true slide, the off-hand arm) ==');
+  const only = (process.env.GCD_AUDIT ?? '').split(',').filter(Boolean);
+  const forms = (process.env.GCD_AUDIT_FORMS ?? '1,2,3,4').split(',').map(Number);
+  const DEG = 180 / Math.PI;
+  const usedIn = (n, f) => {
+    const def = MOVES[n];
+    if (def.transition) return def.phase === f;
+    if (def.counter || def.streak || weightIn(def, f) === 0) return (def.phase ?? 1) === f && weightIn(def, f) === 0 && (def.counter || def.streak);
+    return weightIn(def, f) > 0;
+  };
+  const rowsAll = [];
+  for (const f of forms) {
+    const names = MOVE_NAMES.filter((n) => (!only.length || only.includes(n)) && usedIn(n, f) && !MOVES[n].transition && !MOVES[n].terrain);
+    if (!names.length) continue;
+    const rows = swordAudit({ THREE, build, duel, run, DT, MOVES, names, formOf: () => f });
+    rows.forEach((r) => (r.form = f));
+    rowsAll.push(...rows);
+    printAudit(rows, out);
+    if (process.env.GCD_AUDIT_IMPACT) printImpacts(rows, out);
+  }
+  // the true slide and the off-hand arm: one more pass per move (its own build, the audit's set-up)
+  out('   move              f   slide(m, feet on the floor)   off-hand: elbow @impacts / blade off the forearm max');
+  const v = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Vector3();
+  for (const f of forms) {
+    for (const n of MOVE_NAMES.filter((x) => (!only.length || only.includes(x)) && usedIn(x, f) && !MOVES[x].transition && !MOVES[x].terrain)) {
+      const def = MOVES[n];
+      const G = build();
+      const band = def.band ?? [0, 4];
+      const dist = Math.min(7, Math.max(1.6, (band[0] + Math.min(band[1], 8)) / 2));
+      duel(G, { dist, form: f });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      run(G, 0.6);
+      d.position.set(0, 0, 0);
+      d.yaw = Math.PI / 2;
+      p.debug.teleport(dist, 0);
+      run(G, 0.7);
+      if (!d.debug.trigger(n)) continue;
+      const A = d.brain.act, R = d.rig, foot0 = 0.07 * TUNING.scale + 0.015;
+      let slide = 0, prev = null, wristL = 0, after = -1;
+      const left = [], slideAt = {};
+      for (let i = 0; i < 1500; i++) {
+        p.hp = p.maxHp;
+        p.debug.teleport(p.position.x, p.position.z);
+        const inAct = d.brain.act === A;
+        if (!inAct && after < 0) after = 0;
+        if (after >= 0 && after++ > 14) break;
+        R.root.updateMatrixWorld(true);
+        const fr = { R: new THREE.Vector3().setFromMatrixPosition(R.legs.R.foot.matrixWorld), L: new THREE.Vector3().setFromMatrixPosition(R.legs.L.foot.matrixWorld), y: d.position.y };
+        const air = d.position.y > 0.05 || !!d.brain.leap || (inAct && !!A.beats.find((b) => (b.def.dash || b.def.flit || b.def.blink) && A.t >= b.start && A.t <= b.end + 0.1));
+        if (prev && !air && !prev.air) for (const k of ['R', 'L']) if (fr[k].y < foot0 && prev[k].y < foot0) {
+          const m = Math.hypot(fr[k].x - prev[k].x, fr[k].z - prev[k].z);
+          slide += m;
+          const ph = inAct ? phaseOfA(A, A.t) : 'blend out';
+          slideAt[ph] = (slideAt[ph] ?? 0) + m;
+        }
+        fr.air = air;
+        prev = fr;
+        // the off-hand blade's line against the left forearm (form 2)
+        const off = d.blades?.off;
+        if (f === 2 && off) {
+          const el = v.setFromMatrixPosition(R.arms.L.fore.matrixWorld).clone(), wr = w.setFromMatrixPosition((R.arms.L.wrist ?? R.arms.L.fore).matrixWorld).clone();
+          const fore = wr.clone().sub(el).normalize();
+          const bl = q.set(0, 0, 1).transformDirection(off.matrixWorld).normalize();
+          const a = Math.acos(Math.max(-1, Math.min(1, fore.dot(bl)))) * DEG;
+          wristL = Math.max(wristL, a);
+          if (inAct) for (const b of A.beats) {
+            if (!b.def.left || b.feint || b._audL || A.t < b.impact) continue;
+            b._audL = true;
+            const sh = new THREE.Vector3().setFromMatrixPosition(R.arms.L.upper.matrixWorld);
+            const u1 = sh.sub(el).normalize(), u2 = wr.clone().sub(el).normalize();
+            left.push(`${Math.round(Math.acos(Math.max(-1, Math.min(1, u1.dot(u2)))) * DEG)}°/${Math.round(a)}°`);
+          }
+        }
+        G.tick(DT);
+      }
+      const row = rowsAll.find((r) => r.name === n && r.form === f);
+      const worst = Object.entries(slideAt).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k, m]) => `${k} ${m.toFixed(2)}`).join(', ');
+      if (row) Object.assign(row, { trueSlide: +slide.toFixed(2), slideAt: worst, offHand: { impacts: left, wristMax: Math.round(wristL) } });
+      out(`   ${n.padEnd(17)} ${f}   ${String(slide.toFixed(2)).padStart(5)} (${worst})   ${f === 2 ? `${left.join(' ') || '-'} / ${Math.round(wristL)}°` : ''}`);
+    }
+  }
+  if (process.env.GCD_AUDIT_JSON) fs.writeFileSync(process.env.GCD_AUDIT_JSON, JSON.stringify(rowsAll, null, 1));
+}
+const OPT_IN = { strategy: scenarioStrategy, probe: scenarioProbe, defend: scenarioDefend, audit: scenarioAudit, formaudit: scenarioFormAudit }; // run only when named
 // `all`, one scenario or a comma list; GCD_SKIP (a comma list) leaves scenarios out of `all`
 // (tests/run.mjs runs the long ones as processes of their own, so a new scenario lands in `all`)
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));

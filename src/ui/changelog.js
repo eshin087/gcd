@@ -18,6 +18,14 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'The Starless Lord fights with better form',
+        notes: [
+          'Being tried out: add ?lordForm=a and Varr Nihil thrusts on a long straight arm out of a real lunge, brings his two-handed overheads down on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quieter and lands his front foot with the blade, in all four forms. Same timings, same cues.',
+          'Also to choose from: a slower, more readable pace (?lordPace=a), three looks for Void Lightning (?boltFx=a, b or c) and three for the ignition of each form (?igniteFx=a, b or c).',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [

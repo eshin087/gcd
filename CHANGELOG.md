@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-four pieces of work since 0.4.0:
+One hundred and twenty-five pieces of work since 0.4.0:
+- **The Starless Lord fights with better form** (2026-11-27, ADR-251). *Changed (to try: `?lordForm=a`; the owner
+  picks):* in all four forms his thrusts land on a long arm with the point on its line, out of a real lunge (front
+  knee bent, back leg long; before, both knees locked); his two-handed overheads (Falling Star, Grasp and Sever,
+  Severance, every string's held chop) come down on a diagonal across you instead of straight down; his low sweeps
+  (Reaping Arc, Red Meridian, every red sweep) turn on his feet instead of crossing his legs; his free hand stays
+  quieter through a string; the front foot comes down as the blade lands. The same timings and cues. *Added (to pick
+  from):* a readable pace (`?lordPace=a`: COMBAT rule 10's floor as a held cock), three looks for Void Lightning
+  (`?boltFx=a|b|c`) and three for a form's ignition (`?igniteFx=a|b|c`).
 - **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
   `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
   x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a

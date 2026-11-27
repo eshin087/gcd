@@ -1667,6 +1667,19 @@ the blade round the wrist. Two **quick blows**, normal tells, a fixed 0.30 s win
 you; a 2.3 m sector) and **Vigil's Fall** (form 4: the blade standing upright before his face falls on you, both
 hands; 2.6 m). Block or parry them; each runs into a string.
 
+**His form** (ADR-251; `?lordForm=a` to try, `0` as he ships; awaiting the owner's pick): the same moves, windups,
+cues and zones in all four forms, posed better. A thrust lands on a long arm (~155°) with the point on the arm's
+line, out of a lunge whose front shin stands over its foot and whose back leg is long; a two-handed overhead
+(Falling Star, Grasp and Sever's chop, Severance, the strings' held chops, Judgment's, the Void Waltz's, Thunder
+Verse's last) comes down on a diagonal across you from high over his sword shoulder (the blue HIGH hold a little
+wider over the shoulder for it); a low sweep turns on his feet; his free hand stays near his chest and opens to his
+left as he cuts; and the front foot comes down with the blade. **A readable pace** to try, `?lordPace=a`: rule 10's
+floor (a move's first blow >= 0.7 s × the form's windup scale, blows >= 0.45 s apart, the cue 0.35 s before), the
+extra time a held cock; his quick blows, counters, flurry and ignitions keep theirs. Looks to pick for two specials:
+Void Lightning `?boltFx=a|b|c` (a thread wound into his fingers and a braided bolt, a tear left in the air, the
+bolt grounding along its line) and a form's ignition `?igniteFx=a|b|c` (a cocoon of letters, the new steel written
+in light, a ring of dark whose red rim stands up); they carry no cue of their own.
+
 **Four forms, four bars, a deathblow each** (the owner's pick):
 | Form | Blades | Reach | A string's follow-up windup | Recovery × |
 |---|---|---|---|---|
