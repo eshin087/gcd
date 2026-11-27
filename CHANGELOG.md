@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-two pieces of work since 0.4.0:
+One hundred and twenty-three pieces of work since 0.4.0:
+- **Shen Hui fights with better form** (2026-11-26, ADR-250). *Changed (to try: `?ashForm=a`; the owner picks):* his thrusts
+  land on a straight arm with the point on its line, out of a real lunge (front knee bent, back leg long); his
+  overheads come down one-handed on a diagonal across you instead of straight down; his low sweeps turn on his feet
+  instead of winding his legs round each other; his free hand stays quiet through a string; and the front foot comes
+  down as the blade lands. The same timings and cues. *Added (to pick from):* three looks each for Ember Whirl
+  (`?whirlFx=a|b|c`) and Heaven-Splitting Fall (`?fallFx=a|b|c`).
 - **The flash chain: counter him three times in a row** (2026-11-26, ADR-246). *Changed (the owner's pick from films of every duelist):* a flash
   counter no longer ends his string at once: he is thrown back and strikes back straight
   away, and a flash counter of that blow is the next link. Three in a row (70, 85, then 100 damage, each freeze

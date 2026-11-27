@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Shen Hui's form, and looks for two of his specials (ADR-250; branch `claude/shen-hui-motion-d768f0`)
+
+**Owner:** the motion audit of every boss (weird arm angles and sword positions, unrealistic attacks, readable
+tells, special effects at the fox's and Bai Wuji's bar), one session and one draft PR per fighter.
+
+**Measured first** (the sword audit with a new impact table, `GCD_AUDIT_IMPACT=1`): thrusts on a bent arm with the
+point off the arm's line, the long lunges on two locked knees, overheads straight down (a bar at the game camera)
+with the free hand thrown onto the hilt at 17 - 19 m/s, the low sweeps' legs crossing, the front foot still up at
+most impacts. His kicks were already straight.
+
+**Changed** behind `?ashForm=a` (moves.js: each key helper pairs its keys with the form's; a post-pass makes
+`formKeys` / `formMotionKeys` / `formRecovery`; the realiser picks them): the lunge, the diagonal overhead, the
+sweep on the feet, the quieter free hand, the keyed step that lands with the blow; his own `formMotion` (the soft
+reach, a short foot ease). Effects to pick: `?whirlFx=a|b|c`, `?fallFx=a|b|c` (specialFx.js). Lab LOOKS rows.
+
+**Film.** Every move, before / after, at the game camera (cropped round him) and side-on, phases 1 - 3, real and
+half speed; the effect options at the game camera. Rig: `take.js` (a film per move, beat marks), `compose.sh`
+(2 x 2 grids), `keys.py` (key-frame sheets).
+
+**Next.** The owner's picks (the form, one look per special); then the default flips (PICKED) and the PR goes ready.
+Not changed: his pace (the owner chose it fast; asked again in the PR).
 ## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
 
 **Owner:** asked for research into the combat of three sword games and five additions; picked the counter-kill
