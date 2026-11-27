@@ -692,7 +692,7 @@ export class Duelist {
   }
 
   /**
-   * CONTACT (combat/contact.js, ADR-258; ?contact=a): his blow lands ON what it struck. `meet(a, b, r, out)`
+   * CONTACT (combat/contact.js, ADR-259; ?contact=a): his blow lands ON what it struck. `meet(a, b, r, out)`
    * is the struck thing's signed gap (m, − inside) to a striker a → b of radius r, its meeting point into
    * out: the hero's drawn body (a hit), or his blade and body (a block). The strike is searched along its
    * own clip from the frame the blow was decided (back where it had gone through, on where it fell short),

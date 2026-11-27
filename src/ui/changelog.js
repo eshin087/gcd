@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: 'Blows land on what they strike',
+        notes: [
+          'To try: ?contact=a draws every hit, block and guard on what it strikes: the blade bites in, a fist lands on the body, held through the freeze, then the swing carries on, with the sparks where the two met and the struck part flinching by where it was hit.',
+          'And ?contact=b: the same, and a blow of a boss that would fall short is reached into. No change to any timing or damage.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'Lu Wusheng draws like a swordsman',
         notes: [
           'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',

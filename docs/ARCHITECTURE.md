@@ -830,7 +830,7 @@ streamBlock(cost, push, dx, dz): boolean
 isSwinging(): boolean                  // a light / heavy swing's active frames (the dragon's bullets are cut on it)
 takeHit({ damage, from:{x,z}, knockback=0, knockdown=false, kind='hit', burn=0,
           tell='normal', parryable, blockable, attack, attacker, plunge, perfect, light, flare, point }): RESULT   // see COMBAT.md
-                                       // CONTACT (ADR-258, combat/contact.js, ?contact=a|b): a hit from an attacker
+                                       // CONTACT (ADR-259, combat/contact.js, ?contact=a|b): a hit from an attacker
                                        // with strikeContact (every duelist) is posed where it meets his drawn body,
                                        // a block where it meets his blade (the guard nudged onto it: guardNudge), the
                                        // hurt / block drawn there and his body's HitReact answering by the part
@@ -5196,7 +5196,7 @@ data and a subclass with a few hooks.
   **The body answers where it was hit** (ADR-149; `react.js` `class HitReact`, numbers `reactTuning.js`
   `REACT`): `d.hitReact.hit(R)` from `takeHit` for a sword cut only (`o.swing || reel > 0`, at
   `impactK('react', 'duelist')` > 0; R = { k, part, point, cut, dir, thrust, heavy, crit, reel, skid,
-  moved, limb }) and from `onExecute` (a heavy thrust fold). `limb` (CONTACT, ADR-258: the capsule the hero's steel
+  moved, limb }) and from `onExecute` (a heavy thrust fold). `limb` (CONTACT, ADR-259: the capsule the hero's steel
   met) overrides the part read from the height, and adds the arm: a body hit on the chest with `REACT.arm`'s
   stronger twist, that shoulder dropped and back, the head turned from it. The HERO wears the same layer
   (`player.hitReact`, ×`CONTACT.react.hero` 1.2): restored before his animator, applied after `_combat` (his
@@ -5261,7 +5261,7 @@ data and a subclass with a few hooks.
   away: `player.onGuarded({ deflect })` bounces the hero, and the counter move starts as the 0.24 s
   beat ends). `brain._evade(s)`: once per 3 s he may step out of a heavy blow (`TUNING.guard.evade`),
   from footwork or a late recovery.
-- **CONTACT** (ADR-258, `combat/contact.js`, `?contact=0|a|b`, the Lab's `contact` row): `d.strikeContact(meet,
+- **CONTACT** (ADR-259, `combat/contact.js`, `?contact=0|a|b`, the Lab's `contact` row): `d.strikeContact(meet,
   heavy, biteAt?)` → the meeting point (drawn, world) or null. `meet(a, b, r, out)` is the struck thing's signed gap
   (m, − inside) to a striker a → b of radius r (the hero's `ContactBody` for a hit; his blade, then the shell 0.12 m
   before his body, for a block). The strike is searched along his clip from the frame the blow was decided

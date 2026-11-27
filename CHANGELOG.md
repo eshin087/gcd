@@ -4,7 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-seven pieces of work since 0.4.0:
+One hundred and twenty-eight pieces of work since 0.4.0:
+- **Blows land on what they strike** (2026-11-27, ADR-259). *Added, to try (the owner picks from the films):*
+  `?contact=a`: every hit, block and guard is drawn ON what it strikes in the frozen frame (a blade's edge bites a
+  few cm in, a fist lands on the body; it used to stop 10 - 75 cm short or show 10 - 40 cm through), held there
+  through the freeze, a heavy blow a beat longer, then the swing carries on; a blocked blow stops on your blade with
+  your guard nudged onto it, a cut on a boss's guard stops on his steel; the sparks sit where the two met; and the
+  struck part answers (your head snaps away, your body twists or folds, a shoulder knocked back, a leg buckles;
+  a boss's reaction now knows the arm too). `?contact=b`: the same, and a boss's blow that would fall short of you
+  is reached into (his body eases into it, feet planted). Nothing of any result, damage, window or timing moves
+  (the duel and asc `contact` scenarios play one exchange three ways and compare every result). The Lab's
+  `contact` row. *Added:* the contact audit (the duel / asc `contact` scenarios).
 - **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
   level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
   the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the

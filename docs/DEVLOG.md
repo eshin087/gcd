@@ -5,6 +5,31 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — Blows land on what they strike (ADR-259; branch `claude/contact-motion-246eeb`)
+
+**Goal:** the owner's contact pass: every hit, deflect, guard, parry and deadly blow should look like it strikes the
+part it hits, from the game camera, and the struck one should flinch by where and how hard. Their picks: the blade
+bites then follows through (heavies hold longer); reactions by where and how hard; shared code only (the motion
+sessions own every move's data); a draft PR with films, behind a switch.
+
+**Measured** (an in-page audit, scratch only: at every contact of every duelist, the drawn striker against capsules
+on the struck rig, through the freeze; see the PR's table): the striker was 10 - 75 cm short as often as 10 - 40 cm
+through; blocks went through the guard into the body with the blades 0.2 - 0.9 m apart; the hurt sparks sat on the
+hero's chest 0.5 m from the meeting; parries already met.
+
+**Changed** (`?contact=a|b`, default `0` until the owner picks; the Lab's `contact` row): `combat/contact.js` (the
+search along a striker's clock, the pin, capsule bodies); the duelists' `strikeContact`, the pinned pose drawn over
+gameplay points on the clip's own time, the ward nudged onto the hero's blade, the reach (`b`); the hero's
+`_cutContact` (his swing's shown clock), his guard nudged onto a blocked blow, his own HitReact, the wyrm's hurt drawn
+where its snout / toe / tail struck; react.js gains the arm and the struck limb.
+
+**Verified:** duel / asc `contact` (new): one scripted exchange with 0, a and b, every result identical; hits and
+blocks drawn through the hero 41 / 33 % → 0 %; Tian Lei's short hits 64 → 32 % with b. The page audit's before /
+after table and the films (all nine bosses, 0 | a | b, half speed) in the PR.
+
+**Open:** the owner's pick; the wyrm's poses; the execution's thrust, the plunge and the flurry's cuts; blows whose
+zone outreaches the drawn limb (the motion sessions' data, listed in the notes folder).
+
 ## 2026-11-27 — Lu Wusheng audited: the form, the pace, three looks for the draw (ADR-252; branch `claude/lu-wusheng-motion`)
 
 **Goal:** the owner's motion audit of every boss (one session and one draft PR each, batch 2), for Lu Wusheng:

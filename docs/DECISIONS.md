@@ -7126,3 +7126,49 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   -> 0.99, the claw combo's lunge bite 3.10 -> 2.07, the Hesitant Maw's rear bite 2.33 -> 1.16, the sky hammer's
   bite 1.38 -> 0.45). The bite's hit sphere (1.05 x SCALE) still meets the hero a frame before the drawn jaws touch.
   At the game camera the change reads mostly as the surge; the head's hang and snap show best from the side.
+
+## ADR-259 — Blows land on what they strike: the bite and follow-through, the guard met, the struck part answering, an optional reach (`?contact=0|a|b`) (2026-11-27)
+- **Context:** the owner: "make every hit, deflect, guard, parry, deadly blow etc any hit against a bosses's weapon,
+  fist, body, etc look like its actually hitting that part and clean. There are some moments it looks like the
+  weapon is just going through the boss or player unrealistically. We don't need to be perfect but make sure every
+  hit or clash looks good from the players camera perspective. The player or boss should also have a flinch or
+  reaction on how they're hit." Their picks before the work: the blade bites then follows through (heavies hold
+  longer), both ways; reactions by where and how hard; shared code only (the boss motion sessions own every move's
+  data and the hero's swings); a draft PR with before / after films, behind a switch with a Lab row.
+- **Measured first** (an in-page audit at every contact of every duelist: his every move on the hero standing,
+  blocking and parrying, and the hero's cuts on him staggered and on his guard; the drawn striker (steel guard → tip,
+  or the striking limb's end as a ball) against capsules on the struck rig's joints, in every frozen frame):
+  the drawn striker was as often 10 - 75 cm SHORT of what it struck as 10 - 40 cm
+  THROUGH it, the hit-stop holding that frame: a boss's blow through the hero in 20 % of hits and through his guard
+  into his body in 24 % of blocks (the blades 0.38 m apart), the hero's cut through the boss in 50 % (short in 18 %)
+  and through his ward in 58 %; the hurt sparks 0.56 m from the meeting (on the hero's chest), the block's 0.61 m
+  (mid-blade). 56 % of the bosses' hits were 10 cm+ short (the fist bosses 60 - 86 %). Parries met (ADR-079: 1 cm).
+- **Decision** (`combat/contact.js`, `CONTACT`; behind `?contact=`, `0` the default until the owner picks):
+  - `a`: the striker is posed where it meets the struck surface for the frame the freeze holds, found along its own
+    clip (back ≤ 0.16 s where it went through, on ≤ 0.075 s where it fell short; steps of 1/120 s and three
+    halvings): a blade's edge 3.5 cm in (a thin part at most 0.4 of its radius), a fist or foot on the surface. The
+    pose shown is pinned there (a duelist's `brain.pin`, the hero's `atk.pin` / `atk.show`) through the freeze, a
+    heavy blow 0.06 - 0.07 s longer, then catches up with its clock over 0.06 - 0.07 s. A duelist's gameplay points
+    (his hurt spheres) are taken on the clip's own time before the pinned pose is drawn. A block stops on the
+    hero's blade or 12 cm before his body, the guard nudged onto the blow (`guardNudge`, the animator's
+    `gripNudge`, ≤ 0.3 m, 0.3 s); a cut on a boss's guard the same way on his steel (`_wardOnto`). The hurt, block
+    and cut effects are drawn at the meeting; a blow that never comes within 0.16 m has its hurt drawn on the hero
+    where it points (the wyrm's snout, toe or tail tip the same: `takeHit({ point })`). The hero wears the duelists'
+    `HitReact` (×1.2, drawn after his sweep is read); a boss's reaction is told the capsule the steel met (`limb`), and
+    the layer gains the arm (that shoulder knocked back).
+  - `b`: `a`, and a boss's blow that would fall short of the hero in its zone is reached into: 0.14 s before its
+    impact his drawn body eases toward the hero along the gap (≤ 0.3 m, feet planted, legs solved again), held through
+    the bite, eased back over 0.22 s.
+  - Presentation only, proven: duel / asc `contact` play one scripted exchange with `0`, `a` and `b` and compare every
+    result, damage, health, guard, posture and the clip time each blow landed on.
+- **After** (the same audit): with `a`, hits through the hero 6 %, blocks through the guard 4 % (blades 0.12 m
+  apart), the hero's cut short 3 %, through his ward 3 %; the sparks 0.02 - 0.11 m from the meeting. With `b`, short
+  hits 56 → 47 % (Tian Lei 71 → 37, Halcyon 58 → 15), blocks short 43 → 26 %. Headless (duel / asc `contact`):
+  through the hero 41 / 33 % → 0 %, Tian Lei's short hits 64 → 32 % with `b`; every result identical.
+- **Not taken (yet):** the wyrm's poses (its own clock; its jaws are still 0.3 - 1.5 m short when its hit spheres
+  connect, ADR-257's finding); the execution's thrust, the plunge and the flurry's cuts (each its own drawing, filmed
+  for the owner); blows whose hit zone reaches past the drawn limb by more than the reach (kicks such as Tian Lei's
+  Comet Heel, 0.8 - 1.3 m): their move data, the boss sessions'.
+- **Consequences:** a hit costs a few extra animator poses on its frame (the search: ≤ ~14 for a duelist, ≤ ~12 for
+  the hero), and a pinned duelist one more pose a frame for ~10 frames; `b` one probe pose a frame for the last
+  0.14 s of each blow's windup. Nothing per frame allocates; nothing new is drawn.

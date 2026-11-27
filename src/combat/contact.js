@@ -1,4 +1,4 @@
-// CONTACT (`?contact=0|a`; ADR-258): a blow lands ON what it strikes. The owner, 2026-11-27: "make every
+// CONTACT (`?contact=0|a`; ADR-259): a blow lands ON what it strikes. The owner, 2026-11-27: "make every
 // hit, deflect, guard, parry, deadly blow ... look like its actually hitting that part and clean. There are
 // some moments it looks like the weapon is just going through the boss or player". Measured first (the
 // contact audit): at the frame a blow was decided, the drawn steel or fist was as often 10 - 75 cm short of

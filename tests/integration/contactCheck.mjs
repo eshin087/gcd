@@ -1,4 +1,4 @@
-// The contact pass (ADR-258, combat/contact.js, `?contact=a`): headless checks on a duelist's suite.
+// The contact pass (ADR-259, combat/contact.js, `?contact=a`): headless checks on a duelist's suite.
 //   rules     the same scripted exchange (his blows on the hero standing, on his guard, on his parry; the
 //             hero's cuts on him, staggered and guarded) played with contact `0` and `a` from the same seed:
 //             every result, every damage, the hero's health and guard, the boss's health and posture, the

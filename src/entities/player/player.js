@@ -1543,7 +1543,7 @@ export class Player {
   }
 
   /**
-   * CONTACT (combat/contact.js, ADR-258; ?contact=a): the blow of `att` (a duelist: strikeContact) is posed
+   * CONTACT (combat/contact.js, ADR-259; ?contact=a): the blow of `att` (a duelist: strikeContact) is posed
    * where it meets him, on his drawn body, or with `guard` on his drawn blade (and on his body where it
    * would get past the blade). The meeting point goes into `out`; this.struck = the part it met ('guard'
    * on the blade). False (out untouched) when it is off or the attacker cannot say.
@@ -3861,7 +3861,7 @@ export class Player {
   }
 
   /**
-   * CONTACT (combat/contact.js, ADR-258; ?contact=a): the hero's swing shown where his DRAWN steel meets
+   * CONTACT (combat/contact.js, ADR-259; ?contact=a): the hero's swing shown where his DRAWN steel meets
    * the boss: on his drawn body (a cut), or with `guard` on his blade (and before his body where it would
    * get past it). The swing's clock is searched from now (back where the steel is already through, on
    * where it is still short), he is posed there now (_poseNow: the freeze holds this frame) and the pose

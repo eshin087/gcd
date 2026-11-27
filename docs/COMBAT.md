@@ -782,6 +782,59 @@ Measured with a bot making plain parries of all-white strings (a parried blue bl
 ADR-211), red blows rolled, the same strings both ways (the film, 2026-11-26): Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. A string of 7 blows
 from an empty bar breaks Shen Hui either way (the full deflect's bonus).
 
+## Where blows meet (2026-11-27, ADR-259; `?contact=0|a|b`, off by default until the owner picks from film)
+The owner: every hit, deflect, guard, parry and deadly blow should look like it really strikes the part it hits,
+cleanly, from the player's camera, and whoever is hit should react to where and how hard. Measured first (the
+contact audit, every duelist's every move on the hero standing, blocking and parrying, and the hero's cuts): at the
+frame a blow was decided, the drawn steel or fist was as often 10 - 75 cm short of what it struck as 10 - 40 cm
+through it, the hit-stop held that frame, and the sparks sat on the hero's chest or the middle of his blade rather
+than where the two met. Parries already met cleanly (ADR-079). The rules (every result, damage, window and clock)
+are untouched with any setting: the duel and asc `contact` scenarios play one scripted exchange three ways and
+compare every result. The logic is `combat/contact.js`; the numbers `CONTACT` there.
+
+- **It bites, then follows through (`a`).** The striker is posed where it meets the struck surface for the frame the
+  freeze holds: a blade's edge `bite` 3.5 cm in (a thin part, an arm or a shin, at most 0.4 of its radius), a fist
+  or a foot on the surface. The pose is found along the striker's own clip, back where it had already gone through
+  (≤ 0.16 s), on where it fell short (≤ 0.075 s). It stays there through the freeze, a heavy blow (a blue one, a
+  hero's heavy) `holdHeavy` 0.06 s longer, then catches up with its clock over `follow` 0.07 s: the swing carries
+  on. Both ways: the boss's blow on the hero (`duelist.strikeContact`, shown through `brain.pin`; his hurt spheres
+  stay on his clip's own time) and the hero's cut on the boss (`player._cutContact`, his swing's shown clock). A blow
+  that never comes within 0.16 m is the reach band's: not posed, but its hurt is drawn on the hero where it points.
+- **A guard meets the blow.** A blocked blow stops on the hero's blade, or 12 cm before his body where it would
+  get past the blade, and his guard is nudged onto it (≤ 0.3 m, eased off over 0.3 s); the block is drawn on that
+  crossing. A cut on a boss's guard stops on his steel, or before his body, and his ward is nudged onto the hero's
+  blade the same way.
+- **The struck part answers.** The hero now wears the duelists' reaction layer (`react.js`, ×1.2): the head
+  snaps away, a body hit twists or folds the torso along the blow, an arm knocks that shoulder back, a leg buckles,
+  heavy blows larger and slower, from the meeting point and along the blow's travel, over his stagger. A boss's
+  reaction now knows which part the hero's steel met (`takeHit({ limb })`), arms included. Drawn only.
+- **`b`, the reach.** On top of `a`: as a boss's blow comes (0.14 s before its impact) with the hero in its zone,
+  the gap its striker would leave at the impact is read and his drawn body eases toward the hero to close it (≤ 0.3
+  m, his feet planted, the legs solved again), held through the bite, eased back over 0.22 s. A fist or a blade that
+  stopped 10 - 30 cm short now lands; blows whose hit zone reaches past the drawn limb by more stay short (their
+  move data: the boss sessions').
+- **Off** (`?contact=0`, the Lab's `contact` row `old`): every pose and effect as before.
+- **Not changed:** the parry and the trade clash (they already met), the execution's thrust, the plunge, the
+  flurry's cuts, the wyrm's poses (it has its own clock; only its hurt sparks move onto the hero). The deathblow's
+  combo cuts land as any cut of the hero's.
+
+Measured (the contact audit, 2026-11-27: every duelist's every move on the hero standing, blocking and parrying
+and the hero's cuts on him, 1 100 contacts a setting; `through` = the striker 6 cm+ inside the struck body in a
+frozen frame, `short` = 10 cm+ off it, `fx off` = the effect's point from the true meeting), all eight duelists:
+
+| contact | through % | short % | blades apart m | fx off m |
+|---|---|---|---|---|
+| his blow lands on the hero | 20 → a 6 → b 6 | 56 → a 56 → b 47 | - | 0.56 → a 0.11 → b 0.06 |
+| his blow on the hero's guard | 24 → a 4 → b 3 | 43 → a 33 → b 26 | 0.38 → a 0.12 → b 0.09 | 0.61 → a 0.02 |
+| the hero's cut lands | 50 → a 31 | 18 → a 3 | - | 0.21 → a 0.05 |
+| the hero's cut on his guard | 58 → a 3 | 16 → a 42 (stopped before him) | 0.48 → a 0.30 | 0.48 → a 0.47 |
+| a parry (already met) | 4 → 3 | 43 → 47 | 0.09 → 0.10 | 0.08 |
+
+`b`'s reach on the short blows: Tian Lei's hits 71 → 37 % short, Halcyon's 58 → 15 %, Wen Yao's 68 → 52 %; what
+stays short is a blow whose hit zone outreaches the drawn limb by more than 0.3 m (kicks such as the Comet Heel,
+0.8 - 1.3 m): move data. The wyrm's jaws, claws and tail are 0.3 - 1.5 m off the hero when its hit spheres connect
+(its hurt is now drawn on him where they pointed).
+
 ## Three phases (2026-11-09, ADR-028; the pressure: 2026-11-15, ADR-119)
 P1 100–66 %, P2 66–33 %, P3 33–0 % of 4500 HP, each threshold a gate until its transition roar
 (always phase-1 timings; the red shock ring, 12 damage, which also clears the hazards). Later phases

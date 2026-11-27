@@ -1670,7 +1670,7 @@ function blockPose(p, A) {
   walkLegs(p, A);
 }
 
-/** CONTACT (combat/contact.js, ADR-258; ?contact=a): a guard nudged onto the blow it meets (`G`: the hero's
+/** CONTACT (combat/contact.js, ADR-259; ?contact=a): a guard nudged onto the blow it meets (`G`: the hero's
  *  guardNudge on a block, a duelist pilot's on his ward: { x, y, z } body axes (x his left, z ahead), model
  *  m, and k 0..1 easing off): the grip goes there, both hands if both are on it. On the pose as drawn. */
 function gripNudge(p, G) {

@@ -3881,9 +3881,9 @@ const S = {
   integ: scenarioInteg,
   // --- pursuit
   pursuit: scenarioPursuit,
-  // --- the contact pass (ADR-258, ?contact=a): fists and feet drawn on what they strike, the rules unmoved
+  // --- the contact pass (ADR-259, ?contact=a): fists and feet drawn on what they strike, the rules unmoved
   contact: async () => {
-    out('\n== scenario CONTACT (fists and feet drawn ON what they strike; the rules unmoved; ADR-258) ==');
+    out('\n== scenario CONTACT (fists and feet drawn ON what they strike; the rules unmoved; ADR-259) ==');
     const { contactCheck } = await import('./contactCheck.mjs');
     const home = (G) => { const d = G.game.dragon, Sl = CONFIG.world.dragonSleep; d.position.set(Sl.x, 0, Sl.z); d.yaw = 0; };
     const moves = ['hundred', 'riposte', 'gates', 'snapJab', 'piercingPalm'].filter((n) => MOVES[n]);

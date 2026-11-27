@@ -807,7 +807,7 @@ export class DuelBrain {
   /** The hero is parrying this blow (duelist.parryContact): the pose shown is held `off` s back on
    *  the strike, where the blade meets his guard; `rebound`: the blow is only deflected (the move
    *  goes on), so the blade is thrown back off the guard before the clip takes over again. */
-  /** CONTACT (combat/contact.js, ADR-258): the pose shown is held at clip time `tc` (where his blow met
+  /** CONTACT (combat/contact.js, ADR-259): the pose shown is held at clip time `tc` (where his blow met
    *  what it struck), `hold` s more after the freeze, then catches up with the clip over `follow` s. */
   pinAt(tc, hold, follow) {
     if (!(tc >= 0)) return;
