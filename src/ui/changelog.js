@@ -19,6 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'Wen Yao punches and kicks with straight limbs',
+        notes: ['The Thousand-Body Fox now throws his punches and palms with a straight arm along one line to you, and lands his kicks and ankle sweeps with a straight leg. His heel and fists come down on you when he leaps. Paper Rain ends on a backfist, so his uppercut always means blue. Add ?foxLimbs=0 or ?foxCues=0 to see him as before.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'The flash chain: counter him three times in a row',
         notes: ['A flash counter (attack just before his blow lands) no longer ends his combo. He is knocked back and strikes back at once; counter that too, and once more. The third counter in a row hits hardest and leaves him reeling. Add ?counter=0 for the old single counter.'],
       },

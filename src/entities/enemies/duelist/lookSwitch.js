@@ -80,6 +80,8 @@ export const PICKED = Object.freeze({
   wyrmMotion: 'a', // the wyrm's string hits held, blue rearing its head, red sunk with the tail up
   sheathQuick: 'a', // Before the Word
   foxQuick: 'a', // Fox Snap, Fox Knee
+  foxCues: 'a', // Wen Yao's Paper Rain ends on a backfist: the uppercut is only ever Hand to Hand's blue flare (ADR-249; the owner to pick)
+  foxLimbs: 'a', // Wen Yao's limbs at the contact: straight punches on one line, kicks straight (ADR-249; the audit's proposal, the owner to pick)
   wyrmQuick: 'a', // Snap swipe
   // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
   ashHero: 'c', // Shen Hui: the hero's shading and his outline (a the shading, b the outline)

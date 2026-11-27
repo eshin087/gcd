@@ -79,6 +79,9 @@ export const LOOK_SWITCHES = Object.freeze([
   ['sheathQuick', ['0', 'a'], '0', 'a', false, ['grove'], 'Before the Word: a quick white pommel snap from his carry (a: in his moves)'],
   ['foxMotion', ['0', 'a', 'b'], '0', 'a', false, ['fox'], "Wen Yao's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk, the feet no longer jump; b held only"],
   ['foxQuick', ['0', 'a'], '0', 'a', false, ['fox'], 'Fox Snap and Fox Knee: quick white blows from his guard (a: in his moves)'],
+  // --- the boss motion audit (ADR-249; the owner picks from the films)
+  ['foxLimbs', ['0', 'a'], '0', 'a', true, ['fox'], "Wen Yao's limbs at the contact: 0 as shipped; a straight punches on one line, straight kicks and sweeps, leaps that land the heel / fists on you (his paper selves too; a reload)"],
+  ['foxCues', ['0', 'a'], '0', 'a', false, ['fox'], "Paper Rain's last blow: 0 an uppercut (white); a a backfist, so the uppercut is only ever the blue flare"],
   ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
   ['wyrmQuick', ['0', 'a'], '0', 'a', false, ['cinderwood'], 'Snap swipe: a quick white paw from its stance (a: in its moves)'],
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)

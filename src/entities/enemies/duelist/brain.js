@@ -1577,6 +1577,16 @@ export class DuelBrain {
       J.target.x = tx;
       J.target.z = tz;
       d.clampTarget?.(J.target); // (a boss whose floor is not a circle)
+      // (`leap.stop`, opt-in, ADR-249: he comes down this many m short of the hero along his line, so a
+      // heel or fists that strike ahead of him land on the hero, not him; 0 / none: on the hero, as before)
+      const st = L.stop > 0 ? L.stop : 0;
+      if (st) {
+        const ox = J.target.x - J.x, oz = J.target.z - J.z, ol = Math.hypot(ox, oz);
+        if (ol > st + 1e-3) {
+          J.target.x -= (ox / ol) * st;
+          J.target.z -= (oz / ol) * st;
+        }
+      }
     }
     const k = clamp((u - L.from) / Math.max(1e-4, 1 - L.from), 0, 1);
     const e = ease(k);
