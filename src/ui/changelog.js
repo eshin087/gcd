@@ -29,11 +29,37 @@ export const RELEASES = [
       },
       {
         date: '2026-11-27',
+        title: 'Lu Wusheng draws like a swordsman',
+        notes: [
+          'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',
+          'To try: ?sheathPace=a (his scabbard blows wind up longer) and ?drawFx=a, b or c (three looks for the draw).',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'Bai Wuji glides: quicker, one-handed, and his barrier opens easier',
         notes: [
           "Bai Wuji fights with his hands in his pockets now: short, sharp kicks that land straight, a hand coming out in his second phase and both in his last. His blue and red blows hold a pose you can read; every later blow of a string comes out of a short blink around you.",
           'His barrier opens easier: two ordinary parries crack it open, a perfect parry or dodge opens it for longer, and your cuts hit two and a half times as hard while it is open. He has less health, and he loses patience after 20 seconds instead of 30.',
           'Fixed: a falling piece no longer lands on you while you are down, and a quick string of his can no longer hold you longer than it should.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Cinder Wyrm bites with its whole body',
+        notes: [
+          'The wyrm drives its body into a bite first, the head hanging back, then snaps onto the beat of its warning, its jaws reaching you as the hit lands.',
+          'No change to any warning, timing or damage.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap',
+        notes: [
+          'Halcyon fights like a flier now: his punches go straight at you with the arm long, his kicks land straight, his legs trail long behind him instead of folding under him, and Fly-By comes through your chest instead of over your head.',
+          'His eye beams are heat vision: two threads meeting in one hard crimson line, a shimmer rising off it, the ground molten and spitting sparks where it lands.',
+          'His clap and his meteor landing send a ring of air racing out across the plaza, shoving the dust ahead of it.',
+          'Being tried out: add ?halPace=a to the address for a slower, easier-to-read pace.',
         ],
       },
       {

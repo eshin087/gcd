@@ -11,6 +11,12 @@ export const TUNING = {
   radius: 0.42,
   bound: 12.5,
 
+  // ---- the form (ADR-252, `?sheathForm=a`; form.js): his arms' soft reach (anim.js armSoft, through kit.motion):
+  // a thrust and a draw's cut end on an open arm (ARM_SOFT held every elbow under ~145°)
+  form: { armSoft: [0.9, 0.99] },
+  // ---- the readable pace (ADR-252, `?sheathPace=a`; pace.js): COMBAT.md rule 10's floor as held cocks
+  pace: { first: 0.7, gap: 0.45, flashLead: 0.35 },
+
   // ---- tells (COMBAT.md "Core rules")
   weapon: 'sword', // what his blows sound like through the air (duelist/attackSound.js: dragon:attack)
   flashLead: 0.3,
