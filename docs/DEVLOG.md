@@ -5,7 +5,24 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-26 — The slice: digits along the blade's own path; the free hand kept out of his body (ADR-252; branch `claude/hero-attack-feel`, held)
+## 2026-11-27 — The digit slash in steel is the default (ADR-258; branch `claude/hero-attack-feel`, held)
+
+**Owner:** "I still want to see the slash with this new thin line of small digits effects as well. Show me a video
+comparison of all the variations to view all at the same time", then, from that film: "Digit slash steel".
+
+**What changed:** `?slash=dline` (the ending slash of ADR-240 / ADR-244, drawn as the slice's thin seam of digits on
+the screen-plane lattice, its colour from `?slice=`) is the default `slash` look, steel its colour (`SLASH_IDS` leads
+with it; the Lab's `slash` row). The slice (`?slash=slice`, `?slice=green`, `?slicewhen=end`), the stroke line
+(`?slash=line`) and the crescent (`?slash=arc`) stay to compare. Main took ADR-252 meanwhile (and open PRs hold up to
+256): this branch's record is ADR-258.
+
+**Verification:** `slice` (now also: the default is the digit slash in steel; the digit slash prints no strokes),
+`instantslash`, `slashfeel`, duel `cutfx`, then the full `npm test`. Film: all seven looks side by side (combo A facing
+north, east, south and west, the lone heavy facing north and east, the phone landscape and portrait).
+
+**Open / next:** the owner's go-ahead to merge PR 170 (held).
+
+## 2026-11-26 — The slice: digits along the blade's own path; the free hand kept out of his body (ADR-258; branch `claude/hero-attack-feel`, held)
 
 **Owner:** "seems like the left arm is clipping sometimes as i see its yellow fist randomly during the light attack
 combo. also on the 5th attack the left hand angle motion and animation looks unnatural ... the slash effect is very
@@ -41,7 +58,7 @@ against his body; the kick on the contact's frame), `slashfeel` (under `?slash=l
 `feel`, the hero suites; `handaudit` before / after; films: combo A facing north, east, south and west,
 the lone heavy facing north and east, the phone landscape and portrait, the hand from behind-left and front-left.
 
-**Open / next:** the owner's pick of colour and timing (the default is steel, traced, until they choose).
+**Open / next:** the owner's pick (made 2026-11-27, see above: the digit slash in steel).
 
 ## 2026-11-26 — The impact pass: slashes in front of him, harder hits, every angle (ADR-244; branch `claude/hero-attack-feel`, held)
 
@@ -66,6 +83,93 @@ fast frames); `player:slash` → audio `slashRing`. Combo A: its own hit-stop, s
 landscape and portrait.
 
 **Open / next:** the owner's verdict; the sound is a synth recipe (a recorded one to pick by ear if wanted).
+## 2026-11-27 — Lu Wusheng audited: the form, the pace, three looks for the draw (ADR-252; branch `claude/lu-wusheng-motion`)
+
+**Goal:** the owner's motion audit of every boss (one session and one draft PR each, batch 2), for Lu Wusheng:
+measure every move against `docs/ANIMATION.md`, fix the anatomy and the strikes, keep every tell readable, and
+offer 2-3 looks for his special move.
+
+**Measured** (new opt-in `sheath.mjs form`, `tests/integration/sheathAudit.mjs`: the limbs and the weapon at every
+impact, the draw's hands through the windup; plus the sword audit's table): thrusts on a bent arm (121 - 124°) 24°
+off the scabbard's line; every draw ending in a locked split (176 / 176°) with a short arm, the fist 11 - 13 cm off
+the hilt at the cock, the scabbard hand going forward 26 - 51 cm through the draw; the overhead an upright bar
+(75 - 87° off level); the sweep's legs crossed; the free hand's 0.5 m swing in the scabbard cuts.
+
+**Changed** (behind switches; the owner's picks below):
+- `?sheathForm=a` (`sheathed/form.js`; the form's keys beside the authored ones; `kit.motion` opens his arms): the
+  numbers in COMBAT.md "The Sheathed" → "The audit". Poses only (FORMPACE: every timing identical).
+- `?sheathPace=a` (`sheathed/pace.js`, Tian Lei's method): rule 10's floor as held cocks, the draws untouched.
+- `?drawFx=a|b|c` (`sheathed/fx.js`; the click hook in `sheathed.js _onClick`): the drawn breath, hanging leaves,
+  the late sound.
+- Tests: `sheath.mjs formpace` (in the default run), `form` (opt-in table); `GCD_LOOKS` now applies to the whole run.
+
+**Verification:** `sheath.mjs` green with the defaults and with `GCD_LOOKS=sheathForm=a,drawFx=c`; films of every
+move before / after at the game camera and side-on, the draw looks at both cameras (sent to the owner).
+
+**The owner's picks** (from the films and the preview): the form `a` (now the default), the pace and the draw's
+look as shipped (their options stay behind `?sheathPace` / `?drawFx`).
+
+**Open:** a planted foot's one-frame jumps (the hero's `_feetClip`, the hero session's). PR 170
+(draft) also uses ADR-252.
+## 2026-11-27 — The Cinder Wyrm's motion audit: the bites (ADR-257; branch `claude/wyrm-motion-ccc88f`)
+
+**Owner:** the boss motion audit (one session and one draft PR per fighter, the shared brief): weird limb angles,
+unrealistic attacks, every attack readable; for the wyrm, keep its look (the owner's "perfect ascii look") and
+change motion and tells only, in small steps.
+
+**What changed:**
+- `tests/integration/wyrmAnatomy.mjs` + integ `wyrmanatomy` (opt-in): each blow measured at its contact: the gap
+  to the hero at the announced impact, a foreleg's elbow and reach, a bite's neck, the order the chain reaches top
+  speed, the tail's tip against its middle, the planted feet's skating, pops (hit-stop frames left out).
+- `dragon/strike.js` behind `?wyrmStrike=a` (the owner's pick from the films, the default; `0` as before; the Lab's LOOKS row): every bite's
+  body surges first (the chest drops and pitches in, the body lunges 0.4 units) while the head hangs, then the head
+  snaps onto the impact. Measured: the body 50 - 117 ms ahead of the head (was on one frame); the jaws 0.17 - 2.07 m
+  from the hero at the impact (was 0.79 - 3.10).
+- Films (before / after, the game camera and a close front three-quarter view, all three phases, real and half
+  speed) sent to the owner; the before set covers every melee move and the flights.
+
+**Found and left (ROADMAP):** the forelegs straight through the whole rake (the paw's path is beyond reach); the
+wing blows flap as one rigid wing; feet skate up to ~1 m in some strings. A tail with a softer tip was tried and
+dropped: the shipped tail already trails its middle by 44 - 123° and the film showed no difference. The first
+reading ("the tail swings as one rod") came from comparing top-speed times in a spin, where every point peaks
+together: measure the tip's bearing against the middle's instead.
+
+**Verification:** integ green with the switch off and forced on (`GCD_STRIKE_DEF`, a temporary hook, removed).
+
+**Owner's pick:** `a` ("AFTER, make it default"), 2026-11-27.
+
+**Next:** the forelegs and the wings, each with its hit spheres measured before and after.
+## 2026-11-27 — Halcyon's motion audit: a flier's limbs, the readable pace, eye-beam and shockwave looks (ADR-254; branch `claude/halcyon-motion-7d73eb`)
+
+**Owner (through the audit's lead session):** every boss audited with docs/ANIMATION.md; "weird looking arm angles
+... kicks aren't straight"; every attack readable; special effects to the Fox's and Bai Wuji's bar with 2 - 3 looks
+to pick; a draft PR and films each.
+
+**Measured** (city `audit`, `GCD_AUDIT_IMPACT=1`: the striking arm's reach and its line to the hero, both knees,
+the feet's trail, the body line, the fist's height, in his UPRIGHT frame: the drawn body is sheared toward the
+camera, duelist.js lean, which read a straight punch 20 - 40° off in world points): see ADR-254 and COMBAT.md
+"Halcyon" for the before / after numbers.
+
+**What changed** (all behind switches; the defaults are today's): `halcyon/limbs.js` (`?halMotion=b`: the
+straight blows on the line, the kicks long, the flier's legs on every key of his blows and his own beats, a level
+pass `FLY_B` / `LAUNCH_B`), `motion.js` (halKeys routes `b`; `halLimbsOn`), `poses.js` (hoverLegs), `flight.js`
+(the pass's root at `motion.b.passY` under `b`), `halcyon.js` (the animator's armSoft / legSoft, kickStretch only
+in a kick; the clap / landing ask HalFx.shockwave first), `pace.js` + `moves.js` (`?halPace=a`: a held cock through
+the realiser's `hold`, the cue 0.35 s), `fxEyes.js` / `fxShock.js` + `fx.js` (`?halEyes=a|b`, `?halShock=a|b`),
+`tuning.js` (`motion.b`, `pace`), the Lab's LOOKS rows. Tests: city `limbs`, `readable`; `audit` prints the
+contact anatomy.
+
+**Decisions:** fixed in `halcyon/` only (Tian Lei's PR 174 keeps its own pass behind his realiser); the legs trail
+further back rather than shorter where the hip is low (the animator keeps a foot over his root's floor, anim.js,
+the hero session's); `kickStretch` only through a kick (it locked his trailing legs straight).
+
+**The owner's picks** (from the films, 2026-11-27): `halMotion` b, his fast pace kept (`halPace` 0), `halEyes` a
+(heat vision), `halShock` a (the thunderclap): in PICKED, the Lab rows out of `awaiting`. The first cut of both
+effect options printed a white core the whole time (they read as white beams, his crimson lost): redrawn as crimson
+strokes, white only at the first peak, before the films were sent.
+
+**Open:** the kick and the palm snap harder at the contact (largest frame jolt 282 → 424, 174 → 236 mm/f²); the
+lead foot's step lives in the hero's animator (anim.js) and was left alone.
 
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 

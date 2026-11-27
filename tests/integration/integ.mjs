@@ -6362,7 +6362,7 @@ async function scenarioHandAudit() {
   return G;
 }
 
-// SLICE (ADR-252; the owner, 2026-11-26: "make sure the slice effect is exactly matching the swords attack swing
+// SLICE (ADR-258; the owner, 2026-11-26: "make sure the slice effect is exactly matching the swords attack swing
 // ... like a cool matrix ascii of his sword cutting the matrix/universe", ~0.2 s): under the default look every
 // swing prints its slice (slashFx.js SLICE): digits on the path the blade's point swept (taken against his body,
 // each within a lattice cell and a frame's step of that path; a heavy's inner seam on its own share of the blade),
@@ -6707,7 +6707,7 @@ async function scenarioOffHand() {
       else assert(!nan && sdIn > 0.95 && sdSlam < 0.05 && twoSlam > 0.9 && far <= 0.6 && step <= 0.7 * prodStep && sdAfter < 0.02,
         `offhand ${mode}: at its rest through hits 1-4 (sd ${sdIn.toFixed(2)}), the slam two-handed (sd ${sdSlam.toFixed(2)}, two ${twoSlam.toFixed(2)}), the wrist at most ${far.toFixed(2)} m from its shoulder, at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4 (production ${(prodStep * 100).toFixed(1)}), home after (sd ${sdAfter.toFixed(2)})${nan ? ', NaN' : ''}`);
     }
-    // combo A's own hand behind his back (ADR-252; the owner: "its yellow fist randomly during the light attack
+    // combo A's own hand behind his back (ADR-258; the owner: "its yellow fist randomly during the light attack
     // combo", "on the 5th attack the left hand angle motion and animation looks unnatural"): while it hangs (sd 1)
     // through hits 1-4 the free wrist stays out of his coat (≥ 0.18 m from the spine between hip and chest; it came
     // within 0.07), and hit 5 takes it to the grip round his side, no frame stepping more than 22 cm (it snapped 34)
@@ -15476,7 +15476,33 @@ async function scenarioWyrmAudit() {
   return G;
 }
 
+// ================================================================== scenario: wyrmanatomy (opt-in, ADR-257: each blow's anatomy at its contact, printed)
+async function scenarioWyrmAnatomy() {
+  out('\n== scenario WYRMANATOMY (ADR-257: each blow at its contact: the gap to the hero, the limb, the chain order, slides, pops) ==');
+  const { makeWyrmAnatomy } = await import(pathToFileURL(`${ROOT}/tests/integration/wyrmAnatomy.mjs`).href);
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  const { ANATOMY } = await imp('src/entities/dragon/tuning.js');
+  const G = build();
+  fightSetup(G);
+  G.game.player.debug.noRiposte = true;
+  const A = makeWyrmAnatomy({ THREE, G, DT, SCALE, ANATOMY, place, settle, ATTACKS, kindOf: (n, b, a) => a.list?.filter((e) => e[0].startsWith('windup'))[b.hit ?? 0]?.[2]?.spec?.kind ?? n });
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : ['bite', 'swipe', 'snapSwipe', 'clawCombo', 'rendingFlurry', 'hesitantMaw', 'wingBuffet', 'tailLash', 'pounce', 'frenzy', 'stormFlurry', 'cinderFlurry', 'blackMaw', 'wingRend', 'pivotLash', 'rearGuard', 'skyHammer', 'furnaceMaw', 'cinderRake', 'cataclysm', 'tail', 'stomp'];
+  const rows = [];
+  for (const name of names) {
+    if (!ATTACKS[name]) { out(`  ${name}: no such attack`); continue; }
+    const ph = Math.max(1, TUNING.attacks[name]?.phase ?? 1);
+    const back = ['tail', 'tailLash', 'pivotLash', 'rearGuard'].includes(name);
+    const r = A.measure(name, { units: back ? 5 : 5.5, ang: back ? Math.PI * 0.9 : 0, phase: ph });
+    rows.push(r);
+    A.print(out, r);
+  }
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
+  return G;
+}
+
 const SCENARIOS = {
+  wyrmanatomy: scenarioWyrmAnatomy,
   wyrmaudit: scenarioWyrmAudit,
   wyrmheld: scenarioWyrmHeld,
   timestep: scenarioTimestep,
@@ -15564,7 +15590,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'handaudit']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'wyrmanatomy', 'handaudit']); // run only when named
 // GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }

@@ -62,7 +62,10 @@ export const PICKED = Object.freeze({
   halCape: '3', // his cape and colours: the wide red cape that billows (the owner's pick, 2026-11-23, of four steps; ADR-164)
   halLetters: 'a', // his letters follow his size, the hero's cell (the owner's pick, 2026-11-23, of two; ADR-166)
   halPrint: 'a', // the hero's quieter print (the owner's pick, 2026-11-23, of three; ADR-166)
-  halMotion: 'a', // his motion: a flier's legs, blows aimed at the hero, the held windups, the snap blows (the owner's pick, 2026-11-26, of two; ADR-225)
+  halMotion: 'b', // his motion: a's flier's limbs, straight punches on the line, straight kicks, long trailing legs, a level fly-by (the owner's pick, 2026-11-27, ADR-254; was a, 2026-11-26, ADR-225: a flier's legs, blows aimed at the hero, the held windups, the snap blows)
+  halPace: '0', // his pace: the fast one he shipped with (the owner's pick, 2026-11-27, over a, rule 10's floor; ADR-254)
+  halEyes: 'a', // his eye beams: heat vision, twin threads, a shimmer, a molten spot (the owner's pick, 2026-11-27, of three; ADR-254)
+  halShock: 'a', // Applause / Meteor's landing: the thunderclap ring of air (the owner's pick, 2026-11-27, of three; ADR-254)
   halCapeSize: 'b', // the cape at about 65 %, past his knees (the owner's pick, 2026-11-23, of four; ADR-166)
   // the Hall of Falling Script and Xin Yi, the One Who Woke
   oneLetters: 'a', // his letters: the hero's size (the owner's pick, 2026-11-23, "Print a", ADR-170; 0 the bosses' fine cell)
@@ -79,8 +82,13 @@ export const PICKED = Object.freeze({
   foxMotion: 'a', // Wen Yao's, the same, and his lifted feet eased off their spot
   wyrmMotion: 'a', // the wyrm's string hits held, blue rearing its head, red sunk with the tail up
   sheathQuick: 'a', // Before the Word
+  // Lu Wusheng's audit (ADR-252; the owner's picks, 2026-11-27, from the before / after films)
+  sheathForm: 'a', // the fist on the hilt, the scabbard drawn back, the draw's lunge, thrusts in line, the diagonal overhead, the sweep's feet
+  sheathPace: '0', // his fast pace kept (a: COMBAT rule 10's floor as held cocks)
+  drawFx: '0', // the draw's one white line kept (a the drawn breath, b hanging leaves, c the late sound)
   foxQuick: 'a', // Fox Snap, Fox Knee
   wyrmQuick: 'a', // Snap swipe
+  wyrmStrike: 'a', // the wyrm's bites: the body surges first, the head snaps onto the beat (the owner's pick, 2026-11-27, from the films; ADR-257)
   // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
   ashHero: 'c', // Shen Hui: the hero's shading and his outline (a the shading, b the outline)
   lordHero: 'c', // Varr Nihil: the hero's shading and his outline

@@ -2530,6 +2530,27 @@ phase 3 dipped under its phase 2 (0.93), the mean's ramp is 1.09. Slower than Sh
 66 s, block-only 49 / 57 s; the block-only bot is never killed by a draw, mortal too. TIMING: every contact
 within 0 ms of its flash + 0.3 s. Not measured: a human on the phone; the draw's read at the phone's camera
 was judged from stills only.
+### The audit (2026-11-27, ADR-252; the owner's picks: the form `a`, the default; `?sheathPace=a` and `?drawFx=a|b|c` kept as options, `0` the default)
+Measured at every impact (`node tests/integration/sheath.mjs . form`; sheathAudit.mjs) before -> with `?sheathForm=a`:
+
+| | before | form |
+|---|---|---|
+| thrusts' elbow / the scabbard off the arm's line | 121 - 124° / 24° | 157° / 2° |
+| The Walking Staff's knees (front / back) | 176 / 176 | 86 / 176 |
+| a draw's cut end: knees (front / back), the arm | 176 / 176, 129 - 141° | 109 - 115 / 143 - 145, 145 - 162° |
+| the fist off the hilt at the cock | 11 - 13 cm | 2 - 3 cm |
+| the scabbard hand from the cock to the cut | 26 - 51 cm forward | 0 - 17 cm (drawn back level behind him) |
+| the overhead's path off level | 75 - 87° (an upright bar) | 60 - 62° (a diagonal) |
+| Sweeping the Road | the legs crossed (-0.86 m), a knee pop | the feet go round with him |
+| the free hand in the scabbard cuts | 0.5 m in the strike | half the travel |
+
+Every impact, cue, end and recovery is the same with the form (sheath.mjs FORMPACE). His kick (Three Steps' second
+word) was already straight at contact (176°, the support knee bent) and is left. `?sheathPace=a`: COMBAT rule 10's
+floor, a move's first blow >= 0.7 s (x windupScale), blows >= 0.45 s apart, the cue 0.35 s before, the time a held
+cock; the draws, Before the Word, the transitions and the hanging cuts as before. `?drawFx`: the draw's look (a the
+drawn breath, b hanging leaves, c the late sound; pale steel at the cut's line, no cue of their own; +150 - 500
+letters and blobs over a whole draw).
+
 ## The One Who Woke (2026-11-22, ADR-156 – ADR-158; `?level=code`)
 
 Xin Yi, a BARE-HANDED fighter in a long black coat (wokenOne/): a recognizable homage to the hero of the
@@ -2690,6 +2711,29 @@ the blow is aimed down at the hero (his fists met the air over the hero's head a
 his legs a flier's (trailing behind him, never a planted stance in the air), his arm opening at the end;
 Tian Lei's held windups for his blue and red blows; the snap blows Flick and Tap (below). Timings unchanged.
 
+**His limbs (2026-11-27, ADR-254; the owner's picks: `b`, his fast pace kept, the eyes `a`, the shock `a`; `?halMotion=a`
+plays ADR-225's motion).** `?halMotion=b` is `a` with a
+flier's limbs, poses only (every timing as `a`; city.mjs `limbs`; `halcyon/limbs.js`). Measured at each blow's
+contact in his upright frame (city.mjs `audit`, `GCD_AUDIT_IMPACT=1`; the drawn body is sheared toward the
+camera, so world points read a straight punch 20 - 40° off). Under `a`: straight blows 35 - 66° across the line
+from the shoulder to the hero's chest (the floor fighter's sideways lines), elbows 148 - 161°; knees folded at
+67 - 135° (kneeling on air); the round kick at 105° and the side kick at 130°, the other leg folded at ~92°; the
+pass pitched 54°, knees 54°, its fist at 2.56 m (over the hero's head). Under `b`: every straight blow within 9°
+of the line, the elbow 161 - 171°; both knees 141 - 156° at every punch (the legs long, trailing, the toes
+pointed; a hip sunk low takes its leg further back, since the animator keeps a foot over his root's floor); a
+kick's knee 173°, the other leg hanging at 154°; the pass level (77°) with the fist at 1.55 m, through the hero's
+chest (`motion.b.passY`). His hover hangs the legs the same way. Hooks and uppercuts keep their bend. A longer
+limb snaps harder at the contact (the largest frame jolt, mm/f²: Faster Than Sound's kick 282 → 424, the riposte's
+palm 174 → 236, Meet and Greet orbited 330 → 369); the other moves' are as `a`'s or lower (Flick 109 → 88).
+`?halPace=a` is COMBAT rule 10's floor (`halcyon/pace.js`, Tian Lei's ADR-248 rule): a move's first real blow
+>= 0.7 s x the phase's windupScale, later blows >= 0.45 s apart, the cue 0.35 s before; the time is a held cock
+(the realiser's `hold`); the snap blows and the transitions keep theirs (city.mjs `readable`). The owner kept '0',
+his shipped pace (a first blow from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s): his PBZ-fast openers are a
+deliberate exception to rule 10's floor; `a` stays behind its switch. Two effect looks, gameplay untouched:
+`?halEyes` (his beams: a heat vision, the default; b a crimson pulse; 0 Tian Lei's beam; `fxEyes.js`) and
+`?halShock` (Applause's ring and Meteor's landing: a a thunderclap ring, the default; b a dome of pressure; 0 the
+dust front; `fxShock.js`).
+
 **The crash.** A parry of a flying blow (a Fly-By pass, Blink of an Eye's flying cross) or a perfect dodge
 of a red flying blow (Through the Tower, See the World, the last pass of phase 3) throws him off his line
 (0.45 rad away from the hero) into the first standing cover on it within 12 m: he slides in 0.25 s, breaks
@@ -2802,6 +2846,24 @@ starts; read from the stance, no gather; close range; light; exempt from the fir
 
 **Found on the way** (the wyrm's seeded fights with the picks on): the sky hunt's crash landing now stays on
 the wyrm's ground; a drakeling's dive released onto a blow after its longest wait is ADR-237's (on `main`).
+
+### The wyrm's bites (2026-11-27, ADR-257; the owner's pick, the default; `?wyrmStrike=0` as shipped)
+The motion audit's second pass on the wyrm measured each blow AT ITS CONTACT (`node tests/integration/integ.mjs .
+wyrmanatomy`; `GCD_LOOKS=wyrmStrike=a` for the pass, `GCD_MOVES=` a list, `GCD_TRACE=1` the frames round a blow):
+
+| Every bite | As shipped | With `a` |
+|---|---|---|
+| the chain (hips, chest, neck base, head reach top speed) | on one frame (the head 0 - 17 ms after) | the body 50 - 117 ms before the head |
+| the jaws' gap to the hero's chest at the impact | 0.79 - 3.10 m | 0.17 - 2.07 m |
+| the single bite / the claw combo's lunge bite / the Hesitant Maw's rear bite | 1.77 / 3.10 / 2.33 m | 0.99 / 2.07 / 1.16 m |
+
+- The last 0.1 s of the windup the chest drops and pitches into the strike off the locked hind feet and the body
+  surges 0.4 units toward the hero (not within 4 units of it) while the head hangs where it was; the snap runs the
+  head to its goal and arrives on the impact; the body settles from just past its strike pose. The windup, the cue,
+  the impact and the hit spheres are as before.
+- **Measured, not changed:** the forelegs rake at full reach (elbow 177°) and stay straight through the sweep; the
+  wing blows flap as one rigid wing; planted feet skate up to ~1 m through some strings; the tail blows already
+  overlap (the tip trails the tail's middle by 44 - 123°).
 
 ## Bai Wuji (2026-11-26, ADR-241; `?level=veil`)
 

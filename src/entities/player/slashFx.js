@@ -21,8 +21,9 @@
 // Math.random. The lines were first drawn for the instant cuts of ADR-233 (PR 118, closed); this is their
 // drawing, driven by the production attacks.
 //
-// THE SLICE (the default since 2026-11-26, ADR-252; `?slash=line` the ending line above, `?slash=arc` the
-// crescent): no line at all, but the path the blade's point swept, printed as a thin seam of fine digits on the
+// THE DIGIT SLASH (the default, the owner's pick 2026-11-27, ADR-258, `?slash=dline`): the ending line above
+// printed as the slice's thin seam of steel digits instead of strokes. `?slash=line` the line in strokes,
+// `?slash=arc` the crescent. THE SLICE (`?slash=slice`): no line at all, but the path the blade's point swept, printed as a thin seam of fine digits on the
 // picture's grid, gone in ~0.2 s: "his sword cutting the matrix" (the owner). See SLICE below.
 
 import { SWINGS } from './swings.js';
@@ -104,7 +105,7 @@ export const IMPACT = {
  *  blade (from `from` of it to its drawn point) × `sub` steps between the two frames: the swing's blur printed in
  *  the field's small letters (STYLE.md: a blade's trail is heat in the fire field). */
 export const SMEAR = { min: 0.16, n: 6, sub: 2, from: 0.3, life: 0.07, size: 0.13, heat: 0.85 };
-/** THE SLICE (ADR-252; the owner, 2026-11-26, of the ending line: "very distracting and seems to linger a bit too
+/** THE SLICE (ADR-258; the owner, 2026-11-26, of the ending line: "very distracting and seems to linger a bit too
  *  long and looks off when attacking from the side. make sure the slice effect is exactly matching the swords
  *  attack swing ... i want the slices to be like a cool matrix ascii of his sword cutting the matrix/universe. make
  *  it subtle and cool"; asked, ~0.2 s, and both colours and both timings to pick from). The path the blade's

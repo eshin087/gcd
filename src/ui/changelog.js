@@ -18,11 +18,37 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
-        date: '2026-11-26',
-        title: 'A slice of digits along the blade, and a left hand that stays out of his body',
+        date: '2026-11-27',
+        title: 'Lu Wusheng draws like a swordsman',
         notes: [
-          'Every sword slash is now a thin seam of fine digits printed exactly along the path your blade swept, as if it cut the world\'s code open: brightest where the blade was fastest, gone in about a fifth of a second. It follows the swing from every side and moves on with you through a dash.',
-          'A landed blow throws the camera along the blade on the frame it connects. The free hand behind your back no longer passes through your coat, and on the finisher it travels round your side to the grip.',
+          'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',
+          'To try: ?sheathPace=a (his scabbard blows wind up longer) and ?drawFx=a, b or c (three looks for the draw).',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Cinder Wyrm bites with its whole body',
+        notes: [
+          'The wyrm drives its body into a bite first, the head hanging back, then snaps onto the beat of its warning, its jaws reaching you as the hit lands.',
+          'No change to any warning, timing or damage.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap',
+        notes: [
+          'Halcyon fights like a flier now: his punches go straight at you with the arm long, his kicks land straight, his legs trail long behind him instead of folding under him, and Fly-By comes through your chest instead of over your head.',
+          'His eye beams are heat vision: two threads meeting in one hard crimson line, a shimmer rising off it, the ground molten and spitting sparks where it lands.',
+          'His clap and his meteor landing send a ring of air racing out across the plaza, shoving the dust ahead of it.',
+          'Being tried out: add ?halPace=a to the address for a slower, easier-to-read pace.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'A slash of fine digits, and a left hand that stays out of his body',
+        notes: [
+          'Every sword slash is now a thin straight line of small steel-blue digits across your foe, drawn the way your blade crossed the screen, as if it cut the world's code open: gone in about a fifth of a second.',
+          'A landed blow throws the camera along the blade. The free hand behind your back no longer passes through your coat, and on the finisher it travels round your side to the grip.',
         ],
       },
       {

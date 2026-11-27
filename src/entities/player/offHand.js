@@ -24,7 +24,7 @@
 //   pole, ld, ln  the elbow's way, the fingers, the palm (body axes turned with the chest); lw their weight
 //   hs     the hand's shape (0 open, 1 sword fingers); `keep` (quiet) how far toward the clip's own hand
 //   body   (m, chest local) the nearest the hand comes to his spine between hip and chest (anim.js SIDE_KEEP): the
-//          back look's hand kept out of his coat (ADR-252); 0 none (beside the hip the side's hand sits at 0.23)
+//          back look's hand kept out of his coat (ADR-258); 0 none (beside the hip the side's hand sits at 0.23)
 
 import { feelHand } from './feel.js';
 
@@ -36,7 +36,7 @@ export const OFFHAND = {
     ...COMMON, hang: [0.07, -0.53, 0.06], thigh: [0.14, -0.02, 0.05], hip: 0.5, near: 0.5, w: 10.5, z: 0.42, k: 0.35, sway: 0.07,
     pole: [0.15, -0.25, -0.95], ld: [0.06, -0.97, 0.2], ln: [-0.92, -0.05, 0.25], lw: 0.85, hs: 0, keep: 0,
   },
-  // (back: its rest 0.32 m behind the shoulder, clear of his coat; at 0.21 it sat inside it, ADR-252)
+  // (back: its rest 0.32 m behind the shoulder, clear of his coat; at 0.21 it sat inside it, ADR-258)
   back: {
     ...COMMON, hang: [-0.1, -0.42, -0.32], thigh: [0, 0, 0], hip: 0, near: 0.3, w: 12, z: 0.55, k: 0.25, sway: 0.04, thighR: 0,
     pole: [0.85, -0.15, -0.5], ld: [-0.9, -0.25, -0.2], ln: [0, 0, -1], lw: 0.8, hs: 0, keep: 0, body: 0.27,

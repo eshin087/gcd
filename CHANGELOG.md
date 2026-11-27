@@ -4,17 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-six pieces of work since 0.4.0:
-- **A slice of digits along the blade, and a left hand that stays out of his body** (2026-11-26, ADR-252). *Changed:* every
-  sword attack's slash is now a thin seam of fine digits printed exactly along the path the blade's point swept,
-  as if the sword cut the world's code open: bright where the blade was fastest, a few digits dripping out of
-  the cut, all gone in about 0.2 s. It follows the swing from every side and on the phone camera, and moves on
-  with you through a dash. A landed blow throws the camera along the blade's way on the frame it connects, with a
-  small spray of sparks there. To compare: `?slice=steel` (white-blue, the default) or `green`, and
-  `?slicewhen=trace` (laid as the blade passes, the default) or `end` (the whole cut at once as the swing ends);
-  `?slash=dline` draws the straight ending slash in the same thin digits, `?slash=line` brings back the straight ending line, `?slash=arc` the crescent (the Lab's `slash`, `slice` and
-  `slicewhen` rows). *Fixed:* the free hand behind his back no longer passes through his body (the yellow
-  fist that flashed through his coat in the light combo); on the finisher it travels round his side to the grip.
+One hundred and twenty-nine pieces of work since 0.4.0:
+- **A slash of fine digits, and a left hand that stays out of his body** (2026-11-27, ADR-258). *Changed (the owner's pick from the films):*
+  every sword attack's slash is now a thin straight line of small steel-blue digits drawn across the foe the way the
+  sword crossed the screen as the swing ends, as if the blade cut the world's code open, gone in about 0.2 s, with a
+  few digits dripping out of the cut. A landed blow throws the camera along the blade's way and sprays a small burst
+  of sparks. *Added, to compare (not the default):* `?slice=green` (the matrix-green digits); `?slash=slice` the
+  digits laid along the exact path the blade's point swept (`?slicewhen=trace` as the blade passes, `end` all at once
+  as the swing ends); `?slash=line` the straight ending line in strokes as before; `?slash=arc` the crescent (the
+  Lab's `slash`, `slice` and `slicewhen` rows). *Fixed:* the free hand behind his back no longer passes through his
+  body (the yellow fist that flashed through his coat in the light combo); on the finisher it travels round his side
+  to the grip.
 - **Harder-hitting swings, and slashes that stay in front of you** (2026-11-26, ADR-244). *Changed:* a heavy's
   slash no longer appears behind you as you dash: no part of any ending slash is drawn behind you, and a slash
   that cuts only air moves on with you. Landed blows hit harder: a longer freeze, the screen thrown along the slash,
@@ -22,6 +22,30 @@ One hundred and twenty-six pieces of work since 0.4.0:
   (heavier for heavies). The blade smears for a frame or two at the fastest part of every swing. The light combo
   steps in further, holds each finishing pose while its slash flashes, then rises. Checked facing all four ways
   and on the phone camera, upright and sideways.
+- **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
+  level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
+  the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the
+  two-handed overhead comes down across him on a diagonal; Sweeping the Road turns on his feet; the free hand in the
+  scabbard cuts moves half as far. Poses only: every windup, cue and window is as before; `?sheathForm=0` gives
+  the old poses. *Added, kept as options (the owner kept today's):* `?sheathPace=a`: COMBAT rule 10's slower floor for his scabbard blows (first blows 0.7 s, blows 0.45 s apart, the cue 0.35 s before, the
+  draws unchanged). `?drawFx=a|b|c`: three looks for the draw (the drawn breath, hanging leaves, the late sound).
+- **The Cinder Wyrm bites with its whole body** (2026-11-27, ADR-257). *Changed (the owner's pick from the films):*
+  in every bite the wyrm's body surges first (the chest drops
+  and pitches in off the hind feet, the body lunging a little toward you) while the head hangs back, then the head
+  snaps onto the impact the flash promised, its jaws now reaching you on the beat. Every windup, cue, impact, hit
+  sphere and number is as before; `?wyrmStrike=0` (the Lab's LOOKS row `wyrmStrike`) bites as before. *Added:* the wyrm's anatomy audit (integ `wyrmanatomy`, opt-in: each blow's gap
+  to the hero at the impact, a foreleg's elbow and reach, the chain's order, the tail's tip, skating feet, pops).
+- **Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap** (2026-11-27, ADR-254).
+  *Changed (the owner's picks from the films):* his straight punches go along the line to you (they ran 35 - 66° off
+  to the side), the arm long (elbow 161 - 171°); his kicks land straight (173°) with the other leg hanging long; his
+  legs trail long behind him in every blow and hang long under his hover, the toes pointed (they sat folded under him,
+  knees 67 - 135°, as if kneeling on air); Fly-By and Through the Tower fly level, the fist out, through your chest
+  instead of over your head (every timing unchanged; `?halMotion=a` plays the motion before). His eye beams are heat
+  vision (twin threads meeting in one hard crimson line, a shimmer rising off it, a molten spot spitting sparks where it
+  lands, red motes drawn into his eyes as he charges; `?halEyes=0` the beam before, `b` a crimson pulse); his clap and
+  his meteor's landing send a crisp ring of air racing out with the dust shoved ahead of it (`?halShock=0` the dust
+  front before, `b` a dome of pressure). *Added, not the default:* `?halPace=a`, COMBAT rule 10's slower pace (the owner
+  kept his fast one). The Lab's LOOKS rows for all four.
 - **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
   `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
   x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a
