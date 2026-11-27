@@ -1480,7 +1480,7 @@ export class Lab {
     // every swing's mark (slashFx.js, ?slash=arc) and the free hand in a one-handed swing (offHand.js,
     // ?offhand=side|back|quiet), live
     for (const [lbl, ids, set, key, tip, name] of [
-      ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: slice = a seam of digits along the blade's path, line = the ending slash line, arc = the curved crescent as before (?slash=)", (m) => m],
+      ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: slice = a seam of digits along the blade's path, line = the ending slash line, dline = that line in the slice's digits, arc = the curved crescent as before (?slash=)", (m) => m],
       ['slice', SLICE_IDS, setSlice, 'sliceBtns', "the slice's colour: steel = white-blue, green = the matrix (?slice=)", (m) => m],
       ['slicewhen', SLICE_WHEN_IDS, setSliceWhen, 'sliceWhenBtns', 'when the slice is laid: trace = as the blade passes, end = the whole cut at once as the swing ends (?slicewhen=)', (m) => m],
       ['combo', COMBO_IDS, setCombo, 'comboBtns', 'four light combos for the ending slash: prod = as it ships, a Iai, b Tempest, c Mountain, d Dancer (each with its feel and its free hand) (?combo=)', (m) => (m === '0' ? 'prod' : `${m} ${COMBOS[m].name}`)],

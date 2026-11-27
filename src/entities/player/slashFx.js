@@ -21,7 +21,7 @@
 // Math.random. The lines were first drawn for the instant cuts of ADR-233 (PR 118, closed); this is their
 // drawing, driven by the production attacks.
 //
-// THE SLICE (the default since 2026-11-26, ADR-247; `?slash=line` the ending line above, `?slash=arc` the
+// THE SLICE (the default since 2026-11-26, ADR-252; `?slash=line` the ending line above, `?slash=arc` the
 // crescent): no line at all, but the path the blade's point swept, printed as a thin seam of fine digits on the
 // picture's grid, gone in ~0.2 s: "his sword cutting the matrix" (the owner). See SLICE below.
 
@@ -33,8 +33,9 @@ import * as THREE from 'three';
 const _pv = new THREE.Vector3(), _OUT = [0, 0, 0];
 
 /** 'slice' (the default): the seam of digits along the blade's path (SLICE); 'line': the instant (ending) slash
- *  line; 'arc': the curved crescent as before. */
-export const SLASH_IDS = ['slice', 'line', 'arc'];
+ *  line; 'dline': that ending line printed as the slice's thin seam of digits (its colour `?slice=`); 'arc': the
+ *  curved crescent as before. */
+export const SLASH_IDS = ['slice', 'line', 'dline', 'arc'];
 let slashNow = 'slice';
 export const slashMode = () => slashNow;
 /** Pick the look of every swing's mark; false for an unknown id. */
@@ -103,7 +104,7 @@ export const IMPACT = {
  *  blade (from `from` of it to its drawn point) × `sub` steps between the two frames: the swing's blur printed in
  *  the field's small letters (STYLE.md: a blade's trail is heat in the fire field). */
 export const SMEAR = { min: 0.16, n: 6, sub: 2, from: 0.3, life: 0.07, size: 0.13, heat: 0.85 };
-/** THE SLICE (ADR-247; the owner, 2026-11-26, of the ending line: "very distracting and seems to linger a bit too
+/** THE SLICE (ADR-252; the owner, 2026-11-26, of the ending line: "very distracting and seems to linger a bit too
  *  long and looks off when attacking from the side. make sure the slice effect is exactly matching the swords
  *  attack swing ... i want the slices to be like a cool matrix ascii of his sword cutting the matrix/universe. make
  *  it subtle and cool"; asked, ~0.2 s, and both colours and both timings to pick from). The path the blade's
@@ -408,7 +409,7 @@ export class SlashFx {
   }
 
   /** One of the slice's digits, moved onto its cell of the screen-plane lattice (none where one already is). */
-  _sliceCell(x, y, z, w, row) {
+  _sliceCell(x, y, z, w, row, line = false) {
     const fx = this.p.fx?.add, C = this.game?.camera?.matrixWorld?.elements;
     if (!fx?.spawn || !C || !(y > SLASH.floor) || !Number.isFinite(x + y + z)) return;
     const S = SLICE, sc = this.p.drawScale || 1, cell = S.cell * sc, q = 1 / cell, hv = this.look ? 1 : 0;
@@ -426,10 +427,11 @@ export class SlashFx {
     o.x = x;
     o.y = y;
     o.z = z;
-    o.vx = Number(gv?.x) || 0;
+    // (the ending line's digits: its own carry, nothing on a landed blow's: END.carry)
+    o.vx = line ? this._cvx || 0 : Number(gv?.x) || 0;
     o.vy = 0;
-    o.vz = Number(gv?.z) || 0;
-    o.drag = S.carry;
+    o.vz = line ? this._cvz || 0 : Number(gv?.z) || 0;
+    o.drag = line ? END.carry : S.carry;
     o.life = S.life[hv] * (0.75 + 0.25 * w);
     o.size = cell * S.size[0];
     o.sizeEnd = cell * S.size[1];
@@ -883,6 +885,18 @@ export class SlashFx {
     }
     const fx = this.p.fx?.add;
     if (!fx?.spawn) return;
+    if (slashNow === 'dline') {
+      // (the owner, 2026-11-27: "I still want to see the slash with this new thin line of small digits": the ending
+      // line, its piece [f0, f1), as one seam of the slice's digits on its lattice, sharp at both ends)
+      const steps = Math.max(2, Math.ceil(len / (SLICE.cell * (this.p.drawScale || 1) * 0.5)));
+      for (let k = 0; k < steps; k++) {
+        const f = (k + 0.5) / steps;
+        if (f < f0 || f >= f1) continue;
+        const w = thrust ? Math.pow(Math.max(0, 1 - f), 0.6) : Math.pow(Math.sin(Math.PI * f), 0.7);
+        this._sliceCell(ax + dx * len * f, ay + dy * len * f, az + dz * len * f, 0.3 + 0.7 * w, 0, true);
+      }
+      return;
+    }
     const cx = (ax + bx) / 2, cy = (ay + by) / 2, cz = (az + bz) / 2;
     // the stroke's turn on the screen (as fx.js alongRot), and the screen's across (for the rows)
     const C = this.game?.camera?.matrixWorld?.elements;
