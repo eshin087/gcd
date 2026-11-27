@@ -1216,9 +1216,10 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
-- [ ] Shen Hui's form (ADR-250, `?ashForm`): thrusts on the arm's line in a real lunge, diagonal overheads, sweeps
+- [x] Shen Hui's form (ADR-250, `?ashForm`): thrusts on the arm's line in a real lunge, diagonal overheads, sweeps
       on the feet, a quiet free hand, the step landing with the blow; measured (`GCD_AUDIT_IMPACT`) and filmed
-  - [ ] The owner's pick from the films; the looks for Ember Whirl (`?whirlFx`) and Heaven-Splitting Fall (`?fallFx`)
+  - [x] The owner's pick from the films: the form, Ember Whirl b (the cyclone), Heaven-Splitting Fall b (the split)
+  - [x] Heaven-Splitting Fall as a jump (the held coil covered his flight)
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and

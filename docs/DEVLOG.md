@@ -24,8 +24,15 @@ reach, a short foot ease). Effects to pick: `?whirlFx=a|b|c`, `?fallFx=a|b|c` (s
 half speed; the effect options at the game camera. Rig: `take.js` (a film per move, beat marks), `compose.sh`
 (2 x 2 grids), `keys.py` (key-frame sheets).
 
-**Next.** The owner's picks (the form, one look per special); then the default flips (PICKED) and the PR goes ready.
-Not changed: his pace (the owner chose it fast; asked again in the PR).
+**Picked** (2026-11-27, from one comparison video per decision): the form (`ashForm=a`), Ember Whirl b the cyclone,
+Heaven-Splitting Fall b the split; all three the default now (PICKED). The owner added that the Fall did not look
+natural in his body: ADR-226's held red coil covered his whole flight (a ground crouch 3.6 m up, the blade trailing
+behind, whipped over in 0.3 s). The form gives it its own keys, a jump: load, drive, tuck with the blade raised
+through the lock, legs reaching down, landing into the cut; filmed before / now side-on (a camera that follows his
+height) and at the game camera.
+
+**Open.** His pace unchanged (the owner chose it fast). Feet still slide 0.15 - 0.5 m over a long string where the
+close-in carries his root under a planted foot.
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
 **Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its

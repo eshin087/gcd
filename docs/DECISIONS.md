@@ -6983,7 +6983,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     once its key has drifted 14 cm, then takes ~0.1 s, so in a 0.34 s string windup it landed after the blade.
   - Fine already: his kicks are straight at contact (176°, the support leg bent), the blade stays off his head and
     body, his chest faces the hero at every impact.
-- **Decision** (`?ashForm=a`, `0` = as before; Lab LOOKS `ashForm`; awaiting the owner's pick): every beat gets
+- **Decision** (`?ashForm=a`, the owner's pick, 2026-11-27, `0` = as before; Lab LOOKS `ashForm`): every beat gets
   `formKeys` (and, for the blows ADR-226 holds, `formMotionKeys`), its move a `formRecovery`, played through the
   realiser's `keysOf` / `recoveryKeysOf`: the windups, impacts, zones, cues and root motion are the move's own, only
   the poses change. His data only (moves.js; the shared engine untouched: `keysOf`, `recoveryKeysOf`, `animOpts`
@@ -7011,8 +7011,16 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     `?whirlFx=` Ember Whirl (a the wheel: the point leaves a burning ring; b the cyclone: fire whirling up round him,
     embers off the point; c the disc: the swept width burns an instant) and `?fallFx=` Heaven-Splitting Fall (a the
     comet: a tail of fire down, a column where he lands; b the split: a seam of fire down the cut, the floor split in
-    fire ahead and behind, out past the burning ring; c fire raining on the locked ring). `0` = as they ship. The Kindling keeps its picked look (ADR-118's
-    three, `kindle=a`).
+    fire ahead and behind, out past the burning ring; c fire raining on the locked ring). `0` = as they ship. The
+    owner's picks (2026-11-27): `whirlFx=b` the cyclone, `fallFx=b` the split. The Kindling keeps its picked look
+    (ADR-118's three, `kindle=a`).
+  - **The Fall as a jump** (the owner, picking: it "doesn't look natural in his motion"): ADR-226's held red coil
+    spans 0.36 - 0.72 of its windup, which is his whole flight, so he flew 3.6 m up in a ground crouch (feet set in a
+    lunge, the blade trailing behind him) and whipped the blade over in the last 0.3 s. In the form it has its own
+    keys: he loads (sinks, the blade swung low behind his right hip), drives up off both feet as the arms swing the
+    blade up, tucks his knees at the top with the blade raised over his sword shoulder (held through the ring's
+    lock, where the red reads), reaches his legs down as the blade starts over, and lands into the cut (the root's
+    arc ends at the impact), sinking on through the active frames; his recovery rises where he landed.
 - **Kept:** his pace (the owner's PBZ-fast openers ~0.46 s and strings 0.34 s apart, his TUNING floors 0.42 / 0.32 s:
   the brief's 0.7 / 0.45 s floor would slow every move of his, which the owner chose fast; asked, not changed);
   his colours and hat; Piercing Ash's old drawn-back windup (the owner's call in ADR-226; its lunge gets the new legs
