@@ -26,7 +26,6 @@ export const RELEASES = [
           'Every deathblow leaves a cut across him that shatters on the last, sprays blood that pools on the floor, and sounds like a blade through flesh.',
           'Parry the last blow of a string and he recoils: strike back in that moment with your own counter cut. Parries no longer count toward the perfect-dodge streak.',
         ],
-        ],
       },
       {
         date: '2026-11-26',
