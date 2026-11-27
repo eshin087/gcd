@@ -222,6 +222,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       6 rides on the seeds
 - [ ] The real renderer lays ~30 % more floor marks than headless
 
+## M1.97 — The slice; the free hand out of his body (2026-11-26, `claude/hero-attack-feel`, ADR-247)
+- [x] The free hand never inside his torso (`SIDE_KEEP`), the grip's blend after the side hand (hit 5 reaches round his side)
+- [x] The slice: a seam of digits on the blade's own path, ~0.2 s, from every side (scenario `slice`)
+- [x] Both colours (steel, green) and both timings (trace, end) to pick from
+- [ ] The owner's pick of colour and timing
+
 ## M1.95 — The impact pass (2026-11-26, `claude/hero-attack-feel`, ADR-244)
 - [x] Every ending slash in front of him, a whiff's carried with his dash; checked facing all four ways (scenario `slashfeel`)
 - [x] Harder hits: hit-stop, kick, shake, sparks along the cut, a steel scar, the slash's ring; the blade's smear

@@ -5,6 +5,43 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The slice: digits along the blade's own path; the free hand kept out of his body (ADR-247; branch `claude/hero-attack-feel`, held)
+
+**Owner:** "seems like the left arm is clipping sometimes as i see its yellow fist randomly during the light attack
+combo. also on the 5th attack the left hand angle motion and animation looks unnatural ... the slash effect is very
+distracting and seems to linger a bit too long and looks off when attacking from the side. make sure the slice effect
+is exactly matching the swords attack swing ... i want the slices to be like a cool matrix ascii of his sword cutting
+the matrix/universe. make it subtle and cool". Asked: show both colours (steel white-blue, matrix green) and both
+timings (traced as the blade passes, all at once as the swing ends); ~0.2 s; hit 5's hand reaches naturally to the grip.
+
+**Found (the hand, opt-in scenario `handaudit`):** combo A's back rest sat 0.11-0.24 m from his torso's axis (inside
+the coat), every change of rest crossed his body, and hit 5 snapped the hand from behind his back onto the grip in two
+frames with the fist shown at once: the yellow fist through the coat. The side hand ran before the two-handed grip's
+blend, so the grip pulled the hand straight through him. **(the slash):** the ending line is a fixed-length line laid
+in the screen's plane at the contact, not on the blade's path; seen from the side it crossed the swing, and its
+hairline outlived the swing by ~1 s.
+
+**What changed:** `anim.js`: the side hand after the grip's blend (a two-handed blow takes the hand from where the side
+left it, over the side's own ease), and a keep-out round his torso (`SIDE_KEEP` with the look's `body`: the back
+look's hand no closer than 0.27 m to its axis between hip and chest, eased in and out with the hand, sent round his
+left, keeping its last way out so it never flips sides); `offHand.js`: the back rest 0.32 m behind the shoulder (it
+was 0.21, inside the coat), `easeBack` 0.1 → 0.2 s. The side and quiet looks keep no keep-out (beside the hip their
+hand sits at 0.23 m). Found on the way, not changed: combo A's chest swings ~150° from hit 3's finish into hit 4's coil
+within the thrust's 5-frame blend (its motion, the owner's pick). `slashFx.js` THE SLICE (the
+default `slash` look): the drawn point's path, each frame's blade turned onto the next round its base, printed as one
+seam of digits on a screen-plane lattice (one digit a cell), weighted by the point's speed, one in five dripping, 0.2 s
+(0.24 heavy; a heavy's second seam inside), laid against his body and carried at his ground speed; `?slice=steel|
+green`, `?slicewhen=trace|end`; the impact (kick, shake, a smaller spray) on the contact's own frame. `?slash=line` the
+ending line, `?slash=arc` the crescent. Lab rows `slice`, `slicewhen`. Scenario `slice`.
+
+**Verification:** `offhand` (new: combo A's hand ≥ 0.18 m from his spine through hits 1-4, nearest 0.21 (it was
+0.07); hit 5 at most 22 cm a frame to the grip, 17.2 (it snapped 34.1); fails on the code before), `slice` (four facings, both colours, both timings: every digit within 0.2 m of the blade's own path,
+against his body; the kick on the contact's frame), `slashfeel` (under `?slash=line`), `instantslash`, `combos`,
+`feel`, the hero suites; `handaudit` before / after; films: combo A facing north, east, south and west,
+the lone heavy facing north and east, the phone landscape and portrait, the hand from behind-left and front-left.
+
+**Open / next:** the owner's pick of colour and timing (the default is steel, traced, until they choose).
+
 ## 2026-11-26 — The impact pass: slashes in front of him, harder hits, every angle (ADR-244; branch `claude/hero-attack-feel`, held)
 
 **Owner:** "help me make the attack animation look better in terms of animation and impact/feel. the heavy attack

@@ -6908,3 +6908,33 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   inside docs/ANIMATION.md's tiers: combo A plays a little slower under hits. The smear is on the strike only. The sound is a synth recipe (the owner picks sounds by ear: a recorded one can
   replace it). Scenario `slashfeel` (four facings: no line behind him, a whiff carried, a landed blow's burst and
   event, the smear).
+
+## ADR-247 — The slice: a seam of digits on the blade's own path, ~0.2 s; the free hand kept out of his body (2026-11-26)
+
+- **Context:** after the impact pass (ADR-244) the owner: the left arm "clipping sometimes as i see its yellow fist
+  randomly during the light attack combo", hit 5's hand "unnatural"; "the slash effect is very distracting and seems
+  to linger a bit too long and looks off when attacking from the side. make sure the slice effect is exactly matching
+  the swords attack swing ... i want the slices to be like a cool matrix ascii of his sword cutting the
+  matrix/universe. make it subtle and cool to show that and not too distracting". Asked, they wanted both colours
+  (steel white-blue, matrix green) and both timings shown, a ~0.2 s life, and hit 5's hand reaching naturally to the
+  grip.
+- **Found:** the back rest sat inside his coat (0.11-0.24 m from the torso's axis), each change of rest crossed his
+  body, and the two-handed grip's blend came after the side hand, so hit 5 pulled the hand through him onto the hilt
+  in two frames (scenario `handaudit`). The ending line is laid in the screen's plane at the contact with a fixed
+  length: from the side it crosses the swing; its hairline lasted ~1 s.
+- **Decision:** (1) `anim.js`: `_sideHand` after the grip's blend, and `SIDE_KEEP` with the look's `body` (the back
+  look: the free wrist no nearer than 0.27 m to the torso's axis between hip and chest, eased in and out with the
+  hand, sent round his left, its last way out kept near the spine so it never flips sides); `offHand.js`: the back
+  rest 0.32 m behind the shoulder (0.21 sat inside the coat), `easeBack` 0.2 s; side and quiet keep none. (2)
+  `slashFx.js` THE SLICE, the default `slash` look: the drawn point's path (each frame's blade turned onto the next
+  round its base: the swing's curve, not a chord) printed as one seam of fine digits, each moved onto its cell of a
+  lattice in the screen's plane (one a cell: a line rasterised into the print, as the afterimage's digits stand),
+  strength by the point's speed (`SLICE.v`), one in `drip` dripping, `life` 0.2 / 0.24 s; laid against his body (his
+  travel through the swing taken off) and carried at his ground speed. `?slice=steel|green`, `?slicewhen=trace|end`
+  (defaults steel, trace, until the owner picks). The landed blow's kick and shake move to the contact's own frame
+  (the hit test runs after the slice's update: done in the `player:hitDragon` handler), with IMPACT × 0.45 sparks
+  there and no scar line. `?slash=line` keeps the ending line (ADR-240, ADR-244), `?slash=arc` the crescent.
+- **Consequences:** the slice's digits are glyph particles (one letter cell, the afterimage's cell size), not heat in
+  the fire field: the green the owner asked to see is not one of the field's palettes (its void slot is borrowed per
+  level), and both colours are drawn the same way so the choice is colour alone. `player:slash` (the ring) comes as
+  the swing ends in both timings. Scenario `slice`; `slashfeel` runs under `?slash=line`.
