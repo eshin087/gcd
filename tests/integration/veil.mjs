@@ -1042,6 +1042,7 @@ async function scenarioDowntime() {
     const q = (v, f) => (v.length ? v[Math.min(v.length - 1, Math.floor(v.length * f))] : NaN);
     rows.push({ seed, n: downs.length, onDown, outMax, outMaxAt, nx, len: downs.map((k) => k.t1 - k.t0) });
     out(`   seed ${seed}: ${downs.length} knockdowns (each ${q(downs.map((k) => k.t1 - k.t0).sort(), 0.5)?.toFixed(2)} s); up -> his next cue: min ${nx[0]?.toFixed(2)} / median ${q(nx, 0.5)?.toFixed(2)} / max ${nx[nx.length - 1]?.toFixed(2)} s (down -> next cue median ${(q(nx, 0.5) + 1.3).toFixed(2)} s); longest stretch out of his own hands ${outMax.toFixed(2)} s; hits on him down: ${onDown.length}`);
+    if (process.env.GCD_DT_TRACE) out(`     the longest ends at ${outMaxAt.toFixed(2)} s; hits before it: ${G.hits.filter((h) => h.t > outMaxAt - 3.5 && h.t <= outMaxAt + 0.05).map((h) => `${h.attack} ${h.r} @${h.t.toFixed(2)}`).join(' · ')}`);
   }
   assert(rows.every((r) => r.n >= 3), `the half-skilled defender is knocked down in every fight (${rows.map((r) => r.n).join(', ')})`);
   assert(rows.every((r) => r.onDown.length === 0), `nothing of his lands on the hero while he is down (${rows.flatMap((r) => r.onDown).slice(0, 4).join(' · ') || 'none'})`);
