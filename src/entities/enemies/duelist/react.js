@@ -68,6 +68,21 @@ export class HitReact {
     this._kneeW = [new THREE.Vector3(), new THREE.Vector3()];
     this._footQ = [new THREE.Quaternion(), new THREE.Quaternion()];
     this.last = null; // the last hit as read (the tests, the Lab): { part, side, thrust, K }
+    // CONTACT's reach (combat/contact.js `b`; duelist._reachStep): his body shifted toward the hero, root
+    // frame, model m, on top of the slots (its own cap, set every frame)
+    this.reach = [0, 0, 0];
+  }
+
+  /** CONTACT's reach this frame (root frame: +x his left, +z the way he faces; model m). */
+  setReach(x, y, z) {
+    const r = this.reach;
+    r[0] = Number.isFinite(x) ? x : 0;
+    r[1] = Number.isFinite(y) ? y : 0;
+    r[2] = Number.isFinite(z) ? z : 0;
+  }
+  get reaching() {
+    const r = this.reach;
+    return r[0] !== 0 || r[1] !== 0 || r[2] !== 0;
   }
 
   _rnd() {
@@ -87,7 +102,7 @@ export class HitReact {
 
   /** Is the layer moving him (a slot on)? */
   get active() {
-    return this.live;
+    return this.live || this.reaching;
   }
 
   /**
@@ -140,8 +155,12 @@ export class HitReact {
     // where the body answers: the struck part, read with the DRAWN contact's height (the cut is seen
     // there: a gameplay 'leg' hit drawn on the hips twists the hips, and buckles that knee a little)
     const gp = o.part === 'head' || o.part === 'leg' ? o.part : 'body', Z = R.zones;
-    const part = uy > Z.head || (gp === 'head' && uy > Z.headPart) ? 'head' : uy < Z.leg || (gp === 'leg' && uy < Z.legPart) ? 'leg' : 'body';
-    const legMix = gp === 'leg' && part === 'body' ? Z.legMix : 0;
+    let part = uy > Z.head || (gp === 'head' && uy > Z.headPart) ? 'head' : uy < Z.leg || (gp === 'leg' && uy < Z.legPart) ? 'leg' : 'body';
+    // (CONTACT, combat/contact.js: the struck capsule when the blow could say: o.limb 'head' | 'body' |
+    // 'armR' | 'armL' | 'legR' | 'legL'. An arm knocks that shoulder back)
+    const limb = typeof o.limb === 'string' ? o.limb : '';
+    if (limb) part = limb.startsWith('arm') ? 'arm' : limb.startsWith('leg') ? 'leg' : limb === 'head' ? 'head' : 'body';
+    const legMix = gp === 'leg' && part === 'body' && !limb ? Z.legMix : 0;
     // a thrust: the hero's attack says so (o.thrust 0..1); else the blade running along the push (a
     // falling cut's ground travel runs along it too, so the measure is kept strict)
     const tau = Number.isFinite(o.thrust) ? clamp(o.thrust, 0, 1) : smooth(R.thrust[0], R.thrust[1], cx * fx + cz * fz);
@@ -188,8 +207,8 @@ export class HitReact {
       add(s.s, bz * H.neck, bx * H.neckYaw, -bx * H.neck, K);
       add(s.t, bx * H.shift, 0, bz * H.shift, K);
       side = Math.sign(ux) || 1;
-    } else if (part === 'body') {
-      const B = R.body;
+    } else if (part === 'body' || part === 'arm') {
+      const B = R.body, AR = part === 'arm' ? R.arm : null;
       // the blow's push: into him (the struck shoulder goes back), and some of the blade's travel
       // across him (the other comes round)
       const Fx = fx + B.cut * cx, Fz = fz + B.cut * cz, Fl = Math.hypot(Fx, Fz) || 1;
@@ -201,8 +220,8 @@ export class HitReact {
         rz *= rmax / rl;
       }
       const tq = clamp((rz * Fx - rx * Fz) / B.arm, -1, 1) * (1 - 0.6 * tau);
-      const hi = smooth(Z.low, Z.high, uy); // the chest (1) or the belly / hips (0)
-      const tw = B.twist * tq * K;
+      const hi = AR ? 1 : smooth(Z.low, Z.high, uy); // the chest (1) or the belly / hips (0); an arm: the chest
+      const tw = B.twist * tq * K * (AR ? AR.twist : 1);
       const low = B.low * (1 - hi);
       add(s.s, 0, tw * (1 - low), 0, 1);
       add(s.p, 0, tw * low, 0, 1);
@@ -223,13 +242,20 @@ export class HitReact {
         add(s.t, fx * F.hips, -F.drop, fz * F.hips, w);
       }
       side = Math.sign(ux) || 1;
+      if (AR) {
+        // an arm: that shoulder dropped and driven back (the chest rolls onto it), the head turned from it
+        const sd = limb.endsWith('L') ? 1 : limb.endsWith('R') ? -1 : side;
+        side = sd;
+        add(s.s, AR.pitch, 0, -sd * AR.roll, K);
+        add(s.h, 0, -sd * AR.head, 0, K);
+      }
     }
     if (part === 'leg' || legMix > 0) {
       // a leg: the hips roll down onto the struck side (about his forward axis), the chest takes most
       // of it back, he tips over the bent knee and sinks; the legs are solved again (apply), so the
       // knees bend with the drop and the feet stay where they stood
       const G = R.leg, w = K * (part === 'leg' ? 1 : legMix);
-      side = ux >= 0 ? 1 : -1; // +1 his left
+      side = limb === 'legL' ? 1 : limb === 'legR' ? -1 : ux >= 0 ? 1 : -1; // +1 his left
       add(s.b, G.pitch, 0, -side * G.roll, w);
       add(s.s, 0, 0, side * G.roll * G.catch, w);
       add(s.t, side * G.shift + cx * 0.01, -G.drop, cz * 0.01, w);
@@ -319,7 +345,7 @@ export class HitReact {
 
   /** The slots' sum on the joints (lean off: the upright model). dt: game time (the freeze holds it). */
   apply(dt) {
-    if (!this.live) return;
+    if (!this.live && !this.reaching) return;
     const R = REACT;
     const A = ACC;
     A.b[0] = A.b[1] = A.b[2] = A.p[0] = A.p[1] = A.p[2] = A.s[0] = A.s[1] = A.s[2] = A.h[0] = A.h[1] = A.h[2] = A.t[0] = A.t[1] = A.t[2] = 0;
@@ -345,10 +371,8 @@ export class HitReact {
         A.t[i] += s.t[i] * e;
       }
     }
-    if (!any) {
-      this.live = false;
-      return;
-    }
+    if (!any) this.live = false;
+    if (!any && !this.reaching) return;
     const cap = (v, m) => {
       const l = Math.hypot(v[0], v[1], v[2]);
       if (!(l <= m)) {
@@ -363,6 +387,9 @@ export class HitReact {
     cap(A.s, R.maxAngle);
     cap(A.h, R.maxAngle);
     cap(A.t, R.maxShift);
+    A.t[0] += this.reach[0];
+    A.t[1] += this.reach[1];
+    A.t[2] += this.reach[2];
     this._pose(A);
   }
 

@@ -829,7 +829,14 @@ streamBlock(cost, push, dx, dz): boolean
                                        // which the player's own block answers: the guard opens). God mode pays nothing.
 isSwinging(): boolean                  // a light / heavy swing's active frames (the dragon's bullets are cut on it)
 takeHit({ damage, from:{x,z}, knockback=0, knockdown=false, kind='hit', burn=0,
-          tell='normal', parryable, blockable, attack, attacker, plunge, perfect, light, flare }): RESULT   // see COMBAT.md
+          tell='normal', parryable, blockable, attack, attacker, plunge, perfect, light, flare, point }): RESULT   // see COMBAT.md
+                                       // CONTACT (ADR-258, combat/contact.js, ?contact=a|b): a hit from an attacker
+                                       // with strikeContact (every duelist) is posed where it meets his drawn body,
+                                       // a block where it meets his blade (the guard nudged onto it: guardNudge), the
+                                       // hurt / block drawn there and his body's HitReact answering by the part
+                                       // (player.hitReact, player.struck); `point` (the wyrm's snout / toe / tail
+                                       // tip, with melee) puts the hurt on him nearest it. Nothing of the result,
+                                       // the damage or the windows moves
                                        // tell 'black' (a charged blow, ADR-118): a held guard or a parry press in
                                        // its way returns 'blocked' with no damage, the guard meter emptied and the
                                        // guard knocked open (GUARD.black; player:guardOpen {black})
@@ -5189,7 +5196,11 @@ data and a subclass with a few hooks.
   **The body answers where it was hit** (ADR-149; `react.js` `class HitReact`, numbers `reactTuning.js`
   `REACT`): `d.hitReact.hit(R)` from `takeHit` for a sword cut only (`o.swing || reel > 0`, at
   `impactK('react', 'duelist')` > 0; R = { k, part, point, cut, dir, thrust, heavy, crit, reel, skid,
-  moved }) and from `onExecute` (a heavy thrust fold). `_animate` order: `hitReact.restore()` →
+  moved, limb }) and from `onExecute` (a heavy thrust fold). `limb` (CONTACT, ADR-258: the capsule the hero's steel
+  met) overrides the part read from the height, and adds the arm: a body hit on the chest with `REACT.arm`'s
+  stronger twist, that shoulder dropped and back, the head turned from it. The HERO wears the same layer
+  (`player.hitReact`, ×`CONTACT.react.hero` 1.2): restored before his animator, applied after `_combat` (his
+  sweep never sees it), from `_reactTo` on a hit that met him. `_animate` order: `hitReact.restore()` →
   jolt, pilot → `anim.update` → `_gameplayPoints()` → `hitReact.apply(dt)` → lean on →
   `updateMatrixWorld` → `_drawnPoints()`; `reset()` calls `hitReact.reset()`, `_poseAt` restores it
   before posing. Gameplay points never see it; up to 3 slots add.
@@ -5250,6 +5261,25 @@ data and a subclass with a few hooks.
   away: `player.onGuarded({ deflect })` bounces the hero, and the counter move starts as the 0.24 s
   beat ends). `brain._evade(s)`: once per 3 s he may step out of a heavy blow (`TUNING.guard.evade`),
   from footwork or a late recovery.
+- **CONTACT** (ADR-258, `combat/contact.js`, `?contact=0|a|b`, the Lab's `contact` row): `d.strikeContact(meet,
+  heavy, biteAt?)` → the meeting point (drawn, world) or null. `meet(a, b, r, out)` is the struck thing's signed gap
+  (m, − inside) to a striker a → b of radius r (the hero's `ContactBody` for a hit; his blade, then the shell 0.12 m
+  before his body, for a block). The strike is searched along his clip from the frame the blow was decided
+  (`findContact`: back ≤ 0.16 s where it had gone through, on ≤ 0.075 s where it fell short, steps of 1/120 s and
+  three halvings) to where the edge bites `CONTACT.bite` 0.035 m in (a thin part at most 0.4 of its radius) or a
+  fist / foot (`_part`) touches; `brain.pinAt(tc, hold, follow)` holds the DRAWN pose at that clip time
+  (`brain.pin`, `pinStep`: through the freeze, `hold` s more (a heavy blow `holdHeavy` 0.06), then it catches up
+  with the clip over `follow` 0.07 s). `_animate` poses the clip's own time first (`_gameplayPoints`: his hurt
+  spheres never see the pin), then the pinned time with `anim.update(0)` for the frame drawn. `setBack` and a new
+  clip clear the pin. `d._wardOnto(p)`: his guard nudged onto the hero's stopped blade (`pilot.guardNudge`, the
+  animator's `gripNudge`, eased off over 0.3 s). `d._reachStep(dt)` (`b` only, top of `_animate`): a blow coming
+  within `CONTACT.reach.lead` 0.14 s with the hero in its zone is probed at its impact pose once a frame and his
+  drawn body eased toward the hero to close the gap (`hitReact.setReach`, ≤ 0.3 m, the legs solved to the planted
+  feet), held through the pin, eased back over 0.22 s. The hero's side: `player._cutContact(dr, dx, dy, dz, heavy,
+  guard)` searches his swing's clock the same way (`atk.pin`, `atk.show`: `animT` = `atk.t − atk.show`), from
+  `_applyHit` (his drawn steel on the boss's drawn body: `ContactBody.fromRig` on a duelist, `fromSpheres` on the
+  wyrm) and from `d._guardClash` (on the boss's blade, before the crossing is read); `player._limbNear(dr)`
+  names the part for the boss's HitReact (`takeHit({ limb })`: 'head' | 'body' | 'armR' | 'armL' | 'legR' | 'legL').
 - A parried blow is HELD at the contact (ADR-079): `d.parryContact(chest, last, blade?)` steps his pose back
   along the strike (≤ 0.06 s of clip time) to the last pose before the blade crossed the hero's
   centre line in which it is still 0.34 m clear, or sets a thrust 0.4 m aside; `brain.back.off` keeps
