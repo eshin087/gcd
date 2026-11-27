@@ -26,6 +26,8 @@
 //            dodge), 25 % early (0.32 s: a plain roll); cuts in his openings and pokes now and then (seeded).
 // Reported per run besides: the barrier's open seconds per minute and the damage he took per opening.
 
+const WORLD_ROLL = 0.24; // s before a falling piece lands that a bot rolls out of it (its cue comes 0.3 s ahead)
+const PAIR = 0.3; // s: a second guard cue this close behind one: the guard is held through both
 export const BOTS = ['good', 'fencing', 'pace', 'blocker', 'roller', 'perfect'];
 
 /** The fencing bot's misses: a seeded stream of its own (null: it answers everything). */
@@ -61,9 +63,12 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
   const lead = (src) => (src === 'world' ? 0.3 : Array.isArray(TUNING.flashLead) ? TUNING.flashLead[Math.max(0, d.phase - 1)] : TUNING.flashLead);
   const pend = [];
   let guardUntil = -1, missed = 0;
+  const soon = [];
   const isRed = (t) => t === TELL.RED || t === TELL.BLACK;
   const defend = {
     onEvent(n, e) {
+      // (his windup's announcement, the pose a person reads before the glint: only to plan a roll by)
+      if (n === 'combat:tell' && e?.source === 'dragon' && Number.isFinite(e.impactIn) && isRed(e.tell)) { soon.push(game.time + e.impactIn); if (soon.length > 8) soon.shift(); return; }
       if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
       if (miss?.()) { missed++; return; }
       let ans = undefined;
@@ -74,7 +79,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
         else if (u < Hm.ordinary + Hm.perfect) ans = Hm.perfectLead;
         else { missed++; return; }
       }
-      pend.push({ tell: e.tell, attack: e.attack, at: game.time + lead(e.source), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false, ans });
+      pend.push({ tell: e.tell, attack: e.attack, at: game.time + lead(e.source), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, world: e.source === 'world', done: false, ans });
     },
     act() {
       const t = game.time;
@@ -85,13 +90,34 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
         const left = e.at - t - DT;
         if (isRed(e.tell)) {
           if (!P.red) { e.done = true; continue; }
-          if (left <= (e.ans ?? P.red.lead)) {
+          // (a falling piece is left, not perfect-dodged: a person rolls out of it as its cue comes, not at the
+          // last instant, so a red of his close behind it is still rolled. The round-3b bench: the perfect bot
+          // rolled the unveiling's debris 0.08 s before it fell, could not roll again 0.44 s later (a roll
+          // rolls again after 0.5 s) and took The Stomp)
+          // (but a red close behind it, inside one roll's i-frames (0.04 - 0.4 s): one late roll answers both)
+          const both = e.world ? pend.find((f) => f !== e && !f.done && isRed(f.tell) && f.at > e.at && f.at - e.at < 0.3) : null;
+          const told = e.world && !both && soon.some((at) => at > e.at && at - e.at < 0.3);
+          const lead = e.world && !both && !told ? Math.max(WORLD_ROLL, e.ans ?? P.red.lead) : e.ans ?? P.red.lead;
+          if (left <= lead) {
             e.done = true;
+            if (both) both.done = true;
             input.up(1);
             guardUntil = -1;
             const c = e.hazard ? { x: e.x, z: e.z } : d.position, q = p.position;
             const dx = q.x - c.x, dz = q.z - c.z, l = Math.hypot(dx, dz) || 1;
-            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: dz / l, y: dx / l };
+            let ax = e.hazard ? dx / l : dz / l, az = e.hazard ? dz / l : -dx / l;
+            // (out of a falling piece, a person rolls the way that leaves it and keeps him most in front: the
+            // roll ends facing its way, and a jab of his 0.45 s after the piece fell met a hero 64 - 112 deg
+            // off him, too far round to parry: the round-3b bench)
+            if (e.world) {
+              const bx = d.position.x - q.x, bz = d.position.z - q.z, bl = Math.hypot(bx, bz) || 1;
+              let best = -2;
+              for (const [cx, cz] of [[dx / l, dz / l], [-dz / l, dx / l], [dz / l, -dx / l], [(dx / l - dz / l) * 0.7071, (dz / l + dx / l) * 0.7071], [(dx / l + dz / l) * 0.7071, (dz / l - dx / l) * 0.7071]]) {
+                const k = (cx * bx + cz * bz) / bl;
+                if (k > best) { best = k; ax = cx; az = cz; }
+              }
+            }
+            input.axis = { x: ax, y: -az };
             input.tap('Space');
             busy = true;
           }
@@ -100,7 +126,12 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
             e.done = true;
             // (the good bot holds the guard from its press to past the impact, as a person does: a press in
             // the parry window parries, an early one blocks; a tap released early would have answered nothing)
+            // (two guard cues close together, a thrown piece and a flick 0.08 s apart: a person holds the guard
+            // through both; a tap parries the first and the second lands in the parry's recovery: the
+            // round-3b bench, the perfect bot, seed 7)
+            const next = pend.find((f) => f !== e && !f.done && !isRed(f.tell) && f.at >= e.at && f.at - e.at < PAIR);
             if (P.human) { input.press(1); guardUntil = Math.max(guardUntil, e.at + 0.15); }
+            else if (next) { input.up(1); input.press(1); guardUntil = Math.max(guardUntil, next.at + 0.1); next.done = true; }
             else { input.up(1); input.click(1); }
             busy = true;
           }
@@ -120,9 +151,9 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
 
   // what hurt him, and whether it was answered
   const hurt = [];
-  let curAtk = null;
+  let curAtk = null, lastH = '';
   const th = p.takeHit.bind(p);
-  p.takeHit = (h) => { curAtk = h?.attack ?? null; const r = th(h); curAtk = null; return r; };
+  p.takeHit = (h) => { curAtk = h?.attack ?? null; if (process.env.GCD_BHIT) lastH = `around ${!!h?.around} tell ${h?.tell} parryable ${h?.parryable}`; const r = th(h); curAtk = null; return r; };
   const n = { parries: 0, perfect: 0, dodges: 0, heals: 0, blocks: 0, guardBreaks: 0, guardOpens: 0, openThenCue: 0, openThenHit: 0 };
   const flog = [];
   const diag = { openAt: -9, openFlash: false, openHit: false, touchAt: 0, untouched: 0 };
@@ -132,7 +163,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
     w0?.(ev, e);
     if (ev === 'player:hurt' && e?.damage > 0) hurt.push([game.time, e.damage, curAtk || e.kind || d.brain.act?.name || d.mode, d.phase]);
     // (GCD_BHIT=1: each hit and the cues before it)
-    if (process.env.GCD_BHIT) { if (ev === 'combat:flash') flog.push([game.time, e?.attack, e?.tell, e?.source]); if (ev === 'combat:tell') flog.push([game.time, 'tell:' + e?.attack, e?.tell, e?.impactIn?.toFixed?.(2)]); if (ev === 'player:hurt' && e?.damage > 0) H.out(`      HIT @${(game.time - t0).toFixed(2)} ${curAtk} ${e.damage.toFixed(0)} hero ${p.state} stateT ${p.stateT?.toFixed(2)} dist ${Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z).toFixed(2)} | ${flog.filter((x) => x[0] > game.time - 2).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]} ${x[2]} ${x[3] ?? ''}`).join(' · ')}`); }
+    if (process.env.GCD_BHIT) { if (ev === 'combat:flash') flog.push([game.time, e?.attack, e?.tell, e?.source]); if (ev === 'combat:tell') flog.push([game.time, 'tell:' + e?.attack, e?.tell, e?.impactIn?.toFixed?.(2)]); if (ev === 'player:hurt' && e?.damage > 0) { H.out(`      HIT @${(game.time - t0).toFixed(2)} ${lastH} face ${(((Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z) - p.yaw + 9 * Math.PI) % (2 * Math.PI) - Math.PI) * 180 / Math.PI).toFixed(0)} deg parryT ${(p.rmb.parryT - t0).toFixed(2)} upT ${(p.rmb.upT - t0).toFixed(2)} | ${Array.from({ length: 24 }, (_, k) => ring[(ringI + k) % 24]).filter(Boolean).join(' ')} |`); H.out(`      HIT @${(game.time - t0).toFixed(2)} ${curAtk} ${e.damage.toFixed(0)} hero ${p.state} stateT ${p.stateT?.toFixed(2)} dist ${Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z).toFixed(2)} | ${flog.filter((x) => x[0] > game.time - 2).map((x) => `${(x[0] - t0).toFixed(2)} ${x[1]} ${x[2]} ${x[3] ?? ''}`).join(' · ')}`); } }
     if (ev === 'player:parry') { n.parries++; if (e?.perfect) n.perfect++; }
     if (ev === 'player:perfectDodge') n.dodges++;
     if (ev === 'player:heal') n.heals++;
@@ -149,6 +180,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
     if (/^dragon:phase[234]$/.test(ev)) phAt.push(game.time);
   };
   const t0 = game.time;
+  const ring = new Array(24).fill(''); let ringI = 0;
   diag.touchAt = t0;
   // (GCD_BTOUCH=1: what reached him, each time: the hero's state and the hit's kind)
   if (process.env.GCD_BTOUCH) { const th0 = d.takeHit.bind(d); d.takeHit = (o = {}) => { H.out(`      touch @${(game.time - t0).toFixed(1)} hero ${p.state} kind ${o.kind ?? '-'} attack ${o.attack ?? o.move ?? '-'} exact ${!!o.exact} dmg ${o.damage}`); return th0(o); }; }
@@ -165,6 +197,7 @@ export function benchRun(H, seed, bot, { secs = 600, skill = 0.9 } = {}) {
       bm.t = game.time;
       bm.wasOpen = nowOpen;
     }
+    if (process.env.GCD_BHIT) { ring[ringI++ % 24] = `${(game.time - t0).toFixed(2)} ${p.state}${input.isDown?.(1) ? '+G' : ''}`; }
     if (form > 1 && d.brain.pendingPhase > form) d.brain.pendingPhase = 0;
     input.axis = { x: 0, y: 0 };
     if (!p.alive || game.state !== 'boss') return;
