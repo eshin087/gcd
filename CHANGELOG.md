@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty pieces of work since 0.4.0:
+One hundred and twenty-one pieces of work since 0.4.0:
+- **The flash chain: counter him three times in a row** (2026-11-26, ADR-245). *Changed (the owner's pick from films of every duelist):* a flash
+  counter no longer ends his string at once: he is thrown back and strikes back straight
+  away, and a flash counter of that blow is the next link. Three in a row (70, 85, then 100 damage, each freeze
+  and ring a little bigger) and he reels with the crit window open, as a single flash counter does today. Every
+  duelist; the timing window is the same for every link. `?counter=0` (the Lab's `counter` row: old) gives the
+  flash counter as it was.
 - **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
   perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
   curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round

@@ -6883,3 +6883,25 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   and heavy branch: each line's on-screen direction now has its blade's. (3) The baseline is the default:
   `?endslash=enemy`, `?endbeat=0`; combo A in the game (`DEFAULT_COMBO`; the headless sims keep production's
   defs, which their checks are written for; `?combo=0` plays production's).
+
+## ADR-245 — The flash chain: three flash counters in a row, he strikes back after each (2026-11-26)
+- **Context:** research into the combat of three sword games (Sekiro; Phantom Blade Zero; Onimusha: Way of the
+  Sword) found that this game already has most of their core (posture and deathblows, the mikiri, blade locks, the
+  flash counter, blue / red / black tells). One thing it lacked was the counter-kill CHAIN: a re-timed counter
+  after each counter, a beat-by-beat exchange that escalates. Of five proposals the owner chose it first, and picked:
+  he strikes back after each counter; 3 links with rising damage; the same window every link; the
+  choose-where-to-cut finisher later. They asked to see today's flash counter and the new one side by side on film.
+- **Decision:** built behind a switch and filmed on all eight duelists, today's flash counter beside the chain;
+  the owner picked "strikes back", so the chain is the game's default (`?counter=0` / the Lab's `counter` row:
+  old gives the single counter; the headless sims keep the single counter their checks are written for, duel
+  FLASHCHAIN plays the chain). A flash counter before the last
+  link throws the duelist back (`clash`) and queues his counter move (the riposte the engine already throws out of a
+  guard), tagged with the link (`act.flashLink`); a flash counter of that move is the next link. The last link is
+  today's flash counter ending (reel, cinematic, crit window). Numbers in `DEFENSE.counterChain`: 70 / 85 / 100
+  damage, 45 / 55 / 70 posture, rising freeze, shake, punch; the steel's ring rises in pitch per link.
+- **Why the strike-back is the counter move:** every duelist already has one per phase, built and tuned, and every
+  one opens on a melee blow a cut can meet (checked for all eight; Tian Lei's form-3 bolt is the one exception, where
+  the chain simply stops). No new boss animation was needed for the prototype.
+- **Consequences:** a single flash counter under the chain pays less at once than today (no reel, no crit window)
+  and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
+  `link`, `links`, `last`.
