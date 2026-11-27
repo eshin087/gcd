@@ -153,7 +153,7 @@ const SCENARIOS = {
     assert(S.nan === 0 && !FX.deathblowFxBusy(), 'it ends clean: nothing alive, no NaN');
     assert(S.maxCh <= 0.55 + 1e-6 && S.randCalls === 0, 'under the bloom threshold, no Math.random');
     FX.setDbFx('zzz');
-    assert(FX.getDbFx() === 'a', 'an unknown look falls back to a');
+    assert(FX.getDbFx() === 'b', 'an unknown look falls back to b (the default, Shatter Web)');
     out(`   peak alive ${S.peak}`);
   },
 
@@ -212,8 +212,8 @@ const SCENARIOS = {
         const dot = (-pa[0] / pl) * sl[4] + (-pa[1] / pl) * sl[5]; // (the swing's direction into the contact)
         assert(L.src === 'path', `${mode} blow ${k}: the direction came from the path`);
         assert(Math.hypot(sl[0] + sl[2], sl[1] + sl[3]) < 0.12, `${mode} blow ${k}: the cut is centred on the contact`);
-        const want = mode === 'b' ? 2.6 : k === 6 ? 2.2 : 1.3;
-        assert(len >= want - 0.1 && len <= want + 0.7, `${mode} blow ${k}: its length ${len.toFixed(2)} m (${want})`);
+        const want = k === 6 ? 2.2 : mode === 'b' ? 1.6 : 1.3; // (b's lines capped at 1.6 m, 2.2 m the finisher: kept on his body)
+        assert(len >= want - 0.1 && len <= want + (mode === 'b' ? 0.05 : 0.7), `${mode} blow ${k}: its length ${len.toFixed(2)} m (${want})`);
         assert(dot > 0.8, `${mode} blow ${k}: it runs along the swing's direction at the contact (${dot.toFixed(2)})`);
       }
       // the fallback: no path, a straight sweep along the bearing

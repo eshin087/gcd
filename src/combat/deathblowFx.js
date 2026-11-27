@@ -54,7 +54,7 @@ const q = (name) => {
     return null;
   }
 };
-export const DBFX_DEFAULT = 'a';
+export const DBFX_DEFAULT = 'b'; // Shatter Web: the owner's pick (2026-11-26)
 /** The switch (`?dbfx=`): read at the moment of each blow (the Lab cycles it). */
 export const DB_FX = { opts: OPTS, mode: OPTS.includes(q('dbfx')) ? q('dbfx') : DBFX_DEFAULT };
 export const getDbFx = () => DB_FX.mode;
@@ -350,7 +350,7 @@ function buildLine(o, x, y, z, bearing, last, straight, minLen) {
     ex = -Math.sin(bearing);
     ey = Math.cos(bearing);
   }
-  const len = Math.max(straight ? minLen : 0, last ? 2.2 : 1.3), h = len / 2;
+  const len = Math.min(Math.max(straight ? minLen : 0, last ? 2.2 : 1.3), last ? 2.2 : 1.6), h = len / 2; // (kept on his body: the owner disliked long slashes across the screen)
   LX[0] = -ex * h;
   LY[0] = -ey * h;
   LX[1] = ex * h;
