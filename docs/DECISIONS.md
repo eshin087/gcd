@@ -7193,3 +7193,23 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   -> 0.99, the claw combo's lunge bite 3.10 -> 2.07, the Hesitant Maw's rear bite 2.33 -> 1.16, the sky hammer's
   bite 1.38 -> 0.45). The bite's hit sphere (1.05 x SCALE) still meets the hero a frame before the drawn jaws touch.
   At the game camera the change reads mostly as the surge; the head's hang and snap show best from the side.
+
+## ADR-258 — The meteors' roar with the head held naturally (`?wyrmHead=`) (2026-11-27)
+
+- **Context:** the owner: "The dragon's head twists too far back and looks unnatural when it raises its head up
+  to shoot fire." That is Meteor Rain's rear-up (the apocalypse, look a): its neck was keyed to swing back past
+  upright as it rose (the head goal 0.9 units ahead of the root, behind the neck's base at 1.7) and the head looked
+  at a point 40 m up just ahead of the root. Measured (integ `wyrmhead`, opt-in: every fire move's snout against
+  the body): the snout 90° up in the chest's frame and **15° past vertical toward the tail**, the head 0.43 units
+  **behind** the neck's base, the brow rolled 149° about the snout (the head over on its back). Every other
+  ground fire move stays under 56° up and never past vertical.
+- **Decision** (`?wyrmHead=a`, the default; `0` as before; the Lab's LOOKS row `wyrmHead`): through the rear-up and
+  the cast the head rises up and forward over the forelegs (root frame (0, 7.6, 2.3): ahead of the neck's base),
+  and the roar's look point is 40 m straight above it. The rig's head limits do the rest: the snout ends 66° up
+  in the chest's frame (the reared body leans back, so it is near vertical in the world), never past upright, the
+  head 0.81 units ahead of the neck's base. The sky fire, the bolts, the timing and the tell are unchanged.
+- **Consequences:** at the game camera the fire column now rises from a head held over the forelegs and leans a
+  little toward the hero instead of over the wyrm's own back. The flights' head (skyStrafe's recovery, the
+  cataclysm's wheel) also measures past vertical in a banked body; not changed here (the owner named the head
+  raised to shoot fire).
+

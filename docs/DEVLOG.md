@@ -5,6 +5,19 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The wyrm's head in the meteors' roar (ADR-258; branch `claude/wyrm-head-motion`)
+
+**Owner:** "The dragons head twists too far back and looks unnatural when it raises its head up to shoot fire."
+
+**What changed:** Meteor Rain's rear-up and cast hold the head up and forward over the forelegs and look straight
+up above it (`fireAttacks.js` `HEAD_UP`, `?wyrmHead=a` the default, `0` as before). New opt-in integ `wyrmhead`
+measures every fire move's head: Meteor Rain was 90° up and 15° past vertical toward the tail, the head behind the
+neck's base, the brow rolled 149°; now 66° up in the chest's frame, never past upright, the head ahead of the
+neck's base. Films before / after sent.
+
+**Open:** the flights' head in a banked body (skyStrafe's recovery, skyCataclysm's wheel) also measures past
+vertical; not touched.
+
 ## 2026-11-27 — Xin Yi's motion audit: limbs on the line, guns on the line of fire (ADR-253; branch `claude/xin-yi-motion`)
 
 **Owner (through the boss motion audit's lead session):** audit every boss with docs/ANIMATION.md, Sekiro, Phantom

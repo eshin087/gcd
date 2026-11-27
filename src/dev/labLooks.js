@@ -88,6 +88,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
   ['wyrmQuick', ['0', 'a'], '0', 'a', false, ['cinderwood'], 'Snap swipe: a quick white paw from its stance (a: in its moves)'],
   ['wyrmStrike', ['0', 'a'], '0', 'a', false, ['cinderwood'], "the wyrm's strikes (ADR-257): a in every bite its body surges first and the head snaps onto the beat (the owner's pick); 0 as shipped"],
+  ['wyrmHead', ['0', 'a'], '0', 'a', false, ['cinderwood'], "the meteors' roar (ADR-258): a the neck rises up and forward, the snout to the sky ahead of it; 0 the head tipped back past upright"],
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)
   ['halLook', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'Halcyon\'s body: a blue suit and red cape, b the idol, c tomorrow\'s tyrant (a reload)'],
   ['halCape', ['0', '1', '2', '3'], '3', '3', true, ['city'], 'his cape and colours at game size: 0 as first built, 1 brighter, 2 + a wide flared cape, 3 + its billow and a long trail (a reload)'],

@@ -19,6 +19,13 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: 'The Cinder Wyrm raises its head naturally to rain fire',
+        notes: [
+          'When the wyrm rears up to roar its meteors into the sky, its head now rises up and forward instead of twisting back over its own neck.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: "Xin Yi's limbs on the line",
         notes: [
           'Xin Yi moves more cleanly: his punches land straight at you, his kicks stay straight through the hit, his elbows and spinning kicks reach you instead of striking short, and his low sweep passes right through you. The timing of every attack is unchanged.',
