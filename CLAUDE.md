@@ -30,6 +30,9 @@ Read this file first, every session.
    - `docs/STYLE.md` — the ASCII art direction. Its first section, "The house style", is the rule every
      new object and character follows (the dragon look).
    - `docs/COMBAT.md` — combat rules: attack tells, block / parry / perfect dodge, balance numbers.
+   - `docs/ANIMATION.md` — how to animate poses, swings, boss beats and hit feel well: the research
+     (timing, overlap, posing, tells, hit-stop, springs) turned into rules for this engine and the owner's
+     checklist. **Read it before animating anything.**
    - `docs/ROADMAP.md` — where the project is going; pick work from here when unsure.
    - `docs/DECISIONS.md` — architecture decision records (why things are the way they are).
 3. `npm install` if `node_modules/` is missing.
