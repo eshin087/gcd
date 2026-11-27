@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
 import { attachMarks, marksCheck } from './marks.mjs';
-import { swordAudit, printAudit, heldTip } from './swordAudit.mjs';
+import { swordAudit, printAudit, printImpacts, heldTip } from './swordAudit.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -4720,16 +4720,22 @@ async function scenarioMotion() {
   }
   // 3. a beat owns its channels: Rain of Ashes' fourth blow is a two-handed overhead; at the next
   //    cut's impact the left hand is off the hilt again and the head no longer holds the chop's set
+  //    (the engine's rule, read on the overhead as authored: ADR-250's form, `?ashForm`, cuts it one-handed)
   {
-    const a = realise('ashRain', 1, () => 0.5);
+    const { setLook: setLookM, lookOf: lookOfM } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+    const form0 = lookOfM('ashForm', '0');
+    setLookM('ashForm', '0');
+    const a0 = realise('ashRain', 1, () => 0.5);
+    setLookM('ashForm', /ashForm=/.test(process.env.GCD_LOOKS ?? '') ? form0 : null);
     const pose = new Float32Array(64);
-    POSES.evalClip(pose, a.clip, a.beats[3].impact, null);
+    POSES.evalClip(pose, a0.clip, a0.beats[3].impact, null);
     const twoAt = pose[P.twoHand], bowAt = pose[P.hdX];
-    POSES.evalClip(pose, a.clip, a.beats[4].impact, null);
+    POSES.evalClip(pose, a0.clip, a0.beats[4].impact, null);
     assert(twoAt > 0.9 && pose[P.twoHand] < 0.05, `two hands on the hilt in the overhead, one in the cut after it (${twoAt.toFixed(2)} -> ${pose[P.twoHand].toFixed(2)})`);
     assert(bowAt < -0.1 && pose[P.hdX] > -0.03, `the head's set in the chop (a channel no cut keys) is back at the guard's in the cut after it (${bowAt.toFixed(2)} -> ${pose[P.hdX].toFixed(2)})`);
     // 4. the clip itself, stepped at 120 Hz: no channel of the sword hand's target jumps (the blade-driven
-    //    arm over the vertical, the hand-off between a keyed hand and a driven one)
+    //    arm over the vertical, the hand-off between a keyed hand and a driven one), as he plays it
+    const a = realise('ashRain', 1, () => 0.5);
     let worst = 0, when = 0;
     const last = [0, 0, 0];
     for (let t = 0; t <= a.end; t += 1 / 120) {
@@ -4752,6 +4758,7 @@ async function scenarioReact() {
   // thrust jumps 0.077 m in a frame, an open item of that ADR)
   const { setLook: setLookR } = await imp('src/entities/enemies/duelist/lookSwitch.js');
   setLookR('ashMotion', '0');
+  setLookR('ashForm', '0'); // (likewise ADR-250's form: his windup poses as the layer was tuned on)
   out('\n== scenario REACT (the body answers where it was hit: drawn only, from the hit\'s own tick, back at rest) ==');
   const { IMPACT } = await imp('src/combat/impact.js');
   const { REACT } = await imp('src/entities/enemies/duelist/reactTuning.js');
@@ -4888,6 +4895,7 @@ async function scenarioReact() {
   }
   IMPACT.by.react.duelist = byDuel0;
   setLookR('ashMotion', null);
+  setLookR('ashForm', null);
   return { counts: {}, payload: new Set() };
 }
 
@@ -5079,7 +5087,10 @@ async function scenarioSwordMotion() {
   assert(wr <= 62, `the sword in line with the forearm: the wrist at most ${wr}° (≤ 62; the hero ≤ 60; before the pass 85 - 128)`);
   assert(gh >= 0.08 && gb >= 0.08, `the blade clear of him: ${gh.toFixed(2)} m from his head, ${gb.toFixed(2)} m from his body at the closest (≥ 0.08)`);
   assert(el >= 148, `every move opens the arm: the widest elbow at least ${el}° (≥ 148; before 131 - 145)`);
-  const held = [['fallingAsh', 1], ['lotus', 1]].map(([n, f]) => [n, heldTip(H, n, { form: f })]);
+  // (ADR-250's form, `?ashForm`, ends the overhead's hold at 0.7 of the windup: read the hold to there)
+  const { lookOf: lookOfS } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const u1 = lookOfS('ashForm', '0') !== '0' ? { u1: 0.68 } : {};
+  const held = [['fallingAsh', 1], ['lotus', 1]].map(([n, f]) => [n, heldTip(H, n, { form: f, ...u1 })]);
   assert(held.every(([, h]) => !h.fail && h.n >= 6 && h.far < 0.08), `the tell pose is held: the point wanders ${held.map(([n, h]) => `${n} (${h.tell}) ${h.far?.toFixed(3)} m over ${h.n} frames`).join(', ')} (< 0.08)`);
   // the timings: only poses change
   let same = 0, diff = [];
@@ -5112,6 +5123,91 @@ async function scenarioSwordMotion() {
   setLook('ashMotion', null);
   return last;
 }
+/**
+ * ASHFORM (ADR-250): his form behind `?ashForm=a`, measured at each blow's impact (swordAudit.mjs, the impact
+ * table). On: a thrust lands on an open arm (elbow ≥ 150°) with the point on the arm's line (≤ 8°), out of a
+ * lunge (the front knee ≤ 125°, the back ≥ 140°); an overhead cuts on a diagonal (the point's path ≤ 66° off
+ * level; before 75 - 81); the front foot is down at every cut's impact in a string; the free hand never flies
+ * (≤ 12 m/s; before 17 - 19); a low sweep's legs never cross. The windups, impacts and ends of every move as with
+ * it off (only poses change). Ember Whirl's and Heaven-Splitting Fall's looks (`?whirlFx` / `?fallFx`, every
+ * option) cost the fire field less than 300 blobs more than they do today, and finite throughout.
+ */
+async function scenarioAshForm() {
+  out('\n== scenario ASHFORM (his form, ADR-250: the thrust on the arm, the lunge, the diagonal overhead, the step, the sweep; the specials\' looks) ==');
+  const { setLook, lookOf: lookOfF } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const keep = lookOfF('ashForm', '0');
+  setLook('ashForm', 'a');
+  let last = null;
+  const H = { THREE, build: (...a) => (last = build(...a)), duel: (G, o) => duel(G, o), run, DT, MOVES, names: ['plumThrust', 'piercingAsh', 'fallingAsh', 'ashRain', 'crane', 'lotus'], formOf: () => 1, setForm: null };
+  const rows = swordAudit(H);
+  printImpacts(rows, out);
+  const ok = rows.filter((r) => !r.fail);
+  assert(ok.length === H.names.length, `${ok.length} of ${H.names.length} moves audited`);
+  const imps = ok.flatMap((r) => r.impacts.map((x) => ({ ...x, name: r.name })));
+  const th = imps.filter((x) => x.thrust);
+  assert(th.length >= 3 && th.every((x) => x.elbow >= 150 && x.armLine <= 8), `a thrust lands on an open arm, the point on its line: ${th.map((x) => `${x.name} b${x.i} ${x.elbow}° / ${x.armLine}°`).join(', ')} (≥ 150° / ≤ 8°)`);
+  assert(th.every((x) => x.knR <= 125 && x.knL >= 140), `... out of a lunge: front knee / back knee ${th.map((x) => `${x.knR}/${x.knL}`).join(', ')} (≤ 125 / ≥ 140)`);
+  const over = imps.filter((x) => x.bladeEl < -15 && x.tilt != null && x.tilt > 45 && !x.thrust && x.tell === TELL.BLUE);
+  assert(over.length >= 3 && over.every((x) => x.tilt <= 66), `an overhead cuts on a diagonal: ${over.map((x) => `${x.name} b${x.i} ${x.tilt}°`).join(', ')} (≤ 66° off level; before 75 - 81)`);
+  const rain = ok.find((r) => r.name === 'ashRain');
+  const up = rain.impacts.filter((x) => !x.front.endsWith('down'));
+  assert(!up.length, `the front foot down at every impact of Rain of Ashes (${up.map((x) => `b${x.i} ${x.front}`).join(', ') || 'all down'})`);
+  assert(rain.free.v <= 12, `the free hand never flies through Rain of Ashes: ${rain.free.v} m/s at its fastest (≤ 12; before 17.1)`);
+  const lotus = ok.find((r) => r.name === 'lotus');
+  assert(lotus.feet.cross >= 0, `Lotus Sweep turns on its feet: the legs never cross (${lotus.feet.cross} m; before -0.73)`);
+  // the timings: only poses change
+  let same = 0;
+  const diff = [];
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    for (const ph of [1, 2, 3]) {
+      if ((def.phase ?? 1) > ph) continue;
+      setLook('ashForm', 'a');
+      const a = realise(name, ph, () => 0.37);
+      setLook('ashForm', '0');
+      const b = realise(name, ph, () => 0.37);
+      if (!a || !b) continue;
+      const k = (A) => A.beats.map((x) => `${x.start.toFixed(4)}/${x.impact.toFixed(4)}/${x.end.toFixed(4)}`).join(' ') + ` ${A.end.toFixed(4)}`;
+      if (k(a) === k(b)) same++;
+      else diff.push(`${name} P${ph}`);
+    }
+  }
+  assert(!diff.length && same > 60, `${same} realisations time every beat the same on and off (${diff.join(', ') || 'none differ'})`);
+  // the specials' looks: every option draws, finite, and costs the field little more than today
+  setLook('ashForm', 'a');
+  const peaks = [];
+  for (const [move, sw] of [['emberWhirl', 'whirlFx'], ['heavenFall', 'fallFx']]) {
+    const base = [];
+    for (const o of ['0', 'a', 'b', 'c']) {
+      setLook(sw, o);
+      const G = build();
+      duel(G, { dist: move === 'heavenFall' ? 6 : 2.4 });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      d.debug.phase2();
+      settle(G, 8);
+      d.debug.setAI(false);
+      run(G, 0.5);
+      d.debug.trigger(move);
+      let peak = 0, bad = false;
+      run(G, 3, () => {
+        p.hp = p.maxHp;
+        peak = Math.max(peak, game.fx.fire.count);
+        if (!Number.isFinite(d.position.x + d.position.y + d.position.z)) bad = true;
+      });
+      base.push(peak);
+      peaks.push(`${sw}=${o} ${peak}${bad ? ' NaN' : ''}`);
+      assert(!bad, `${sw}=${o}: finite throughout`);
+      last = G;
+    }
+    assert(base.slice(1).every((x) => x - base[0] < 300), `${move}'s looks cost the field < 300 blobs over today's ${base[0]} (${base.slice(1).join(' / ')})`);
+    setLook(sw, null);
+  }
+  out(`     blob peaks: ${peaks.join(' | ')}`);
+  setLook('ashForm', /ashForm=/.test(process.env.GCD_LOOKS ?? '') ? keep : null);
+  return last;
+}
 /** AUDIT (opt-in, ADR-226): every move's sword motion (tests/integration/swordAudit.mjs). */
 async function scenarioAudit() {
   out('\n== scenario AUDIT (every move: the sword wrist, the blade off his body, facing, elbows, the free hand, feet, pops) ==');
@@ -5122,6 +5218,7 @@ async function scenarioAudit() {
     formOf: (n) => Math.min(3, Math.max(1, MOVES[n].phase ?? 1)),
     setForm: (G, f) => { const d = G.game.dragon; if (f >= 2) d.debug.phase2(); if (f >= 3) { settle(G, 8); d.debug.phase3(); } settle(G, 8); d.debug.setAI(false); } });
   printAudit(rows, out);
+  if (process.env.GCD_AUDIT_IMPACT) printImpacts(rows, out);
   if (process.env.GCD_AUDIT_JSON) fs.writeFileSync(process.env.GCD_AUDIT_JSON, JSON.stringify(rows, null, 1));
   return last;
 }
@@ -5194,6 +5291,7 @@ const SCENARIOS = {
   sfx: scenarioSfx,
   audit: scenarioAudit,
   swordmotion: scenarioSwordMotion,
+  ashform: scenarioAshForm,
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer', 'audit']); // run only when named

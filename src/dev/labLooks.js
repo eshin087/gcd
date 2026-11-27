@@ -46,6 +46,9 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascMotion', ['0', 'a'], '0', 'a', false, ['ring'], 'Tian Lei\'s motion (ADR-225): a every blue and red blow out of a held windup pose of its own, and his snap blows (Snap Jab, Snap Hook; the default); 0 as before (live, from his next move)'],
   // --- the sword motion pass (ADR-226; live from his next move; the owner's pick: a)
   ['ashMotion', ['0', 'a'], '0', 'a', false, ['ash'], 'Shen Hui\'s sword motion: 0 as before; a the jian held in line with his forearm, his arms opening, blue / red blows held in their tell poses, two quick blows'],
+  ['ashForm', ['0', 'a'], '0', 'a', false, ['ash'], 'Shen Hui\'s form (ADR-250; live from his next move): a thrusts on a straight arm along the blade in a real lunge, overheads one-handed on a diagonal, the low sweeps turning on his feet, the free hand quieter, the front foot down as the blow lands; 0 as before', 'awaiting'],
+  ['whirlFx', ['0', 'a', 'b', 'c'], '0', 'a', false, ['ash'], 'Ember Whirl\'s look (ADR-250): a the wheel (a ring of fire left by the point), b the cyclone (fire whirling up round him, embers off the point), c the disc (the swept width burns an instant); 0 as before', 'awaiting'],
+  ['fallFx', ['0', 'a', 'b', 'c'], '0', 'a', false, ['ash'], 'Heaven-Splitting Fall\'s look (ADR-250): a the comet (a tail of fire down, a column where he lands), b the split (a line of fire down the cut, the floor split in fire ahead), c ember rain (embers falling on the locked ring, thrown out as he lands); 0 as before', 'awaiting'],
   ['lordMotion', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s sword motion: 0 as before; a the blades held in line with his forearms, his arms opening, blue / red blows held in their tell poses, a shake of the steel for the end twirl, two quick blows'],
   //
   //
