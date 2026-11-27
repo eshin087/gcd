@@ -876,6 +876,8 @@ export class AudioEngine {
       if (!slot || !this._sample(slot, null, 1, HERO.rate * (1 + step * HERO.combo), 'hero')) this.play('swing', { heavy, combo: d.combo, thrust: d.kind === 'thrust' });
     });
     on('player:slam', (d) => this._sample('slam', this._at(d.x, d.z)) || this.play('slam', { x: d.x, z: d.z }));
+    // the ending slash flashes (slashFx.js): its ring, at the line
+    on('player:slash', (d) => this.play('slashRing', { heavy: !!d.heavy, hit: !!d.hit, x: d.x, z: d.z }));
     on('player:charge', (d) => this.charge?.start(d));
     on('player:hitDragon', (d) => {
       // the plunge's own impact plays on player:plungeHit; a guarded strike's clash plays on

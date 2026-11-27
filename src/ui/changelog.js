@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'Harder-hitting swings, and slashes that stay in front of you',
+        notes: [
+          'A heavy attack\'s slash no longer appears behind you as you dash forward: every slash is drawn in front of you, and one that only cuts air moves on with you.',
+          'Landed blows hit harder: a short freeze, the screen thrown along the cut, sparks along the slash and a crisp ring of steel. The blade blurs at the fastest part of each swing, and the light combo steps in further and holds each finish while its slash flashes.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'Instant slashes, and a quieter left hand to choose',
         notes: [
           'Every sword attack now leaves one straight slash line where the blade passed, instead of the curved arc: a turning cut leaves three straight cuts around you, a thrust a short streak, a heavy blow a thicker violet line. Add ?slash=arc to the address for the arc as before.',

@@ -273,6 +273,20 @@ export const SFX = {
     },
   },
 
+  /** The ending slash appears (player:slash, slashFx.js; ADR-240): a crisp 'shing', a fast rising hiss of steel
+   *  and a short bright ring; a landed blow's rings brighter, a heavy's lower and longer with a body under it. */
+  slashRing: {
+    prio: 5, rev: 0.16, gap: 0.03,
+    play(v, t, o) {
+      const heavy = !!o.heavy, hit = !!o.hit, k = heavy ? 0.78 : 1, a = hit ? 1 : 0.7;
+      const D = heavy ? 0.16 : 0.09;
+      const bp = swish(v, t, 'white', 'bandpass', 3800 * k, heavy ? 2.2 : 3, [[0, 0], [D * 0.25, 0.42 * a], [D, 0]]);
+      env(bp.frequency, t, [[0, 3800 * k], [D, 8600 * k]]);
+      for (const [f, g, d] of [[2793, 0.07, 0.22], [4186, 0.05, 0.16], [5588, 0.03, 0.1]]) ping(v, t + 0.004, 'sine', f * k * rnd(0.99, 1.01), g * a, d * (heavy ? 1.6 : 1));
+      if (heavy) burst(v, t, 'brown', 'lowpass', 520, 0.7, 0.32 * a, 0.18);
+    },
+  },
+
   /** The combo-finisher slam meets the ground: a deep crunch + glassy crystal tings. */
   slam: {
     prio: 4, rev: 0.25, gap: 0.2,

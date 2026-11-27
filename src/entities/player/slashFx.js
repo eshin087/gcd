@@ -77,7 +77,26 @@ export function setBeat(m) {
  *  range of its middle (m), `len` [light, heavy] its length (m), `thrust` a thrust's, `miss` × the length of
  *  an enemy-placed whiff, `beat` (s) the pause before it in 'beat', `star` (rad) how far a turn's three cuts
  *  are fanned round their middle. */
-export const END = { ahead: 1.9, y: [0.55, 1.7], len: [3.6, 5.6], thrust: 2.4, miss: 0.6, beat: 0.12, star: 0, at: 0.2, reveal: 3, step: 1 / 60 };
+export const END = { ahead: 1.9, y: [0.55, 1.7], len: [3.6, 5.6], thrust: 2.4, miss: 0.6, beat: 0.12, star: 0, at: 0.2, reveal: 3, step: 1 / 60, front: 0.35, carry: 6 };
+// (`front` m: no part of a line is drawn nearer than this in front of him, along his facing (a heavy's line
+// across what it hit ran back over and behind him); `carry` 1/s: a whiff's line moves on with him at his own
+// speed, slowing at this rate, so his dash never runs past it: the owner, "the heavy attack slash needs to show
+// up in front of the player, not behind them as the player moves forward")
+/** THE IMPACT (the owner, 2026-11-26: "make the attack animation look better in terms of animation and impact/
+ *  feel"): on a landed blow, as its ending slash appears, the camera is thrown along the slash (`kick` m, `shake`)
+ *  and a burst of steel sparks sprays along it from the contact (`n` glyph sparks at `speed` m/s along the line,
+ *  `out` across it, in the line's colours; `heat` steel heat blobs in the fire field along the line, the cut's
+ *  bright scar); [light, heavy]. */
+export const IMPACT = {
+  kick: [0.07, 0.14], shake: [0.06, 0.18],
+  n: [14, 26], speed: [7, 10], out: 2.2, life: [0.12, 0.26], size: [0.09, 0.14],
+  heat: [7, 12], heatLife: 0.16, heatSize: 0.32,
+};
+/** THE SMEAR: through the fast frames of a swing (the point moving at least `min` m a frame), the space the
+ *  blade swept since the frame before is filled with steel heat in the fire field for `life` s: `n` points up the
+ *  blade (from `from` of it to its drawn point) × `sub` steps between the two frames: the swing's blur printed in
+ *  the field's small letters (STYLE.md: a blade's trail is heat in the fire field). */
+export const SMEAR = { min: 0.16, n: 6, sub: 2, from: 0.3, life: 0.07, size: 0.13, heat: 0.85, until: 0.25 };
 // (`at`: the point along the blade, from its base to its drawn point, whose way across the screen is the
 // slash's direction: near the hand, so a blade raised overhead with its point back toward the camera still
 // reads as the swing does, from where the sword came down to where it went; `reveal` pieces drawn `step` s
@@ -135,7 +154,14 @@ export class SlashFx {
     this.peak = 0; // the fastest frame's step, and its index
     this.pi = -1;
     this.lastT = -1;
-    this.pend = new Float32Array(NP * 13); // ax ay az bx by bz, the time it is drawn at, thrust, kick, look, the piece [f0, f1), kind
+    this.pend = new Float32Array(NP * 17); // ax ay az bx by bz, the time it is drawn at, thrust, kick, look, the piece [f0, f1), kind, hit, carry vx vz
+    this.hasPrevBlade = false;
+    this.pT = [0, 0, 0]; // last frame's blade (the smear)
+    this.pH = [0, 0, 0];
+    this.smears = 0; // heat blobs the smear printed (tests)
+    this.bursts = 0; // contact bursts (tests)
+    this._f = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.07, size: 0.12, sizeEnd: 0.05, heat: 0.8, heatEnd: 0, kind: 'steel', drag: 0, gravity: 0 };
+    this._s = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.2, size: 0.1, sizeEnd: 0.02, glyph: '|', rot: 0, stretch: 2, color: [3, 3, 3], colorEnd: [0.5, 0.7, 1], alpha: 1, alphaEnd: 0, drag: 4, gravity: 0 };
     this._dly = 0;
     this.np = 0;
     this.hitRec = null; // the attack that landed, and where (the enemy place)
@@ -186,6 +212,7 @@ export class SlashFx {
     if (!this._blade()) return;
     if (this.rec !== at) {
       this.rec = at;
+      this.hasPrevBlade = false;
       this.st = 0;
       this.nb = 0;
       this.peak = 0;
@@ -198,6 +225,9 @@ export class SlashFx {
       this.look = d.heavy ? 1 : 0;
     }
     const W = d.windup, Ac = d.active, R = d.recovery, t = at.t;
+    // (the smear: from late in the windup to a little past the active window, on a frame that moved)
+    if (t !== this.lastT && t >= SWING.from * W && t <= W + Ac + SMEAR.until * R) this._smear();
+    else if (t !== this.lastT) this._keepBlade();
     // (the point is followed from late in the windup; a frozen frame, the hit-pause, moves nothing)
     if (this.st === 2 || t < SWING.from * W || t === this.lastT) return;
     this.lastT = t;
@@ -240,6 +270,119 @@ export class SlashFx {
         if (i1 > i0) this._swing(i0, i1, j === 1, (j - 1) * END.reveal * END.step);
       }
     } else this._swing(a, e, true, 0);
+  }
+
+  /** Last frame's blade, for the smear (a frame outside the smear's stretch). */
+  _keepBlade() {
+    const T = this.T, H = this.H;
+    for (let c = 0; c < 3; c++) {
+      this.pT[c] = T[c];
+      this.pH[c] = H[c];
+    }
+    this.hasPrevBlade = true;
+  }
+
+  /** The blade's blur: steel heat over what it swept since last frame, while it moves fast (SMEAR). */
+  _smear() {
+    const T = this.T, H = this.H, pT = this.pT, pH = this.pH, S = SMEAR, fire = this.game?.fx?.fire;
+    const sc = this.p.drawScale || 1;
+    if (this.hasPrevBlade && fire?.spawn && Math.hypot(T[0] - pT[0], T[1] - pT[1], T[2] - pT[2]) >= S.min * sc) {
+      const f = this._f;
+      f.life = S.life;
+      f.size = S.size * sc;
+      f.sizeEnd = S.size * 0.4 * sc;
+      f.heat = S.heat;
+      f.heatEnd = 0;
+      f.kind = 'steel';
+      f.vx = f.vy = f.vz = 0;
+      for (let j = 0; j < S.n; j++) {
+        const a = S.from + ((1 - S.from) * j) / Math.max(1, S.n - 1);
+        for (let k = 1; k <= S.sub; k++) {
+          const b = k / (S.sub + 1), ib = 1 - b;
+          // the point a of the way up the blade, b of the way from last frame's blade to this one's
+          const qx = pH[0] + (pT[0] - pH[0]) * a, qy = pH[1] + (pT[1] - pH[1]) * a, qz = pH[2] + (pT[2] - pH[2]) * a;
+          const rx = H[0] + (T[0] - H[0]) * a, ry = H[1] + (T[1] - H[1]) * a, rz = H[2] + (T[2] - H[2]) * a;
+          f.x = qx * ib + rx * b;
+          f.y = qy * ib + ry * b;
+          f.z = qz * ib + rz * b;
+          if (!(f.y > SLASH.floor) || !Number.isFinite(f.x + f.y + f.z)) continue;
+          fire.spawn(f);
+          this.smears++;
+        }
+      }
+    }
+    this._keepBlade();
+  }
+
+  /** A landed blow's burst along its line (IMPACT): glyph sparks thrown both ways along the cut and a little
+   *  across it from the line's middle, and a bright scar of steel heat down the line. */
+  _burst(ax, ay, az, bx, by, bz, dx, dy, dz, hv) {
+    const fx = this.p.fx?.add, fire = this.game?.fx?.fire, I = IMPACT, Lk = SLASH[LOOKS[hv]];
+    const cx = (ax + bx) / 2, cy = (ay + by) / 2, cz = (az + bz) / 2, len = Math.hypot(bx - ax, by - ay, bz - az);
+    this.bursts++;
+    // (across the line, roughly in the screen's plane: the camera's back axis × the line)
+    const C = this.game?.camera?.matrixWorld?.elements;
+    let px = 0, py = 1, pz = 0;
+    if (C) {
+      const qx = dy * C[10] - dz * C[9], qy = dz * C[8] - dx * C[10], qz = dx * C[9] - dy * C[8], ql = Math.hypot(qx, qy, qz);
+      if (ql > 1e-6) {
+        px = qx / ql;
+        py = qy / ql;
+        pz = qz / ql;
+      }
+    }
+    // (cosmetic spread from the blow's own count: the seeded sims replay the AI's Math.random)
+    const rnd = (i, k) => {
+      const v = Math.sin((this.bursts * 12.9898 + i * 78.233 + k * 37.719) * 43758.5453);
+      return v - Math.floor(v);
+    };
+    // (the sparks' strokes turned along the line on the screen, as the line's own)
+    let rot = Math.atan2(dy, dx) - Math.PI / 2;
+    if (C) {
+      const sx = dx * C[0] + dy * C[1] + dz * C[2], sy = dx * C[4] + dy * C[5] + dz * C[6];
+      if (sx * sx + sy * sy > 1e-10) rot = Math.atan2(sy, sx) - Math.PI / 2;
+    }
+    if (fx?.spawn) {
+      const o = this._s, n = I.n[hv];
+      o.color = Lk.hot;
+      o.colorEnd = Lk.end;
+      for (let i = 0; i < n; i++) {
+        const along = (rnd(i, 1) - 0.5) * 2, sgn = along < 0 ? -1 : 1, sp = I.speed[hv] * (0.45 + 0.55 * Math.abs(along));
+        const side = (rnd(i, 2) - 0.5) * 2 * I.out;
+        o.x = cx + dx * along * len * 0.15;
+        o.y = cy + dy * along * len * 0.15;
+        o.z = cz + dz * along * len * 0.15;
+        o.vx = dx * sgn * sp + px * side;
+        o.vy = dy * sgn * sp + py * side;
+        o.vz = dz * sgn * sp + pz * side;
+        o.life = I.life[hv] * (0.6 + 0.4 * rnd(i, 3));
+        o.size = I.size[hv];
+        o.sizeEnd = I.size[hv] * 0.2;
+        o.stretch = 3;
+        o.rot = rot;
+        o.alpha = 1;
+        o.alphaEnd = 0;
+        o.drag = 5;
+        fx.spawn(o);
+      }
+    }
+    if (fire?.spawn) {
+      const f = this._f, m = I.heat[hv];
+      f.life = I.heatLife;
+      f.size = I.heatSize;
+      f.sizeEnd = I.heatSize * 0.3;
+      f.heat = 1.4;
+      f.heatEnd = 0;
+      f.kind = 'steel';
+      f.vx = f.vy = f.vz = 0;
+      for (let i = 0; i < m; i++) {
+        const s = (i / Math.max(1, m - 1) - 0.5) * len * 0.7;
+        f.x = cx + dx * s;
+        f.y = cy + dy * s;
+        f.z = cz + dz * s;
+        if (f.y > SLASH.floor) fire.spawn(f);
+      }
+    }
   }
 
   /** A cut from buffered frame i0 to i1: along the blade's point (the `blade` place), or, at every other
@@ -383,6 +526,22 @@ export class SlashFx {
         if (dy < 0) s1 = Math.min(s1, sF);
         else s0 = Math.max(s0, sF);
       } else if (cy < SLASH.floor) return;
+      // in front of him: the middle at least END.front ahead along his facing, and no part of the line
+      // behind that (the end that runs back is cut off there)
+      {
+        const yw = P.yaw ?? 0, fx = Math.sin(yw), fz = Math.cos(yw), fr = E.front * sc;
+        const dc = (cx - P.position.x) * fx + (cz - P.position.z) * fz;
+        if (dc < fr) {
+          cx += fx * (fr - dc);
+          cz += fz * (fr - dc);
+        }
+        const k = dx * fx + dz * fz, d0 = (cx - P.position.x) * fx + (cz - P.position.z) * fz; // along the line, ahead per m
+        if (Math.abs(k) > 1e-4) {
+          const sB = (fr - d0) / k; // where the line comes to END.front ahead of him
+          if (k > 0) s0 = Math.max(s0, sB);
+          else s1 = Math.min(s1, sB);
+        }
+      }
       if (!(s1 - s0 > 0.2)) return;
       ax = cx + dx * s0;
       ay = cy + dy * s0;
@@ -394,20 +553,29 @@ export class SlashFx {
     // drawn in END.reveal pieces END.step apart from where the swing began (a) to where it ended (b): the slash
     // runs the sword's way; after the beat (beatNow) and a turn's later cuts' delay
     const now = this.game?.time ?? 0, t0 = now + (beatNow === 'beat' ? END.beat : 0) + (this._dly || 0), R = Math.max(1, END.reveal | 0);
+    // a landed blow's line stays on what it hit; a whiff's moves on with him (his speed now, slowing at END.carry)
+    const hit = placeNow !== 'blade' && this.hitRec === this.rec;
+    const gv = this.p.groundVel, cvx = hit ? 0 : Number(gv?.x) || 0, cvz = hit ? 0 : Number(gv?.z) || 0;
+    this._hit = hit;
+    this._cvx = cvx;
+    this._cvz = cvz;
     for (let i = 0; i < R; i++) {
       const f0 = i / R, f1 = (i + 1) / R, at = t0 + i * END.step;
       if (!(at > now)) {
         this._draw(ax, ay, az, bx, by, bz, thrust, kick && i === 0, f0, f1);
         continue;
       }
+      // (a later piece of a carried line is laid where the line has got to by then)
+      const dtc = at - now, cm = END.carry > 0 ? (1 - Math.exp(-END.carry * dtc)) / END.carry : dtc;
+      const ox = cvx * cm, oz = cvz * cm;
       if (this.np >= NP) return;
-      const o = this.np++ * 13, Q = this.pend;
-      Q[o] = ax;
+      const o = this.np++ * 17, Q = this.pend;
+      Q[o] = ax + ox;
       Q[o + 1] = ay;
-      Q[o + 2] = az;
-      Q[o + 3] = bx;
+      Q[o + 2] = az + oz;
+      Q[o + 3] = bx + ox;
       Q[o + 4] = by;
-      Q[o + 5] = bz;
+      Q[o + 5] = bz + oz;
       Q[o + 6] = at;
       Q[o + 7] = thrust ? 1 : 0;
       Q[o + 8] = kick && i === 0 ? 1 : 0;
@@ -415,6 +583,9 @@ export class SlashFx {
       Q[o + 10] = f0;
       Q[o + 11] = f1;
       Q[o + 12] = this.kind;
+      Q[o + 13] = hit ? 1 : 0;
+      Q[o + 14] = cvx * Math.exp(-END.carry * dtc);
+      Q[o + 15] = cvz * Math.exp(-END.carry * dtc);
     }
   }
 
@@ -422,21 +593,27 @@ export class SlashFx {
   _flush() {
     const Q = this.pend, now = this.game?.time ?? 0, alive = this.p.hp > 0;
     for (let i = 0; i < this.np; ) {
-      const o = i * 13;
+      const o = i * 17;
       if (alive && now < Q[o + 6]) {
         i++;
         continue;
       }
       if (alive) {
-        const look = this.look, kind = this.kind;
+        const look = this.look, kind = this.kind, hit = this._hit, cx = this._cvx, cz = this._cvz;
         this.look = Q[o + 9];
         this.kind = Q[o + 12];
+        this._hit = Q[o + 13] > 0;
+        this._cvx = Q[o + 14];
+        this._cvz = Q[o + 15];
         this._draw(Q[o], Q[o + 1], Q[o + 2], Q[o + 3], Q[o + 4], Q[o + 5], Q[o + 7] > 0, Q[o + 8] > 0, Q[o + 10], Q[o + 11]);
         this.look = look;
         this.kind = kind;
+        this._hit = hit;
+        this._cvx = cx;
+        this._cvz = cz;
       }
-      const l = --this.np * 13;
-      for (let k = 0; k < 13; k++) Q[o + k] = Q[l + k];
+      const l = --this.np * 17;
+      for (let k = 0; k < 17; k++) Q[o + k] = Q[l + k];
     }
   }
 
@@ -462,13 +639,22 @@ export class SlashFx {
     dx /= len;
     dy /= len;
     dz /= len;
-    // the weight of a heavy line: the picture thrown along the cut, a small shake
-    const K = Lk.kick;
-    if (K && kick) {
-      const g = this.game;
+    // the weight of the line: on a landed blow the picture thrown along the cut and a shake (IMPACT), on a heavy
+    // whiff its own smaller kick; the contact's burst of sparks; the slash's sound (player:slash)
+    const K = Lk.kick, g = this.game, hv = look === 1 ? 1 : 0;
+    if (kick && this._hit) {
+      g?.kick?.(dx, dy, dz, IMPACT.kick[hv]);
+      g?.shake?.(IMPACT.shake[hv]);
+      this.kicks++;
+      this._burst(ax, ay, az, bx, by, bz, dx, dy, dz, hv);
+    } else if (K && kick) {
       g?.kick?.(dx, dy, dz, K.m);
       g?.shake?.(K.shake);
       this.kicks++;
+    }
+    if (f0 <= 0) {
+      const cx = (ax + bx) / 2, cy = (ay + by) / 2, cz = (az + bz) / 2;
+      g?.events?.emit?.('player:slash', { heavy: hv === 1, hit: !!this._hit, thrust: !!thrust, x: cx, y: cy, z: cz });
     }
     const fx = this.p.fx?.add;
     if (!fx?.spawn) return;
@@ -490,6 +676,10 @@ export class SlashFx {
     // (a thrust's streak: fewer strokes, thinner, sharp toward its far end)
     const n = thrust ? Math.max(10, Math.round(Lk.n * 0.4)) : Lk.n;
     const o = this._o, seg = len / n, k0 = thrust ? 0.75 : 1;
+    o.vx = this._cvx || 0;
+    o.vy = 0;
+    o.vz = this._cvz || 0;
+    o.drag = o.vx || o.vz ? END.carry : 0;
     const rows = thrust ? 1 : Math.max(1, Lk.rows | 0);
     o.rot = rot;
     o.colorEnd = Lk.end;

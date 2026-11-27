@@ -18,17 +18,21 @@
 import { LIGHT } from './combat.js';
 import { setFeel, setFeelHand } from './feel.js';
 
-const hit = (clip, w, a, r, ch, extra = null, fin = null) => ({ anim: { kind: 'clip', clip, ...(extra ?? {}) }, windup: w, active: a, recovery: r, chain: ch, fin });
+const hit = (clip, w, a, r, ch, extra = null, fin = null, feel = null) => ({ anim: { kind: 'clip', clip, ...(extra ?? {}) }, windup: w, active: a, recovery: r, chain: ch, fin, feel });
+// a hit's impact (`feel`, the owner, 2026-11-26: "make the attack animation look better in terms of animation and
+// impact/feel"): its hit-stop (s), shake, zoom punch and kick along the cut on a landed blow, and its step in
+// (`lunge`, m) — the combo's own, over production's (player.js _applyHit reads them off the def)
+const F = (hitstop, shake, punch, kick, lunge) => ({ hitstop, shake, punch, kick, lunge });
 const FIN = { kind: 'light', heavy: true, contact: 'sweep' }; // a finisher that is not the slam
 export const COMBOS = {
   a: {
-    name: 'Iai', feel: 'snap', hand: 'back',
+    name: 'Iai', feel: 'iai', hand: 'back',
     hits: [
-      hit('drawCut', 0.09, 0.1, 0.28, 0.28, { turn: 0.3 }),
-      hit('flatBackhand', 0.09, 0.1, 0.28, 0.28, { turn: -0.4 }),
-      hit('risingSlash', 0.1, 0.11, 0.28, 0.28, { hop: 0.12 }),
-      hit('risingThrust', 0.09, 0.09, 0.28, 0.28),
-      hit('heavyCrush', 0.24, 0.13, 0.45, 0.3, null, FIN),
+      hit('drawCut', 0.09, 0.1, 0.28, 0.28, { turn: 0.3 }, null, F(0.075, 0.16, 0.5, 0.14, 0.75)),
+      hit('flatBackhand', 0.09, 0.1, 0.28, 0.28, { turn: -0.4 }, null, F(0.075, 0.16, 0.5, 0.14, 0.75)),
+      hit('risingSlash', 0.1, 0.11, 0.28, 0.28, { hop: 0.12 }, null, F(0.085, 0.2, 0.55, 0.16, 0.85)),
+      hit('risingThrust', 0.09, 0.09, 0.28, 0.28, null, null, F(0.09, 0.18, 0.7, 0.16, 1.0)),
+      hit('heavyCrush', 0.24, 0.13, 0.45, 0.3, null, FIN, F(0.15, 0.5, 1.8, 0.3, 0.9)),
     ],
   },
   b: {
@@ -63,7 +67,7 @@ export const COMBOS = {
   },
 };
 export const COMBO_IDS = ['0', 'a', 'b', 'c', 'd'];
-const KEYS = ['anim', 'variants', 'windup', 'active', 'recovery', 'chain', 'kind', 'heavy', 'contact'];
+const KEYS = ['anim', 'variants', 'windup', 'active', 'recovery', 'chain', 'kind', 'heavy', 'contact', 'hitstop', 'shake', 'punch', 'kick', 'lunge'];
 const BASE = LIGHT.map((d) => Object.fromEntries(KEYS.map((k) => [k, d[k]])));
 let comboNow = '0';
 /** The light combo now ('0' production's, or a COMBOS key). */
@@ -87,6 +91,7 @@ export function setCombo(m) {
     d.recovery = H.recovery;
     d.chain = H.chain;
     if (H.fin) Object.assign(d, H.fin);
+    if (H.feel) Object.assign(d, H.feel);
   });
   setFeel(C ? C.feel : '0');
   setFeelHand(C ? C.hand : null);
