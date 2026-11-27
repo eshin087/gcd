@@ -18,7 +18,7 @@ folded (Sky Turns' first tornado 118 on its hit-stop frame); the elbow / spin ki
 sweep 94 degrees round and 1 m short, its leg flailing (keys a third of a turn apart; the foot the planner's); the
 mirrored palm on the wrong hand; the right gun's barrel 55 - 113 degrees off its shots, shots under the gun, no kick.
 
-**What changed** (all behind `?oneMoves=b`; `a` stays the default): `wokenOne/limbs.js` (onLine, holdKick, sweepOn,
+**What changed** (all behind `?oneMoves=b`, now the default): `wokenOne/limbs.js` (onLine, holdKick, sweepOn,
 fitZone, aimEarly; `TUNING.motion`), `wokenOne/gunAim.js` (each gun on its line, the kick, the muzzle point;
 `muzzlePoint`), iron.js fires from the muzzle on `b`. Effect options (`fxIron.js`, default '0'): `?oneGunFx=a|b`,
 `?oneBoltFx=a|b`. Lab LOOKS rows. Tests: woke `line` (in the suite); `guns`, `probe` opt-in.
@@ -27,7 +27,9 @@ fitZone, aimEarly; `TUNING.motion`), `wokenOne/gunAim.js` (each gun on its line,
 (main) and after (`b`) at the game camera and from the side, every move of every phase; the effect options close and
 at the game camera.
 
-**Open / next:** the owner's picks (then `b` and the chosen effects into PICKED); the hooks from the side, the
+**The owner's picks** (from the films): motion `b`, the shots `b` (the script), the bolts `a` (the seed): PICKED.
+
+**Open / next:** the hooks from the side, the
 sweep's knee at its very contact, Iron Rain's twin arms; the feet jump in `anim.js _feetClip` belongs to the hero
 session.
 

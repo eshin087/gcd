@@ -5,13 +5,12 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and twenty-four pieces of work since 0.4.0:
-- **Xin Yi's limbs on the line, to try** (2026-11-27, ADR-253). *Added, to compare (not the default):* `?oneMoves=b`
-  (the Lab's `oneMoves` row): his punches land straight down the line to you with the arm long, his kicks stay
+- **Xin Yi's limbs on the line** (2026-11-27, ADR-253). *Changed (the owner's picks, the default):* his punches land straight down the line to you with the arm long, his kicks stay
   straight through the hit instead of folding as it lands, his elbow, knee and spin kick reach you instead of
   striking short, the low sweep passes through you, and his guns point down the line of fire, each shot leaving
-  the muzzle with a kick of the arm. Every timing is as before. `?oneGunFx=a|b` and `?oneBoltFx=a|b`: two new looks
-  for his gun shots (a tracer with rings of stilled air, or a curtain of falling code) and for his palm bolts in the
-  Source (rings of digits round a hot core, or a column of code folding the air); `0` or no switch: as before.
+  the muzzle with a kick of the arm (`?oneMoves=a`: as before). Every timing is as before. His gun shots now leave a
+  curtain of falling code (`?oneGunFx=b`; `a` a tracer, `0` as before) and his palm bolts in the Source are a hot core
+  in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
 - **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
   `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
   x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a

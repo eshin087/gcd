@@ -1307,7 +1307,7 @@ async function scenarioRebuild() {
   }
   LS.setLook('oneBody', null);
   // ---- the moves
-  assert(LS.PICKED?.oneMoves === 'a' && !LS.PENDING.includes('oneMoves'), '?oneMoves= is the owner\'s pick, a, the rebuilt moves (PICKED, not PENDING; 2026-11-26)');
+  assert(LS.PICKED?.oneMoves === 'b' && LS.PICKED?.oneGunFx === 'b' && LS.PICKED?.oneBoltFx === 'a' && !LS.PENDING.includes('oneMoves'), '?oneMoves= is the owner\'s pick, b (the rebuild with the limbs on the line, ADR-253); the shots b, the bolts a (PICKED, not PENDING; 2026-11-27)');
   LS.setLook('oneMoves', 'a');
   try {
     let same = 0, held = 0, diff = [];

@@ -68,7 +68,9 @@ export const PICKED = Object.freeze({
   oneLetters: 'a', // his letters: the hero's size (the owner's pick, 2026-11-23, "Print a", ADR-170; 0 the bosses' fine cell)
   onePrint: 'a', // his print: the hero's quiet print and the simpler shapes (the owner's pick, 2026-11-23, "Print a", ADR-170; b one cell bolder on a phone, 0 as he shipped)
   oneBody: 'b', // his figure: the open coat, printed like the hero on a man's build, one coat (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped, a closed, c the duster)
-  oneMoves: 'a', // his moves: straight kicks, long punches, held blue / red windups, the side-on aim, two fast strings (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped)
+  oneMoves: 'b', // his moves: a (straight kicks, long punches, held blue / red windups, the side-on aim, two fast strings; ADR-221) with the limbs on the line and the guns on the line of fire (the owner's pick, 2026-11-27, ADR-253; a before that, 0 as he shipped)
+  oneGunFx: 'b', // his gun shots: the script, a curtain of falling digits behind each slug (the owner's pick, 2026-11-27, ADR-253; 0 as before, a the tracer)
+  oneBoltFx: 'a', // his palm bolts: the seed, a hot core in turning rings of digits (the owner's pick, 2026-11-27, ADR-253; 0 as before, b the fold)
   // the sword motion pass (ADR-226; the owner's pick, 2026-11-26, from the before / after films)
   ashMotion: 'a', // Shen Hui: the jian in line with the arm, held blue / red windups (Piercing Ash keeps its thrust), quick blows
   lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl

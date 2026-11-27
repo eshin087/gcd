@@ -7057,3 +7057,6 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   still meet the hero from the side (0.17 m off), the drop heel lands 0.68 m short (its ring is the blow), the
   sweep's knee at the very contact (121), Iron Rain's two arms are mirror twins between shots. Shared code
   untouched (no `duelist/*`, `player/*`, `ascendant/*` change).
+- **The owner's answer (2026-11-27, from the films):** the motion `b` as his default, the shots `b` (the script) and the
+  bolts `a` (the seed): `oneMoves: 'b'`, `oneGunFx: 'b'`, `oneBoltFx: 'a'` in PICKED (`?oneMoves=a` the rebuild before
+  this pass, `?oneGunFx=0` / `?oneBoltFx=0` the shots and bolts as before, the other option behind its switch).

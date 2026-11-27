@@ -19,11 +19,10 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
-        title: "Xin Yi's limbs on the line, to try",
+        title: "Xin Yi's limbs on the line",
         notes: [
-          'Add ?oneMoves=b to the address to try Xin Yi with cleaner motion: his punches land straight at you, his kicks stay straight through the hit, his elbows and spinning kicks reach you instead of striking short, and his low sweep passes right through you.',
-          'His guns now point where they fire, each shot leaving the muzzle with a kick of his arm.',
-          'Also to try: ?oneGunFx=a or b for two new looks of his gun shots, and ?oneBoltFx=a or b for his palm bolts in the last phase.',
+          'Xin Yi moves more cleanly: his punches land straight at you, his kicks stay straight through the hit, his elbows and spinning kicks reach you instead of striking short, and his low sweep passes right through you. The timing of every attack is unchanged.',
+          'His guns now point where they fire, each shot leaving the muzzle with a kick of his arm and a curtain of falling code behind it. His palm bolts in the last phase are a hot core in turning rings of digits.',
         ],
       },
       {

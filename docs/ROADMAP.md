@@ -1219,7 +1219,7 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [x] Xin Yi (ADR-253): the audit (`audit`, `guns`, `probe`); straight blows on the line, kicks held straight, blows
       that reach, the sweep crossing the hero, the guns on the line of fire with a kick, behind `?oneMoves=b`; two
       redrawn shots and bolts (`?oneGunFx`, `?oneBoltFx`); the `line` test; films sent
-  - [ ] The owner's picks from the films (the default stays `a` until then)
+  - [x] The owner's picks from the films: motion `b`, the shots `b` (the script), the bolts `a` (the seed), the default
   - [ ] The hooks meeting the hero from the side, the sweep's knee at its very contact, Iron Rain's twin arms
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
