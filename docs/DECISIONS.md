@@ -6802,3 +6802,14 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   per phase), the keyed sink, turn and lean scaled and the body's lead stretched, each with its own hand
   (`?offhand=auto`, the default, wears it: snap back, weight side, flow quiet). Every light hit and heavy
   branch still lands in its active frames (scenario `feel`).
+- **Round 3 (same day):** "I didn't mean the instant slash is showing the sword swing, it should show at the end
+  like an ending slash feel. If we need to make new animations and swings to make the new instant slash effect
+  look good then do it and make 4 new light attack combos"; asked, they wanted all three places and both timings
+  shown, and the combos' timing may change. (1) The ending slash (`slashFx.js` `END`, `setPlace` / `setBeat`,
+  `?endslash=target|body|enemy|blade`, `?endbeat=beat|0`): the cut's angle from the swing as before, drawn as a
+  fixed-length line at a place (default `target`: 1.9 m ahead of him at the cut's height) a beat (0.12 s) after
+  the swing has ended. (2) `combos.js` (`?combo=a|b|c|d`): four five-hit combos from production's own swings in a
+  new order and on their own timings (a finisher that is not the slam: `kind: 'light', heavy: true`), each with a
+  feel and a hand (`feel.js` `setFeelHand`). Damage, posture and reach stay; '0' restores production's defs
+  exactly (scenario `combos`). No new swings were keyed: production's are the natural ones the owner kept; a
+  combo they like may want one, next.

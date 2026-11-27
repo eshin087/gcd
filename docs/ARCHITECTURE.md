@@ -1208,6 +1208,13 @@ Lab's `feel` row): `swingPose` plays the clip at `warpPhase(swingPhase(t))` (eac
 the phases' ends kept), the hips' and chest's lead × `lead`, and scales the keyed `by`, `hip`, `sy`, `sx` by `gain`
 (eased in over the windup's first half). Every clip attack; the hit test reads the drawn blade, so the contact moves
 inside the active window (scenario `feel`).
+**The ending slash** (ADR-240, `slashFx.js` `END`, `setPlace` / `placeMode`, `setBeat` / `beatMode`, `?endslash=`,
+`?endbeat=`): `_end` moves the cut's line to its place (`target` ahead of him, `body` his chest, `enemy` the last
+`player:hitDragon` point of this attack, `blade` the chord itself) and queues it `END.beat` s on (`game.time`);
+`_flush` draws what is due each frame. **The light combos** (ADR-240, `combos.js` `COMBOS`, `setCombo` /
+`comboMode`, `?combo=`, the Lab's `combo` row): `setCombo` writes a combo's `anim`, `variants`, timings and a
+finisher's `kind` / `heavy` / `contact` onto `LIGHT` (production's kept in `BASE` and restored by '0'), and sets
+its feel and hand (`feel.js` `setFeel`, `setFeelHand`). Imported by player.js for the URL.
 duelists' footwork: the hero's free-arm numbers in them are gated on `A.freeHand`. **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
 their looks, the sprint slash, the roll cut) and the charged cleave is a keyframed clip. An attack's
 `anim: { kind: 'clip', clip: '<name>' }` names a `SWINGS` entry: a list of keys over the attack's own

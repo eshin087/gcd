@@ -20,6 +20,14 @@ One hundred and nineteen pieces of work since 0.4.0:
   reaches the coil early, holds it and cuts fast and clean (the hand behind his back); weight loads slowly,
   accelerates into the blow, sinks and turns deeper and holds the finish (the hand loose at his side); flow runs
   without holds (today's hand moves pulled in). Every hit lands in its same frames.
+  The slash is now an ENDING slash: once the swing is over, a beat later, a fixed-length straight line flashes at
+  the cut's angle through the space ahead of him where the foe stands (`?endslash=body` across him, `enemy` across
+  what it hit, `blade` along the blade's path; `?endbeat=0` with no beat; the Lab's `endslash` / `endbeat` rows).
+  *Added, to compare (not the default):* four light combos built for it, `?combo=a`, `b`, `c` or `d` (the Lab's
+  `combo` row): a Iai (draw cuts into still poses, a two-handed falling finisher, the hand behind his back), b
+  Tempest (quick strokes back and forth, a full turn to finish), c Mountain (slow, heavy, the leaping slam), d
+  Dancer (a skip, a turn, a lunge, a rising two-handed finisher), each from today's swings in a new order on its
+  own timing, feel and hand. Their timings differ from today's; damage and reach do not.
 - **A ninth level: the Veiled Crossing and Bai Wuji, the Untouched** (2026-11-26, ADR-241 – ADR-243). *Added:* a ninth
   level, `?level=veil` (the title screen lists it). **The Veiled Crossing**: a city crossing at night after the fight
   has already levelled it, under a black veil: cracked asphalt with a great diagonal crossing's white bars, craters,

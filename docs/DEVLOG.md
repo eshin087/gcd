@@ -29,7 +29,13 @@ the heavies' feel with their own left hands. The line now comes as the visible s
 `?feel=snap|weight|flow` (+ `?offhand=auto` pairs each with its hand); scenario `feel`; films of the four (the
 combo from the game camera and close, Piercing Gale, light-light-Whirling Tempest).
 
-**Open / next:** the owner's pick of a feel and a hand (then they become the default and the others go).
+**Round 3:** the owner meant an ENDING slash, not a trace of the swing, and asked for four new light combos built
+for it (timing may change). `slashFx.js` places a fixed-length line a beat after the swing (`?endslash=`,
+`?endbeat=`); `combos.js` `?combo=a|b|c|d` (Iai, Tempest, Mountain, Dancer) from production's swings, each with
+its timing, feel and hand; scenario `combos`. Films: the four combos beside production, and the 3 places × 2
+timings at the wyrm.
+
+**Open / next:** the owner's pick of a combo (with its feel and hand) and of the slash's place and timing.
 
 ## 2026-11-26 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (ADR-241 – ADR-243; branch `enemies/untouched`; planned by the lead, built by Opus agents)
 

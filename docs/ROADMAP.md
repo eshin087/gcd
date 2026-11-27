@@ -220,7 +220,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Every attack and the flurry's finishers: one straight slash line instead of the crescent (`slashFx.js`, `?slash=arc` the crescent)
 - [x] Three left-hand looks to compare, `?offhand=side|back|quiet` (`offHand.js`); scenarios `instantslash`, `offhand`
 - [x] Round 2: the line comes as the swing ends; three feels of the same moves, lights and heavies, each with its hand (`?feel=`, `feel.js`); scenario `feel`
-- [ ] The owner's pick of a feel and a left hand; they become the default, the others go
+- [x] Round 3: the ending slash (`?endslash=`, `?endbeat=`) and four light combos built for it (`?combo=a|b|c|d`, `combos.js`); scenario `combos`
+- [ ] The owner's pick of a combo, a slash place and timing; they become the default, the others go
 
 ## M1.93 — Tian Lei's and Halcyon's motion (2026-11-26, `claude/enemies-tian-halcyon-motion-efe595`, ADR-225)
 - [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
