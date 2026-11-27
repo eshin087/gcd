@@ -358,6 +358,18 @@ export const DEFENSE = Object.freeze({
     slow: Object.freeze({ slowmo: 1, dur: 0.4, zoom: -12, weight: 0.6 }), // the camera leans 12 m in (of 36) for the combo (+ dur s after it), the rig scales it for the phone; slowmo 1: no slow motion
     wMid: 0.4, wLast: 1.35, flash: 0.8, iframePad: 0.05,
   }),
+  // --- the clash dance (`?clash=dance`, combat/clashDance.js; ADR-247): parries in a row inside one of a
+  // duelist's moves pay more posture each: the run's n-th parry x mult[n - 1] (the last is the cap); the
+  // run starts over on a new move, a blow landing on the hero, or `gap` s with no parry. `ring`: its
+  // recorded clang `semis` semitones / `db` dB up per parry after the first (capped). `regenByHp`: his
+  // posture recovery x k of the first [hp fraction, k] step he is at or above (Sekiro's slower recovery as
+  // his health drops; they replace a boss's own regenByHp curve)
+  clashDance: {
+    mult: [1, 1.25, 1.5, 1.75],
+    gap: 1.5,
+    ring: { semis: 0.5, semisMax: 2, db: 0.8, dbMax: 2.4 },
+    regenByHp: [[0.75, 1], [0.66, 0.85], [0.33, 0.75], [0.1, 0.5], [0, 0.25]],
+  },
 });
 
 /**

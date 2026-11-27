@@ -1249,6 +1249,138 @@ async function scenarioFlashChain() {
   return G;
 }
 
+// ================================================================== scenario: clashdance
+// The clash dance (?clash=dance, combat/clashDance.js, ADR-247): parries in a row inside one of his moves pay
+// more posture each (DEFENSE.clashDance.mult); the run starts over on a new move, a blow landing on the hero,
+// or a gap; the ring rises with the run (player:parry `clash`); his posture recovers more slowly as his health
+// drops (regenByHp). Off: every number as before.
+async function scenarioClashDance() {
+  out('\n== scenario CLASHDANCE (parries in a row pay more posture; resets; slower recovery at low HP; off = today) ==');
+  const { setClashMode, clashMult, clashRing, clashRegenK } = await imp('src/combat/clashDance.js');
+  const CD = DEFENSE.clashDance;
+  const G = build();
+  duel(G, { dist: 3 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  // every parry's own posture (the first addPosture after its dragon:parried; the full deflect's comes after)
+  const log = [];
+  let open = null;
+  const add0 = d.addPosture.bind(d);
+  d.addPosture = (amt) => {
+    if (open) {
+      open.amt = amt;
+      log.push(open);
+      open = null;
+    }
+    return add0(amt);
+  };
+  const rings = [];
+  G.watch = (n, e) => {
+    if (n === 'dragon:parried' && !e?.bullet) open = { tell: e.tell, perfect: !!p.deflect.perfect, hit: e.hit };
+    if (n === 'player:parry' && !e?.light) rings.push(e.clash);
+  };
+  /** One move parried by the bot from posture 0: every parry's { amt, base (today's) }. `mid` runs once,
+   *  right after the first parry. */
+  const parryMove = (name, mid) => {
+    settle(G, 8);
+    home(G);
+    place(G, 3);
+    run(G, 0.3);
+    d.posture = 0;
+    d.postureTimer = 0;
+    log.length = 0;
+    rings.length = 0;
+    G.defend = makeDefender(G);
+    d.debug.trigger(name);
+    let did = false;
+    run(G, 6, (GG) => {
+      GG.game.mouseGround.set(d.position.x, 0, d.position.z);
+      GG.input.axis = { x: 0, y: 0 };
+      GG.defend.act();
+      if (mid && !did && log.length === 1) {
+        did = true;
+        mid();
+      }
+    }, () => d.mode === 'foot' && log.length > 0);
+    G.defend = null;
+    const base = (e) => (POSTURE.parry[e.tell] ?? POSTURE.parry.normal) * (e.perfect ? POSTURE.perfect : 1);
+    return log.map((e) => ({ amt: e.amt, base: base(e) }));
+  };
+  const near = (a, b) => Math.abs(a - b) < 0.01;
+  const fmt = (L) => L.map((e) => `${e.amt.toFixed(1)}/${e.base.toFixed(0)}`).join(' ');
+  try {
+    // (0) the table and the ring
+    setClashMode('0');
+    assert([1, 2, 3, 4, 9].every((n) => clashMult(n) === 1) && clashRing(4).join() === '1,1' && clashRegenK(0.05) === 1, 'off: the multiplier, the ring and the recovery factor are all 1');
+    setClashMode('dance');
+    assert([1, 2, 3, 4, 9].map(clashMult).join() === '1,1.25,1.5,1.75,1.75', `on: the run's multiplier x${[1, 2, 3, 4, 9].map(clashMult).join(', x')} (the cap from the 4th)`);
+    const [g2, r2] = clashRing(2), [g9, r9] = clashRing(9);
+    assert(clashRing(1).join() === '1,1' && g2 > 1 && r2 > 1 && r9 <= Math.pow(2, CD.ring.semisMax / 12) + 1e-9 && g9 <= Math.pow(10, CD.ring.dbMax / 20) + 1e-9,
+      `the ring: a run's first parry as today, then a little higher and louder each (run 2: rate x${r2.toFixed(3)}, gain x${g2.toFixed(3)}), capped (x${r9.toFixed(3)} / x${g9.toFixed(3)})`);
+    const ks = [1, 0.8, 0.7, 0.5, 0.2, 0.05].map(clashRegenK);
+    assert(ks.join() === '1,1,0.85,0.75,0.5,0.25', `the recovery by HP: full above 75 %, then steps (100/80/70/50/20/5 % HP: x${ks.join(', x')})`);
+
+    // (1) switch off: today's numbers, no run on player:parry
+    setClashMode('0');
+    let L = parryMove('swallow');
+    assert(L.length === 3 && L.every((e) => near(e.amt, e.base)), `off: Swallow Flicks parried, each parry pays today's posture (${fmt(L)})`);
+    assert(rings.length === 3 && rings.every((c) => c === 0), `off: player:parry carries no run (${rings.join(',')})`);
+
+    // (2) on: the run's multiplier, parry by parry
+    setClashMode('dance');
+    L = parryMove('swallow');
+    const want = L.map((e, i) => e.base * clashMult(i + 1));
+    assert(L.length === 3 && L.every((e, i) => near(e.amt, want[i])), `on: the 1st / 2nd / 3rd parry pay x1 / x1.25 / x1.5 (${fmt(L)}; want ${want.map((v) => v.toFixed(1)).join(' ')})`);
+    assert(rings.join() === '1,2,3', `the ring's run on player:parry counts up with it (${rings.join(',')})`);
+    // (3) a new move starts the run over
+    L = parryMove('swallow');
+    assert(L.length === 3 && near(L[0].amt, L[0].base) && near(L[1].amt, L[1].base * CD.mult[1]), `a new move starts the run over: its first parry x1 again (${fmt(L)})`);
+    // (4) a blow landing on the hero starts it over (hurtN moves on a real blow; mid-string it is moved by hand)
+    settle(G, 8); // (free: a parried blue blow is answered by the deathblow, ADR-211, and blows miss him in it)
+    run(G, 0.5);
+    const n0 = p.hurtN;
+    p.debug.god = false;
+    p.takeHit({ damage: 1, knockback: 1, kind: 'hit', tell: TELL.NORMAL, parryable: false, blockable: false, attack: 'test', sourceX: d.position.x, sourceZ: d.position.z });
+    p.takeHit({ damage: 1, kind: 'hit', tell: TELL.NORMAL, parryable: false, blockable: false, attack: 'stream', sourceX: d.position.x, sourceZ: d.position.z });
+    p.debug.god = true;
+    assert(p.hurtN === n0 + 1,`a blow that lands on the hero counts in player.hurtN (${n0} -> ${p.hurtN}); a contact stream's chip does not`);
+    p.debug.heal?.();
+    L = parryMove('swallow', () => p.hurtN++);
+    assert(L.length === 3 && near(L[1].amt, L[1].base) && near(L[2].amt, L[2].base * CD.mult[1]), `a blow landing on him mid-string starts the run over: the next parry x1, then x1.25 (${fmt(L)})`);
+    // (5) a gap starts it over
+    L = parryMove('swallow', () => {
+      if (d._clash) d._clash.t -= CD.gap + 0.1;
+    });
+    assert(L.length === 3 && near(L[1].amt, L[1].base) && near(L[2].amt, L[2].base * CD.mult[1]), `more than ${CD.gap} s since the last parry starts it over (${fmt(L)})`);
+
+    // (6) the recovery: the same posture drains more slowly at low HP; off, at one rate
+    const drain = (frac) => {
+      settle(G, 8);
+      d.hp = d.maxHp * frac;
+      d.posture = 150;
+      d.postureTimer = TUNING.posture.regenDelay + 0.01;
+      const p0 = d.posture;
+      run(G, 1);
+      return (p0 - d.posture) / TUNING.posture.regenRate;
+    };
+    const fr = [1, 0.7, 0.5, 0.2, 0.05];
+    setClashMode('0');
+    const off = fr.map(drain);
+    setClashMode('dance');
+    const on = fr.map(drain);
+    assert(off.every((v) => Math.abs(v - off[0]) < 0.03), `off: his posture drains at one rate whatever his HP (${off.map((v) => v.toFixed(2)).join(' / ')} x regenRate in 1 s)`);
+    assert(on.every((v, i) => Math.abs(v - clashRegenK(fr[i]) * off[0]) < 0.03), `on: it drains by the steps (${on.map((v) => v.toFixed(2)).join(' / ')} at ${fr.map((f) => f * 100).join(' / ')} % HP)`);
+    d.hp = d.maxHp;
+  } finally {
+    setClashMode('0');
+    d.addPosture = add0;
+    G.watch = null;
+    G.defend = null;
+  }
+  return G;
+}
+
 // ================================================================== scenario: deflect
 async function scenarioDeflect() {
   out('\n== scenario DEFLECT (a string parried hit by hit, the last recoils him) ==');
@@ -5579,6 +5711,7 @@ const SCENARIOS = {
   clash: scenarioClash,
   trade: scenarioTrade,
   flashchain: scenarioFlashChain,
+  clashdance: scenarioClashDance,
   deflect: scenarioDeflect,
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
