@@ -90,6 +90,7 @@ const PAYLOAD = {
   'player:charge': { t: 'n' },
   'player:hitDragon': { damage: 'n', part: 's', point: 'p', heavy: 'b', crit: 'b', kind: 's' },
   'player:slam': { x: 'n', z: 'n' },
+  'player:slash': { heavy: 'b', hit: 'b', thrust: 'b', x: 'n', y: 'n', z: 'n' },
   'player:hurt': { damage: 'n', kind: 's', hp: 'n' },
   'player:block': { damage: 'n', tell: 't' },
   'player:parry': { tell: 't', attack: 's', chain: 'n', perfect: 'b' },
@@ -6202,7 +6203,7 @@ async function scenarioFeel() {
       assert(!bad.length, `each feel's clock is monotone and keeps the phases' ends (${bad.slice(0, 4).join(', ') || 'all'})`);
       OH.setOffHand('auto');
       const hands = FE.FEEL_IDS.map((id) => { FE.setFeel(id); return OH.offHandLook() === null ? '0' : Object.keys(OH.OFFHAND).find((k) => OH.OFFHAND[k] === OH.offHandLook()); });
-      assert(hands.join() === '0,back,side,quiet', `auto wears each feel's own hand (${FE.FEEL_IDS.map((f, i) => `${f}: ${hands[i]}`).join(', ')})`);
+      assert(hands.join() === '0,back,side,quiet,back', `auto wears each feel's own hand (${FE.FEEL_IDS.map((f, i) => `${f}: ${hands[i]}`).join(', ')})`);
     }
     const land = (plan) => {
       const G = (last = build());
@@ -6258,14 +6259,14 @@ async function scenarioCombos() {
   const combo0 = CO.comboMode();
   let last = null;
   const snap = () => JSON.stringify(CB.LIGHT);
-  const KEEP = ['name', 'combo', 'damage', 'poise', 'reach', 'lunge', 'hitstop', 'shake', 'bite', 'punch', 'kick'];
+  const KEEP = ['name', 'combo', 'damage', 'poise', 'reach', 'bite']; // (a combo's hits may carry their own impact and step in: `feel`)
   try {
     CO.setCombo('0');
     const prod = snap(), keep0 = CB.LIGHT.map((d) => KEEP.map((k) => JSON.stringify(d[k])).join());
     for (const id of CO.COMBO_IDS.slice(1)) {
       CO.setCombo(id);
       const C = CO.COMBOS[id];
-      const worn = CB.LIGHT.every((d, i) => d.anim.clip === C.hits[i].anim.clip && d.windup === C.hits[i].windup && !d.variants.length)
+      const worn = CB.LIGHT.every((d, i) => d.anim.clip === C.hits[i].anim.clip && d.windup === C.hits[i].windup && !d.variants.length && (!C.hits[i].feel || Object.keys(C.hits[i].feel).every((k) => d[k] === C.hits[i].feel[k])))
         && CB.LIGHT.every((d, i) => KEEP.map((k) => JSON.stringify(d[k])).join() === keep0[i]) && FE.feelMode() === C.feel && OH.offHandMode() === 'auto' && OH.offHandLook() === OH.OFFHAND[C.hand];
       assert(worn, `combo ${id} (${C.name}) wears its five hits, its feel ${FE.feelMode()} and its hand ${C.hand}, every other number production's`);
       const res = [];
@@ -6304,6 +6305,70 @@ async function scenarioCombos() {
     assert(snap() === prod && FE.feelMode() === '0' && OH.offHandLook() === null, 'combo 0 gives production its five defs, its feel and its hand back exactly');
   } finally {
     CO.setCombo(combo0);
+  }
+  return last;
+}
+
+// SLASHFEEL (ADR-240, the impact pass; the owner, 2026-11-26: "the heavy attack slash needs to show up in front of
+// the player, not behind them as the player moves forward"): every ending slash lies in front of him along his
+// facing (no point of it nearer than END.front, a little slack), facing any of four ways; a whiff's line (the lone
+// heavy's dash, in open air) is carried on with him (its strokes move at his speed); on a landed blow the line
+// throws the camera, bursts sparks along the cut and is announced (`player:slash`, hit true); the swing's smear
+// prints steel heat while the blade moves fast; nothing is NaN.
+async function scenarioSlashFeel() {
+  out('\n== scenario SLASHFEEL (the ending slash in front of him, carried on a whiff; the impact, the smear) ==');
+  const SX = await imp('src/entities/player/slashFx.js');
+  let last = null;
+  const run1 = (yaw, plan, boss) => {
+    const G = (last = build());
+    fightSetup(G);
+    settle(G);
+    const { game, input } = G, d = game.dragon, p = game.player;
+    p.debug.god = true;
+    const fx = Math.sin(yaw), fz = Math.cos(yaw);
+    if (boss) {
+      const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * Math.sin(d.yaw) + (h.z - d.position.z) * Math.cos(d.yaw) > (a.x - d.position.x) * Math.sin(d.yaw) + (a.z - d.position.z) * Math.cos(d.yaw) ? h : a));
+      p.debug.teleport(c.x - fx * (c.r + 2), c.z - fz * (c.r + 2));
+    } else p.debug.teleport(d.position.x + 40, d.position.z + 40);
+    const aim = () => game.mouseGround.set(p.position.x + fx * 6, 0, p.position.z + fz * 6);
+    p.yaw = yaw;
+    aim();
+    for (let i = 0; i < 20; i++) G.tick(DT);
+    const rows = [], ev = [];
+    const front = SX.END.front * (p.drawScale || 1);
+    p.slashFx.onLine = (ax, ay, az, bx, by, bz, look) => {
+      const yw = p.yaw, ux = Math.sin(yw), uz = Math.cos(yw);
+      const da = (ax - p.position.x) * ux + (az - p.position.z) * uz, db = (bx - p.position.x) * ux + (bz - p.position.z) * uz;
+      rows.push({ min: Math.min(da, db), look, carry: Math.hypot(p.slashFx._cvx || 0, p.slashFx._cvz || 0), hit: !!p.slashFx._hit, ok: Number.isFinite(ax + ay + az + bx + by + bz) });
+    };
+    const w0 = G.watch;
+    G.watch = (nn, e) => { if (nn === 'player:slash') ev.push(e); };
+    const s0 = p.slashFx.smears, b0 = p.slashFx.bursts;
+    for (let i = 0, N = Math.round(2.6 / DT); i < N; i++) {
+      for (const [at, b] of plan) if (i === Math.round(at / DT)) { aim(); if (b === 'L') input.click(0); else p._buffer('heavy'); }
+      G.tick(DT);
+    }
+    G.watch = w0;
+    return { rows, ev, smears: p.slashFx.smears - s0, bursts: p.slashFx.bursts - b0, front };
+  };
+  // facing four ways in open air: the light combo and a lone heavy (a dash)
+  const C5 = [[0, 'L'], [0.4, 'L'], [0.8, 'L'], [1.2, 'L'], [1.6, 'L']];
+  const bad = [];
+  for (const yaw of [Math.PI, Math.PI / 2, 0, -Math.PI / 2]) {
+    for (const plan of [C5, [[0, 'H']]]) {
+      const r = run1(yaw, plan, false);
+      for (const l of r.rows) if (!l.ok || l.min < r.front - 0.05) bad.push(`yaw ${(yaw * 57.3).toFixed(0)} ${plan.length > 1 ? 'combo' : 'heavy'}: a line ${l.min.toFixed(2)} m ahead`);
+      if (!r.rows.length) bad.push(`yaw ${(yaw * 57.3).toFixed(0)}: no line`);
+      if (plan.length === 1 && !(r.rows[0]?.carry > 1)) bad.push(`yaw ${(yaw * 57.3).toFixed(0)}: the dash's whiff line is not carried (${(r.rows[0]?.carry ?? 0).toFixed(2)} m/s)`);
+      if (!(r.smears > 0)) bad.push(`yaw ${(yaw * 57.3).toFixed(0)}: no smear`);
+    }
+  }
+  assert(!bad.length, `facing four ways, every ending slash lies in front of him, a dash's whiff line moves on with him, the swing smears (${bad.slice(0, 6).join('; ') || 'all'})`);
+  // a landed blow: the kick, the burst, the sound's event
+  {
+    const r = run1(0, [[0, 'L']], true);
+    const h = r.ev.find((e) => e.hit);
+    assert(r.bursts >= 1 && h && Number.isFinite(h.x + h.y + h.z) && r.rows.some((l) => l.hit && l.carry === 0), `a landed blow's slash bursts sparks (${r.bursts}), stays on what it hit, and is announced (player:slash hit: ${!!h})`);
   }
   return last;
 }
@@ -15215,6 +15280,7 @@ const SCENARIOS = {
   wyrmlook: scenarioWyrmLook,
   herolife: pinAdr186(scenarioHeroLife),
   instantslash: scenarioInstantSlash,
+  slashfeel: scenarioSlashFeel,
   combos: scenarioCombos,
   feel: scenarioFeel,
   offhand: scenarioOffHand,
