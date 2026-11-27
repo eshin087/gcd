@@ -113,6 +113,7 @@ export function createGrass(U, { count = 260000, extent = 150, density, height, 
       // the hero's wake (world/grassTrail.js; an older uniforms object without it: no wake, the grass as before)
       uTrail: U.uTrail ?? { value: Array.from({ length: TRAIL_N }, () => new THREE.Vector4()) },
       uTrailBox: U.uTrailBox ?? { value: Array.from({ length: TRAIL_CH }, () => new THREE.Vector4()) },
+      uTrailAll: U.uTrailAll ?? { value: new THREE.Vector4(0, 0, 0, 0) },
       uBend: U.uBend ?? { value: new THREE.Vector4(0, 0, 0, 0) },
       uBendT: U.uBendT ?? { value: new THREE.Vector4(0, 1, 0, 0) },
       uBendS: U.uBendS ?? { value: new THREE.Vector4(0, 0, 0, 0) },

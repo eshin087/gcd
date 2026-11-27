@@ -212,6 +212,9 @@ const S = {
     assert(P.bench() === null, 'BENCH with no GL: nothing, no throw');
     P.benches.push({ t: 1, canvas: '669x867', state: 'boss', hero: 'attack', boss: 'knock', frame: 20.5, steps: { world: 9.1, glow: 3.2 }, half: { canvas: '468x606', frame: 12, share: '41 % less' } });
     assert(/bench at 1s \(669x867/.test(P.report()) && /world\s+9\.1 ms/.test(P.report()) && /41 % less/.test(P.report()), 'a BENCH is in the report: the whole frame, each step\'s share, the half-pixel frame');
+    P.benches[P.benches.length - 1].life = 1.4;
+    assert(/the living world .* 1\.4 ms/.test(P.report()), "BENCH's living-world reading is in the report");
+    assert(P._lifeOut() === null, 'no living world: no living-world reading, no throw');
     P.reset();
     assert(P.stats().frames === 0 && P.longest.length === 0, 'RESET forgets what was recorded');
     // the warm draw

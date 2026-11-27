@@ -1,4 +1,6 @@
 import { GlyphParticles } from '../../render/particles.js';
+import { ship } from './ship.js';
+import { LIFE } from './lifeSwitch.js';
 import { CONFIG } from '../../core/config.js';
 import { STEPS } from './stepsTuning.js';
 import { bendLook } from '../grassTrail.js';
@@ -426,6 +428,8 @@ export class Steps {
       P.spawn(pr);
     }
     P.update(0, this.life.t);
+    // (the fast path, ship.js: only the marks drawn go to the GPU, none: out of the frame)
+    ship(P.mesh, P.count, P.iPos, P.iData, P.iColor);
     this._stale = false;
     this._refresh = 0;
   }
@@ -449,6 +453,32 @@ export class Steps {
     for (let i = k; i < DP_STEPS; i++) S[i].z = -1;
     DP_STEP_U.uDpStepK.value.set(F.life, F.hotT, F.flicker, k > 0 ? 1 : 0);
     DP_STEP_U.uDpStepF.value.set(F.cells[0] / 2, F.cells[1] / 2, F.cascade * (F.n[1] - 1), 0);
+    this._stepBound(S, k);
+  }
+
+  /** The fast path's circle round the k prints written (uDpStepB): a cell farther than the foot's longer
+   *  half from every print's centre is outside every print's oval, so dpStep can return at once and draw
+   *  what it drew. Off the fast path (or no print): w 0, every print walked as before. */
+  _stepBound(S, k) {
+    const B = DP_STEP_U.uDpStepB?.value;
+    if (!B) return;
+    if (!LIFE.fast || k <= 0) {
+      if (B.w !== 0) B.set(0, 0, 0, 0);
+      return;
+    }
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < k; i++) {
+      const v = S[i];
+      if (v.x < x0) x0 = v.x;
+      if (v.x > x1) x1 = v.x;
+      if (v.y < z0) z0 = v.y;
+      if (v.y > z1) z1 = v.y;
+    }
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, F = STEPS.flash;
+    let R = 0;
+    for (let i = 0; i < k; i++) R = Math.max(R, Math.hypot(S[i].x - cx, S[i].y - cz));
+    // (the oval's longer half, and a hair more: float rounding must never cut a lit cell)
+    B.set(cx, cz, R + Math.max(F.cells[0], F.cells[1]) / 2 + 0.02, 1);
   }
 
   update(dt) {
@@ -487,6 +517,7 @@ export class Steps {
     this._n = 0;
     this._stale = false;
     this.pool?.clear();
+    if (this.pool) ship(this.pool.mesh, 0, null, null, null, null, false);
   }
 
   clear() {

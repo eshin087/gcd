@@ -640,6 +640,10 @@ Render helpers for creature modules:
   step's draws skipped by wrapping `renderer.render`), the still shadow map redrawn every frame, then at ~0.7x
   the device pixels and back through `applyQuality`; the results go in the report. A new pipeline pass gets a
   line in its `is` table.
+  BENCH also reads the LIVING WORLD in one extra reading (ADR-245): every batch `ship` has marked
+  `userData.lifeBatch`, the wind (`uWind` 0), the step flash and the wake left out together; the report
+  prints it as its own line (it overlaps the steps above) and everything is put back. The lamps' flames
+  stay (they are heat in a fire field that already burns).
 - **The lite world** (ADR-216, the owner's pick C of three rendered options): `game.liteWorld` (main.js, each
   frame) is true on a touch device with AUTO on once `game.autoQ.wantsLess` (render/autoQuality.js: a slow
   window came while AUTO had no step down left; kept for the page load, so the look does not flicker), or
@@ -4246,6 +4250,17 @@ that carry `lamp`, so a level without lanterns lights nothing) and the sounds' `
   lands) off the hero. `takes('mist')` where the level has `mist` (Cinderwood, Fox, Grove).
 
 ### The air's letters — `LetterBatch` (`world/life/letterBatch.js`)
+**The fast path** (`?lifeFast=0` turns it off: today's paths exactly; `LIFE.fast`, `setLifeFast(on)` in
+`life/lifeSwitch.js`, read every frame so it can be flipped live; ADR-245). Every living-world batch
+(`LetterBatch.end()` / `empty()`, the litter's pool and its leaf print, the steps' pool) hands its letters
+over through `life/ship.js`: `ship(mesh, n, a, b, c, d)` after the owner wrote n instances (always the
+first n) uploads ONE range [0, n) per attribute (a kept range record: no allocation) instead of every
+slot the batch could hold, and an empty batch leaves the frame by its layer mask (`mesh.layers.mask` 0,
+restored by `unship` or the next n > 0; an owner's `visible` is never touched and still wins). Off the
+fast path `ship` marks the whole arrays as before. The ground's step flash and the grass's wake return at
+once outside one circle round all their prints / chunks (`uDpStepB`, `uTrailAll`: x, z, radius, w 1 =
+the circle is meant; w 0 = no circle, the loops walk everything as before), and a print farther than the
+foot's longer half is skipped before its `cos` / `sin`: exact, since those loops find nothing out there.
 How the wind's wisps and the weather print (STYLE.md "The living world": the air is clumps of many tiny
 faint letters). Each letter is a world point projected to the screen and printed as ONE cell of the
 house letter, the wyrm's pixel font (`render/wyrmGlyphs.js`; 5 x 8 px with the 720p font, 4 x 6 with the
