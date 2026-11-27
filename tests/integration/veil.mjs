@@ -1355,6 +1355,8 @@ const S = {
     assert(!out0.length, `never thrown out of his bound (${out0.slice(0, 5).join('; ')})`);
     assert(!still.length, `he always walks away after (${still.slice(0, 5).join('; ')})`);
   },
+  // motion: scenarios
+  motion: scenarioMotion,
   // body: scenarios
   body: scenarioBody,
   // fx: scenarios
@@ -1363,7 +1365,10 @@ const S = {
 // (run by tests/run.mjs as processes of their own; `all` leaves them out: GCD_SKIP)
 // (the tuning pass: the bench, tests/integration/bench.mjs: mortal bots, whole fights, opt-in)
 S.bench = async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'veil'); };
-const OPT_IN = new Set(['bench']);
+S.motionaudit = scenarioMotionAudit; // (motion: opt-in, printed)
+// (motion: WJ_MOTION=a|b|c plays every scenario with that take of his melee motion, ?wjMotion)
+if (process.env.WJ_MOTION) (await imp('src/entities/enemies/duelist/lookSwitch.js')).setLook('wjMotion', process.env.WJ_MOTION);
+const OPT_IN = new Set(['bench', 'motionaudit']);
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');
 for (const k of list) {
@@ -2792,4 +2797,186 @@ async function scenarioUnveil() {
   out(`     unveils ${S.stats.unveils}, pieces flattened ${S.stats.flattened}; the hero pushed ${pushed.toFixed(2)} m, ${hp0} -> ${p.hp} HP`);
   assert(S.stats.unveils === 1 && d.dressPhase === 2, 'the unveiling burst goes off once, at the transition impact');
   assert(p.hp === hp0 && pushed >= 3, `it pushes the hero (${pushed.toFixed(2)} m) and costs no health`);
+}
+
+// ================================================================== motion: the motion agent's scenarios (round 3)
+// (`?wjMotion=0|a|b|c`: his melee's motion takes; moves/melee.js, untouched/motion.js)
+/** One melee move measured on the real rig, the hero standing still and blocking (god): per beat its tell,
+ *  windup, the snap (s from the release out of the held / cocked pose to the impact), the held stretch,
+ *  the striking end's speed at the impact, the kicking knee / striking elbow at the impact, his travel; per
+ *  move the hands' furthest from the pockets (phase 1) and the recovery. */
+function wjMeasure(G, name, { dist = 2.2, how = 'block' } = {}) {
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  d.debug.tidy();
+  d.brain.act = null;
+  d.mode = 'foot';
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  run(G, 0.3);
+  run(G, 3, null, () => ['idle', 'run'].includes(p.state));
+  place(G, dist, 0);
+  p.debug.god = true;
+  p.guard = 100;
+  input.axis = { x: 0, y: 0 };
+  run(G, 0.25, () => place(G, dist, 0));
+  const R = d.rig, inv = new THREE.Matrix4(), pinv = new THREE.Matrix4(), V = () => new THREE.Vector3();
+  const L = (o, x = 0, y = 0, z = 0) => V().set(x, y, z).applyMatrix4(o.matrixWorld);
+  const samp = () => {
+    R.root.updateMatrixWorld(true);
+    inv.copy(R.root.matrixWorld).invert();
+    const W = {
+      wrR: L(R.arms.R.fore, 0, -0.26, 0), wrL: L(R.arms.L.wrist), shR: L(R.arms.R.upper), shL: L(R.arms.L.upper), elR: L(R.arms.R.fore), elL: L(R.arms.L.fore),
+      thR: L(R.legs.R.thigh), shnR: L(R.legs.R.shin), anR: L(R.legs.R.foot), thL: L(R.legs.L.thigh), shnL: L(R.legs.L.shin), anL: L(R.legs.L.foot), head: L(R.head, 0, 0.1, 0), pelvis: L(R.pelvis),
+    };
+    const B = {};
+    for (const k in W) B[k] = W[k].clone().applyMatrix4(inv);
+    // (the wrists in the pelvis's frame: in his pockets they go where his hips go)
+    pinv.copy(R.pelvis.matrixWorld).invert();
+    const Pv = { wrR: W.wrR.clone().applyMatrix4(pinv), wrL: W.wrL.clone().applyMatrix4(pinv) };
+    return { W, B, Pv, x: d.position.x, z: d.position.z, t: d.brain.act?.t ?? 0 };
+  };
+  const ang = (a, b, c) => { const u = V().subVectors(a, b).normalize(), w = V().subVectors(c, b).normalize(); return (Math.acos(Math.max(-1, Math.min(1, u.dot(w)))) * 180) / Math.PI; };
+  const rest = samp();
+  if (!d.brain.trigger(name)) return { name, fail: 'trigger' };
+  const A = d.brain.act;
+  const F = [];
+  let nan = false;
+  for (let i = 0; i < 900; i++) {
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    if (how === 'block') { input.press(1); p.guard = 100; }
+    G.tick(DT);
+    p.debug.heal();
+    if (d.brain.act !== A) break;
+    const s = samp();
+    for (const k in s.W) if (!Number.isFinite(s.W[k].x + s.W[k].y + s.W[k].z)) nan = true;
+    F.push(s);
+  }
+  input.up(1);
+  const near = (t) => F.reduce((best, s) => (Math.abs(s.t - t) < Math.abs(best.t - t) ? s : best), F[0]);
+  const spd = (k, t) => { const i = F.indexOf(near(t)); if (i < 1) return 0; return F[i].W[k].distanceTo(F[i - 1].W[k]) / DT; };
+  // the hands from the pockets (his frame; m), over the whole move
+  let handOut = 0, outR = 0, outL = 0;
+  for (const s of F) {
+    outR = Math.max(outR, s.Pv.wrR.distanceTo(rest.Pv.wrR));
+    outL = Math.max(outL, s.Pv.wrL.distanceTo(rest.Pv.wrL));
+  }
+  handOut = Math.max(outR, outL);
+  // the largest pop: a joint that changes its speed in one frame (his frame; m; frames round a blink left out)
+  let pop = 0, popK = '';
+  for (let i = 2; i < F.length; i++) {
+    if (Math.hypot(F[i].x - F[i - 1].x, F[i].z - F[i - 1].z) > 0.4 || Math.hypot(F[i - 1].x - F[i - 2].x, F[i - 1].z - F[i - 2].z) > 0.4) continue;
+    for (const k of ['wrR', 'wrL', 'anR', 'anL', 'head', 'pelvis']) {
+      const a2 = V().copy(F[i].B[k]).addScaledVector(F[i - 1].B[k], -2).add(F[i - 2].B[k]).length();
+      if (a2 > pop) { pop = a2; popK = k; }
+    }
+  }
+  const beats = [];
+  for (const b of A.beats) {
+    if (b.feint) continue;
+    const D = b.def, cock = D.cock ?? 0.8, part = b.def.part ?? '';
+    const rel = b.at(cock) + b.H; // the release out of the cock
+    const imp = near(b.impact), st = near(b.start);
+    const side = /L$/.test(part) ? 'L' : 'R';
+    const foot = /^foot|^knee/.test(part), palms = part === 'palms';
+    const endK = foot ? `an${side}` : palms ? 'wrR' : `wr${side}`;
+    // the held stretch of the windup (nothing tracked faster than 0.9 m/s in his frame)
+    let run0 = 0, best = 0;
+    for (let i = 1; i < F.length; i++) {
+      if (F[i].t < b.start || F[i].t > b.impact) continue;
+      let mv = 0;
+      for (const k of ['wrR', 'wrL', 'head', 'pelvis', 'elR', 'elL', ...(foot ? [`an${side}`] : [])]) mv = Math.max(mv, F[i].B[k].distanceTo(F[i - 1].B[k]) / DT);
+      run0 = mv < 0.9 ? run0 + 1 : 0;
+      best = Math.max(best, run0);
+    }
+    beats.push({
+      tell: D.tell, part, W: b.W, H: b.H, snap: b.impact - rel, held: best * DT,
+      speed: spd(endK, b.impact),
+      knee: foot ? ang(imp.W[`th${side}`], imp.W[`shn${side}`], imp.W[`an${side}`]) : null,
+      elbow: !foot ? ang(imp.W[`sh${side}`], imp.W[`el${side}`], imp.W[`wr${side}`]) : null,
+      travel: Math.hypot(imp.x - st.x, imp.z - st.z),
+      footY: foot ? imp.W[`an${side}`].y : null,
+    });
+  }
+  return { name, phase: d.phase, frames: F.length, nan, handOut, outR, outL, pop, popK, recovery: A.end - A.recoveryStart, dur: A.end, beats, impacts: A.beats.filter((b) => !b.feint).map((b) => b.impact) };
+}
+
+/** MOTIONAUDIT (opt-in): every melee move in every phase it is used in, measured (wjMeasure), printed per take. */
+async function scenarioMotionAudit() {
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { MOVE_OWNERS } = await imp('src/entities/enemies/untouched/moves.js');
+  const takes = (process.env.WJ_TAKES ?? '0').split(',');
+  const names = MOVE_NAMES.filter((n) => MOVE_OWNERS[n] === 'melee');
+  for (const tk of takes) {
+    setLook('wjMotion', tk);
+    out(`\n== scenario MOTIONAUDIT (take ${tk}) ==`);
+    for (const ph of [1, 2, 3]) {
+      const G = build();
+      duel(G, { dist: 2.2, form: ph });
+      for (const name of names) {
+        if (!phasesOf(name).includes(ph)) continue;
+        const r = wjMeasure(G, name);
+        if (r.fail) { out(`  P${ph} ${name} FAIL ${r.fail}`); continue; }
+        out(`  P${ph} ${name.padEnd(13)} ${r.frames}f  dur ${r.dur.toFixed(2)}  rec ${r.recovery.toFixed(2)}  hands out R ${r.outR.toFixed(2)} L ${r.outL.toFixed(2)} m  pop ${r.pop.toFixed(2)} ${r.popK}${r.nan ? '  NaN' : ''}`);
+        for (const b of r.beats) out(`       ${String(b.tell).padEnd(6)} ${b.part.padEnd(6)} W ${b.W.toFixed(2)}${b.H ? '+' + b.H.toFixed(2) : '     '}  snap ${b.snap.toFixed(2)}  held ${b.held.toFixed(2)}  v@imp ${b.speed.toFixed(1)} m/s  ${b.knee != null ? 'knee ' + Math.round(b.knee) + '° footY ' + b.footY.toFixed(2) : 'elbow ' + Math.round(b.elbow) + '°'}  travel ${b.travel.toFixed(2)} m`);
+      }
+    }
+  }
+  setLook('wjMotion', null);
+}
+
+/** MOTION: every take of his melee motion (?wjMotion=a|b|c): it loads, every melee move runs in every phase it
+ *  is used in (no NaN, no failure), every blow lands within a few frames of its release out of the cock, a
+ *  blue / red blow holds its pose, a kick lands with the leg straight, the hands stay in his pockets in
+ *  phase 1 (the left in phase 2) unless the blow uses them; '0' plays the shipped beats themselves. */
+async function scenarioMotion() {
+  out('\n== scenario MOTION (?wjMotion takes: every melee move in every phase; snaps, holds, straight kicks, the hands) ==');
+  const { setLook, lookOf } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { MOVE_OWNERS } = await imp('src/entities/enemies/untouched/moves.js');
+  const { TAKES, MOTION_OPTS } = await imp('src/entities/enemies/untouched/motion.js');
+  const names = MOVE_NAMES.filter((n) => MOVE_OWNERS[n] === 'melee');
+  const was = lookOf('wjMotion', '0');
+  // '0': the shipped beats (no take field on any of them)
+  setLook('wjMotion', '0');
+  assert(names.every((n) => MOVES[n].beats.every((b) => (b.pick ?? [b]).every((x) => x.wjHands === undefined))), "take '0': every melee move plays its shipped beats");
+  assert(MOTION_OPTS.join() === '0,a,b,c' && ['a', 'b', 'c'].every((t) => TAKES[t]), 'the takes: 0, a, b, c');
+  const takes = (process.env.WJ_TAKES ?? 'a,b,c').split(',');
+  for (const tk of takes) {
+    setLook('wjMotion', tk);
+    let n = 0;
+    const bad = { fail: [], nan: [], snap: [], held: [], knee: [], hands: [] };
+    for (const ph of [1, 2, 3]) {
+      const G = build();
+      duel(G, { dist: 2.2, form: ph });
+      for (const name of names) {
+        if (!phasesOf(name).includes(ph)) continue;
+        const r = wjMeasure(G, name);
+        const tag = `P${ph} ${name}`;
+        if (r.fail) { bad.fail.push(`${tag} ${r.fail}`); continue; }
+        n++;
+        if (r.nan) bad.nan.push(tag);
+        const defs = MOVES[name].beats.flatMap((b) => b.pick ?? [b]).filter((b) => !b.feint);
+        const uses = defs.map((b) => b.wjHands ?? '').join('');
+        const dash = defs.some((b) => b.dash);
+        for (const b of r.beats) {
+          if (!(b.snap <= 0.16 + 1e-6)) bad.snap.push(`${tag} ${b.part} ${b.snap.toFixed(2)}`);
+          if ((b.tell === 'blue' || b.tell === 'red') && !dash && !(b.held >= 0.1)) bad.held.push(`${tag} ${b.tell} ${b.held.toFixed(2)}`);
+          if (b.knee != null && /^foot/.test(b.part) && b.footY > 0.5 && !(b.knee >= 158)) bad.knee.push(`${tag} ${Math.round(b.knee)}`);
+        }
+        // (in the pelvis's frame: a coil that twists the chest off the hips, Dark Spark's, the stomp's, carries
+        // the pocketed hand up to ~0.25 m off where it rests)
+        const tol = 0.26;
+        if (ph === 1 && !uses.includes('R') && r.outR > tol) bad.hands.push(`${tag} R ${r.outR.toFixed(2)}`);
+        if (ph <= 2 && !uses.includes('L') && r.outL > tol) bad.hands.push(`${tag} L ${r.outL.toFixed(2)}`);
+      }
+    }
+    const say = (k) => bad[k].slice(0, 6).join('; ');
+    assert(n >= 40 && !bad.fail.length, `take ${tk}: ${n} melee moves ran in their phases (${say('fail')})`);
+    assert(!bad.nan.length, `take ${tk}: no NaN on his joints (${say('nan')})`);
+    assert(!bad.snap.length, `take ${tk}: every blow lands within 0.16 s of its release (${say('snap')})`);
+    assert(!bad.held.length, `take ${tk}: every blue / red blow holds its pose >= 0.1 s (${say('held')})`);
+    assert(!bad.knee.length, `take ${tk}: every kick at the body lands with the leg straight, knee >= 158° (${say('knee')})`);
+    assert(!bad.hands.length, `take ${tk}: the hands in his pockets: phase 1 both, phase 2 the left, unless the blow uses them (${say('hands')})`);
+  }
+  setLook('wjMotion', was === '0' ? null : was);
 }
