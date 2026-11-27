@@ -19,6 +19,16 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'Instant slashes, and a quieter left hand to choose',
+        notes: [
+          'Every sword attack now leaves one straight slash line where the blade passed, instead of the curved arc: a turning cut leaves three straight cuts around you, a thrust a short streak, a heavy blow a thicker violet line. Add ?slash=arc to the address for the arc as before.',
+          'Being tried out: add ?offhand=side, ?offhand=back or ?offhand=quiet and your free hand hangs loose at your side, rests behind your back, or keeps its moves close to your body during one-handed attacks.',
+          'Also being tried out: add ?feel=snap, ?feel=weight or ?feel=flow for the same attacks with a crisper, heavier or more fluid feel, light and heavy alike.',
+          'The slash is now an ending slash: as each swing ends a straight cut flashes across your foe, running the way your sword went. Your light combo is now a new one built for it (add ?combo=0 for the old one, or ?combo=b, c or d for three more).',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'Blue and red blows you can read, and quick blows',
         notes: ['Lu Wusheng, Wen Yao and the Cinder Wyrm now hold still for a moment before every blue or red blow: tall for blue, low for red. The blow lands that moment later; its cue and timing are as before.', 'Each of them has a new quick white blow, straight from the stance with no wind-up: block it or parry it on the glint.', "Wen Yao's feet no longer jump as he steps into a blow."],
       },

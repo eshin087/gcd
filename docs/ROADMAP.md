@@ -222,6 +222,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       6 rides on the seeds
 - [ ] The real renderer lays ~30 % more floor marks than headless
 
+## M1.94 — Instant slashes, the left hand to pick (2026-11-26, `claude/hero-instant-slash`, ADR-240)
+- [x] PRs #118 and #166 closed on the owner's call: production's combo stays
+- [x] Every attack and the flurry's finishers: one straight slash line instead of the crescent (`slashFx.js`, `?slash=arc` the crescent)
+- [x] Three left-hand looks to compare, `?offhand=side|back|quiet` (`offHand.js`); scenarios `instantslash`, `offhand`
+- [x] Round 2: the line comes as the swing ends; three feels of the same moves, lights and heavies, each with its hand (`?feel=`, `feel.js`); scenario `feel`
+- [x] Round 3: the ending slash (`?endslash=`, `?endbeat=`) and four light combos built for it (`?combo=a|b|c|d`, `combos.js`); scenario `combos`
+- [x] Round 4: the owner's baseline (combo A, the slash on the enemy as the swing ends) is the default; the hand's coat clipping fixed; each line follows its sword's on-screen motion
+- [ ] The owner's verdict on the revised baseline; then the other combos, feels and hands go
+
 ## M1.93 — Tian Lei's and Halcyon's motion (2026-11-26, `claude/enemies-tian-halcyon-motion-efe595`, ADR-225)
 - [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
   behind `?ascMotion=a` / `?halMotion=a`

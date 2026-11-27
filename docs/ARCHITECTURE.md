@@ -1190,6 +1190,35 @@ free hand can follow the grip. `loco()` swings the hero's arms by `armF` = `anim
 0.65): `armSign` is the fore-aft direction he last moved in (`anim.armDir`, latched while |mz| >
 0.15) eased at 12/s in `update()`, so they swing in a pure strafe and do not jump as the direction
 flips; it opens the free hand on the move (`hs` → 0). `loco()` and `guard()` also feed the
+**The instant slash** (ADR-240, `player/slashFx.js` `SlashFx`, `player.slashFx`; `setSlash` / `slashMode`,
+`?slash=arc`, the Lab's `slash` row): updated from `player._combat` once the sweep is sampled; per attack record it
+keeps the blade's drawn point on the frame before the active window and on its last frame and draws one straight
+line through both (a picked look with `spin`: the chords between the point at a third of the window apart; a
+`thrust` def or a clip whose `line` is 'point': a streak off the point), in the arc's strokes (fx.js `add`), the
+heavy look (`def.heavy`) with `game.kick` / `game.shake`. `owns(at)` tells `_combat` to draw no crescent
+(`fx.trail`); flurryFx's swept finisher draws its chord under it. Tests: `onLine`, `lines`, `kicks`.
+**The free hand's look** (ADR-240, `player/offHand.js`: `OFFHAND`, `setOffHand` / `offHandMode` / `offHandLook`,
+`?offhand=side|back|quiet`, the Lab's `offhand` row): `attackPose` hangs it for a clip that never keys `two`
+(`swingClip().two`) through `sideHand(p, b, D, L)`, which sets the pose channel `P.sd` (61; `N` 62; cleared before
+each pose) and the hand's elbow, fingers, palm and shape where the look gives them; `HeroAnimator._sideHand`
+(in `apply`, after the free hand's target) moves the free wrist's target onto the look's rest with a damped
+pendulum on it, `_sideLinger` keeps it there a moment after the attack. '0' leaves production's free hand; 'auto' (the default) wears the feel's own.
+**The swings' feel** (ADR-240, `player/feel.js`: `FEELS`, `setFeel` / `feelMode` / `feelLook`, `warpPhase`; `?feel=`, the
+Lab's `feel` row): `swingPose` plays the clip at `warpPhase(swingPhase(t))` (each phase's 0..1 through the feel's curve,
+the phases' ends kept), the hips' and chest's lead × `lead`, and scales the keyed `by`, `hip`, `sy`, `sx` by `gain`
+(eased in over the windup's first half). Every clip attack; the hit test reads the drawn blade, so the contact moves
+inside the active window (scenario `feel`).
+**The ending slash** (ADR-240, `slashFx.js` `END`, `setPlace` / `placeMode`, `setBeat` / `beatMode`, `?endslash=`,
+`?endbeat=`): `_end` moves the cut's line to its place (`target` ahead of him, `body` his chest, `enemy` the last
+`player:hitDragon` point of this attack, `blade` the chord itself) and queues it `END.beat` s on (`game.time`);
+`_flush` draws what is due each frame. The direction (every place but `blade`): the blade's point `END.at` along
+it, projected by the camera each buffered frame, its steps weighted by the point's speed² (`_swing`), laid in the
+screen's plane (`_screen`); the line is queued in `END.reveal` pieces `END.step` apart from the swing's start
+side. The swing's end waits out a landed blow's bite (`SWING.bite`). Defaults: `enemy`, `0`. While a free-hand
+look holds the hand (`P.sd`), the free wrist is `BLADE_PTS[13]` in the coat's sheet test (`_bladePts`). **The light combos** (ADR-240, `combos.js` `COMBOS`, `setCombo` /
+`comboMode`, `?combo=`, the Lab's `combo` row): `setCombo` writes a combo's `anim`, `variants`, timings and a
+finisher's `kind` / `heavy` / `contact` onto `LIGHT` (production's kept in `BASE` and restored by '0'), and sets
+its feel and hand (`feel.js` `setFeel`, `setFeelHand`). Imported by player.js for the URL.
 duelists' footwork: the hero's free-arm numbers in them are gated on `A.freeHand`. **Swing clips** (ADR-071, `player/swings.js`): every light swing (the chain's hits 1–4 and
 their looks, the sprint slash, the roll cut) and the charged cleave is a keyframed clip. An attack's
 `anim: { kind: 'clip', clip: '<name>' }` names a `SWINGS` entry: a list of keys over the attack's own

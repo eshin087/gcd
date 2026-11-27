@@ -6822,3 +6822,64 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   seeds; the real renderer lays ~30 % more marks than headless. Tests: veil `patience`, `bonfire`; the suite's
   ordinary parry is pressed 0.25 s ahead (registering 0.20 - 0.22 s before the impact: ADR-227's 0.20 s perfect
   window).
+
+## ADR-240 — Instant slash lines on every attack; the free hand's look to pick, behind `?offhand=` (2026-11-26)
+
+- **Context:** after five rounds of new light combos (ADR-188's weight pass, the instant cuts ADR-233, the steel
+  set ADR-234, four instant-cut combos ADR-235) and a joint-posed arm (PR #166), the owner: "lets just do this.
+  use the current production auto attack combo and remove the curvy slashes with the instant slashes and make
+  the left hand look more natural and not stand out so much as it looks unnatural and off. scrap all the new
+  stuff." Asked, they chose: the straight slash on every attack and the flurry; two or three left-hand options
+  filmed to pick from; PRs #118 and #166 closed; a held PR with a preview first.
+- **Decision:** production's attacks and their motion stay. (1) `slashFx.js`: the instant cuts' straight line
+  (their `blinkFx.js` drawing), driven by what every attack is instead of per-clip data: the chord of the
+  blade's drawn point over the active window (from the frame before it opens to its last frame), carried on
+  past both ends, kept off the floor and under a ceiling; a turning look (`spin`) three chords round him; a
+  thrust a streak off the point; a heavy def the thicker violet look with a small camera kick. The crescent
+  (`fx.trail`) is not drawn behind it, the plunge's dive keeps only its straight streak, the flurry's swept
+  finisher draws its chord. `?slash=arc` gives the crescent back. (2) `offHand.js`: three looks for the free
+  hand in a one-handed swing (any clip that never keys `two`), each a rest the body carries with a damped
+  pendulum on it (the instant cuts' `side` hand, ported): `side` loose beside the left thigh (what the owner
+  described on 2026-11-25), `back` on the small of his back, `quiet` production's gestures pulled to a third of
+  their reach from a rest at his side. The default stays production's hand until the owner picks.
+- **Consequences:** the glint on the arc's edge stays. Hit test, timing, damage and reach are untouched (the
+  line is drawn from the drawn blade, the hit is the swept blade). The pose has one more channel (`P.sd`, `N`
+  62). After the pick: the picked hand becomes the default and the other looks go; PRs #118 / #166 stay closed
+  (their branches remain on GitHub for reference).
+- **Round 2 (same day):** the owner: "the slashes that come out look out of place and a bit lagged. it should
+  show as soon as the animation swing ends to match with the swing. also make variations of different combos and
+  left hand ... same with the heavy attack on the lagginess and attack variation"; asked, they chose the feel of
+  today's moves, three variations, each with its own hand, the heavies faster and weightier. (1) The line is
+  drawn on the first frame the blade's point slows under 0.8 of its fastest step (the fastest from the active window
+  on; `slashFx.js` SWING), from where the point was as the fast stretch began; it was drawn at the end of the
+  active window from the frame before it (the follow-through ran on, so it came late and long). (2)
+  `feel.js` (`?feel=snap|weight|flow`): production's clips on another clock inside the same phases (a curve
+  per phase), the keyed sink, turn and lean scaled and the body's lead stretched, each with its own hand
+  (`?offhand=auto`, the default, wears it: snap back, weight side, flow quiet). Every light hit and heavy
+  branch still lands in its active frames (scenario `feel`).
+- **Round 3 (same day):** "I didn't mean the instant slash is showing the sword swing, it should show at the end
+  like an ending slash feel. If we need to make new animations and swings to make the new instant slash effect
+  look good then do it and make 4 new light attack combos"; asked, they wanted all three places and both timings
+  shown, and the combos' timing may change. (1) The ending slash (`slashFx.js` `END`, `setPlace` / `setBeat`,
+  `?endslash=target|body|enemy|blade`, `?endbeat=beat|0`): the cut's angle from the swing as before, drawn as a
+  fixed-length line at a place (default `target`: 1.9 m ahead of him at the cut's height) a beat (0.12 s) after
+  the swing has ended. (2) `combos.js` (`?combo=a|b|c|d`): four five-hit combos from production's own swings in a
+  new order and on their own timings (a finisher that is not the slam: `kind: 'light', heavy: true`), each with a
+  feel and a hand (`feel.js` `setFeelHand`). Damage, posture and reach stay; '0' restores production's defs
+  exactly (scenario `combos`). No new swings were keyed: production's are the natural ones the owner kept; a
+  combo they like may want one, next.
+- **Round 4 (same day):** the owner picked combo A with the slash on the enemy ("lets use this as the
+  baseline"), saw "a spark of yellow" (the left hand clipping) and found the slashes still not following the
+  swing ("the heavy slash cut to be the opposite ... from top right to bottom left to follow the motion of the
+  sword"). Found and fixed: (1) the free hand behind his back slipped in and out through the coat's back panels
+  (its bare hand flashing): while a look holds it (`P.sd`) the free wrist joins the coat's sheet test with the
+  grip and the blade (anim.js `_bladePts`, `BLADE_PTS[13]`), so the cloth keeps to one side of it. (2) The line
+  was decided at the contact: the hit-pause and the bite slow the blade for a few frames and read as the
+  swing's end, so the finisher's line came from its raise alone (upward). The end now waits out the bite
+  (`SWING.bite`); the direction is the blade's motion near the hand ACROSS THE SCREEN through the camera's own
+  projection, each frame's step weighted by its speed² (a chop running away from the camera moves down the
+  picture; laid in the screen's plane by its depth it pointed up); the line is laid in the screen's plane and
+  drawn in three pieces a frame apart from the swing's start side (`END.reveal`). Measured on every light hit
+  and heavy branch: each line's on-screen direction now has its blade's. (3) The baseline is the default:
+  `?endslash=enemy`, `?endbeat=0`; combo A in the game (`DEFAULT_COMBO`; the headless sims keep production's
+  defs, which their checks are written for; `?combo=0` plays production's).

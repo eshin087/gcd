@@ -5,6 +5,44 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Instant slashes on every attack, and four left-hand looks to pick from (ADR-240; branch `claude/hero-instant-slash`, held)
+
+**Owner:** "lets just do this. use the current production auto attack combo and remove the curvy slashes with the
+instant slashes and make the left hand look more natural and not stand out so much as it looks unnatural and off.
+scrap all the new stuff." Asked: the slash on everything incl. the flurry; film 2-3 left-hand options; close
+PRs #118 and #166; a held PR with a preview first.
+
+**What changed:** PRs #118 (instant cuts, steel, four combos) and #166 (the joint-posed arm) closed unmerged.
+`slashFx.js`: the straight line of the closed instant cuts' `blinkFx.js`, driven by every attack's active
+window (a chord; a turn's three chords; a thrust's streak; the heavy look with a kick); `player.js` draws no
+crescent behind it (`?slash=arc` does); the plunge keeps only its straight streak; the flurry's split / vault
+finisher draws its swept path's chord. `offHand.js` + anim.js `_sideHand` / `_sideLinger` / `sideHand` (ported from
+#118's `side` hand): `?offhand=side|back|quiet`, a rest the body carries with a pendulum on it, worn by every
+clip that never keys `two`; '0' (production) stays the default until the owner picks. The pose gains `P.sd`
+(N 62). Lab rows `slash`, `offhand`. Scenarios `instantslash`, `offhand`.
+
+**Verification:** the scenarios; `herolife`, `herohand`; films: crescent vs line (the combo; light-light-heavy)
+from the game camera, and the four left hands close and from the game camera.
+
+**Round 2:** the owner found the lines "out of place and a bit lagged" and asked for variations of the combo's and
+the heavies' feel with their own left hands. The line now comes as the visible swing ends (`SWING`); `feel.js`
+`?feel=snap|weight|flow` (+ `?offhand=auto` pairs each with its hand); scenario `feel`; films of the four (the
+combo from the game camera and close, Piercing Gale, light-light-Whirling Tempest).
+
+**Round 3:** the owner meant an ENDING slash, not a trace of the swing, and asked for four new light combos built
+for it (timing may change). `slashFx.js` places a fixed-length line a beat after the swing (`?endslash=`,
+`?endbeat=`); `combos.js` `?combo=a|b|c|d` (Iai, Tempest, Mountain, Dancer) from production's swings, each with
+its timing, feel and hand; scenario `combos`. Films: the four combos beside production, and the 3 places × 2
+timings at the wyrm.
+
+**Round 4:** baseline combo A + the slash on the enemy as the swing ends (now the defaults; the sims keep
+production's chain). The yellow flicker was the free hand behind his back passing through the coat's back
+panels: the free wrist joins the coat's sheet test. The slash came at the contact from the windup's motion (the
+bite read as the swing's end): it now waits out the bite and follows the blade's on-screen motion (camera
+projection, speed-weighted), revealed from the swing's start side; measured per light hit and heavy branch.
+
+**Open / next:** the owner's verdict on the revised baseline.
+
 ## 2026-11-26 — Lu Wusheng, Wen Yao and the wyrm audited; held blue / red windups, released feet, quick blows (ADR-223; branch `claude/enemies-grove-fox-wyrm-motion-59bc46`)
 
 **Task** (from the session coordinating the boss motion pass): audit and fix Lu Wusheng's, Wen Yao's and the Cinder

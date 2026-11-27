@@ -4,7 +4,34 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and nineteen pieces of work since 0.4.0:
+One hundred and twenty pieces of work since 0.4.0:
+- **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
+  perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
+  curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round
+  him, a thrust a short streak off the point, a heavy blow a thicker violet line with a small kick of the camera.
+  `?slash=arc` (the Lab's `slash` row) draws the crescent as before. The light combo's motion is production's.
+  *Added, to compare (not the default):* `?offhand=side`, `back` or `quiet` (the Lab's `offhand` row) for the free
+  hand in a one-handed swing: loose at his side, behind his back, or today's gestures pulled in close to the body;
+  two-handed blows keep it on the grip. Every number of every attack is the same.
+  The slash line now appears the moment the visible swing ends (the blade slows after its fastest frame), from
+  where the swing began, instead of at the end of the attack's hit window from where it opened.
+  *Added, to compare (not the default):* `?feel=snap`, `weight` or `flow` (the Lab's `feel` row) plays every sword
+  attack, the light combo and the heavies alike, with the same moves on another clock and its own free hand: snap
+  reaches the coil early, holds it and cuts fast and clean (the hand behind his back); weight loads slowly,
+  accelerates into the blow, sinks and turns deeper and holds the finish (the hand loose at his side); flow runs
+  without holds (today's hand moves pulled in). Every hit lands in its same frames.
+  The slash is now an ENDING slash: once the swing is over, a beat later, a fixed-length straight line flashes at
+  the cut's angle through the space ahead of him where the foe stands (`?endslash=body` across him, `enemy` across
+  what it hit, `blade` along the blade's path; `?endbeat=0` with no beat; the Lab's `endslash` / `endbeat` rows).
+  *Added, to compare (not the default):* four light combos built for it, `?combo=a`, `b`, `c` or `d` (the Lab's
+  `combo` row): a Iai (draw cuts into still poses, a two-handed falling finisher, the hand behind his back), b
+  Tempest (quick strokes back and forth, a full turn to finish), c Mountain (slow, heavy, the leaping slam), d
+  Dancer (a skip, a turn, a lunge, a rising two-handed finisher), each from today's swings in a new order on its
+  own timing, feel and hand. Their timings differ from today's; damage and reach do not.
+  The baseline (the owner's pick): combo A with the ending slash on the enemy as the swing ends, the game's
+  default on the site (`?combo=0` plays today's chain). Each ending slash now runs the way the sword crossed the
+  screen, drawn from where the swing began to where it ended over three frames, once the swing is over (a landed
+  blow's bite no longer reads as its end). The free hand no longer flickers through the coat behind his back.
 - **Blue and red blows you can read, and quick blows** (2026-11-26, ADR-223). *Changed:* Lu Wusheng, Wen Yao and the
   Cinder Wyrm stop and hold their pose for a moment before every blue or red blow, standing tall for blue and sinking
   low for red (the wyrm rears its head for blue, crouches with its tail up for red); the blow lands that moment later,

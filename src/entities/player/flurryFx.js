@@ -31,6 +31,8 @@ import { FIRE_KIND } from '../../render/firePalettes.js';
 import { axes } from '../../combat/clashFx.js';
 import { burstLook } from './flurryBurst.js';
 import { DEFENSE } from '../../combat/rules.js';
+import { slashMode } from './slashFx.js';
+const CHORD = new Float32Array(6); // a swept finisher's chord (the instant slash)
 
 // cosmetic noise from this module's own stream (never Math.random: the seeded sims replay the AI's)
 let seed = 0x5f3759df;
@@ -753,7 +755,18 @@ export class FlurryFx {
     if (this.chain) {
       // the chain: the iai's lens is gone (two arcs beside the line, where he never ran); the split's
       // and the vault's crescent is the path his blade swept (`sw`: swN points, sampled)
-      if (kind !== 'iai' && sw && swN >= 2) this._swept(fx, sw, swN, 0.34, COL.hot, COL.last, 0.13);
+      // (the instant slash, slashFx.js: the path's chord, one straight line; ?slash=arc the swept curve)
+      if (kind !== 'iai' && sw && swN >= 2) {
+        if (slashMode() === 'arc') this._swept(fx, sw, swN, 0.34, COL.hot, COL.last, 0.13);
+        else {
+          const o = (swN - 1) * 3;
+          for (let c = 0; c < 3; c++) {
+            CHORD[c] = sw[c];
+            CHORD[3 + c] = sw[o + c];
+          }
+          this._swept(fx, CHORD, 2, 0.34, COL.hot, COL.last, 0.13);
+        }
+      }
     } else if (kind === 'split') this._crescent(fx, x, y + 0.2, z, dx, 0, dz, tx, ty, tz, 2.7 * s, 2.5, -0.75, 0.5 * s, 0.34, COL.hot, COL.last, 0.13);
     else if (kind === 'vault') this._crescent(fx, x - dx * 0.4, y - 0.3, z - dz * 0.4, dx, 0, dz, tx, ty, tz, 2.3 * s, -0.9, 2.2, 0.45 * s, 0.34, COL.hot, COL.last, 0.13);
     else {
