@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-five pieces of work since 0.4.0:
+One hundred and twenty-six pieces of work since 0.4.0:
+- **The Cinder Wyrm bites with its whole body** (2026-11-27, ADR-257). *Changed (the owner's pick from the films):*
+  in every bite the wyrm's body surges first (the chest drops
+  and pitches in off the hind feet, the body lunging a little toward you) while the head hangs back, then the head
+  snaps onto the impact the flash promised, its jaws now reaching you on the beat. Every windup, cue, impact, hit
+  sphere and number is as before; `?wyrmStrike=0` (the Lab's LOOKS row `wyrmStrike`) bites as before. *Added:* the wyrm's anatomy audit (integ `wyrmanatomy`, opt-in: each blow's gap
+  to the hero at the impact, a foreleg's elbow and reach, the chain's order, the tail's tip, skating feet, pops).
 - **Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap** (2026-11-27, ADR-254).
   *Changed (the owner's picks from the films):* his straight punches go along the line to you (they ran 35 - 66° off
   to the side), the arm long (elbow 161 - 171°); his kicks land straight (173°) with the other leg hanging long; his

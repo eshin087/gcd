@@ -7047,3 +7047,40 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   sky) keep their arms and take the flier's legs (Applause's knees 77 / 114° → 144 / 154°); the transitions' kneel
   and the meteor's landing stay on the floor, and its tuck is a deliberate ball. Tests: city `limbs`, `readable`,
   `audit` (`GCD_AUDIT_IMPACT=1`).
+## ADR-257 — The Cinder Wyrm's bites: the body surges first, the head snaps onto the beat (`?wyrmStrike=`) (2026-11-27)
+
+- **Context:** the owner asked for a motion audit of every boss and the hero with the animation guide
+  (`docs/ANIMATION.md`): weird limb angles, unrealistic attacks, everything readable. The wyrm already had its
+  held blue / red windups and its quick blow (ADR-223, picked). This pass measured what the wyrm's blows do at
+  their contact (`tests/integration/wyrmAnatomy.mjs`, integ `wyrmanatomy`, opt-in): per blow the striking part's
+  gap to the hero at the announced impact, a foreleg's elbow and reach, a bite's neck, the order its chain reaches
+  top speed (hips, chest, neck base, head; shoulder, elbow, wrist, paw; wing root to tip), the tail's tip against
+  its middle, the planted feet's skating and the worst one-frame change of speed (hit-stop frames left out).
+  Found:
+  - **Every bite moved hips, chest, neck and head on the same frame** (lags 0 - 17 ms: the front of the wyrm one
+    block), its jaws 0.8 - 3.1 m short of the hero's chest when the flash's impact came, closest only 0.07 - 0.27 s
+    later (the head's exponential chase is fastest on its first frame and slowest as it arrives).
+  - The forelegs rake at full reach (elbow 177°: the paw's path lies beyond the leg's reach). The strike at
+    extension is right, but the leg stays a locked rod through the whole sweep.
+  - The wing blows flap as one rigid wing about its root.
+  - Planted feet skate 0.4 - 1.0 m through some strings (the gait's re-step under a turning, lunging body).
+  - The tail blows already overlap: the tip trails the tail's middle by 44 - 123° through the turn and runs past
+    it as the body stops (a softer tip was tried and changed nothing a film could show: dropped).
+- **Decision** (behind `?wyrmStrike=0|a`, `dragon/strike.js`, `tuningMotion.js` `WYRM_STRIKE.bite`; `a` the default,
+  the owner's pick from the before / after films, 2026-11-27; '0' as shipped; the Lab's LOOKS row `wyrmStrike`), for every bite (the bite, a string's
+  bite, the lunge bite, the rear bite): over the windup's last 0.1 s the chest drops and pitches into the strike off
+  the locked hind feet, a little past the strike's own body, and the whole body surges 0.4 model units toward the
+  hero (not when it is already within 4 units: a lunge reads from the high camera where a neck reaching at the
+  lens does not), while the head HANGS where it was (its goal frozen in the world: the neck compresses under it).
+  The snap then runs the head from there to the bite's goal on a fast-in path (0.35 linear + 0.65 quadratic) that
+  arrives ON the impact, and the body settles back over 0.12 s. It replaces `strikeLead` (the shown head easing in
+  over the last three frames) while on. The hit spheres, the goals, the windups, the cue and the impacts are the
+  same code; the surge brings the jaws 0.75 m nearer.
+- **Not taken (yet):** the forelegs' rod-straight sweep (bringing the sweep's end within reach would bend the elbow
+  but move the paw's hit spheres: the AI's ranges are sim-measured coverage); the wing blows' fingers trailing the
+  arm (the wing's hit spheres ride the finger tips); the feet's skating (the gait's re-step). Listed in the ROADMAP.
+- **Consequences:** measured with `a` (wyrmanatomy), every bite: the body (hips, chest) reaches top speed 50 - 117 ms
+  before the head (was 0 - 17 ms); the jaws' gap at the impact 0.17 - 2.07 m (was 0.79 - 3.10; the single bite 1.77
+  -> 0.99, the claw combo's lunge bite 3.10 -> 2.07, the Hesitant Maw's rear bite 2.33 -> 1.16, the sky hammer's
+  bite 1.38 -> 0.45). The bite's hit sphere (1.05 x SCALE) still meets the hero a frame before the drawn jaws touch.
+  At the game camera the change reads mostly as the surge; the head's hang and snap show best from the side.
