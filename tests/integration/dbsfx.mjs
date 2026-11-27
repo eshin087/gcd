@@ -64,7 +64,8 @@ for (const m of ['a', 'b', 'c', 'd']) {
 }
 // the swell reaches the next blow (c), the loudness grows with the blow
 assert(DS.deathblowSound({ n: 2, of: 7, last: false }, 'c', 0.4).opts.swell > 0.2 && DS.deathblowSound({ n: 7, of: 7, last: true }, 'c').opts.swell === 0, 'c: a swell into the next blow, none after the finisher');
-assert(DS.DB_SFX_DEFAULT === 'a' && DS.DB_SFX.mode === 'a', 'the default is a (Flesh, the owner pick)');
+DS.setDbSfx('zzz'); // (an unknown word falls back to the default)
+assert(DS.DB_SFX_DEFAULT === 'a' && DS.getDbSfx() === 'a', 'the default is a (Flesh, the owner pick)');
 assert(DS.deathblowSound({ n: 1, of: 3 }, '0') === null, "'0' gives no sound");
 assert(drew === 0, `no sound drew from Math.random (${drew})`);
 Math.random = rand0;
