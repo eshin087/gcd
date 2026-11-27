@@ -79,7 +79,7 @@ export const DBFX_TUNE = Object.freeze({
   max: 700,
   stroke: 0.35,
   tick: 0.12,
-  flash: Object.freeze({ life: 0.08, lifeLast: 0.1, px: 12, pull: 2.5, minY: 0.6, hero: Object.freeze({ rx: 0.24, foot: 0.05, head: 1.7, pad: 0.04 }) }),
+  flash: Object.freeze({ budget: 280, life: 0.08, lifeLast: 0.1, px: 12, pull: 2.5, minY: 0.6, hero: Object.freeze({ rx: 0.24, foot: 0.05, head: 1.7, pad: 0.04 }) }),
   blood: Object.freeze({ spray: 14, sprayMax: 24, sprayLast: 40, slow: 0.15, streak: 0.6, streakLast: 0.8, pools: 480, poolSoft: 0.08, poolLift: 0.08 }),
   ramps: Object.freeze([
     Object.freeze([[0, 0.55, 0.27, 0.06], [0.3, 0.52, 0.17, 0.025], [0.65, 0.32, 0.07, 0.012], [1, 0.13, 0.02, 0.005]].map(Object.freeze)),
@@ -180,6 +180,7 @@ const flashes = Array.from({ length: NF }, () => ({ alive: false, x: 0, y: 0, z:
 let fxNow = 0, deadline = -1;
 const copyLife = (d) => Math.max(0.021, d * 1.6);
 const B = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.02, size: 0.3, sizeEnd: 0.3, heat: 1, heatEnd: 1, kind: 0, drag: 0, gravity: 0 };
+let heatBase = -1; // (the field's size when this run of flashes began)
 let flashLive = 0; // (alive flashes after the newest update)
 
 /** The cell offsets (i, j) of a flash into a reused list, shape 0: a disc of `rad` cells (a bloom, hottest
@@ -221,6 +222,12 @@ function drawFlash(game, Fl, life) {
   const Fire = game.fx?.fire;
   if (!Fire?.spawn) return 0;
   const T = DBFX_TUNE.flash;
+  // (the heat budget: a combo's flashes add at most `T.budget` blobs to the field at any moment, counted
+  // against the field's own size from before the first flash; the bulk of a look is letters, the heat only
+  // the short flash cores)
+  if (heatBase < 0) heatBase = Fire.count ?? 0;
+  const room = T.budget - ((Fire.count ?? 0) - heatBase);
+  if (room <= 0) return 0;
   AX = axes(game);
   const hp = game.player?.position;
   let hx = 0, hy = 0, hrx = 0, hry = 0;
@@ -250,7 +257,7 @@ function drawFlash(game, Fl, life) {
   B.size = B.sizeEnd = T.px * (cw / 5) * mpp;
   B.kind = Fl.kind;
   let n = 0;
-  for (let k = 0; k < nc; k++) {
+  for (let k = 0; k < nc && n < room; k++) {
     if (hrx > 0 && ok) {
       const ex = (ax0 + CI[k] * cw - hx) / hrx, ey = (ay0 + CJ[k] * ch - hy) / hry;
       if (ex * ex + ey * ey < 1) continue; // (never written over the hero)
@@ -883,6 +890,7 @@ export function deathblowFxUpdate(game, realDt) {
       if (S.age >= S.life) S.alive = false;
       else any = true;
     }
+    if (!any) heatBase = -1; // (no flash alive: the next one measures the field afresh)
     flashLive = 0;
     for (const S of flashes) if (S.alive) flashLive++;
     P.flash = flashLive;
