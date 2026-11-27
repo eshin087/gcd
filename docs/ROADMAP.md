@@ -1216,6 +1216,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
+- [x] Xin Yi (ADR-253): the audit (`audit`, `guns`, `probe`); straight blows on the line, kicks held straight, blows
+      that reach, the sweep crossing the hero, the guns on the line of fire with a kick, behind `?oneMoves=b`; two
+      redrawn shots and bolts (`?oneGunFx`, `?oneBoltFx`); the `line` test; films sent
+  - [x] The owner's picks from the films: motion `b`, the shots `b` (the script), the bolts `a` (the seed), the default
+  - [ ] The hooks meeting the hero from the side, the sweep's knee at its very contact, Iron Rain's twin arms
 - [x] Lu Wusheng (ADR-252): the form audit (`sheath.mjs form`), the draw's hands (the fist on the hilt, the scabbard
       drawn back) and its lunge, thrusts in line, the overhead on a diagonal, the sweep's feet, the free hand in the
       scabbard cuts, behind `?sheathForm`; the readable pace `?sheathPace`; three looks for the draw `?drawFx`; films sent
