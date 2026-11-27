@@ -24,6 +24,9 @@
 import { SWINGS } from './swings.js';
 import { DIM } from './model.js';
 import { ARC_TONE } from './fx.js';
+import * as THREE from 'three';
+
+const _pv = new THREE.Vector3(), _OUT = [0, 0, 0];
 
 /** 'line' (the default): the instant slash; 'arc': the curved crescent as before. */
 export const SLASH_IDS = ['line', 'arc'];
@@ -41,16 +44,17 @@ export function setSlash(m) {
 }
 
 /** THE ENDING SLASH (the owner, 2026-11-26: "I didn't mean the instant slash is showing the sword swing, it should
- *  show at the end like an ending slash feel"; shown all three places and both timings to pick from). Where the
- *  line is drawn once the swing has ended, at the cut's own angle:
+ *  show at the end like an ending slash feel"; shown all three places and both timings, they picked enemy, as the
+ *  swing ends). Where the line is drawn once the swing has ended, the way the sword crossed the screen:
+ *    enemy   across what it hit, centred on the contact; a whiff: a shorter line at the target place (default)
  *    target  through the space ahead of him where the foe stands (END.ahead m out, at the cut's height)
  *    body    across him, centred on his chest
- *    enemy   across what it hit, centred on the contact; a whiff: a shorter line at the target place
  *    blade   along the blade's own path (the first instant slash: the chord of the swing)
- *  and when: '0' as the swing ends, 'beat' END.beat s later (the 'already cut' beat, the pose held). */
-export const PLACE_IDS = ['target', 'body', 'enemy', 'blade'];
-export const BEAT_IDS = ['beat', '0'];
-let placeNow = 'target', beatNow = 'beat';
+ *  and when: '0' as the swing ends (default), 'beat' END.beat s later (the 'already cut' beat, the pose held). */
+export const PLACE_IDS = ['enemy', 'target', 'body', 'blade'];
+export const BEAT_IDS = ['0', 'beat'];
+// (the owner's baseline, 2026-11-26: "combo A with the slash on the enemy", as the swing ends)
+let placeNow = 'enemy', beatNow = '0';
 export const placeMode = () => placeNow;
 export const beatMode = () => beatNow;
 export function setPlace(m) {
@@ -73,8 +77,12 @@ export function setBeat(m) {
  *  range of its middle (m), `len` [light, heavy] its length (m), `thrust` a thrust's, `miss` × the length of
  *  an enemy-placed whiff, `beat` (s) the pause before it in 'beat', `star` (rad) how far a turn's three cuts
  *  are fanned round their middle. */
-export const END = { ahead: 1.9, y: [0.55, 1.7], len: [3.6, 5.6], thrust: 2.4, miss: 0.6, beat: 0.12, star: 0 };
-const NP = 8; // ending slashes waiting for their beat
+export const END = { ahead: 1.9, y: [0.55, 1.7], len: [3.6, 5.6], thrust: 2.4, miss: 0.6, beat: 0.12, star: 0, at: 0.2, reveal: 3, step: 1 / 60 };
+// (`at`: the point along the blade, from its base to its drawn point, whose way across the screen is the
+// slash's direction: near the hand, so a blade raised overhead with its point back toward the camera still
+// reads as the swing does, from where the sword came down to where it went; `reveal` pieces drawn `step` s
+// apart, from the swing's start to its end: the slash runs the way the sword did)
+const NP = 24; // ending slashes' pieces waiting for their time
 
 /** The line's looks: strokes, their size at the middle (m), life (s) at the ends … the middle, the
  *  four-frame flash, the hairline that outlasts it, the colours (the arc's: white-hot → its core → the
@@ -107,7 +115,7 @@ const LOOKS = ['light', 'heavy'];
  *  first frame moving `start` of it; at the latest `late` of the recovery in. (The owner, 2026-11-26: the
  *  lines "look out of place and a bit lagged. it should show as soon as the animation swing ends": they
  *  were drawn at the end of the active window, from the frame before it opened.) */
-export const SWING = { from: 0.5, peakFrom: 1, end: 0.8, start: 0.3, late: 0.35 };
+export const SWING = { from: 0.5, peakFrom: 1, end: 0.8, start: 0.3, late: 0.35, bite: 0.1 };
 const NB = 64; // frames of the point kept (a swing from late in its windup to its end)
 
 export class SlashFx {
@@ -121,12 +129,14 @@ export class SlashFx {
     this.T = [0, 0, 0];
     this.H = [0, 0, 0];
     this.buf = new Float32Array(NB * 3); // the point, frame by frame
+    this.mid = new Float32Array(NB * 3); // … and the blade near the hand (END.at): the swing's way on the screen
     this.spd = new Float32Array(NB); // … and how far it moved that frame
     this.nb = 0;
     this.peak = 0; // the fastest frame's step, and its index
     this.pi = -1;
     this.lastT = -1;
-    this.pend = new Float32Array(NP * 10); // ax ay az bx by bz, the time it is drawn at, thrust, kick, look
+    this.pend = new Float32Array(NP * 13); // ax ay az bx by bz, the time it is drawn at, thrust, kick, look, the piece [f0, f1), kind
+    this._dly = 0;
     this.np = 0;
     this.hitRec = null; // the attack that landed, and where (the enemy place)
     this.hit = [0, 0, 0];
@@ -197,6 +207,8 @@ export class SlashFx {
       B[n * 3] = T[0];
       B[n * 3 + 1] = T[1];
       B[n * 3 + 2] = T[2];
+      const H = this.H, M = this.mid, f = END.at;
+      for (let c = 0; c < 3; c++) M[n * 3 + c] = H[c] + (T[c] - H[c]) * f;
       this.spd[n] = sp;
       this.nb = n + 1;
     }
@@ -206,14 +218,18 @@ export class SlashFx {
       this.peak = sp;
       this.pi = this.nb - 1;
     }
-    const ended = this.pi >= 0 && this.nb - 1 > this.pi && sp < SWING.end * this.peak;
+    // (not while a landed blow's bite holds the blade, anim.js BITE: the hit-pause and the bite slow it for a
+    // few frames at the contact; read as the swing's end, the line came at the contact from the windup's last
+    // motion only: a chop's raise drew its line upward)
+    const biting = at.hitAt >= 0 && t - at.hitAt < SWING.bite;
+    const ended = !biting && this.pi >= 0 && this.nb - 1 > this.pi && sp < SWING.end * this.peak;
     if (!ended && t < W + Ac + SWING.late * R && this.nb < NB) return;
     this.st = 2;
     if (!(this.peak > 0)) return;
-    // the fast stretch: back from the peak to the first frame moving at least SWING.start of it; the line
-    // runs from the point before that frame to where it is now
-    let s = this.pi;
-    while (s > 0 && this.spd[s - 1] >= SWING.start * this.peak) s--;
+    // the cut: from the first frame moving at least SWING.start of its fastest step (the bite's slow frames inside it
+    // count, weighed by speed) to where the point is now
+    let s = 0;
+    while (s < this.pi && this.spd[s] < SWING.start * this.peak) s++;
     const a = Math.max(0, s - 1), e = this.nb - 1;
     if (this.kind === 2) this._streak(SLASH.thrust * (this.look ? 1.4 : 1));
     else if (this.kind === 1) {
@@ -221,9 +237,56 @@ export class SlashFx {
       const k = SLASH.ring;
       for (let j = 1; j <= k; j++) {
         const i0 = Math.round(a + ((e - a) * (j - 1)) / k), i1 = Math.round(a + ((e - a) * j) / k);
-        if (i1 > i0) this._cut(B[i0 * 3], B[i0 * 3 + 1], B[i0 * 3 + 2], B[i1 * 3], B[i1 * 3 + 1], B[i1 * 3 + 2], j === 1);
+        if (i1 > i0) this._swing(i0, i1, j === 1, (j - 1) * END.reveal * END.step);
       }
-    } else this._cut(B[a * 3], B[a * 3 + 1], B[a * 3 + 2], B[e * 3], B[e * 3 + 1], B[e * 3 + 2], true);
+    } else this._swing(a, e, true, 0);
+  }
+
+  /** A cut from buffered frame i0 to i1: along the blade's point (the `blade` place), or, at every other
+   *  place, the way the blade near the hand crossed the screen. */
+  _swing(i0, i1, kick, delay) {
+    this._dly = delay;
+    if (placeNow === 'blade') {
+      const B = this.buf;
+      this._cut(B[i0 * 3], B[i0 * 3 + 1], B[i0 * 3 + 2], B[i1 * 3], B[i1 * 3 + 1], B[i1 * 3 + 2], kick);
+    } else {
+      // the cut's way: the blade's steps near the hand, each weighted by the square of the point's speed that
+      // frame, so the fast cut decides it and not the quicker part of a raise before it (the chord of the
+      // whole stretch ran a chop's line upward: the owner, "the opposite of what is currently displaying")
+      // (on the screen, through the camera's own projection: a chop that runs away from the camera moves
+      // DOWN the picture, though its depth would lay it upward)
+      const M = this.mid, S = this.spd, cam = this.game?.camera;
+      if (!cam) return;
+      let x = 0, y = 0, px = 0, py = 0;
+      for (let i = i0; i <= i1; i++) {
+        _pv.set(M[i * 3], M[i * 3 + 1], M[i * 3 + 2]).project(cam);
+        if (i > i0) {
+          const w = S[i] * S[i];
+          x += (_pv.x - px) * w;
+          y += (_pv.y - py) * w;
+        }
+        px = _pv.x;
+        py = _pv.y;
+      }
+      if (this._screen(x * (cam.aspect || 1), y)) {
+        const ax = M[i0 * 3], ay = M[i0 * 3 + 1], az = M[i0 * 3 + 2], D = _OUT;
+        this._cut(ax, ay, az, ax + D[0], ay + D[1], az + D[2], kick);
+      }
+    }
+    this._dly = 0;
+  }
+
+  /** A direction across the screen (sx right, sy up, in pixels' proportions) as a world direction in the
+   *  screen's plane → _OUT; false when there is none. */
+  _screen(sx, sy) {
+    const C = this.game?.camera?.matrixWorld?.elements, l = Math.hypot(sx, sy);
+    if (!C || !(l > 1e-9)) return false;
+    sx /= l;
+    sy /= l;
+    _OUT[0] = C[0] * sx + C[4] * sy;
+    _OUT[1] = C[1] * sx + C[5] * sy;
+    _OUT[2] = C[2] * sx + C[6] * sy;
+    return Number.isFinite(_OUT[0] + _OUT[1] + _OUT[2]);
   }
 
   /** The line through the point's two places, carried on past both (no shorter than its min), kept off
@@ -253,7 +316,17 @@ export class SlashFx {
 
   /** A thrust: a short streak straight on off the point, along the blade. */
   _streak(len) {
-    const T = this.T, H = this.H;
+    const T = this.T, H = this.H, cam = this.game?.camera;
+    if (placeNow !== 'blade' && cam) {
+      // (the blade's way across the screen, through the camera's projection)
+      _pv.set(H[0], H[1], H[2]).project(cam);
+      const hx = _pv.x, hy = _pv.y;
+      _pv.set(T[0], T[1], T[2]).project(cam);
+      if (this._screen((_pv.x - hx) * (cam.aspect || 1), _pv.y - hy)) {
+        this._end(T[0], T[1], T[2], T[0] + _OUT[0] * len, T[1] + _OUT[1] * len, T[2] + _OUT[2] * len, true, true);
+        return;
+      }
+    }
     let dx = T[0] - H[0], dy = T[1] - H[1], dz = T[2] - H[2];
     const l = Math.hypot(dx, dy, dz) || 1;
     dx /= l;
@@ -272,6 +345,17 @@ export class SlashFx {
       dx /= l;
       dy /= l;
       dz /= l;
+      // (laid in the screen's plane: the slash crosses the picture the way the sword did, whatever its
+      // depth; a cut toward or away from the camera no longer turns into a stub, or its mirror)
+      const C = this.game?.camera?.matrixWorld?.elements;
+      if (C) {
+        const sx = dx * C[0] + dy * C[1] + dz * C[2], sy = dx * C[4] + dy * C[5] + dz * C[6], sl = Math.hypot(sx, sy);
+        if (sl > 0.05) {
+          dx = (C[0] * sx + C[4] * sy) / sl;
+          dy = (C[1] * sx + C[5] * sy) / sl;
+          dz = (C[2] * sx + C[6] * sy) / sl;
+        }
+      }
       const P = this.p, sc = P.drawScale || 1, E = END;
       let cx, cy, cz, L = (thrust ? E.thrust : E.len[this.look]) * sc;
       const ch = P.rig?.chest?.matrixWorld?.elements;
@@ -307,58 +391,71 @@ export class SlashFx {
       by = cy + dy * s1;
       bz = cz + dz * s1;
     }
-    const at = beatNow === 'beat' ? (this.game?.time ?? 0) + END.beat : -1;
-    if (at < 0 || !Number.isFinite(at)) {
-      this._draw(ax, ay, az, bx, by, bz, thrust, kick);
-      return;
+    // drawn in END.reveal pieces END.step apart from where the swing began (a) to where it ended (b): the slash
+    // runs the sword's way; after the beat (beatNow) and a turn's later cuts' delay
+    const now = this.game?.time ?? 0, t0 = now + (beatNow === 'beat' ? END.beat : 0) + (this._dly || 0), R = Math.max(1, END.reveal | 0);
+    for (let i = 0; i < R; i++) {
+      const f0 = i / R, f1 = (i + 1) / R, at = t0 + i * END.step;
+      if (!(at > now)) {
+        this._draw(ax, ay, az, bx, by, bz, thrust, kick && i === 0, f0, f1);
+        continue;
+      }
+      if (this.np >= NP) return;
+      const o = this.np++ * 13, Q = this.pend;
+      Q[o] = ax;
+      Q[o + 1] = ay;
+      Q[o + 2] = az;
+      Q[o + 3] = bx;
+      Q[o + 4] = by;
+      Q[o + 5] = bz;
+      Q[o + 6] = at;
+      Q[o + 7] = thrust ? 1 : 0;
+      Q[o + 8] = kick && i === 0 ? 1 : 0;
+      Q[o + 9] = this.look;
+      Q[o + 10] = f0;
+      Q[o + 11] = f1;
+      Q[o + 12] = this.kind;
     }
-    if (this.np >= NP) return;
-    const o = this.np++ * 10, Q = this.pend;
-    Q[o] = ax;
-    Q[o + 1] = ay;
-    Q[o + 2] = az;
-    Q[o + 3] = bx;
-    Q[o + 4] = by;
-    Q[o + 5] = bz;
-    Q[o + 6] = at;
-    Q[o + 7] = thrust ? 1 : 0;
-    Q[o + 8] = kick ? 1 : 0;
-    Q[o + 9] = this.look;
   }
 
   /** The ending slashes whose beat is up (dropped if he has died since). */
   _flush() {
     const Q = this.pend, now = this.game?.time ?? 0, alive = this.p.hp > 0;
     for (let i = 0; i < this.np; ) {
-      const o = i * 10;
+      const o = i * 13;
       if (alive && now < Q[o + 6]) {
         i++;
         continue;
       }
       if (alive) {
-        const look = this.look;
+        const look = this.look, kind = this.kind;
         this.look = Q[o + 9];
-        this._draw(Q[o], Q[o + 1], Q[o + 2], Q[o + 3], Q[o + 4], Q[o + 5], Q[o + 7] > 0, Q[o + 8] > 0);
+        this.kind = Q[o + 12];
+        this._draw(Q[o], Q[o + 1], Q[o + 2], Q[o + 3], Q[o + 4], Q[o + 5], Q[o + 7] > 0, Q[o + 8] > 0, Q[o + 10], Q[o + 11]);
         this.look = look;
+        this.kind = kind;
       }
-      const l = --this.np * 10;
-      for (let k = 0; k < 10; k++) Q[o + k] = Q[l + k];
+      const l = --this.np * 13;
+      for (let k = 0; k < 13; k++) Q[o + k] = Q[l + k];
     }
   }
 
-  _draw(ax, ay, az, bx, by, bz, thrust, kick) {
+  /** Draw the line a → b, or its piece [f0, f1) of it (the strokes of the whole line that fall there). */
+  _draw(ax, ay, az, bx, by, bz, thrust, kick, f0 = 0, f1 = 1) {
     const look = this.look, Lk = SLASH[LOOKS[look]];
-    this.onLine?.(ax, ay, az, bx, by, bz, LOOKS[look], this.kind);
-    const la = this.last;
-    la[0] = ax;
-    la[1] = ay;
-    la[2] = az;
-    la[3] = bx;
-    la[4] = by;
-    la[5] = bz;
-    la[6] = look;
-    la[7] = this.kind;
-    this.lines++;
+    if (f0 <= 0) {
+      this.onLine?.(ax, ay, az, bx, by, bz, LOOKS[look], this.kind);
+      const la = this.last;
+      la[0] = ax;
+      la[1] = ay;
+      la[2] = az;
+      la[3] = bx;
+      la[4] = by;
+      la[5] = bz;
+      la[6] = look;
+      la[7] = this.kind;
+      this.lines++;
+    }
     let dx = bx - ax, dy = by - ay, dz = bz - az;
     const len = Math.hypot(dx, dy, dz);
     if (!(len > 1e-4)) return;
@@ -404,6 +501,7 @@ export class SlashFx {
         if (side && pass > 0) break;
         for (let i = 0; i < n; i++) {
           const f = (i + 0.5) / n, s = (f - 0.5) * len;
+          if (f < f0 || f >= f1) continue;
           const y = cy + dy * s + py * off;
           if (y < SLASH.floor) continue;
           // sharp at both ends (a thrust: full at the point, sharp at its far end)

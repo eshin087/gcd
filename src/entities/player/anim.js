@@ -2792,11 +2792,12 @@ const LEG_R = BODY.thigh[0] + 0.004; // thigh / knee radius used to push the pan
 // the gauntlet, + the cloth's margin.
 const COAT_BLADE_R = 0.07, COAT_HAND_R = 0.06;
 const COAT_STEEL_JUMP = 0.12; // rad per 60 fps frame: the most the steel moves a coat segment at once
-const BLADE_PTS = Array.from({ length: 13 }, () => new THREE.Vector3()); // [0] = the grip
+const BLADE_PTS = Array.from({ length: 14 }, () => new THREE.Vector3()); // [0] = the grip, [1..12] the blade, [13] the free hand at its rest (offHand.js) when it is
+const NB_STEEL = 13; // the grip and the blade's points
 const _mC = new THREE.Matrix4();
 // the steel in a panel's anchor frame (QA) and in its lower segment's parent frame (QB): x along the
 // hips, y up, z out, from the segment's pivot; SEG = segLocal's output
-const QA = new Float32Array(39), QB = new Float32Array(39), SEG = new Float32Array(3);
+const QA = new Float32Array(42), QB = new Float32Array(42), SEG = new Float32Array(3);
 /** Point k of Q (a coat segment's parent frame, its pivot at the origin) in the frame of that
  *  segment swung (a, b) (rotation order YXZ: Rx(a)·Rz(b)): SEG = [x along it, y down it (≤ 0),
  *  height above the sheet's curve round the hips (radius R)]. Returns whether the point lies over
@@ -4732,11 +4733,22 @@ export class HeroAnimator {
     const r = this.rig;
     r.sword.updateWorldMatrix(true, false);
     _mC.copy(r.pelvis.matrixWorld).invert().multiply(r.sword.matrixWorld);
-    const n = BLADE_PTS.length, z0 = DIM.forte, z1 = DIM.drawnTip ?? DIM.steelTip;
+    const n = NB_STEEL, z0 = DIM.forte, z1 = DIM.drawnTip ?? DIM.steelTip;
     BLADE_PTS[0].set(0, 0, 0).applyMatrix4(_mC);
     for (let k = 1; k < n; k++) BLADE_PTS[k].set(0, 0, z0 + ((z1 - z0) * (k - 1)) / (n - 2)).applyMatrix4(_mC);
     const e = BLADE_PTS[n - 1];
-    return Number.isFinite(e.x + e.y + e.z + BLADE_PTS[0].x) ? n : 0;
+    if (!Number.isFinite(e.x + e.y + e.z + BLADE_PTS[0].x)) return 0;
+    // the free hand, while a look holds it at its rest (offHand.js: p[sd]): the cloth keeps to one side of it
+    // too, as of the sword hand (behind his back it slipped in and out through the back panels: a flicker of
+    // the bare hand, the owner's "spark of yellow")
+    if (this.freeHand && this.cur[P.sd] > 0.05) {
+      const L = r.arms.L;
+      L.fore.updateWorldMatrix(true, false);
+      _mC.copy(r.pelvis.matrixWorld).invert().multiply(L.fore.matrixWorld);
+      const h = BLADE_PTS[n].set(0, -DIM.foreArm, 0).applyMatrix4(_mC);
+      if (Number.isFinite(h.x + h.y + h.z)) return n + 1;
+    }
+    return n;
   }
 
   /** Coat skirt: each panel segment springs toward gravity-hang + hip flare − its anchor's
@@ -4857,7 +4869,7 @@ export class HeroAnimator {
             if (d < 0.03) continue;
             const rho = Math.hypot(d, qz), phi = Math.atan2(qz, d);
             const curv = SEG[2] - (d * Math.sin(c.x) + qz * Math.cos(c.x)); // the sheet's curve here
-            const m = k ? COAT_BLADE_R : COAT_HAND_R;
+            const m = k === 0 || k === NB_STEEL ? COAT_HAND_R : COAT_BLADE_R; // (the hands, the blade)
             if (over) {
               const need = Math.asin(clamp((-m - curv) / rho, -1, 1)) - phi + parentA;
               if (need < bo) bo = need;

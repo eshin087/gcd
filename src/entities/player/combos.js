@@ -93,7 +93,10 @@ export function setCombo(m) {
   comboNow = id;
   return true;
 }
+// (in the game the owner's baseline, combo A (2026-11-26: "lets use this as the baseline"), unless `?combo=` picks
+// another ('0' production's); the headless sims keep production's defs, which their checks are written for)
+export const DEFAULT_COMBO = 'a';
 {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('combo') : null;
-  if (q) setCombo(q);
+  if (typeof location !== 'undefined') setCombo(q && COMBO_IDS.includes(q) ? q : DEFAULT_COMBO);
 }
