@@ -43,6 +43,10 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascBeam', ['a', 'b'], 'a', 'a', false, ['ring'], 'Tian Lei\'s beam'],
   ['ascOrb', ['a', 'b', 'c'], 'a', 'a', false, ['ring'], 'Heaven\'s Lantern, the great orb: a a sun, b a lantern, c the pale gathered sphere (its arms-up gather on a reload)'],
   ['ascBeamPose', ['0', 'cup'], '0', '0', true, ['ring'], 'Tian Lei\'s beams: 0 the palm thrust, cup both hands cupped at the hip (a reload)'],
+  ['ascMotion', ['0', 'a'], '0', 'a', false, ['ring'], 'Tian Lei\'s motion (ADR-225): a every blue and red blow out of a held windup pose of its own, and his snap blows (Snap Jab, Snap Hook; the default); 0 as before (live, from his next move)'],
+  // --- the sword motion pass (ADR-226; live from his next move; the owner's pick: a)
+  ['ashMotion', ['0', 'a'], '0', 'a', false, ['ash'], 'Shen Hui\'s sword motion: 0 as before; a the jian held in line with his forearm, his arms opening, blue / red blows held in their tell poses, two quick blows'],
+  ['lordMotion', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s sword motion: 0 as before; a the blades held in line with his forearms, his arms opening, blue / red blows held in their tell poses, a shake of the steel for the end twirl, two quick blows'],
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
@@ -63,10 +67,20 @@ export const LOOK_SWITCHES = Object.freeze([
   // --- code: Xin Yi more like the hero (ADR-170; pending: the owner picks from the sheets)
   ['oneLetters', ['0', 'a'], '0', 'a', false, ['code'], 'Xin Yi\'s letters: 0 the bosses\' fine cell, a they follow his size as the hero\'s do (the default; live)'],
   ['onePrint', ['0', 'a', 'b'], '0', 'a', true, ['code'], 'Xin Yi\'s print: 0 the lifted print and the shapes he shipped with; a the hero\'s quiet print, simpler shapes, a coat that stirs from phase 1 (the default); b a, and one letter size bolder on a small screen (a reload)'],
+  // --- code: Xin Yi rebuilt (ADR-221; awaiting: the owner picks from the sheets and films)
+  ['oneBody', ['0', 'a', 'b', 'c'], '0', 'b', true, ['code'], 'Xin Yi\'s figure: 0 as shipped; printed like the hero on a man\'s build: a the long coat closed in phase 1, b the coat open in every phase (the owner\'s pick, the default), c a duster to mid-shin (a reload)'],
+  ['oneMoves', ['0', 'a'], '0', 'a', false, ['code'], 'Xin Yi\'s moves: 0 as shipped; a the guns aimed down the arm, every blue / red blow held in its windup pose before the snap, two fast strings, straight kicks, long punches (the owner\'s pick, the default; live)'],
   // --- grove: Lu Wusheng readable (ADR-152): the palette picked; the print's five steps and the mark wait for the owner
   ['sheathArt', ['0', '1', '2', '3', 'a'], '0', 'a', true, ['grove'], 'Lu Wusheng\'s print, five steps: 0 the wyrm\'s digits as shipped, 1 digits in his colours, 2 digits lit and outlined, 3 ink-line flattened, a the hero\'s ink-line art (the default since ADR-194; a reload)'],
   ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)'],
   ['sheathMark', ['a', 'b', '0'], 'a', 'a', true, ['grove'], 'his mark: a a torn strip on the scabbard, b a white streak in the hair, 0 none (a reload)', 'awaiting'],
+  // --- the motion pass (ADR-223; live; the owner picked a for all, 2026-11-26): held blue / red windups, the quick blows
+  ['sheathMotion', ['0', 'a', 'b'], '0', 'a', false, ['grove'], "Lu Wusheng's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk; b held only"],
+  ['sheathQuick', ['0', 'a'], '0', 'a', false, ['grove'], 'Before the Word: a quick white pommel snap from his carry (a: in his moves)'],
+  ['foxMotion', ['0', 'a', 'b'], '0', 'a', false, ['fox'], "Wen Yao's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk, the feet no longer jump; b held only"],
+  ['foxQuick', ['0', 'a'], '0', 'a', false, ['fox'], 'Fox Snap and Fox Knee: quick white blows from his guard (a: in his moves)'],
+  ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
+  ['wyrmQuick', ['0', 'a'], '0', 'a', false, ['cinderwood'], 'Snap swipe: a quick white paw from its stance (a: in its moves)'],
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)
   ['halLook', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'Halcyon\'s body: a blue suit and red cape, b the idol, c tomorrow\'s tyrant (a reload)'],
   ['halCape', ['0', '1', '2', '3'], '3', '3', true, ['city'], 'his cape and colours at game size: 0 as first built, 1 brighter, 2 + a wide flared cape, 3 + its billow and a long trail (a reload)'],
@@ -75,10 +89,32 @@ export const LOOK_SWITCHES = Object.freeze([
   ['halCapeSize', ['0', 'a', 'b', 'c'], 'b', 'b', true, ['city'], 'his cape\'s size: 0 as picked, a ~80 %, b ~65 %, c ~50 % (to the back of his knees) (a reload)'],
   ['glare', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'his eyes\' heat: a crimson, white core; b crimson alone; c orange fire (a reload)'],
   ['city', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'the city: a neon rain, b golden hour, c lockdown (a reload)'],
+  // --- veil: the Veiled Crossing and Bai Wuji (the owner's picks, 2026-11-25)
+  // Bai Wuji: body rows
+  ['wjLook', ['a', 'b', 'c'], 'c', 'c', true, ['veil'], 'Bai Wuji\'s body: a the black high-collared coat and a black band, b a long indigo-black robe and a white cloth band, c a bone-white coat with a dark collar and band (a reload)'],
+  ['wjHair', ['a', 'b'], 'b', 'b', true, ['veil'], 'his white hair: a a tall swept crown over the band (phase 1), long soft locks once it falls; b a shorter spikier burst, a choppier fringe (a reload)'],
+
+  // Bai Wuji: fx rows
+  ['wjShell', ['a', 'b', 'c'], 'a', 'a', false, ['veil'], 'his barrier while up: a all but invisible, it shows where the blade comes at it; b a faint standing shell of sparse strokes; c two faint rings that breathe (live)'],
+  ['wjNull', ['a', 'b'], 'a', 'a', false, ['veil'], 'the Violet Null\'s body: a a hard-edged slab, crisp strokes along both edges; b a round bore, brightest at its core, rings running down it (live)'],
+
+  // Bai Wuji: world rows
+  ['wjCity', ['a', 'b', 'c'], 'a', 'a', true, ['veil'], 'the crossing: a ash moon (cold moonlit ash-grey), b last lamps (sodium amber, dead screens), c black wet (wet black asphalt, pale bars) (a reload)'],
+  ['wjVoid', ['a', 'b', 'c'], 'b', 'b', true, ['veil'], 'the void: a drifts (star clumps only), b the ring (a great pale ring on the floor round the fight), c the fall (stars falling as streaks, a line of light where the floor ends) (a reload)'],
+
+  ['halMotion', ['0', 'a'], '0', 'a', false, ['city'], 'Halcyon\'s motion (ADR-225): a a flier\'s legs in his blows, each blow aimed down at the hero (he dips into it), his arms open at the end, the held windups, his snap blows (Flick, Tap; the default); 0 as before (live, from his next move)'],
   // --- every human boss (ADR-194)
-  ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],
+  ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city', 'veil'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],
+  // --- drawn in the hero's style (ADR-220): per boss, 0 as he shipped, a shaded as the hero is, b outlined as the
+  // hero is (his line width), c both; his colours, outfit and letters kept (live). The owner's picks: c for
+  // Shen Hui, Varr Nihil and Lu Wusheng, a for Tian Lei and Halcyon (whose lines are the hero's already)
+  ['ashHero', ['0', 'a', 'b', 'c'], '0', 'c', false, ['ash'], 'Shen Hui in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
+  ['lordHero', ['0', 'a', 'b', 'c'], '0', 'c', false, ['starless'], 'Varr Nihil in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
+  ['ascHero', ['0', 'a', 'b', 'c'], '0', 'a', false, ['ring'], 'Tian Lei in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
+  ['sheathHero', ['0', 'a', 'b', 'c'], '0', 'c', false, ['grove'], 'Lu Wusheng in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
+  ['halHero', ['0', 'a', 'b', 'c'], '0', 'a', false, ['city'], 'Halcyon in the style of the hero: a his shading, b his outline, c both (his colours and outfit kept)'],
   // --- the title (ADR-196)
-  ['menu', ['0', 'a', 'b', 'c'], '0', 'c', true, ['cinderwood', 'ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city'], 'the title: c the sword\'s path (the default), a the world list, b the campfire grid, 0 the title before (a reload)'],
+  ['menu', ['0', 'a', 'b', 'c'], '0', 'c', true, ['cinderwood', 'ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city', 'veil'], 'the title: c the sword\'s path (the default), a the world list, b the campfire grid, 0 the title before (a reload)'],
 ]);
 
 const NAMES = LOOK_SWITCHES.map((s) => s[0]);

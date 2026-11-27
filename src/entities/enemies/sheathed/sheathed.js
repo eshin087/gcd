@@ -10,6 +10,8 @@ import { LINKS } from './links.js';
 import { SheathFx } from './fx.js';
 import { tintWanderer, sheathDigits, SHEATH_STEP, SHEATH_FLAT } from './look.js';
 import { LateCuts } from './lateCuts.js';
+import { MOTION_FIX } from '../duelist/heldTells.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 
 // Lu Wusheng, the Sheathed (ADR-144, ADR-145; COMBAT.md → "The Sheathed"): a wandering swordsman whose
 // blade stays in the scabbard until one blink-fast draw cut the hero must parry or die. A duelist on
@@ -45,6 +47,8 @@ export const SHEATHED_KIT = Object.freeze({
   streakMove: () => 'leaves',
   loadout: SHEATH_LOADOUT,
   poses: SHEATH_POSES,
+  // (ADR-223, `?sheathMotion=a|b`: a planted foot his clip lifts eases off its spot, not at once)
+  animOpts: Object.freeze({ liftEase: () => (lookOf('sheathMotion', '0') === '0' ? 0 : MOTION_FIX.liftEase) }),
   blade: BLADE,
   OPEN: ['caught'],
   REACT: { caught: { travel: -0.7 } },

@@ -19,6 +19,10 @@ export const TUNING = {
   flashLead: 0.3, // the glint this long before every impact
   minFirstWindup: 0.42, // a move's first real hit, every phase
   minHitGap: 0.32, // impact to impact inside a move (>= flashLead: each flash after the hit before it)
+  // the quick blows (`?foxQuick=a`, ADR-223): snapped out of his guard with no gather, the stance their
+  // tell; white, `fixed` windups (no phase makes them shorter), never under flashLead (the glint shows as
+  // they start); exempt from minFirstWindup, close range only, never links
+  quick: { windup: 0.3, damage: 8, band: [0, 2.0], cooldown: [5, 4.5, 4], weight: { jab: [1.2, 1.2, 1.2], knee: [0.8, 1.0, 1.0] } },
   // (phase 3 is no faster than phase 2: the 0.42 s floor holds; its ramp is in what he does)
   windupScale: [1, 0.92, 0.92], // the windups of later phases (moves are authored with first windups >= 0.46)
   recoveryScale: [0.9, 0.8, 0.8], // (never below phase 2's: the first half of a recovery is the hero's)

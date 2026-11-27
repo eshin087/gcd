@@ -29,6 +29,57 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'Instant slashes, and a quieter left hand to choose',
+        notes: [
+          'Every sword attack now leaves one straight slash line where the blade passed, instead of the curved arc: a turning cut leaves three straight cuts around you, a thrust a short streak, a heavy blow a thicker violet line. Add ?slash=arc to the address for the arc as before.',
+          'Being tried out: add ?offhand=side, ?offhand=back or ?offhand=quiet and your free hand hangs loose at your side, rests behind your back, or keeps its moves close to your body during one-handed attacks.',
+          'Also being tried out: add ?feel=snap, ?feel=weight or ?feel=flow for the same attacks with a crisper, heavier or more fluid feel, light and heavy alike.',
+          'The slash is now an ending slash: as each swing ends a straight cut flashes across your foe, running the way your sword went. Your light combo is now a new one built for it (add ?combo=0 for the old one, or ?combo=b, c or d for three more).',
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'Blue and red blows you can read, and quick blows',
+        notes: ['Lu Wusheng, Wen Yao and the Cinder Wyrm now hold still for a moment before every blue or red blow: tall for blue, low for red. The blow lands that moment later; its cue and timing are as before.', 'Each of them has a new quick white blow, straight from the stance with no wind-up: block it or parry it on the glint.', "Wen Yao's feet no longer jump as he steps into a blow."],
+      },
+      {
+        date: '2026-11-26',
+        title: 'A ninth level: the Veiled Crossing and Bai Wuji, the Untouched',
+        notes: [
+          'A new level, the Veiled Crossing: a city crossing levelled before you came, at night under a black veil. Pick it on the title screen.',
+          'Its boss is Bai Wuji, the Untouched: a tall man in a white coat, his eyes covered, his hands in his pockets. Your blade stops short of him. A perfect parry or a perfect dodge opens his barrier for a few seconds.',
+          'Every blow of his throws you, through whatever stands behind you. A block costs no health but slides you back and takes a big share of your guard: the third in a row knocks it open. His spells cannot be blocked at all.',
+          'He waits for you to come to him: if your blade has not reached him for 30 seconds, his eyes burn and every block costs your whole guard until it does.',
+          'At two thirds the blindfold comes off. At one third he makes a hand sign and a dark sphere closes on the arena: dodge through its wall at the last moment, or be caught. The last phase is fought inside the void, and the bonfire goes out until the city comes back.',
+          "Halcyon's thrown pieces now land on the road instead of bursting in mid-air, and the metal rubble in his city lies grey instead of glowing orange.",
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'Xin Yi rebuilt: a man in a coat, readable windups, faster hands',
+        notes: ['Xin Yi now looks like a man in one long open coat, drawn like the hero.', 'His kicks land with the leg straight and his punches with the arm long, every blue or red blow has a windup pose you can read, his gun is aimed down his arm, and he has two new quick strings.'],
+      },
+      {
+        date: '2026-11-26',
+        title: 'Shen Hui and Varr Nihil hold their swords like swordsmen',
+        notes: [
+          'Shen Hui and Varr Nihil hold their blades in line with the hand and arm, and their arms open at the end of a blow.',
+          'A blow to parry is wound up with the blade raised high and held; a blow to dodge, sunk low with the blade trailing near the floor. The timings are the same.',
+          'Varr Nihil ends a string with a shake of the steel instead of a twirl. Each has two quick blows thrown straight out of the guard: block or parry them.',
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'The bosses shaded and outlined like the hero',
+        notes: ['Shen Hui, Varr Nihil, Tian Lei, Lu Wusheng and Halcyon keep their own colours and clothes but are lit the way the hero is: bright where the light catches them, falling off into dark letters on the shadow side. Three of them also get the hero\'s thicker outline on large screens.'],
+      },
+      {
+        date: '2026-11-26',
+        title: 'Tian Lei and Halcyon: held windups, quick jabs, and Halcyon fights like a flier',
+        notes: ['Every parry or perfect-dodge blow of Tian Lei and Halcyon now winds up into a held pose of its own, so you can read it before the flash. Each has two quick jabs thrown straight from his guard. Halcyon flies into his blows instead of standing on air, and his fists meet you, not the air over your head.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'The drakelings never dive on top of the wyrm\'s blows',
         notes: ['In a long flurry of the Cinder Wyrm\'s, a drakeling could dive in the same instant as a blow that needed the other answer. It now waits for a clear moment, or burns out harmlessly, and the wyrm\'s embers never come due beside its dive.'],
       },

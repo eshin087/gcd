@@ -5,6 +5,254 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Instant slashes on every attack, and four left-hand looks to pick from (ADR-240; branch `claude/hero-instant-slash`, held)
+
+**Owner:** "lets just do this. use the current production auto attack combo and remove the curvy slashes with the
+instant slashes and make the left hand look more natural and not stand out so much as it looks unnatural and off.
+scrap all the new stuff." Asked: the slash on everything incl. the flurry; film 2-3 left-hand options; close
+PRs #118 and #166; a held PR with a preview first.
+
+**What changed:** PRs #118 (instant cuts, steel, four combos) and #166 (the joint-posed arm) closed unmerged.
+`slashFx.js`: the straight line of the closed instant cuts' `blinkFx.js`, driven by every attack's active
+window (a chord; a turn's three chords; a thrust's streak; the heavy look with a kick); `player.js` draws no
+crescent behind it (`?slash=arc` does); the plunge keeps only its straight streak; the flurry's split / vault
+finisher draws its swept path's chord. `offHand.js` + anim.js `_sideHand` / `_sideLinger` / `sideHand` (ported from
+#118's `side` hand): `?offhand=side|back|quiet`, a rest the body carries with a pendulum on it, worn by every
+clip that never keys `two`; '0' (production) stays the default until the owner picks. The pose gains `P.sd`
+(N 62). Lab rows `slash`, `offhand`. Scenarios `instantslash`, `offhand`.
+
+**Verification:** the scenarios; `herolife`, `herohand`; films: crescent vs line (the combo; light-light-heavy)
+from the game camera, and the four left hands close and from the game camera.
+
+**Round 2:** the owner found the lines "out of place and a bit lagged" and asked for variations of the combo's and
+the heavies' feel with their own left hands. The line now comes as the visible swing ends (`SWING`); `feel.js`
+`?feel=snap|weight|flow` (+ `?offhand=auto` pairs each with its hand); scenario `feel`; films of the four (the
+combo from the game camera and close, Piercing Gale, light-light-Whirling Tempest).
+
+**Round 3:** the owner meant an ENDING slash, not a trace of the swing, and asked for four new light combos built
+for it (timing may change). `slashFx.js` places a fixed-length line a beat after the swing (`?endslash=`,
+`?endbeat=`); `combos.js` `?combo=a|b|c|d` (Iai, Tempest, Mountain, Dancer) from production's swings, each with
+its timing, feel and hand; scenario `combos`. Films: the four combos beside production, and the 3 places × 2
+timings at the wyrm.
+
+**Round 4:** baseline combo A + the slash on the enemy as the swing ends (now the defaults; the sims keep
+production's chain). The yellow flicker was the free hand behind his back passing through the coat's back
+panels: the free wrist joins the coat's sheet test. The slash came at the contact from the windup's motion (the
+bite read as the swing's end): it now waits out the bite and follows the blade's on-screen motion (camera
+projection, speed-weighted), revealed from the swing's start side; measured per light hit and heavy branch.
+
+**Open / next:** the owner's verdict on the revised baseline.
+
+## 2026-11-26 — Lu Wusheng, Wen Yao and the wyrm audited; held blue / red windups, released feet, quick blows (ADR-223; branch `claude/enemies-grove-fox-wyrm-motion-59bc46`)
+
+**Task** (from the session coordinating the boss motion pass): audit and fix Lu Wusheng's, Wen Yao's and the Cinder
+Wyrm's poses and motion; give their blue / red attacks readable held windup poses; add a few much faster normal
+blows; films before / after, the owner picks; behind switches.
+
+**Measured** (`tests/integration/motionAudit.mjs`; `sheath.mjs . audit`, `fox.mjs . audit`, `integ.mjs . wyrmaudit`,
+env `GCD_MOVES`, `GCD_LOOKS`, `GCD_TRACE`, `GCD_AUDIT_OUT`): the blue / red blows that are not draws / casts / long
+charges held 0.00 - 0.13 s; Wen Yao's planted foot jumped up to 0.53 m in a frame (his clip lifting a foot his root
+had left behind); Lu Wusheng's scabbard cuts fling the free hand 0.32 m in a frame; facing at the impact fine.
+
+**What.** `duelist/heldTells.js` (+ `realise.js` `keysOf` → `{ keys, hold }`); `anim.js` `opts.liftEase` (bosses
+only, `kit.animOpts`); `dragon/tellPose.js`, `tuningMotion.js`, attacks.js makeString; the quick blows in each boss's
+moves / tuning; Lab LOOKS rows (awaiting). Tests: sheath / fox `motion`, integ `wyrmheld`, the data floors.
+
+**Verified.** The suites' scenarios; films at the game camera and a side view (headless Edge, `__tick`): before
+| a | b for four blows a boss, the quick blows, sent to the owner.
+
+**The owner's picks** (from the films): `a` for all three bosses, every quick blow: the defaults (PICKED).
+With them on, `npm test` found latent wyrm faults through the seeded fights' drift: a drakeling's dive released
+onto a blow (fixed on `main` by ADR-237 meanwhile; my own fix for it dropped in the merge) and the sky hunt
+landing up to its radius off its ground (fixed here). The attack table's hash re-pinned (the Snap swipe); the
+clearing's burn budget 9 -> 12.
+
+**Open.** Lu Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their
+session).
+## 2026-11-26 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (ADR-241 – ADR-243; branch `enemies/untouched`; planned by the lead, built by Opus agents)
+
+**Owner:** a boss after a famous white-haired, blindfolded sorcerer (named as the reference; nowhere in the game):
+"his iconic white hair with eyes covered. during the phases he will reveal his eyes and his hair will go down";
+"utilize the terrain and background to be part of the fight and be epic"; "one of those ultimate beings, we need
+to make this fight very hard in terms of skill level ... make his blows feel powerful and knocks the players back
+a bit if they get hit ... pretty much forcing the player to parry/dodge everything". Their four answers: the arena
+a ruined city crossing at night; his barrier stops the blade and opens on a perfect parry or a perfect dodge; a
+block holds and costs no health but throws the hero back and takes a big share of the guard, and his spells
+cannot be blocked; at the last phase the hand sign and a closing sphere: perfect-dodge through it or be held and
+struck once, and either way the last phase is fought inside the void. Picks from the rendered sheets
+(2026-11-25, `docs/looks/veil/`): coat c (bone-white), hair b (short spiky burst, then a choppy mop), the
+crossing a (ash moon), the void b (the ring), the barrier a (all but invisible until a blade nears), the Null a
+(a hard-edged slab). Halcyon's thrown pieces landing on the road: "yes, Halcyon too".
+
+**How it was built.** A brief and a core first (the level on a stand-in set, the boss folder with its rules and
+a routing contract, `veil.mjs`), then three waves of Opus agents each in its own worktree on the core: body, fx
+and world; melee, spells and terrain (each its own move file and handler); an integration pass; a tuning pass
+with a bench of five mortal bots. The lead merged and wrote the docs.
+
+**What.**
+- `?level=veil` (`levels/veil.js`, aliases `crossing`, `veiled`, `wuji`, `untouched`), the set
+  `world/veiledCrossing.js`: a rubble plain where two 21 m roads cross, the scramble's bars in the slabs, a
+  crater field, an old wide trench, a fallen tower in six sections across the north, four tower stumps whose tops
+  can come down, a broken footbridge and gantry, eight cars, a bus, six loose road slabs; 299 breakables, 67 rigid
+  pieces, 268 bones, 129k triangles (under Halcyon Plaza's budget). Two scenes, `crossing` and `void` (the
+  Hall's contract), the void's stars a `LetterBatch`, floating pieces he can drop and cast. Its blocks in every
+  living-world tuning file.
+- `entities/enemies/untouched/`: the duelist engine plus the barrier (`barrier.js`), the pull (`pull.js`), the
+  domain (`domain.js`) and three move files routed by `moves.js` (melee, spells, terrain; 33 moves and two
+  transitions). His body in the hero's ink-line art, printed the bossPrint way; his effects in the fire field
+  (`azure` and `crimson` palettes); 18 sounds of his own.
+- Player: three generic hit fields (`blockPush`, `wjCrash`, `Player.hold`, capped 1.2 s).
+- Destruction: `throwTo` / `drop` `{ ground }`, `take` `{ chip }`, a held piece cut under 1 hp breaks; scars:
+  `SCAR.thin` per level (veil: grit 0.35, rubble 0.25, ground 0.4, `cool`), `scars.layer`, `scars.shade`, a wide
+  `beam` trench. Halcyon's `_throw` lands on the floor.
+- The bench: `tests/integration/bench.mjs`, opt-in scenario `bench` in `veil.mjs`, `city.mjs`, `asc.mjs`.
+
+**After round one, the owner's answers** (five questions): "3 blocks" (the third block in a row opens the guard,
+not the second); a defender who never attacks must not outlast him; the roller lasting ten minutes was "hard
+enough"; Halcyon Plaza's metal rubble grey "if it looks better grey then yes" (the lead judged from a
+side-by-side sheet that it does: the orange read as embers that never go out and clashed with the plaza's blue);
+the bonfire goes out in the void: yes. Round two built them: `wjWeight.guardCost` 0.45 (two blocks leave 10 of
+the meter, the third opens it, for blocks up to about 1 s apart); his PATIENCE (`untouched/patience.js`: no cut
+has reached him for 30 s, his eyes burn 1.2 s and the unveiling's sound plays, then every blocked blow costs the
+whole meter until a cut reaches him again); the bonfire out as the front into the void passes it, lit again on
+the way back and on a reset (`atmosphere.bonfireLit`); `SCAR.thin.city` cool and `?coolRubble=0|1` on any level;
+the bench's bots stay busy until 0.25 s after each answered impact (the perfect bot had cut out of its own roll
+and lost the i-frames) and `GCD_BFORM`, `GCD_BHIT`, `GCD_BTOUCH`; the suite's ordinary parry pressed 0.25 s ahead
+after ADR-227 (main: the perfect parry window 0.20 s).
+
+**Decisions.** ADR-241 (the boss and his rules), ADR-242 (what changed in the destruction), ADR-243 (the tuning,
+the bench, patience, the floor marks, the bonfire). The lead's one addition to the owner's barrier rule: cracks
+(ordinary parries; four open it for less time). Why patience: the pace bot never damaged him (phase 1 forever);
+its guard opened ~100 times in 9 minutes, but the blow that emptied it was itself blocked, his next came after
+the 0.55 s opening, the mercy rules spared 1 - 11 more and its early rolls i-framed every red. Settings tried:
+none, alive 6 of 6; a one-block cost after 20 s, dead in 102 - 383 s; after 30 s (shipped) 201 - 525 s; after
+40 s 83 - 518 s; a two-block cost (0.7), alive.
+
+**Verified.** `veil.mjs` all (levels, data, barrier, weight, crash, pull, domain, phases, fight, pace, events,
+downtime, strings, sides, spark, mix, chase, the spells', the terrain moves', letgo, into, heldbreak, floor,
+patience, bonfire, body, fx); `world.mjs`, `city.mjs`, groundfx quick runs; `npm test` by the lead. The bench (6
+seeds, god mode off, 600 s cap; wins of 6; Halcyon and Tian Lei from round one):
+
+| Bot | before the tuning | round one | round two (shipped) | Halcyon | Tian Lei |
+|---|---|---|---|---|---|
+| perfect | 6, 176 – 186 s | 6, 235 – 241 s, 0 hits | 6, 229 – 241 s, 0 hits | 6, 133 – 155 s | 6, 42 – 60 s |
+| fencing (90 %) | 3 | 2 (260 – 272 s), 4 dead | 2 (264 – 290 s), 4 dead | 6 | 6 |
+| roller | 6 | 1 won, 1 dead, 4 alive at 600 s | 6, 374 – 427 s | 3 | 6 |
+| blocker | 0 | 0, dead at 83 s mean | 0, dead at 89 s mean | 0, dead at 309 s | 0, dead at 78 s |
+| pace (never attacks) | alive | alive, his bar at 92 % | dead in all six, 203 – 488 s (mean 302) | dead at 422 s | alive |
+
+Set: `hp` 20000 → 26000, `wjWeight.guardCost` 0.4 → 0.5 (round one) → 0.45 (round two), `wjBarrier.cracks` 3 → 4,
+`wjPatience { after 30, cue 1.2, guardCost 1 }`; the Wrecking Knot strikes only from its impact to +0.15 s (the
+perfect bot took 46 from it on seed 4242 before). The roller's win comes from the third-block rule, not from
+patience (at 0.5 it won none); `blockPush` 3.4 → 2.4 would give it 4 of 6 (measured, not shipped). The fencing
+bot's 0.12 s parries are all perfect since ADR-227. A filmed god-mode fight before the tuning: won in 187 s,
+phases at 64.5 / 131.8 s, 80 parries, 30 dodges, no error; after round one, the perfect bot's fight and the
+domain filmed in the real renderer.
+
+**Open.**
+- The roller now wins in six to seven minutes (the owner called ten "hard enough"; a shorter `blockPush` is
+  the lever). The fencing bot's 2 of 6 depends on the seeds.
+- The real renderer lays ~30 % more floor marks than headless. On the phone his two eyes merge into one point.
+  The hero's knockdown (1.3 s) is the engine's, over the 1.2 s cap his own blows keep.
+- No reward yet. Not playtested by a human; not checked on the owner's iPhone.
+
+---
+## 2026-11-26 — Xin Yi rebuilt: a man in a coat, readable windups, faster hands (ADR-221; branch `claude/enemies-xinyi-rebuild-1bbc62`)
+
+**Owner:** "the neo boss anatomy and attacks are all weird too ... fix the neo character details because right now
+its a mess and can't tell if its a human". (A side session of the bosses' motion round.)
+
+**Diagnosis** (headless Edge + CDP rig, x4 game-camera crops beside the hero from three sides in every phase, solid
+views from four sides, film strips of 11 moves, `woke.mjs . audit`, an aim probe at each shot's impact): a bright jade
+outline round a near-black fill (the bosses' print lifts his near-grey fill to ~3x the hero's coat); a bottle build
+(narrow shoulders, the skirt flaring from the chest past them); a head of three letters; one-armed in phase 1 (the
+left hand behind his back); the one-gun aim 36 degrees off the hero, the forearm across his face; no windup pose of
+its own for any blue / red blow; nothing quick out of his guard. Sent to the owner as a sheet.
+
+**What:** `?oneBody=a|b|c` (gear.js `SHELL_MAN`, `COAT_MAN`, belt, hair; look.js `BODY_INK`; sheet.js panelSkirt's
+optional `cone`), `?oneMoves=a` (moves.js `MOVES_A`: `AIM_SIDE`, `heldTell`, `fast`; `snapHands`, `quickFoot`;
+tuning.js `held`, `fast`; wokenOne.weigh), Lab LOOKS rows (awaiting), PENDING. Tests: woke `rebuild` (each figure
+builds, prints the hero's way, the coat's hem height; the rebuild keeps every move's timing; 37 blows hold their
+coil; the fast strings' floors and weights; the aim within 12 degrees), env `GCD_LOOKS` for any suite run.
+
+**Numbers:** aim 36 -> 2 - 11 degrees; audit worst jolt 1035 -> 985 mm/f2, the sweep 872 -> 499 - 819 (its tuck is
+pre-existing); the held spin kicks' windups ~25 % more jolt (first try held from 0.46 of the windup: up to +75 %;
+the draw now keeps 0.75 of its time).
+
+**The owner's answer:** "lets do open coat" (`oneBody` b in PICKED), the kicks straight ("a straight line when his
+kick is out"), the coat one piece and not like the hero's cloak, the punches and acrobatics natural. Done: one coat
+(five overlapping panels, one back panel, a straight hem, no pale hem: printed as part 5; 30 degrees of swing at
+most), straight kicks (anim.js `kickStretch`, `legSoftA`, `longLeg`: knees 166 - 173 at contact), long punches
+(`armSoftA`, `longArm`: elbows ~169), the butterflies' travel cut (feet no longer inside the hero). The audit:
+the spin kick after a straight kick jolts ~40 - 60 % more (the leg comes back further). Tests: REBUILD grew the
+kicks' reach, the punches' reach, the animator switch, a front kick's knee (173), the coat's swing in a flip.
+
+**Then:** "Yes, make default": the rebuilt moves are his default (`oneMoves` a in PICKED).
+
+**Open:** phase 1's hand behind the back; the sweep's tuck (Tian
+Lei's builder: the motion-tian-halcyon session owns it).
+## 2026-11-26 — Shen Hui and Varr Nihil: the sword in the hand, held tell poses, quick blows (ADR-226; branch `claude/enemies-ash-lord-motion-0f152b`)
+
+**Task** (from the owner via the lead session): their positioning angles look weird and the weapons are held
+awkwardly; every blue / red blow its own readable held windup; some much faster normal blows; audit first, fix,
+film before / after, the owner picks, behind a switch.
+
+**Measured** (new `tests/integration/swordAudit.mjs`, opt-in `audit` in duel.mjs / lord.mjs): the forearm-to-blade
+angle 45° / 64° on average, up to the animator's 128° limit (the hero ≤ 60); the blade through their heads in nine
+overheads; elbows never past 145°; Varr Nihil's end-of-string twirl jolting the point 1.0 - 2.5 m a frame². The
+chest is square to the hero at every impact (≤ ~20°), so "angles" at the blow itself measured fine: the angle
+that reads wrong is the steel against the arm (sent to the owner as five clips and a findings note).
+
+**What.** `anim.js` `gripMax` / `_gripAlign` (opt-in: the forearm turned toward the blade round the elbow);
+`duelist.js` applies `kit.motion()` (gripMax, armSoft) each frame; `duelist/tellPose.js` (held tell families: blue high
+/ aim, red coil; `motionize`); `realise.js` `recoveryKeysOf`; per-boss `motionKeys`, `motionRecovery` (the Lord's
+shake), `quick` / `motionOnly` moves (Darting Needle, Flicking Willow; Rising Ember, Vigil's Fall) and
+`TUNING.motion` / `minQuickWindup`; `?ashMotion` / `?lordMotion` (PENDING, Lab LOOKS rows); links out of the quick
+blows; tests `swordmotion` (both suites), the data rule for quick blows, `GCD_LOOKS` env for any scenario.
+
+**Verification.** Audit on: Shen Hui's wrist ≤ 60° in every move, the blade ≥ 18 cm off his head; the Lord ≤ 60° bar
+one spell pose, the worst jolt per move 776 → 449 mm/f² on average. The pace meters pass with the switches on.
+Before / after films (game camera + a close side view, half speed) rendered with the scratch rig.
+
+**The owner's pick** (from the films): "i like the new timings and changes", Piercing Ash keeping its old
+thrust; both switches are the default (`?ashMotion=0` / `?lordMotion=0` give back the motion before).
+
+**Open.** Feet: a planted foot still slides where a clip takes it over (the grove session's
+`liftEase` may serve); legs cross inside the spins. Varr Nihil's Starless Night cast keeps a 91° wrist.
+
+---
+## 2026-11-26 — The bosses drawn in the hero's style: his shading and his outline (ADR-220; branch `claude/render-boss-hero-look-631f37`)
+
+**Ask.** Make Shen Hui, Varr Nihil, Tian Lei, Lu Wusheng and Halcyon look like the hero's ASCII art (the Cinder
+Wyrm, Wen Yao and Xin Yi out of scope).
+
+**Analysis** (the hero beside each boss at the game camera, 720p / 1440p / the phone, x4 crops): the bosses
+printed almost every cell as an equally bright dense letter (ADR-194's lift saturates the ramp), inside a 1 px
+line; the hero runs from a near-black core through grey shoulders to a lit lavender edge and the pale hem,
+inside a 2 px (1440p) chunky dotted line. Three bosses also use letters half his size from 1080p up; their
+skirts are slim.
+
+**Round 1, turned down.** Options a (his letter size, his dark cloak values in each boss's hue, the pale hem to
+the thigh) and b (a + skirts flared and torn): "i dont like any of these new bosses. i didnt mean make it the
+same color or cloth texture as the main character. i meant the style and engine look. for example, shen hui i
+like that his original hat has its own color and detailed ascii look". Asked which part of his look, they
+picked **his shading** and **his outlines and rim** (not his letter size).
+
+**Round 2, picked.** `?ashHero= / lordHero / ascHero / sheathHero / halHero = 0 | a | b | c`: a his shading
+(`U.uBossHero.x`: a boss's cloth light falls off away from the key light and down his body; colours, head and
+hat, face, hem kept), b his outline (`uBossLike.z`: the boss's ink lines at the hero's line width `uSelfPx`, the
+letters his own), c both. **Picks:** c for Shen Hui, Varr Nihil and Lu Wusheng; a for Tian Lei and Halcyon
+(their letters follow their size already, so their lines are the hero's width: b does nothing on them).
+
+**Tests.** `bosshero` (new, in run.mjs): the table, the Lab rows, the picks as defaults, no allocation per
+frame, the shader levers only on a boss and only on his light (never `artFill`, never his head), every boss's rig
+builds sharing the uniform. duel `fxlooks` (PICKED against the Lab) green.
+
+**Cost.** A few ALU per boss fragment; the outline taps the same pixels at a wider step. No new texture, pass or
+draw call; no geometry (the cost budget is unchanged).
+
+**Next.** The owner sees them in play and on the iPhone (the outline only shows from 1080p up; the phone and 720p
+get the shading alone).
 ## 2026-11-26 — A brood cue whose wait ran out keeps the cue spacing (ADR-237; branch `claude/vigorous-wilbur-3c128e`)
 
 **Task** (the follow-up from ADR-227): the brood's dive after `busyWait` landed within 0.3 s of a wyrm cue of
@@ -51,6 +299,29 @@ with 4242 run alone, breath / drakelings in P3 (63.5 s). It exists on main (the 
 scenario keeps the old 0.08 s perfect window for the steady bot's stray parries, so it measures the director
 on its old path. **Open:** played by the owner; whether the slow-motion beat on every parried blow of a string
 is too much now (the `short` beat, `combat/perfectFx.js`); the brood fix.
+## 2026-11-26 — Tian Lei's and Halcyon's motion: held windups, snap blows, Halcyon a flier (ADR-225; branch `claude/enemies-tian-halcyon-motion-efe595`)
+
+**Task** (the motion pass the owner asked for: every boss audited; readable held blue / red windups; a few much
+faster normal blows; options rendered and picked). This session: Tian Lei and Halcyon.
+
+**Measured.** `asc.mjs . audit` and a new opt-in `city.mjs . audit` (the same measure for a flier). Findings in
+ADR-225: no held pose on blue / red blows (the coil at u 0.7 - 0.78); Halcyon stood on air in every blow and
+punched over the hero's head with a crooked arm; the sweep's knee jolt and sliding feet; the dash thrusts skate;
+the cross lands to the side.
+
+**What.** `ascendant/motion.js` (held windups, `SNAP_KEYS`), `halcyon/motion.js` (the flier's legs, the aim, the
+dip in `flight.js`, `armSoft`), `mo` descriptors on the builders' beats, the snap moves (`snapJab`, `snapHook`,
+`flick`, `tap`), `TUNING.snap`, Lab LOOKS `ascMotion` / `halMotion` (PENDING). Tests: asc.mjs `heldmotion`,
+city.mjs `halmotion`, DATA's snap rule, GCD_LOOK in both audits. Films: before | after at the game camera and a
+close side view (scratchpad rig, not committed).
+
+**The owner's pick:** "Ship both (a)": both switches are the default (PICKED). Main had dropped the realiser's
+`keysOf` hook meanwhile (ADR-236, unused then): restored for this use.
+
+**Open.** Not fixed yet: the sweep's jolt, the dash thrusts' skating, the cross's sideways line, Fly-By's pass height.
+
+---
+
 ## 2026-11-26 — The lite world on a phone at AUTO's floor (ADR-216; branch `render/phone-lite`)
 
 **Owner:** the BENCH from their iPhone (fox: the world pass 11.8 of 13.3 ms; half the pixels only 32 % less);

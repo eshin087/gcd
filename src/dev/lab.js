@@ -24,6 +24,11 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
+import { SLASH_IDS, slashMode, setSlash } from '../entities/player/slashFx.js';
+import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
+import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
+import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combos.js';
+import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
@@ -808,7 +813,7 @@ export class Lab {
    *  reload. Only in a duelist's level; collapsed by default (it is long). */
   _buildLooks(root) {
     const id = this.game.level?.id;
-    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox' && id !== 'grove' && id !== 'city') return;
+    if (id !== 'ash' && id !== 'starless' && id !== 'ring' && id !== 'fox' && id !== 'grove' && id !== 'city' && id !== 'veil') return;
     if (this.prefs.collapsed && !('looks' in this.prefs.collapsed)) this.prefs.collapsed.looks = true;
     const { body } = this._section(root, 'looks', 'LOOKS');
     this.ui.looksSync = buildLooks(body, id, (t) => this._status(t, 'ok'));
@@ -916,6 +921,18 @@ export class Lab {
       button(grid, 'Explode', () => D().explode(1)).title = 'the car nearest the hero breaks (by the hero): its fuse, then it goes up';
       button(grid, 'Crash', () => D().crash()).title = 'THE CRASH now: thrown off his line into the first cover on it';
       for (const n of [1, 2, 3]) button(grid, `City ${n}`, () => D().cityPhase(n)).title = `the city's light as in his phase ${n} (1 neon, 2 crimson screens, 3 dark)`;
+    }
+    // Bai Wuji, the Untouched: the barrier, the domain, the pull, the blink
+    if (typeof this.game.dragon?.debug?.domain === 'function' && typeof this.game.dragon?.debug?.barrier === 'function') {
+      const D = () => this.game.dragon.debug;
+      button(grid, 'Barrier open', () => D().barrier('open')).title = 'the Unreached opens now (as after a perfect parry)';
+      button(grid, 'Barrier up', () => D().barrier('up')).title = 'the Unreached closes again now';
+      button(grid, 'Crack', () => D().barrier('crack')).title = 'one crack in the barrier (as an ordinary parry)';
+      button(grid, 'Domain escape', () => D().domain('escape')).title = 'the Measureless: the hero dodged through the wall (into the void, the barrier open)';
+      button(grid, 'Domain caught', () => D().domain('caught')).title = 'the Measureless: the hero is caught (held, one blow, never lethal), into the void';
+      button(grid, 'Void break', () => D().domain('break')).title = 'the void breaks: the crossing returns';
+      button(grid, 'Pull', () => D().pull()).title = 'an Azure Draw knot where the hero stands (it drags him)';
+      button(grid, 'Blink', () => D().blink('behind')).title = 'he is behind the hero now';
     }
     const row = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'HP', row);
@@ -1445,6 +1462,29 @@ export class Lab {
       b.title = `?mystic=${m}: ${MYSTIC_NAMES[m]}`;
       return { m, el: b };
     });
+    // every swing's mark (slashFx.js, ?slash=arc) and the free hand in a one-handed swing (offHand.js,
+    // ?offhand=side|back|quiet), live
+    for (const [lbl, ids, set, key, tip, name] of [
+      ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: line = the instant straight slash, arc = the curved crescent as before (?slash=arc)", (m) => m],
+      ['combo', COMBO_IDS, setCombo, 'comboBtns', 'four light combos for the ending slash: prod = as it ships, a Iai, b Tempest, c Mountain, d Dancer (each with its feel and its free hand) (?combo=)', (m) => (m === '0' ? 'prod' : `${m} ${COMBOS[m].name}`)],
+      ['endslash', PLACE_IDS, setPlace, 'placeBtns', "where the ending slash is drawn: target = ahead of him where the foe stands, body = across him, enemy = across what it hit, blade = along the blade's path (?endslash=)", (m) => m],
+      ['endbeat', BEAT_IDS, setBeat, 'beatBtns', 'when the ending slash comes: beat = a short pause after the swing, 0 = as it ends (?endbeat=)', (m) => m],
+      ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
+      ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', "the free hand in a one-handed swing: auto = the feel's own, prod = as it ships, side = loose at his side, back = behind his back, quiet = its gestures pulled in (?offhand=)", (m) => (m === '0' ? 'prod' : m)],
+    ]) {
+      const r = el('div', 'lab-row', null, body);
+      el('span', 'lab-lbl', lbl, r).title = tip;
+      const g = el('div', 'lab-grid', null, r);
+      g.style.flex = '1';
+      this.ui[key] = ids.map((m) => {
+        const b = button(g, name(m), () => {
+          set(m);
+          this._syncCutBtns();
+        });
+        b.title = `?${lbl}=${m}`;
+        return { m, el: b };
+      });
+    }
     // the wyrm's heads (entities/dragon/heads.js, ?wyrmFace=): a build-time choice, so a page reload
     const wfr = el('div', 'lab-row', null, body);
     el('span', 'lab-lbl', 'head', wfr).title = "the Cinder Wyrm's heads (?wyrmFace=; reloads the page): drake as it ships, old = the head before, the rest shown and passed on";
@@ -1555,6 +1595,12 @@ export class Lab {
       setClass(this.ui.ripBtn, 'on', ripMode() !== 'off');
     }
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
+    for (const { m, el: b } of this.ui.slashBtns ?? []) setClass(b, 'on', slashMode() === m);
+    for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
+    for (const { m, el: b } of this.ui.feelBtns ?? []) setClass(b, 'on', feelMode() === m);
+    for (const { m, el: b } of this.ui.comboBtns ?? []) setClass(b, 'on', comboMode() === m);
+    for (const { m, el: b } of this.ui.placeBtns ?? []) setClass(b, 'on', placeMode() === m);
+    for (const { m, el: b } of this.ui.beatBtns ?? []) setClass(b, 'on', beatMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;

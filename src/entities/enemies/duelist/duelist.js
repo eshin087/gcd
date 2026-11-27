@@ -131,7 +131,8 @@ export class Duelist {
       position: this.position, yaw: 0, state: 'duel', stateT: 0, animT: 0, atk: { def: null },
       groundVel: { x: 0, z: 0 }, kb: { x: 0, z: 0 }, chargeK: 0, releaseK: 0, recoil: 0, lockOn: false, guardHold: 0,
     };
-    this.anim = new HeroAnimator(this.rig, this.pilot, kit.poses);
+    // (kit.animOpts: a boss's own animator options, e.g. its feet's release ease; ADR-223. None: as before)
+    this.anim = new HeroAnimator(this.rig, this.pilot, kit.poses, kit.animOpts);
     // his drawn size (kit.scale; HERO_SCALE by default): visual only, as the hero's
     this.drawScale = kit.scale > 0 ? kit.scale : HERO_SCALE;
     this.pilot.drawScale = this.drawScale;
@@ -985,6 +986,10 @@ export class Duelist {
         // (a parry moment ends the string: the hero's parry holds it as a last blow)
         last: o.beat ? !!o.beat.last || (!!o.beat.def?.flare && tell === TELL.BLUE) : true,
         flare: !!o.beat?.def?.flare || !!o.flare,
+        // (a beat's own block: `blockPush` m of slide, `guardCost` points of the meter; absent: the
+        // engine's DEFENSE.blockPushback / GUARD.cost, as before)
+        ...(Number.isFinite(o.beat?.def?.blockPush) ? { blockPush: o.beat.def.blockPush } : null),
+        ...(Number.isFinite(o.beat?.def?.guardCost) ? { guardCost: o.beat.def.guardCost } : null),
         ...(o.extra ?? null),
       });
     } catch (err) {
@@ -1020,6 +1025,13 @@ export class Duelist {
     this._updateLean();
     // the animator poses the plain upright body (as the hero's): gameplay points come from it
     this.lean.on = false;
+    // the sword motion pass (ADR-226; kit.motion: the boss's numbers while its switch is on, else null):
+    // the forearm turned toward the steel, the arms opening at the end of a blow
+    if (this.kit.motion) {
+      const M = this.kit.motion();
+      this.anim.gripMax = M?.gripMax ?? 0;
+      this.anim.armSoft = M?.armSoft ?? undefined;
+    }
     this.anim.update(dt);
     this._gameplayPoints();
     // the body answering a hit (react.js): over the upright pose, after every gameplay point

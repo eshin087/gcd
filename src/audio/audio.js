@@ -1145,6 +1145,22 @@ export class AudioEngine {
     on('dragon:tower', (d) => this.play('crash', { x: d?.x, z: d?.z, mat: 'stone', power: 3 }));
     on('dragon:split', (d) => this.play('crash', { x: d?.x, z: d?.z, mat: 'metal', power: 1.5 }));
     on('dragon:statue', () => this.play('crash', { ...this._atDragon(), mat: 'stone', power: 1 }));
+    // Bai Wuji (the Veiled Crossing; the fx agent's sounds go here: on('dragon:barrier' ...), on('dragon:domain' ...))
+    // his barrier's states, the domain's moments, and his effects' own sounds (untouched/fx.js emits
+    // `dragon:spell { name: 'wj...' }` once per effect; recipes in sfx.js)
+    on('dragon:barrier', (d) => {
+      const s = d?.state === 'stop' ? 'wjStop' : d?.state === 'crack' ? 'wjCrack' : d?.state === 'open' ? 'wjOpen' : d?.state === 'close' ? 'wjClose' : null;
+      if (s) this.play(s, this._atDragon({ n: num(d.cracks, 1) }));
+    });
+    on('dragon:domain', (d) => {
+      const s = d?.state === 'caught' ? 'wjCaught' : d?.state === 'break' ? 'wjBreak' : d?.state === 'void' ? 'wjVoid' : d?.state === 'escape' ? 'wjBlink' : null;
+      if (s) this.play(s, { x: num(d.x, 0), z: num(d.z, 0) });
+    });
+    on('dragon:spell', (d) => {
+      const n = d?.name;
+      if (typeof n !== 'string' || !n.startsWith('wj') || !SFX[n]) return;
+      this.play(n, { x: num(d.x, 0), z: num(d.z, 0), dur: num(d.dur, 0) });
+    });
     // the world breaks (ADR-107): a blow on wood / stone / metal, something coming down, fire catching
     on('world:impact', (d) => {
       const o = { x: d.x, z: d.z, mat: d.mat, power: num(d.power, 0.5) };

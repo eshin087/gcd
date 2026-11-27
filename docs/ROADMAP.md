@@ -189,6 +189,53 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.93 — Boss motion: Lu Wusheng, Wen Yao, the wyrm (2026-11-26, `claude/enemies-grove-fox-wyrm-motion-59bc46`, ADR-223)
+- [x] The audit tool (`tests/integration/motionAudit.mjs`): hands, pops, sliding feet, facing, the held windup per tell
+- [x] Held blue / red windups, coloured (blue tall, red low), behind `?sheathMotion=` `?foxMotion=` `?wyrmMotion=`
+- [x] Wen Yao's lifted feet no longer jump (the release ease)
+- [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
+- [x] The owner's picks made the defaults (a for all three, every quick blow)
+- [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
+## M1.94 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-241 – ADR-243)
+- [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
+      fallen tower in sections, two scenes (`crossing`, `void`: the city's pieces let go, the void's float),
+      `setPhase`, the living world's blocks; `?wjCity=a|b|c`, `?wjVoid=a|b|c`
+- [x] Bai Wuji on the duelist engine: the barrier (perfect parry / perfect dodge / cracks / a break open it), weight
+      on every blow (`blockPush`, `wjCrash`), the pull, the domain (escape or caught, `Player.hold`), the mercy
+      rules; his moves in three handlers routed by `moves.js` (melee, spells, terrain)
+- [x] His body in the hero's ink-line art, the blindfold off and the hair down at phase 2; his effects in the fire
+      field (`azure`, `crimson`), his sounds; `?wjLook`, `?wjHair`, `?wjShell`, `?wjNull`
+- [x] The owner's picks: `wjLook` c, `wjHair` b, `wjCity` a, `wjVoid` b, `wjShell` a, `wjNull` a (2026-11-25;
+      sheets in `docs/looks/veil/`)
+- [x] Lab, Training, `tests/integration/veil.mjs`, the cost budget; the bench (`bench.mjs`) and the tuning:
+      `hp` 26000, a block 45 % of the guard (the third in a row opens it), four cracks; his patience (30 s
+      untouched: one block opens the guard), so a defender who never attacks dies
+- [x] `throwTo` / `drop` `{ ground }`, `take` `{ chip }`, a held piece breaks under 1 hp; Halcyon's throws land on
+      the road; `SCAR.thin`, `scars.layer` / `shade`; Halcyon Plaza's metal rubble cold grey (`SCAR.thin.city`,
+      `?coolRubble=0|1`)
+- [x] The bonfire out in the void, lit again on the way back (`atmosphere.bonfireLit`)
+- [x] The owner's answers (2026-11-26): "3 blocks"; a defender who never attacks must not outlast him; the
+      roller's ten minutes "hard enough"; Halcyon's rubble grey; the bonfire out in the void
+- [ ] The owner's playtest, on the iPhone too (the phone's eyes merge into one point)
+- [ ] His reward: the owner has not chosen one
+- [ ] The roller now wins in six to seven minutes (`blockPush` 2.4 is the measured lever); the fencing bot's 2 of
+      6 rides on the seeds
+- [ ] The real renderer lays ~30 % more floor marks than headless
+
+## M1.94 — Instant slashes, the left hand to pick (2026-11-26, `claude/hero-instant-slash`, ADR-240)
+- [x] PRs #118 and #166 closed on the owner's call: production's combo stays
+- [x] Every attack and the flurry's finishers: one straight slash line instead of the crescent (`slashFx.js`, `?slash=arc` the crescent)
+- [x] Three left-hand looks to compare, `?offhand=side|back|quiet` (`offHand.js`); scenarios `instantslash`, `offhand`
+- [x] Round 2: the line comes as the swing ends; three feels of the same moves, lights and heavies, each with its hand (`?feel=`, `feel.js`); scenario `feel`
+- [x] Round 3: the ending slash (`?endslash=`, `?endbeat=`) and four light combos built for it (`?combo=a|b|c|d`, `combos.js`); scenario `combos`
+- [x] Round 4: the owner's baseline (combo A, the slash on the enemy as the swing ends) is the default; the hand's coat clipping fixed; each line follows its sword's on-screen motion
+- [ ] The owner's verdict on the revised baseline; then the other combos, feels and hands go
+
+## M1.93 — Tian Lei's and Halcyon's motion (2026-11-26, `claude/enemies-tian-halcyon-motion-efe595`, ADR-225)
+- [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
+  behind `?ascMotion=a` / `?halMotion=a`
+- [x] The owner's pick of both switches: a, the default (2026-11-26)
+- [ ] Tian Lei: the sweep's knee jolt and sliding feet, the dash thrusts' skating, the cross's sideways line
 ## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
 - [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s
@@ -213,6 +260,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `player/runArms.js` `d`: the full pump (the default)
 - [x] `gear/handShape.js` `fistHand`: the free hand a closed fist (`?handLook=g`, the default; `h` a dark glove)
 - [x] `herorun` checks the carry: the blade always ahead, its elevation in range, the point off the grass, no pops
+
+## M1.90 — Xin Yi rebuilt: a man in a coat, readable windups, faster hands (2026-11-26, `claude/enemies-xinyi-rebuild-1bbc62`, ADR-221)
+- [x] Diagnosis: filmed at the game camera beside the hero and from four sides, measured (the audit, an aim probe); report to the owner
+- [x] His figure printed the hero's way on a man's build, three cuts (`?oneBody=a|b|c`): option sheets to the owner
+- [x] His moves (`?oneMoves=a`): the side-on aim, held blue / red windups, two fast strings; before / after films; the `rebuild` test
+- [x] The owner's pick of the figure: b, the open coat (PICKED); one coat, not the hero's cloak
+- [x] Straight kicks and long punches on the rebuild (the owner's ask); the coat held to 30 degrees through flips
+- [x] The owner's pick of the moves: the rebuild (`oneMoves` a in PICKED)
+- [ ] Phase 1's left hand behind his back reads one-armed from some sides; the sweep's tuck pops at the knee (Tian Lei's builder)
 
 ## M1.89 — 60 fps on every device: the frame's cost (2026-11-25, `render/perf-ground-steps`, ADR-199)
 - [x] A measured review: every level and the phone preset, GPU by pass and by object, script by function, the loop under a throttled CPU
@@ -246,6 +302,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A cut that shows in the printed grass (dgCut b); fallen leaves as lit lenses (leafLook a)
 - [x] The owner kept grass a (the depth steps stay behind `?dgGrass=a3d1..3`); the cut's chips made smaller
 - [ ] The phone's frame cost; remove the first round's looks a / c / d
+
+## M1.88 — The bosses drawn in the hero's style (2026-11-26, `claude/render-boss-hero-look-631f37`, ADR-220)
+- [x] The audit: the five human bosses beside the hero at 720p, 1440p and the phone (a report and sheets)
+- [x] Round 1 turned down (his letter size, his dark cloak values, the tall hem, flared torn skirts): not his colours or cloth
+- [x] `?<boss>Hero=0|a|b|c` (his shading, his outline, both); picks c Shen Hui / Varr Nihil / Lu Wusheng, a Tian Lei / Halcyon
+- [ ] Seen by the owner in play and on the iPhone
 
 ## M1.87 — The front: the sword's path and a loading screen (2026-11-25, `ui/gcd-front`, ADR-196)
 - [x] A loading screen from the first paint, an honest bar of the boot's steps (`?loader=a|b`; b the owner's pick)
@@ -667,7 +729,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] A missed blow in a long string costing most of the string; two guard cues from different sources 0.1 - 0.25 s apart
   - [ ] The guard stepping in 1 - 4 times a minute in the Lord's fourth form (world pieces his own blows fell)
   - [ ] Music for Shen Hui's third phase (picked by ear); sounds for the new moves and spells
-  - [ ] A joint-by-joint audit of the new poses; a palm strike for Shen Hui's free hand
+  - [ ] A joint-by-joint audit of the new poses (done for the sword: ADR-226, `audit`); a palm strike for Shen Hui's free hand
   - [ ] On the iPhone: frame rate in the Lord's fourth form with the weather and Starless Night
   - [ ] Remove the looks that were turned down and their switches, once the picks have been played
 
@@ -1128,8 +1190,8 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] An audit sheet: every boss beside the hero at the game camera, at 720p and on the phone preset,
       each scored against STYLE.md "The house style" (small fine digits, a dark body lit only where
       light catches, a stroke outline, no blank cell inside a shape); the ones that do not match named
-- [ ] The human bosses printed the hero's way (ADR-194) checked boss by boss; the ones it missed or
-      only recoloured brought over in their own colours
+- [x] The human bosses printed the hero's way (ADR-194) checked boss by boss; the ones it missed or
+      only recoloured brought over in their own colours (ADR-220: his shading and outline, their colours)
 - [ ] The non-human bosses and the summons (the wyrm, the fox's paper copies, spells and bolts in the
       fire field) checked the same way
 - [ ] The fixes in order of how far each is from the look; options rendered per boss for the owner
@@ -1143,6 +1205,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] Tells kept readable: a move's windup and its blue / red timing do not change unless the owner
       asks (COMBAT.md); the pace meters and the duel suites stay green
 - [ ] Each boss's polish as its own PR, the before / after strips shown to the owner
+- [x] Shen Hui and Varr Nihil (ADR-226): the sword audit (`audit`), the blade in line with the forearm, the arms
+      opening, held blue / red tell poses, the Lord's end-of-string shake, two quick blows each, behind
+      `?ashMotion` / `?lordMotion`, films sent
+  - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
+  - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and
@@ -1249,6 +1316,7 @@ map, the cost budget, `npm run perf`); its open items stay there. This list is o
       Ash Disciple's technique first (the next PR). The store it can read exists: `game/unlocks.js` (ADR-146)
 - [~] Fixed rewards per boss: the first, One Breath (the Sheathed's draw-slash, ADR-146), and the second, the Long Second (Xin Yi's lean, ADR-158), ship; the rest (techniques, weapons, abilities, elements); weapons of other lengths
   - [ ] Halcyon's reward: the owner has not chosen one yet (ADR-161)
+  - [ ] Bai Wuji's reward: the owner has not chosen one yet (ADR-241)
   - [ ] The Thousand-Body Fox's Paper Double (a decoy the foe strikes instead of the hero): recorded on the level, not usable (ADR-148); needs the technique slot, a button on every input, a target indirection in every boss's AI
       (the animator, the hit segment and the blade FX read `DIM`)
 - [ ] A hub that links the levels (the bonfire)

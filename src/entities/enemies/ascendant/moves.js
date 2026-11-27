@@ -3,7 +3,8 @@ import { DIM } from '../../player/model.js';
 import { makeRealise } from '../duelist/realise.js';
 import { FORM_POSES, FIST_UP, FIST_FLAT } from './poses.js';
 import { TUNING } from './tuning.js';
-import { meleeMoves } from './moves/melee.js';
+import { meleeMoves, signKeys } from './moves/melee.js';
+import { makeMotion } from './motion.js';
 import { kiMoves } from './moves/ki.js';
 import { terrainMoves } from './moves/terrain.js';
 
@@ -246,7 +247,7 @@ export function punch(kind, tell, windup, damage, o = {}) {
   const part = left ? PART_MIRROR[P.part] ?? P.part : P.part;
   return {
     tell, windup, active: kind === 'hammer' ? 0.12 : 0.08, damage, knockback: tell === N ? 0.7 : 1.5,
-    zone: P.z(), part, keys: strikeKeys({ coil, hit, cock, left }), ...extra, cock,
+    zone: P.z(), part, keys: strikeKeys({ coil, hit, cock, left }), mo: { fam: 'punch', kind, left, step, tell }, ...extra, cock,
   };
 }
 
@@ -340,7 +341,7 @@ export function kick(kind, tell, windup, damage, o = {}) {
     const cock = c0 ?? 0.62;
     return {
       tell, windup, active: 0.22, damage, knockback: 2.4, zone: { kind: 'ring', r: 2.2 }, part: left ? 'footL' : 'footR', sweep: true,
-      track: 0.65, keys: sweepKeys(cock, left), ...extra, cock,
+      track: 0.65, keys: sweepKeys(cock, left), mo: { fam: 'kick', kind, left, tell }, ...extra, cock,
     };
   }
   const P = KICK[kind];
@@ -348,7 +349,7 @@ export function kick(kind, tell, windup, damage, o = {}) {
   const cock = c0 ?? (kind === 'flying' ? 0.58 : 0.68);
   const beat = {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.0 : 2.0, zone: P.z(), part: left ? PART_MIRROR[P.part] : P.part,
-    track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, pre: P.pre ?? null, cock, left }),
+    track: 0.7, keys: strikeKeys({ coil: P.coil, hit: P.hit, pre: P.pre ?? null, cock, left }), mo: { fam: 'kick', kind, left, tell },
   };
   if (kind === 'flying') Object.assign(beat, { air: true, lift: FLY_LIFT(cock), track: 0.55 });
   return { ...beat, ...extra, cock };
@@ -364,7 +365,7 @@ export function elbow(tell, windup, damage, o = {}) {
   const { left = false, cock = 0.72, ...extra } = o;
   return {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.0 : 2.0, zone: { kind: 'line', r: RE.line, w: RE.lineW }, part: left ? 'elbowL' : 'elbowR',
-    keys: strikeKeys({ coil: ELBOW.coil, hit: ELBOW.hit, cock, left }), ...extra, cock,
+    keys: strikeKeys({ coil: ELBOW.coil, hit: ELBOW.hit, cock, left }), mo: { fam: 'elbow', left, tell }, ...extra, cock,
   };
 }
 const SHOULDER = {
@@ -376,7 +377,7 @@ export function shoulder(tell, windup, damage, o = {}) {
   const { left = false, cock = 0.72, ...extra } = o;
   return {
     tell, windup, active: 0.1, damage, knockback: tell === N ? 1.2 : 2.4, zone: { kind: 'line', r: RE.line, w: 1.0 }, part: 'shoulder',
-    keys: strikeKeys({ coil: SHOULDER.coil, hit: SHOULDER.hit, cock, left }), ...extra, cock,
+    keys: strikeKeys({ coil: SHOULDER.coil, hit: SHOULDER.hit, cock, left }), mo: { fam: 'shoulder', left, tell }, ...extra, cock,
   };
 }
 
@@ -581,7 +582,10 @@ export const CLIP = CLIPS_BY_FORM[0];
 // ---------------------------------------------------------------- realising a move
 // (ADR-126, as the other two bosses: a beat's keys made whole (completeBeat); every strike key here
 // carries NEUTRAL, so it only writes `two` / `arm` / `larm` back to his guard's 0)
-const REALISERS = FORM_POSES.map((P) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
+// (ADR-225: `?ascMotion=a` plays his reworked motion, MOTION.keysOf: the blue and red blows' held
+// windups, the snap blows' stance-read coil; null = the beat's own keys)
+export const MOTION = makeMotion({ X, PUNCH, KICK, ELBOW, SHOULDER, stepMid, signKeys });
+const REALISERS = FORM_POSES.map((P) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat, keysOf: MOTION.ascKeys }));
 /**
  * A move as it will play this time (duelist/realise.js), compiled round the stance of the form it is
  * used in; a transformation is compiled round the NEW form's stance, so it ends in that guard.

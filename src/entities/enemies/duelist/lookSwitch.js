@@ -46,6 +46,7 @@ export const PICKED = Object.freeze({
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'b', // his print: the hero's quieter one (the owner's pick, 2026-11-23, ADR-155; was a, lifted: a lighter fill, a stronger edge of light)
   ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (b a lantern, c the pale gathered sphere; the owner has not chosen yet, 2026-11-22)
+  ascMotion: 'a', // his motion: held blue / red windups, the snap blows (the owner's pick, 2026-11-26, of two; ADR-225; 0 as before)
   ascBeamPose: '0', // his beams: the palm thrust (cup: both hands cupped at the hip; the owner has not chosen yet, 2026-11-22)
   // the Windless Grove and Lu Wusheng, the Sheathed (the owner, 2026-11-22: "keep the recommended")
   grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
@@ -61,20 +62,46 @@ export const PICKED = Object.freeze({
   halCape: '3', // his cape and colours: the wide red cape that billows (the owner's pick, 2026-11-23, of four steps; ADR-164)
   halLetters: 'a', // his letters follow his size, the hero's cell (the owner's pick, 2026-11-23, of two; ADR-166)
   halPrint: 'a', // the hero's quieter print (the owner's pick, 2026-11-23, of three; ADR-166)
+  halMotion: 'a', // his motion: a flier's legs, blows aimed at the hero, the held windups, the snap blows (the owner's pick, 2026-11-26, of two; ADR-225)
   halCapeSize: 'b', // the cape at about 65 %, past his knees (the owner's pick, 2026-11-23, of four; ADR-166)
   // the Hall of Falling Script and Xin Yi, the One Who Woke
   oneLetters: 'a', // his letters: the hero's size (the owner's pick, 2026-11-23, "Print a", ADR-170; 0 the bosses' fine cell)
   onePrint: 'a', // his print: the hero's quiet print and the simpler shapes (the owner's pick, 2026-11-23, "Print a", ADR-170; b one cell bolder on a phone, 0 as he shipped)
+  oneBody: 'b', // his figure: the open coat, printed like the hero on a man's build, one coat (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped, a closed, c the duster)
+  oneMoves: 'a', // his moves: straight kicks, long punches, held blue / red windups, the side-on aim, two fast strings (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped)
+  // the sword motion pass (ADR-226; the owner's pick, 2026-11-26, from the before / after films)
+  ashMotion: 'a', // Shen Hui: the jian in line with the arm, held blue / red windups (Piercing Ash keeps its thrust), quick blows
+  lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl
   // every human boss
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
+  // the motion pass (ADR-223; the owner's picks, 2026-11-26, from the films: A for all three, every quick blow)
+  sheathMotion: 'a', // Lu Wusheng's blue / red blows held at the cock, blue tall, red sunk
+  foxMotion: 'a', // Wen Yao's, the same, and his lifted feet eased off their spot
+  wyrmMotion: 'a', // the wyrm's string hits held, blue rearing its head, red sunk with the tail up
+  sheathQuick: 'a', // Before the Word
+  foxQuick: 'a', // Fox Snap, Fox Knee
+  wyrmQuick: 'a', // Snap swipe
+  // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
+  ashHero: 'c', // Shen Hui: the hero's shading and his outline (a the shading, b the outline)
+  lordHero: 'c', // Varr Nihil: the hero's shading and his outline
+  sheathHero: 'c', // Lu Wusheng: the hero's shading and his outline
+  ascHero: 'a', // Tian Lei: the hero's shading (his lines are the hero's already: his letters follow his size)
+  halHero: 'a', // Halcyon: the hero's shading (likewise)
   // the title
   menu: 'c', // the sword's path: the worlds as fires along one line (the owner's pick, 2026-11-25, of three; 0 the title before; ADR-196)
+  // Bai Wuji, the Untouched (the owner's picks, 2026-11-25, from the body sheets)
+  wjLook: 'c', // the bone-white coat
+  wjHair: 'b', // the short spiky burst, the choppy mop once it falls
+  wjCity: 'a', // the crossing: cold moonlit ash-grey
+  wjShell: 'a', // the barrier: all but invisible until a blade nears it
+  wjNull: 'a', // the Violet Null: a hard-edged slab
+  wjVoid: 'b', // the void: the stars and one great pale ring on the floor
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
 
 const fromUrl = new Map();
 const forced = new Map();

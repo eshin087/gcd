@@ -5,6 +5,8 @@ import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
 import { idlesOld, idlesRef, idlesMode, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, easeRests, fightRests, stowHidden, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, FIGHT_ACTS_REF, EASE_REF_EXTRA, IDLES } from './idles.js';
 import { refStand, refReady, refGuard, guardMode, REF_GUARD } from './refStance.js';
+import { offHandLook } from './offHand.js';
+import { feelLook, warpPhase } from './feel.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
 // key poses"). Every frame a target POSE (a flat Float32Array) is built for the current clip as a
@@ -41,9 +43,12 @@ export const P = {
   // sword fingers) and how far it rests on the sword wrist (0..1). Read only for an animator built
   // with opts.freeHand (the hero); every other animator ignores whatever they hold
   lD: 53, lN: 56, hs: 59, lk: 60,
+  // … and how much it hangs at its rest on its own pendulum (0..1: HeroAnimator._sideHand; the free hand's
+  // look, offHand.js, worn by a one-handed swing). 0 in every pose but those (update() clears it before each)
+  sd: 61,
 };
 /** The pose's channel count (a duelist's scratch poses are sized from it). */
-export const N = 61;
+export const N = 62;
 const ENTRY_EASE = 0.85; // an easeOut cross-fade (attack entries) arrives at this fraction of its time
 const TURN_LAG_MAX = 1.4; // rad: how far the drawn heading may trail the gameplay yaw in a fast turn
 const TURN_K = 650; // stiffness (1/s²) of the critically damped spring the drawn heading follows
@@ -806,6 +811,7 @@ function swingClip(name) {
     C = {
       tracks, dir, hand: tracks.find((T) => T.ch === P.rH) ?? null, ch: [...new Set(ch)],
       autoR: has('h') && !has('rp'), autoL: has('l') && !has('lp'), autoHy: !has('hy'), autoHx: !has('hx'), keyedF: has('f'),
+      two: keys.some((k) => k.two > 0), // (a two-handed clip keeps its free hand: offHand.js)
       flat: Array.isArray(def.flat) ? def.flat : SW_UP,
       rF: def.rF ?? null, lF: def.lF ?? null, step: def.step ?? null, drag: def.drag ?? 0.22, home: def.home ?? SW_HOME,
       lead: Array.isArray(def.lead) ? def.lead : SW_LEAD, fy: Array.isArray(def.fy) ? def.fy : null,
@@ -946,20 +952,28 @@ function swingPose(p, A, k, t, W, Ac, R) {
   const act = clamp((t - W) / Ac, 0, 1), lunge = t < W ? 0 : act * act * (3 - 2 * act);
   stance(p, A, lunge);
   if (!C) return;
-  const u = swingPhase(t, W, Ac, R);
+  // (the swings' feel, feel.js `?feel=`: the same keys on another clock inside the same phases, the body's
+  // sink and turn scaled, its lead stretched; production's without one)
+  const Fl = feelLook();
+  const u = warpPhase(swingPhase(t, W, Ac, R), Fl);
   const F = A.from;
   // the body runs AHEAD of the hand: the hips by lead[0] s, the chest by lead[1] (the kinetic chain:
   // hips, then chest, then arm, then blade). It ramps in through the windup (later when the entry's
   // hips stand on the far side: they would whip round). A held light's hips settle back (A.leadK)
   const L = C.lead, far = C.hipCoil != null && Math.abs(wrapAngle(F[P.pelvY]) - C.hipCoil) > SW_LEAD_FAR;
-  const ramp = smoothstep(SW_LEAD_IN0[far ? 1 : 0] * W, W, t) * clamp(fin(A.leadK, 1), 0, 1);
-  const uH = ramp > 0 ? swingPhase(t + L[0] * ramp, W, Ac, R) : u, uC = ramp > 0 && L[1] > 0 ? swingPhase(t + L[1] * ramp, W, Ac, R) : u;
+  const ramp = smoothstep(SW_LEAD_IN0[far ? 1 : 0] * W, W, t) * clamp(fin(A.leadK, 1), 0, 1) * (Fl ? Fl.lead : 1);
+  const uH = ramp > 0 ? warpPhase(swingPhase(t + L[0] * ramp, W, Ac, R), Fl) : u, uC = ramp > 0 && L[1] > 0 ? warpPhase(swingPhase(t + L[1] * ramp, W, Ac, R), Fl) : u;
+  const gIn = Fl ? smoothstep(0, 0.5, u) : 0; // (the feel's gains ease in over the windup's first half)
   // `bx` is toward the foot that steps (+): mirrored when the right foot steps (the entry slot keeps its own)
   const side = k.feet === 'dash' || A.stepL !== false ? 1 : -1;
   for (const T of C.tracks) {
     for (let c = 0; c < T.n; c++) T.V[c] = F[T.ch + c];
     if (T.Vk) for (let i = 1; i < T.len; i++) T.V[i] = side * T.Vk[i];
     swingTrack(T, T.grp === 1 ? uH : T.grp === 2 ? uC : u, p, T.ch);
+    if (gIn > 0) {
+      const G = Fl.gain, g = T.ch === P.bodyY ? G.by : T.ch === P.pelvY ? G.hip : T.ch === P.spY ? G.sy : T.ch === P.spX ? G.sx : 1;
+      if (g !== 1) p[T.ch] *= 1 + (g - 1) * gIn;
+    }
   }
   const H = C.hand;
   if (H && u < H.U[1]) {
@@ -1110,6 +1124,38 @@ function attackPose(p, A) {
       p[P.hdX] += BITE.nod * b * fold;
     }
   }
+  // the free hand's look (offHand.js, `?offhand=`): a one-handed swing hangs it at its rest the whole attack,
+  // its way home included (HeroAnimator._sideHand; it lingers there a moment after: _sideLinger)
+  if (k.kind === 'clip' && A.freeHand) {
+    const L = offHandLook();
+    if (L && !swingClip(k.clip)?.two) sideHand(p, 0, p, L);
+  }
+}
+
+// THE SIDE HAND (offHand.js: the free hand's look in a one-handed swing). The pose only says WHETHER it hangs
+// (p[sd], going home with the rest of him) and the hand's shape; where it is comes from
+// HeroAnimator._sideHand: a rest the body carries with a damped pendulum on it, so it lags the body's turn
+// and drop a little and swings back past its rest before it settles. (First written for the instant cuts,
+// ADR-233: rigid in the chest's frame it read stiff; left to hang free from the shoulder, the chest's snaps
+// folded the elbow and whipped the hand about.)
+const SIDE_CH = [P.lk, P.twoHand, P.offAt];
+/** p[i..i+2] = v × k turned by the chest's yaw (cos c, sin s), `b` of the way to D's. */
+function sidePut(p, i, v, k, c, s, b, D) {
+  p[i] = lerp(k * (v[0] * c + v[2] * s), D[i], b);
+  p[i + 1] = lerp(k * v[1], D[i + 1], b);
+  p[i + 2] = lerp(k * (-v[0] * s + v[2] * c), D[i + 2], b);
+}
+/** The free hand's channels at its look L's rest (sd 1): its elbow, fingers, palm and shape where the look
+ *  gives them (the quiet look keeps the clip's); `b` (0..1) of the way to pose D's own (D may be p). */
+function sideHand(p, b, D, L) {
+  if (!(b > 0)) b = 0;
+  const yaw = p[P.pelvY] + p[P.spY], c = Math.cos(yaw), s = Math.sin(yaw);
+  if (L.pole) sidePut(p, P.lP, L.pole, 1, c, s, b, D);
+  if (L.ld) sidePut(p, P.lD, L.ld, L.lw, c, s, b, D);
+  if (L.ln) sidePut(p, P.lN, L.ln, L.lw, c, s, b, D);
+  if (L.hs != null) p[P.hs] = lerp(L.hs, D[P.hs], b);
+  if (!(L.keep > 0)) for (let j = 0; j < SIDE_CH.length; j++) p[SIDE_CH[j]] = b * D[SIDE_CH[j]];
+  p[P.sd] = 1 - b;
 }
 // the bite: its length (s of the attack's clock after the hit-pause), how much of the way back to
 // the blade that bit it holds (× bite), the grip's pull (m), the hips' drop (m), the chest's fold
@@ -2746,11 +2792,12 @@ const LEG_R = BODY.thigh[0] + 0.004; // thigh / knee radius used to push the pan
 // the gauntlet, + the cloth's margin.
 const COAT_BLADE_R = 0.07, COAT_HAND_R = 0.06;
 const COAT_STEEL_JUMP = 0.12; // rad per 60 fps frame: the most the steel moves a coat segment at once
-const BLADE_PTS = Array.from({ length: 13 }, () => new THREE.Vector3()); // [0] = the grip
+const BLADE_PTS = Array.from({ length: 14 }, () => new THREE.Vector3()); // [0] = the grip, [1..12] the blade, [13] the free hand at its rest (offHand.js) when it is
+const NB_STEEL = 13; // the grip and the blade's points
 const _mC = new THREE.Matrix4();
 // the steel in a panel's anchor frame (QA) and in its lower segment's parent frame (QB): x along the
 // hips, y up, z out, from the segment's pivot; SEG = segLocal's output
-const QA = new Float32Array(39), QB = new Float32Array(39), SEG = new Float32Array(3);
+const QA = new Float32Array(42), QB = new Float32Array(42), SEG = new Float32Array(3);
 /** Point k of Q (a coat segment's parent frame, its pivot at the origin) in the frame of that
  *  segment swung (a, b) (rotation order YXZ: Rx(a)·Rz(b)): SEG = [x along it, y down it (≤ 0),
  *  height above the sheet's curve round the hips (radius R)]. Returns whether the point lies over
@@ -2804,6 +2851,13 @@ const WRIST_CLEAR_COS = Math.cos(70 * (Math.PI / 180)); // … and, there, the l
 const ELBOW_RATE = 14; // rad/s: the most an elbow swings round its shoulder → hand line (~13° a frame)
 const _eA = new THREE.Vector3(), _eW = new THREE.Vector3(), _eP = new THREE.Vector3(), _eC = new THREE.Vector3();
 const TWO_HAND_GRIP = DIM.offGrip; // m down the grip from the sword hand to the off hand (two-handed)
+// THE GRIP (a sword-wielding boss's animator only: `gripMax`, ADR-226): the most the blade turns off the
+// sword forearm's line before the forearm itself is turned toward the steel round the elbow (the hand
+// moves, the blade's direction does not; the elbow stays where the arm put it, folded no tighter than
+// GRIP_FOLD). The hero's own swings are keyed with the wrist inside 60 degrees (ADR-207); a boss keyed
+// by the blade alone bent it to WRIST_BACK, the fist turned off the wrist.
+const GRIP_FOLD = 38 * (Math.PI / 180);
+const _gE = new THREE.Vector3(), _gF = new THREE.Vector3(), _gD = new THREE.Vector3(), _gW = new THREE.Vector3(), _gT = new THREE.Vector3(), _gU = new THREE.Vector3();
 // THE FREE HAND (the hero only: opts.freeHand). Its wrist's range (rad: radial / ulnar deviation,
 // pronation / supination from the IK's neutral, flexion / extension), its spring (ω, ζ for the
 // deviation and the flex; wT, zT the heavier twist), the most each turns in a frame (rad), and the
@@ -2823,6 +2877,12 @@ const LK_WRIST = 0.07, LK_OFF = [0.045, 0.025], LK_ALONG = 0.5, LK_LETGO = [4, 8
 // 0.95) a fist already shown stays until [2]: a free arm that cannot quite reach the hilt (the
 // plunge's raised fists stop 4-6 cm short) keeps its fist instead of flickering to an open hand
 export const OFF_SNAP = [0.035, 0.05, 0.08];
+// the side hand's pendulum (_sideHand): its sub-steps per second (at least), and the frame length past which
+// it is set on its rest; the furthest it may hang from the shoulder (model m: the soft reach draws 0.58 as an
+// elbow of ~155°), eased in from SIDE_FOLD (a hand held folded at the chest is not thrown out in a frame);
+// its lag on the way in (no limit: it falls from wherever it was). The nearest: the look's `near`
+const SIDE_HZ = 240, SIDE_SNAP = 0.1, SIDE_REACH = 0.58, SIDE_FOLD = 0.25, SIDE_FREE = 1.5;
+const _shR = new THREE.Vector3(), _shO = new THREE.Vector3(), _shQ = new THREE.Vector3(), _shG = new THREE.Vector3(), _shA = new THREE.Vector3(), _shB = new THREE.Vector3(), _shC = new THREE.Vector3();
 // × the arm's length: the free elbow on the grip keeps ≥ 23° of bend (the cleave locked it at 176°)
 const LOCK_REACH = 0.98;
 const _hG = new THREE.Vector3(), _hd = new THREE.Vector3(), _hn = new THREE.Vector3(), _hy = new THREE.Vector3(), _hp = new THREE.Vector3();
@@ -2893,10 +2953,23 @@ export class HeroAnimator {
     this.armSoft = Array.isArray(opts?.armSoft) ? opts.armSoft : null;
     /** ... and the legs' (null: a leg reaches straight, as always; ADR-162). */
     this.legSoft = Array.isArray(opts?.legSoft) ? opts.legSoft : null;
+    /** () => s: a planted foot the clip lifts is eased from where it stood to the clip's key over this
+     *  long, not handed to the key at once (a boss's clip foot left behind by its root motion jumped up to
+     *  0.46 m in a frame; ADR-223). Bosses only (a function: their motion switch, read live); 0 = as before. */
+    this.liftEase = typeof opts?.liftEase === 'function' ? opts.liftEase : null;
+    /** [from, to, add, lift0, lift1] or null: a boss whose kicks land with the leg straight (Xin Yi,
+     *  ADR-221; _leg). A lifted foot asked for past `from` of the leg's length is carried out, by up to
+     *  `add` of it at `to`, so the leg reaches its full length at a kick's extension. */
+    this.kickStretch = null;
     this.wristL = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ok: false, clamped: false };
     this.handFX = { fingers: false, fist: false };
     this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
     this.lkEff = 0;
+    // the side hand (offHand.js, _sideHand): the pendulum (x, v), its rest's offset (r), where a way began
+    // (c), last frame's hand (last), the way's ease (e), the way (mode: 1 to the side, -1 home, 0 off), p[sd]
+    // last frame (pw); after a one-handed swing how long it still lingers (lg), how much it still holds
+    // (hold), whether what plays now needs the hand back quickly (quick); the look it hangs in (L)
+    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false, lg: 0, hold: 0, quick: false, L: null };
     this.gripGap = 1;
     this.rig = rig;
     this.player = player;
@@ -3137,6 +3210,8 @@ export class HeroAnimator {
     guard(this.cur, this); // (with the hero's free hand: an animator without opts.freeHand ignores it)
     this.wristL.ok = false;
     this.lkState.ok = false;
+    this.sideH.ok = false;
+    this.sideH.lg = this.sideH.hold = 0;
     this.handFX.fingers = this.handFX.fist = false;
     this.from.set(this.cur);
     this.target.set(this.cur);
@@ -3186,6 +3261,7 @@ export class HeroAnimator {
     for (const st of this.streamState) st.vel.set(0, 0, 0);
     this.wristL.ok = false;
     this.lkState.ok = false;
+    this.sideH.v.set(0, 0, 0); // (it hangs on from where it was in his frame: the root's jump is not its)
   }
 
   /** Throw the coat panels outward (Ghostep reappear, guard break, the slam's impact). `rnd` (0..1
@@ -3332,6 +3408,7 @@ export class HeroAnimator {
       this.fightW = damp(fin(this.fightW), fight ? 1 : 0, FIGHT_EASE[fight ? 0 : 1], dt);
     }
     this._idleLife(dt, sp);
+    this.target[P.sd] = 0; // (only a one-handed swing's pose hangs the free hand: attackPose, offHand.js)
     this.poses[this.key](this.target, this);
     if (this.blendT < this.blendDur) {
       this.blendT += dt;
@@ -3348,6 +3425,7 @@ export class HeroAnimator {
       this.cur.set(this.target);
     }
     this._feet(dt);
+    if (this.freeHand) this._sideLinger(dt);
     for (let i = 0; i < N; i++) {
       if (!Number.isFinite(this.cur[i])) {
         guard(this.cur, this); // never let a bad frame poison the rig
@@ -3741,10 +3819,23 @@ export class HeroAnimator {
         F.lock = false;
         F.mode = 2;
       }
+      const ease = this.liftEase ? fin(this.liftEase()) : 0;
       if (air) {
-        // the clip's own: a kick, a leap, a dash
+        // the clip's own: a kick, a leap, a dash (a boss's: eased off the spot it stood on, ADR-223)
+        if (F.lock && ease > 0 && !off) {
+          const wx = (F.wx - px) / HS, wz = (F.wz - pz) / HS;
+          F.rx = wx * c - wz * s;
+          F.rz = wx * s + wz * c;
+          F.ryaw = wrapAngle(F.wyaw - yaw);
+          F.mode = 3;
+          F.s = 0;
+          F.dur = ease;
+        } else if (F.mode !== 3 || off) F.mode = 2;
         F.lock = false;
-        F.mode = 2;
+      } else if (!F.lock && F.mode === 3) {
+        // it comes down while still easing: planted where it is drawn
+        const e = smoothstep(0, 1, Math.min(1, F.s + dt / F.dur));
+        this._plant(F, lerp(F.rx, dx, e), lerp(F.rz, dz, e), F.ryaw + wrapAngle(dyaw - F.ryaw) * e, px, pz, c, s, yaw);
       } else if (!F.lock && F.mode !== 1) {
         this._plant(F, dx, dz, dyaw, px, pz, c, s, yaw); // it comes down: planted where it is
       } else if (F.lock) {
@@ -3769,6 +3860,15 @@ export class HeroAnimator {
         cur[i + 1] = ANK;
         cur[i + 2] = wx * s + wz * c;
         cur[iy] = wrapAngle(F.wyaw - yaw);
+      } else if (F.mode === 3) {
+        // released by the clip: from the spot it stood on to the clip's key (the key moves on meanwhile)
+        F.s = Math.min(1, F.s + dt / F.dur);
+        const e = smoothstep(0, 1, F.s);
+        cur[i] = lerp(F.rx, dx, e);
+        cur[i + 1] = lerp(ANK, dy, e);
+        cur[i + 2] = lerp(F.rz, dz, e);
+        cur[iy] = F.ryaw + wrapAngle(dyaw - F.ryaw) * e;
+        if (F.s >= 1) F.mode = 2;
       } else if (F.mode === 1) {
         F.s = Math.min(1, F.s + dt / F.dur);
         const e = smoothstep(0, 1, F.s);
@@ -3840,8 +3940,10 @@ export class HeroAnimator {
     _qBP.copy(_qPelvis).invert().multiply(_qBody); // body axes → pelvis local
 
     this._arm(r.arms.R, this._handTarget(r.arms.R, p, P.rH), p, P.rP, true);
+    if (this.gripMax > 0) this._gripAlign(r.arms.R, p);
     // off hand: its own target, or (twoHand) down the grip below the sword hand
     this._handTarget(r.arms.L, p, P.lH);
+    if (this.freeHand) this._sideHand(r, p); // (offHand.js: a one-handed swing's free hand on its pendulum)
     let lk = 0;
     if (this.freeHand) {
       // the sword fingers on the sword wrist (lk): the right wrist (chest local) from the solved sword
@@ -3995,6 +4097,197 @@ export class HeroAnimator {
       }
     }
     _bz.copy(_v).multiplyScalar(WRIST_COS).addScaledVector(_w, WRIST_SIN).normalize();
+  }
+
+  /** After a one-handed swing (offHand.js) the free hand stays at its rest its look's `linger` s more while he
+   *  stands or moves (loco: a press then starts a new chain with no way in, no drop), then lets go of it
+   *  over `ease` s (p[sd] and its shape eased back to the pose's own); anything else takes it at once
+   *  (`easeBack`: a heavy's grip, a guard, a roll, a hit taken). On this.cur, after the cross-fade. */
+  _sideLinger(dt) {
+    const S = this.sideH, c = this.cur;
+    if (this.key === 'attack' && this.target[P.sd] > 0.5) {
+      S.lg = S.L?.linger ?? 0.35;
+      S.hold = 1;
+      S.quick = false;
+      return;
+    }
+    if (this.key !== 'loco') {
+      S.lg = S.hold = 0;
+      S.quick = true;
+      return;
+    }
+    S.quick = false;
+    if (!S.L) return;
+    if (S.lg > 0) S.lg = Math.max(0, S.lg - Math.max(0, fin(dt)));
+    else if (S.hold > 0) S.hold = Math.max(0, S.hold - Math.max(0, fin(dt)) / S.L.ease);
+    if (!(S.hold > 0)) return;
+    const x = S.hold, w = x * x * x * (x * (6 * x - 15) + 10);
+    sideHand(c, 1 - w, c, S.L);
+  }
+
+  /** The side hand (the hero only; attackPose sideHand sets p[sd]; SIDE below is the look, offHand.js): the free wrist's target (_T,
+   *  chest local) hangs at his side. Its rest (the anchor) is SIDE.hang under the left shoulder,
+   *  turned with the chest, drawn SIDE.hip of the way to SIDE.thigh beside the left hip (turned with
+   *  the pelvis): the body carries it, so a cut's snap of the chest does not leave it behind. On that a
+   *  pendulum hangs: a spring (SIDE.w / SIDE.z) that follows the anchor; SIDE.k of how far it lags is
+   *  the hand's sway (at most SIDE.sway), so it trails the body's turn and drop a little and swings
+   *  back past its rest before it settles.
+   *  It goes to the side as p[sd] rises, by the first cut: it is let go where it was as a free
+   *  pendulum that falls onto its rest, the body taking it up over SIDE.easeIn s, never faster than
+   *  SIDE.vIn against the rest (the arm drops, it does not snap); home to the pose's own hand as p[sd] falls,
+   *  over SIDE.ease s; each way from wherever the hand was as it began (the pose's own hand crossed to
+   *  the swing's in a few frames, and went home in the swing's last tenth of a second). Kept clear of
+   *  the left thigh, within the arm's reach of the shoulder and above the ground. World axes from the root (a root that turns or travels drags nothing; his drawn body
+   *  does), in sub-steps whatever the frame's length, nothing in a frozen frame (hit-stop, a posed
+   *  contact). Off (p[sd] 0 and home) it changes nothing. Allocates nothing, never throws. */
+  _sideHand(r, p) {
+    // (a second hand on the grip wins: as a two-handed blow takes it, the side lets go)
+    const S = this.sideH, want = clamp(fin(p[P.sd]), 0, 1) * (1 - clamp(fin(p[P.twoHand]), 0, 1)), dt = Math.max(0, fin(this.frameDt));
+    // (the look it hangs in: the one picked now while it goes to the side, the one it went in on its way home)
+    const Lnow = offHandLook();
+    if (want > 1e-4 && Lnow && (S.mode <= 0 || !S.L)) S.L = Lnow;
+    const SIDE = S.L;
+    if (!SIDE) {
+      S.mode = 0;
+      return;
+    }
+    const fresh = !S.ok || !Number.isFinite(S.e + S.x.x + S.x.y + S.x.z + S.v.x + S.v.y + S.v.z + S.c.x + S.c.y + S.c.z + S.last.x + S.last.y + S.last.z);
+    if (fresh) {
+      S.ok = true;
+      S.mode = 0;
+      S.pw = 0;
+    }
+    const pw = S.pw, ch = r.chest;
+    S.pw = want;
+    _shO.setFromMatrixPosition(r.root.matrixWorld);
+    _shQ.copy(_T);
+    ch.localToWorld(_shQ).sub(_shO); // the pose's own wrist
+    if (fresh) S.last.copy(_shQ);
+    if (S.mode === 0 && !(want > 1e-4)) {
+      S.last.copy(_shQ); // (where a way to the side starts: last frame's hand, not this frame's pose)
+      return;
+    }
+    const e = ch.matrixWorld.elements, sc = Math.hypot(e[0], e[1], e[2]) || 1;
+    // the anchor: under the shoulder (the chest's yaw), drawn toward beside the hip (the pelvis's)
+    {
+      const yc = Math.atan2(e[8], e[10]), H = SIDE.hang, c = Math.cos(yc), s = Math.sin(yc);
+      _shA.setFromMatrixPosition(r.arms.L.upper.matrixWorld).sub(_shO);
+      _shA.x += sc * (H[0] * c + H[2] * s);
+      _shA.y += sc * H[1];
+      _shA.z += sc * (-H[0] * s + H[2] * c);
+      const Lg = r.legs?.L, k = SIDE.hip;
+      if (Lg && k > 0) {
+        const pe = r.pelvis.matrixWorld.elements, yp = Math.atan2(pe[8], pe[10]), T = SIDE.thigh, cp = Math.cos(yp), sp = Math.sin(yp);
+        _shB.setFromMatrixPosition(Lg.thigh.matrixWorld).sub(_shO);
+        _shB.x += sc * (T[0] * cp + T[2] * sp);
+        _shB.y += sc * T[1];
+        _shB.z += sc * (-T[0] * sp + T[2] * cp);
+        _shA.lerp(_shB, k);
+      }
+    }
+    // which way: to the side while p[sd] stands or rises, home once it falls. A new way starts from
+    // where the hand was last frame, left there in his frame (a clip's first pose may already have
+    // moved it: out of a roll the cut's first frame put it 26 cm away; held in the chest's frame, the
+    // windup's turn of the chest flung it 30 cm in a frame)
+    const way = want > pw + 1e-6 || want >= 0.999 ? 1 : want < pw - 1e-6 || !(want > 1e-4) ? -1 : S.mode || 1;
+    if (way !== S.mode) {
+      if (way > 0) {
+        // (the pendulum starts still where the hand is, and the hand is all pendulum: the arm drops
+        // onto its rest as a pendulum falls, and only as it gets there does the body take it up)
+        S.x.copy(S.last);
+        S.v.subVectors(_shA, S.last).multiplyScalar(SIDE.drop); // (let go already falling toward its rest)
+      }
+      S.c.copy(S.last);
+      if (way > 0) S.r.subVectors(S.last, _shA);
+      S.mode = way;
+      S.e = 0;
+    }
+    S.e = Math.min(1, S.e + dt / (S.mode > 0 ? SIDE.easeIn : S.quick ? SIDE.easeBack : SIDE.ease));
+    // (to the side: how far the body has taken the hand up from the free pendulum, an ease out: it lets
+    // go of where it was at once (a smoothstep kept it planted on the waist through hit 1's windup);
+    // home: how far it is back on the pose's hand, smootherstep)
+    const x = S.e, ew = S.mode > 0 ? 1 - (1 - x) * (1 - x) : x * x * x * (x * (6 * x - 15) + 10), kIn = S.mode > 0 ? ew : 1;
+    // the pendulum on the anchor
+    if (dt > SIDE_SNAP) {
+      S.x.copy(_shA); // (a frame that long is no motion to follow: a hidden tab)
+      S.v.set(0, 0, 0);
+    } else if (dt > 0) {
+      const n = Math.min(8, Math.ceil(dt * SIDE_HZ)), h = dt / n, W = SIDE.w, K = W * W, D = 2 * SIDE.z * W;
+      for (let i = 0; i < n; i++) {
+        S.v.x += (K * (_shA.x - S.x.x) - D * S.v.x) * h;
+        S.v.y += (K * (_shA.y - S.x.y) - D * S.v.y) * h;
+        S.v.z += (K * (_shA.z - S.x.z) - D * S.v.z) * h;
+        S.x.addScaledVector(S.v, h);
+      }
+      // (it lags at most what shows as the most sway: a body that snaps further drags it along)
+      _shC.subVectors(S.x, _shA);
+      const lag = _shC.length(), most = lerp(SIDE_FREE, SIDE.sway / SIDE.k, kIn) * sc;
+      if (lag > most) {
+        S.x.copy(_shA).addScaledVector(_shC, most / lag);
+        _shC.multiplyScalar(1 / lag);
+        const vn = S.v.dot(_shC);
+        if (vn > 0) S.v.addScaledVector(_shC, -vn);
+      }
+    }
+    // where it goes: the side (its rest, the sway, the trail of his travel), or home
+    if (S.mode > 0) {
+      _shG.subVectors(S.x, _shA).multiplyScalar(lerp(1, SIDE.k, kIn)).add(_shA);
+      const gv = this.player?.groundVel;
+      if (gv) {
+        let tx = -SIDE.trail * kIn * fin(gv.x), tz = -SIDE.trail * kIn * fin(gv.z);
+        const tl = Math.hypot(tx, tz), cap = SIDE.trailMax * sc;
+        if (tl > cap) {
+          tx *= cap / tl;
+          tz *= cap / tl;
+        }
+        _shG.x += tx;
+        _shG.z += tz;
+      }
+      _shR.copy(_shA);
+      // (the quiet look: the clip's own gestures, `keep` of the way out from the rest)
+      if (SIDE.keep > 0) _shG.lerp(_shQ, SIDE.keep * kIn);
+    } else if (ew < 1) _shG.lerpVectors(S.c, _shQ, ew); // home: from where the way began, by the ease
+    else _shG.copy(_shQ);
+    if (S.mode < 0 && ew >= 1 && !(want > 1e-4)) {
+      S.mode = 0; // home: the pose's own hand, untouched
+      return;
+    }
+    // within the arm's reach of the shoulder, and hanging open (eased in from no nearer than it folds)
+    _shA.setFromMatrixPosition(r.arms.L.upper.matrixWorld).sub(_shO);
+    _shC.subVectors(_shG, _shA);
+    {
+      const d = _shC.length(), lo = (S.mode > 0 ? lerp(SIDE_FOLD, SIDE.near, ew) : SIDE_FOLD) * sc, hi = SIDE_REACH * sc;
+      if (d > 1e-5 && (d > hi || d < lo)) _shG.copy(_shA).addScaledVector(_shC, (d > hi ? hi : lo) / d);
+    }
+    if (S.mode > 0) {
+      // … at most SIDE.vIn against the body carrying it (its rest; the pendulum let go 60 cm from
+      // there, out of a sprint, and the arm opening onto it stepped 13 cm a frame)
+      _shC.subVectors(_shG, _shR).sub(S.r);
+      const st = _shC.length(), most = SIDE.vIn * sc * dt;
+      if (st > most) _shG.addScaledVector(_shC, most / st - 1);
+      S.r.subVectors(_shG, _shR);
+    }
+    // clear of the left thigh (its line from the hip to the knee, as the legs stood last frame), the
+    // way it already is from it (pushed out to his left instead, a thigh lifted out to the side in a
+    // low stance sent it 15 cm across in a frame)
+    const Lg = r.legs?.L;
+    if (Lg && SIDE.thighR > 0) {
+      _shA.setFromMatrixPosition(Lg.thigh.matrixWorld).sub(_shO);
+      _shB.setFromMatrixPosition(Lg.shin.matrixWorld).sub(_shO).sub(_shA);
+      _shC.subVectors(_shG, _shA);
+      const l2 = _shB.lengthSq(), k = l2 > 1e-8 ? clamp(_shC.dot(_shB) / l2, 0, 1) : 0;
+      _shC.addScaledVector(_shB, -k); // the line → the wrist
+      const R = SIDE.thighR * sc, d = _shC.length();
+      if (d < R) {
+        if (d > 1e-5) _shG.addScaledVector(_shC, (R - d) / d);
+        else _shG.x += R * e[0] / sc, _shG.z += R * e[2] / sc; // (on the line: out to his left)
+      }
+    }
+    // … and above the ground
+    _shG.y = Math.max(_shG.y, HAND_FLOOR + 0.02 - _shO.y);
+    S.last.copy(_shG);
+    _T.copy(_shG).add(_shO);
+    ch.worldToLocal(_T);
   }
 
   /** The free hand's wrist (rig.arms.L.wrist; the hero only, opts.freeHand): the fingers toward
@@ -4269,6 +4562,49 @@ export class HeroAnimator {
     }
   }
 
+  /** The sword forearm turned toward the blade (see GRIP_FOLD; `this.gripMax` rad, set by a duelist):
+   *  after the sword arm's solve, a forearm more than gripMax off the blade's line swings round the
+   *  elbow until it is gripMax off, and the hand (the grip, the sword's origin) goes with it. Chest
+   *  local throughout; allocates nothing; a non-finite step leaves the arm as it was. */
+  _gripAlign(arm, p) {
+    const S = arm.upper.position, a = DIM.upperArm, b = DIM.foreArm, max = this.gripMax;
+    _gE.set(0, -a, 0).applyQuaternion(arm.upper.quaternion).add(S); // the elbow
+    _gF.subVectors(_end, _gE);
+    if (!(_gF.lengthSq() > 1e-8)) return;
+    _gF.normalize();
+    _gD.set(p[P.swD], p[P.swD + 1], p[P.swD + 2]).applyQuaternion(_qBC);
+    if (!(_gD.lengthSq() > 1e-8)) return;
+    _gD.normalize();
+    const c = clamp(_gF.dot(_gD), -1, 1);
+    if (c >= Math.cos(max)) return;
+    _gW.copy(_gF).addScaledVector(_gD, -c);
+    if (!(_gW.lengthSq() > 1e-8)) {
+      // (the forearm straight against the blade: turn it away from the upper arm's side)
+      _gW.subVectors(_gE, S).addScaledVector(_gD, -_gD.dot(_gU.subVectors(_gE, S)));
+      if (!(_gW.lengthSq() > 1e-8)) return;
+    }
+    _gW.normalize();
+    _gF.copy(_gD).multiplyScalar(Math.cos(max)).addScaledVector(_gW, Math.sin(max)); // the forearm wanted
+    // … folded no tighter than GRIP_FOLD at the elbow: between the forearm and the elbow → shoulder line
+    _gU.subVectors(S, _gE).normalize();
+    const cf = _gF.dot(_gU);
+    if (cf > Math.cos(GRIP_FOLD)) {
+      _gW.copy(_gF).addScaledVector(_gU, -cf);
+      if (!(_gW.lengthSq() > 1e-8)) return;
+      _gW.normalize();
+      _gF.copy(_gU).multiplyScalar(Math.cos(GRIP_FOLD)).addScaledVector(_gW, Math.sin(GRIP_FOLD));
+    }
+    _gT.copy(_gE).addScaledVector(_gF, b);
+    if (!Number.isFinite(_gT.x + _gT.y + _gT.z)) return;
+    // the same elbow: the pole is the elbow's own side of the new shoulder → hand line
+    _pole.subVectors(_gE, S);
+    const beta = solveTwoBone(S, _gT, _pole, a, b, 1, arm.upper.quaternion, _end);
+    arm.fore.rotation.set(-beta, 0, 0);
+    this.rig.chest.localToWorld(_w.copy(_end));
+    this.rig.body.worldToLocal(_w);
+    this.rig.sword.position.copy(_w);
+  }
+
   /** Limit how fast an elbow swings round its shoulder → hand line (ELBOW_RATE): `pole` (chest
    *  space) is turned back toward where the elbow was last frame when the pose asks for more. The
    *  hand still reaches its target; only the elbow's side changes over a few frames instead of one.
@@ -4349,8 +4685,22 @@ export class HeroAnimator {
     r.pelvis.worldToLocal(_T);
     // a knee never closes past LEG_FOLD (the roll's tuck asked for a heel against the hip, 10°)
     _v.subVectors(_T, _S);
-    const dl = _v.length();
+    let dl = _v.length();
     if (dl < LEG_NEAR && dl > 1e-4) _T.copy(_S).addScaledVector(_v, LEG_NEAR / dl);
+    // (`kickStretch`, a boss whose kicks land straight: a foot off the ground (from lift0 to lift1 m)
+    // asked for far from the hip is carried further out along the same line, smoothly with the
+    // distance, so at a kick's extension the leg is a straight line, not a triangle at the knee; a
+    // planted foot, a chamber and a tuck are never touched)
+    const KS = this.kickStretch;
+    if (KS && dl > 1e-4) {
+      const L = DIM.thigh + DIM.shin, w = smoothstep(KS[3], KS[4], p[fi + 1]);
+      if (w > 0 && dl > KS[0] * L) {
+        const k = smoothstep(KS[0] * L, KS[1] * L, dl) * w * KS[2] * L;
+        _T.copy(_S).addScaledVector(_v, (dl + k) / dl);
+        _v.subVectors(_T, _S);
+        dl = _v.length();
+      }
+    }
     // (`legSoft`, a boss who kicks: the last of the leg's reach is compressed as the arm's is, so a kick
     // at full stretch keeps a little bend: at a straight leg the knee's side is undefined and it flipped
     // from frame to frame, ADR-162)
@@ -4409,11 +4759,22 @@ export class HeroAnimator {
     const r = this.rig;
     r.sword.updateWorldMatrix(true, false);
     _mC.copy(r.pelvis.matrixWorld).invert().multiply(r.sword.matrixWorld);
-    const n = BLADE_PTS.length, z0 = DIM.forte, z1 = DIM.drawnTip ?? DIM.steelTip;
+    const n = NB_STEEL, z0 = DIM.forte, z1 = DIM.drawnTip ?? DIM.steelTip;
     BLADE_PTS[0].set(0, 0, 0).applyMatrix4(_mC);
     for (let k = 1; k < n; k++) BLADE_PTS[k].set(0, 0, z0 + ((z1 - z0) * (k - 1)) / (n - 2)).applyMatrix4(_mC);
     const e = BLADE_PTS[n - 1];
-    return Number.isFinite(e.x + e.y + e.z + BLADE_PTS[0].x) ? n : 0;
+    if (!Number.isFinite(e.x + e.y + e.z + BLADE_PTS[0].x)) return 0;
+    // the free hand, while a look holds it at its rest (offHand.js: p[sd]): the cloth keeps to one side of it
+    // too, as of the sword hand (behind his back it slipped in and out through the back panels: a flicker of
+    // the bare hand, the owner's "spark of yellow")
+    if (this.freeHand && this.cur[P.sd] > 0.05) {
+      const L = r.arms.L;
+      L.fore.updateWorldMatrix(true, false);
+      _mC.copy(r.pelvis.matrixWorld).invert().multiply(L.fore.matrixWorld);
+      const h = BLADE_PTS[n].set(0, -DIM.foreArm, 0).applyMatrix4(_mC);
+      if (Number.isFinite(h.x + h.y + h.z)) return n + 1;
+    }
+    return n;
   }
 
   /** Coat skirt: each panel segment springs toward gravity-hang + hip flare − its anchor's
@@ -4534,7 +4895,7 @@ export class HeroAnimator {
             if (d < 0.03) continue;
             const rho = Math.hypot(d, qz), phi = Math.atan2(qz, d);
             const curv = SEG[2] - (d * Math.sin(c.x) + qz * Math.cos(c.x)); // the sheet's curve here
-            const m = k ? COAT_BLADE_R : COAT_HAND_R;
+            const m = k === 0 || k === NB_STEEL ? COAT_HAND_R : COAT_BLADE_R; // (the hands, the blade)
             if (over) {
               const need = Math.asin(clamp((-m - curv) / rho, -1, 1)) - phi + parentA;
               if (need < bo) bo = need;

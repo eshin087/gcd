@@ -134,6 +134,9 @@ export const LINKS = {
   redEclipse: melee(near('judgment', f4(0.3)), near('voidWaltz', f4(0.3))),
   // ---- the moments and the gap closers: what waits where they land
   lunge: [...STRINGS, far('grasp', [0.3, 0, 0, 0.4])],
+  // (ADR-226: the quick blows, behind ?lordMotion: a string straight out of one)
+  emberRise: [...STRINGS],
+  vigilFall: [...STRINGS],
   skyfall: [...STRINGS, mid('drawnIn', f1(0.3)), mid('wingedPursuit', f2(0.35)), mid('voidWaltz', f4(0.35))],
   scissor: [near('wheelingBlade', f2(0.35)), near('tempest', f2(0.35)), mid('wingedPursuit', f2(0.35)), far('glaive', f2(0.3))],
   severance: [...STRINGS, mid('drawnIn', f1(0.3)), mid('walkingMountain', f3(0.35))],

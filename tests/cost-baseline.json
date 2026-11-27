@@ -142,5 +142,23 @@
     "breakables": 369,
     "colliders": 93,
     "geoMB": 36.07
+  },
+  "veil": {
+    "meshes": 4,
+    "tris": 129439,
+    "shadowTris": 129439,
+    "bones": 268,
+    "breakables": 299,
+    "colliders": 101,
+    "geoMB": 34.42
+  },
+  "veil@phone": {
+    "meshes": 4,
+    "tris": 129439,
+    "shadowTris": 129439,
+    "bones": 268,
+    "breakables": 299,
+    "colliders": 101,
+    "geoMB": 34.42
   }
 }

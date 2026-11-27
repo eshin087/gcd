@@ -2,6 +2,8 @@ import { TELL } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
 import { makeRealise } from '../duelist/realise.js';
 import { GUARD_CLIPS } from '../duelist/guard.js';
+import { lookOf } from '../duelist/lookSwitch.js';
+import { motionize } from '../duelist/tellPose.js';
 import { FORM_POSES } from './poses.js';
 import { TUNING } from './tuning.js';
 
@@ -1089,6 +1091,49 @@ MOVES.streakFlurry = storm(1, ['diag', 'flat', 'rise', 'back']);
 MOVES.streakFlurry2 = storm(2, ['diag', 'flat', 'rise', 'back']);
 MOVES.streakFlurry3 = storm(3, ['flatBack', 'flat', 'diag', 'back']);
 MOVES.streakFlurry4 = storm(4, ['diag', 'flatBack', 'rise', 'flat']);
+
+// ---------------------------------------------------------------- the sword motion pass (ADR-226)
+// Behind `?lordMotion=a` (duelist/lookSwitch.js, PENDING until the owner picks; '0' = as before): his
+// blade held in line with his forearm and his arms opening at the end of a blow (TUNING.motion, his
+// animator); every blue and red blade blow wound into its held tell pose (duelist/tellPose.js:
+// `motionKeys`, the same windups); each string's end a shake of the steel held a beat instead of the
+// roll round the wrist (`motionRecovery`: the roll's back half went through his hood and its stop
+// jolted the point 1.5 - 2.5 m a frame²); and two QUICK blows out of his guard (`quick` beats: a normal
+// tell, a windup of TUNING.minQuickWindup, fixed; `motionOnly`: his AI picks them only while it is on).
+export const motionOn = () => lookOf('lordMotion', '0') !== '0';
+/** The strings' ends, per form: the steel shaken off down and out, held, and back to the guard. */
+const SHAKE = [
+  [[0.24, { e: 'o', arm: 0, two: 0, rH: [-0.2, -0.38, 0.16], rP: [-0.8, -0.4, -0.4], sw: [-1.35, -0.56], yaw: 0.3, bY: -0.12 }], [0.62, { arm: 0, two: 0, rH: [-0.17, -0.4, 0.13], sw: [-1.25, -0.62] }]],
+  [
+    [0.24, { e: 'o', arm: 0, larm: 0, rH: [-0.2, -0.38, 0.16], sw: [-1.35, -0.56], lH: [0.2, -0.38, 0.16], lsw: [1.35, -0.56], yaw: 0.08, bY: -0.12 }],
+    [0.62, { arm: 0, larm: 0, rH: [-0.17, -0.4, 0.13], sw: [-1.25, -0.6], lH: [0.17, -0.4, 0.13], lsw: [1.25, -0.6] }],
+  ],
+  [[0.24, { e: 'o', arm: 0, two: 1, rH: [0.0, -0.34, 0.28], sw: [-1.55, -0.24], yaw: 0.2, bY: -0.12 }], [0.62, { arm: 0, two: 1, rH: [0.03, -0.31, 0.3], sw: [-1.45, 0.06] }]],
+  FLOURISH[3],
+];
+for (const def of Object.values(MOVES)) {
+  const i = FLOURISH.indexOf(def.recoveryKeys);
+  if (i >= 0) def.motionRecovery = SHAKE[i];
+}
+const quickCut = (path, o = {}) => ({
+  tell: N, quick: true, fixed: true, windup: TUNING.minQuickWindup, active: 0.08, damage: 12, knockback: 0.6, track: 0.85,
+  zone: { kind: 'sector', r: o.r ?? 2.3, ang: 0.8 }, keys: slash({ ...path, cock: 0.55, two: o.two ?? 0 }),
+});
+Object.assign(MOVES, {
+  /** Rising Ember: from the blade hung low at his side, a cut straight up through you, no draw. A
+   *  normal blow. Forms 1 - 3 (the twin blades' right one; the staff's lower end). */
+  emberRise: {
+    label: 'Rising Ember', phase: 1, weight: [1.5, 1.4, 1.2, 0], cooldown: 3.4, band: [0, 3.6], recovery: 0.45, motionOnly: true,
+    beats: [quickCut({ from: [-0.8, -0.72], through: [0.0, 0.08], to: [1.0, 0.85], yaw: [0.24, 0.36, 0.6] })],
+  },
+  /** Vigil's Fall: form 4's blade already stands upright before his face; it falls straight down on
+   *  you, both hands on the hilt. A normal blow. */
+  vigilFall: {
+    label: "Vigil's Fall", phase: 4, weight: [0, 0, 0, 1.6], cooldown: 3.4, band: [0, 3.8], recovery: 0.45, motionOnly: true,
+    beats: [quickCut({ from: [0.05, 1.42], through: [0.0, 0.0], to: [-0.3, -0.78], yaw: [0.12, 0.14, 0.2] }, { two: 1, r: 2.6 })],
+  },
+});
+motionize(MOVES);
 export const MOVE_NAMES = Object.keys(MOVES);
 /** Each form's flurry (the kit's `streakMove`). */
 export const STREAKS = Object.freeze(['streakFlurry', 'streakFlurry2', 'streakFlurry3', 'streakFlurry4']);
@@ -1223,7 +1268,11 @@ export const CLIPS_BY_FORM = FORM_POSES.map((K) => {
 export const CLIP = CLIPS_BY_FORM[0];
 
 // ---------------------------------------------------------------- realising a move
-const REALISERS = FORM_POSES.map((K) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => K.compileClip(keys, dur), completeBeat: K.completeBeat }));
+const REALISERS = FORM_POSES.map((K) => makeRealise({
+  TUNING, MOVES, compileClip: (keys, dur) => K.compileClip(keys, dur), completeBeat: K.completeBeat,
+  keysOf: (b) => (motionOn() ? (b.motionKeys ?? null) : null),
+  recoveryKeysOf: (def) => (motionOn() ? (def.motionRecovery ?? null) : null),
+}));
 /**
  * A move as it will play this time (duelist/realise.js), compiled round the stance of the form it is
  * used in; a form's ignition is compiled round the NEW form's stance, so it ends in that guard.

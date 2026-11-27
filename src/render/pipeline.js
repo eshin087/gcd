@@ -243,7 +243,8 @@ export class Pipeline {
         tSelfArt: { value: null },
         // a human boss printed the hero's way (ADR-194; main.js sets it from ?bossPrint=, 0 = as before):
         // x his ink lines found per font pixel (the hero's blocky strokes, not a hairline), y the
-        // player's part tables (HERO_SELF: the dotted cloth rim round his plates too)
+        // player's part tables (HERO_SELF: the dotted cloth rim round his plates too), z his ink lines at
+        // the hero's line width uSelfPx (ADR-220, a boss's `?<boss>Hero=`: his outline the hero's, his letters his own)
         uBossLike: { value: new THREE.Vector4(0, 0, 0, 0) },
         uSelfCell: { value: this.selfCell },
         uSelfPx: { value: 1 },
@@ -1081,7 +1082,9 @@ export class Pipeline {
           vec2 dS = abs(px - uSelfBox.xy);
           gSelf = true; gCell = uSelfCell; gLine = uSelfPx;
           if ((uSelfBox.w < 0.5 || max(dS.x, dS.y) < uSelfBox.z) && heroArtCell(px)) return;
-          gSelf = false; gCell = uHeroCell; gLine = uHeroPx.x;
+          // (a boss outlined like the hero, ADR-220, uBossLike.z: his ink lines at the hero's line width, his
+          // letters on his own cell)
+          gSelf = false; gCell = uHeroCell; gLine = uBossLike.z > 0.5 ? max(uHeroPx.x, uSelfPx) : uHeroPx.x;
           // the impact ripple on a human boss (his ink-line art): his cell near the ring front is
           // drawn from the pixels a shove away, so his letters AND his ink lines move with it
           vec2 pxB = px;

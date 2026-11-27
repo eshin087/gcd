@@ -359,6 +359,20 @@ export const SCAR = Object.freeze({
   object: Object.freeze({ glyphs: 'x/\\+', size: [0.22, 0.5] }),
   /** a crater: a blow of `min` power or more leaves a rim of thrown-up earth and a charred disc */
   crater: Object.freeze({ min: 1.2, glyphs: '.:o,', ring: [10, 26], char: 0.85 }),
+  /**
+   * A level whose floor reads every pale letter (the Veiled Crossing's black asphalt at night: a whole fight
+   * of grit read as snow) keeps only a share of the GRIT (a slam's and a crater's thrown-up ring, a blast's
+   * dots), the RUBBLE (what lands where a piece came down, each bitten letter that falls) and today's crack
+   * SPOKES; the strokes that give a mark its shape stay. `cool`: rubble of a material whose end colour
+   * is a spark's ember (metal: the cars, the lamps, the bus) lies cold grey instead of as orange embers
+   * glowing on the floor till the reset (`?coolRubble=1` / `0` overrides it on any level). Per level id; absent: all (1), as before.
+   */
+  thin: Object.freeze({
+    veil: Object.freeze({ grit: 0.35, rubble: 0.25, ground: 0.4, cool: true }),
+    // Halcyon Plaza: no thinning; its metal rubble lies cold grey (the owner, from round 2's sheet: "if it
+    // looks better grey then yes"; `?coolRubble=0` gives the orange back)
+    city: Object.freeze({ grit: 1, rubble: 1, ground: 1, cool: true }),
+  }),
   /** at the cap this share of the oldest marks goes, fading out over `fade` s (never a pop in view) */
   evict: 0.15,
   fade: 1.4,
@@ -401,8 +415,15 @@ export const SCAR = Object.freeze({
     dash: Object.freeze({ step: 0.36, w: 0.2, size: 0.32, len: [0.8, 6], alpha: 0.62 }),
     /** ki, a spell, an explosion: a scorched round, a star of thin cracks */
     blast: Object.freeze({ r: [0.6, 2.4], rk: 0.8, dots: [7, 18], spokes: [5, 8], glyphs: '.:;,', char: [0.03, 0.026, 0.022] }),
-    /** a beam: a long charred trench along its path, a glassy middle */
-    beam: Object.freeze({ step: 0.32, w: 0.32, len: [0.5, 30], glass: [0.15, 0.16, 0.19], glassAlpha: 0.45 }),
+    /** a beam: a long charred trench along its path, a glassy middle. A caller may give the trench's
+     *  half-width (`o.w`, m, `w` .. `wMax`: Bai Wuji's Null, 2.5): then its edges are that far out every
+     *  `wideStep` m with rubble on `rubble` of them, the glass in rows `rows` m apart across the floor
+     *  between (none given: as before) */
+    beam: Object.freeze({ step: 0.32, w: 0.32, len: [0.5, 30], glass: [0.15, 0.16, 0.19], glassAlpha: 0.45, wMax: 4, wideStep: 0.45, rows: 1.4, glassK: 0.4, rubble: 0.25,
+      // the wide trench READS (the integration pass: a dim lip vanished on the Crossing's night asphalt):
+      // its two edges in `edge` (a pale violet-grey, the lit ones x `lit`), `edgeA`, `edgeSize`; its glass
+      // rows `wideGlass` / `wideGlassA`, `wideGlassK` of the cells (the narrow beam: as before)
+      edge: [0.5, 0.46, 0.62], lit: 1.3, edgeA: 0.95, edgeSize: 0.42, wideGlass: [0.38, 0.34, 0.56], wideGlassA: 0.9, wideGlassK: 0.55 }),
     /** a heavy footfall: a faint print, only above `min` power, at most one in `gap` m of the last */
     step: Object.freeze({ min: 0.5, gap: 2.6, alpha: 0.5 }),
     /** the scorch map, charred ONLY where no grass grows (paving: the cells' fuel is under

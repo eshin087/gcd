@@ -915,6 +915,9 @@ function makeFlightCombo(key) {
     crash(d, a) {
       if (a.crashed) return;
       a.crashed = true;
+      // (it lands on its ground: the target was kept clear of stones against the bound + its radius, and a
+      // landing up to that far out stood it off its ground through the recovery; ADR-223's seeds found it)
+      inReach(d, a.target);
       d.position.x = a.target.x;
       d.position.z = a.target.z;
       touchDown(d, true, false);

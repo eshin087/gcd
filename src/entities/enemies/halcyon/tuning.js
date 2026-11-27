@@ -25,6 +25,15 @@ export const TUNING = {
   close: { first: 3.2, next: 1.6, speed: 14 },
   // (the strike builders' reach: ascendant/moves.js reads ITS tuning's; these are his for his own zones)
   reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },
+  // ---- his reworked motion (ADR-225, `?halMotion=a`; halcyon/motion.js): a builder's blow is aimed down
+  // at the hero (the striking hand `aim.hand` m lower, the body pitched `aim.pitch` rad over it) and his
+  // root dips from the hover to `dip` m through the strike (from `from` of the windup, back up by the
+  // follow-through's end: flight.js _want); his arms open at the end of a blow as Tian Lei's
+  // (`armSoft`, ADR-162: at ~130° the elbow read as a short, crooked arm), his kicks keep a little bend
+  // ---- the snap blows (ADR-225, with `?halMotion=a`): white, from his guard, a short unscaled windup
+  // (ascendant/tuning.js snap says why each number is what it is)
+  snap: { windup: 0.3, damage: 8, close: 0.6, band: 2.4, cooldown: 5, recovery: 0.5, min: 0.28, maxDamage: 10 },
+  motion: { dip: 0.2, from: 0.45, aim: { hand: -0.12, pitch: 0.1 }, armSoft: [0.93, 0.99], legSoft: [0.9, 0.985] },
 
   // ---- posture
   posture: {

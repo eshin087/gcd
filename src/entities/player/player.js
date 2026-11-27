@@ -9,6 +9,8 @@ import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BREATH, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
+import { SlashFx, slashMode } from './slashFx.js';
+import './combos.js'; // (`?combo=`: four light combos for the ending slash, worn on LIGHT at load)
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
@@ -57,6 +59,13 @@ export const TUNE = {
   chipGuard: 0.6, // s: after a no-knockback hit, further ones (breath ticks every 0.15 s) don't re-stagger
   defaultPush: 0.35, // m of slide on a stagger without knockback
   knockbackDecay: 6, // slide velocity decay; slide distance = knockback meters
+  // a boss's hold (hold(): a stagger that cannot be cancelled) is at most this long (the owner's cap on
+  // anything that locks the hero: 1.2 s)
+  holdMax: 1.2,
+  // THROWN THROUGH THE WORLD (a hit's `wjCrash`, Bai Wuji's): while his slide is faster than `minSpeed`
+  // m/s (for at most `max` s), a breakable piece he meets takes a world.impact of the hit's power (one
+  // per piece per throw, at most `pieces`); each one slows the slide x `keep`
+  crash: { minSpeed: 3, max: 1.5, pieces: 6, keep: 0.6, reach: 0.12 },
   burnDps: 4,
   burnTick: 0.5,
   buffer: 0.3, // input buffer for roll / attacks / heal
@@ -215,6 +224,9 @@ export class Player {
     this.vel = { x: 0, z: 0 }; // own movement
     this.want = { x: 0, z: 0 }; // desired movement this frame
     this.kb = { x: 0, z: 0 }; // knockback slide
+    // the throw through the world (a hit's `wjCrash`, TUNE.crash): on while the slide carries him
+    this.crash = { on: false, power: 0, damage: 0, t: 0, n: 0, hits: [], by: null };
+    this._crashNear = [];
     this.groundVel = { x: 0, z: 0 }; // actual displacement / dt (drives the gait)
     // { def, t, hit, prevT, pending, damage, poise, charge, gust, lunge, travel, impact, relT, hitAt,
     //   cutDir, glintZ, shaped, svx, svz }
@@ -345,6 +357,7 @@ export class Player {
     this.anim = new HeroAnimator(this.rig, this, null, { freeHand: true });
     this.anim.onFootstep = (side, dust) => this._footstep(side, dust);
     this.fx = new PlayerFx(game, this.rig);
+    this.slashFx = new SlashFx(this); // every swing's instant slash line (slashFx.js; ?slash=arc: the crescent)
     this.mystic = new SwordMystic(this); // the sword's green flame (on by default; ?mystic=0 = nothing drawn)
     this.flurry = new Flurry(this, TUNE);
     // camera lean (model.js LEAN): visual only; hits and the dragon's aim use unleaned positions
@@ -534,7 +547,7 @@ export class Player {
         return RESULT.BLOCKED;
       }
       if (blockable) {
-        this._block(dmg, tell, attack, chip, nx, nz, hit.guardCost);
+        this._block(dmg, tell, attack, chip, nx, nz, hit.guardCost, hit.blockPush);
         return RESULT.BLOCKED;
       }
       this._streakEnd();
@@ -556,6 +569,7 @@ export class Player {
     if (!chip) this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
+    this._crashArm(hit, attacker, kb);
     this.flash = 1;
     const big = knockdown || dmg >= 25;
     this.getChestPos(this._v, true);
@@ -688,6 +702,7 @@ export class Player {
     this.vel.x = this.vel.z = 0;
     this.want.x = this.want.z = 0;
     this.kb.x = this.kb.z = 0;
+    this.crash.on = false;
     this.groundVel.x = this.groundVel.z = 0;
     this.atk = null;
     this.bladeLock = null;
@@ -1519,7 +1534,9 @@ export class Player {
     const a = this.atk;
     if (a) a.guarded = true;
     if (!o.deflect || this.state === 'plunge' || this.state === 'lock' || a?.exec) return;
-    this._bounce(o.attacker, TUNE.bouncePush);
+    // (`push`: the boss's own throw-back in metres: Bai Wuji's barrier, a short one)
+    const push = Number(o.push);
+    this._bounce(o.attacker, Number.isFinite(push) && push >= 0 ? clamp(push, 0, 6) : TUNE.bouncePush);
     this._emit('player:bounced', { heavy: !!o.heavy });
   }
 
@@ -1690,8 +1707,10 @@ export class Player {
   }
 
   /** `guardCost` (optional, a hit's own: Xin Yi's Iron Rain, ADR-156): what the block costs the meter
-   *  instead of GUARD.cost's (a stream of small shots must not empty it: GUARD.costMin is 8 a blow). */
-  _block(dmg, tell, attack, chip, nx, nz, guardCost) {
+   *  instead of GUARD.cost's (a stream of small shots must not empty it: GUARD.costMin is 8 a blow).
+   *  `blockPush` (optional, a hit's own: Bai Wuji's weight): the slide in metres instead of
+   *  DEFENSE.blockPushback[tell] (0 - 14). A block never costs health either way. */
+  _block(dmg, tell, attack, chip, nx, nz, guardCost, blockPush) {
     const g = this.game;
     // a blow costs guard and no HP (GUARD); a contact stream (the breath's ticks, a bullet) is no
     // blow: it keeps its HP chip and leaves the meter alone
@@ -1705,7 +1724,8 @@ export class Player {
       this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
       open = this.guard <= 0;
     }
-    const push = (DEFENSE.blockPushback[tell] ?? DEFENSE.blockPushback.normal) * (chip ? TUNE.chipPush : 1);
+    const own = Number(blockPush);
+    const push = Number.isFinite(own) && own >= 0 && !chip ? clamp(own, 0, 14) : (DEFENSE.blockPushback[tell] ?? DEFENSE.blockPushback.normal) * (chip ? TUNE.chipPush : 1);
     this._setKb(nx, nz, Math.max(fin(this.kb.x * nx + this.kb.z * nz) / TUNE.knockbackDecay, push));
     const heavy = tell === TELL.BLUE && !chip;
     this._bladePoint(0.45, this._v);
@@ -3042,6 +3062,88 @@ export class Player {
     this.kb.z = fin(nz) * v;
   }
 
+  /**
+   * HELD (a boss's hold: Bai Wuji's domain): a stagger of `sec` s (at most TUNE.holdMax) that nothing
+   * cancels, no slide. Never on a hero who is down or dead, nor in a move of his own out of reach
+   * (plunge, flurry, lock, the Ghostep, the mikiri). True if he is held.
+   */
+  hold(sec) {
+    if (!this.alive || ['knockdown', 'dead', 'plunge', 'flurry', 'lock', 'ghostep', 'mikiri'].includes(this.state)) return false;
+    const s = clamp(fin(Number(sec), 0), 0, TUNE.holdMax);
+    if (!(s > 0)) return false;
+    this._interrupt();
+    this.kb.x = this.kb.z = 0;
+    this.vel.x = this.vel.z = 0;
+    this.want.x = this.want.z = 0;
+    this.crash.on = false;
+    this._enter('stagger', 'stagger', 0.06);
+    this.staggerLen = s;
+    return true;
+  }
+
+  /** A plain hit's throw: through the world if it carries `wjCrash` (power > 0), else no crash. */
+  _crashArm(hit, attacker, kb) {
+    const C = this.crash, pw = Number(hit.wjCrash);
+    C.on = Number.isFinite(pw) && pw > 0 && kb > 0;
+    if (!C.on) return;
+    C.power = pw;
+    C.damage = Math.max(0, fin(Number(hit.wjCrashDamage), 0));
+    C.t = 0;
+    C.n = 0;
+    C.hits.length = 0;
+    C.by = attacker;
+  }
+
+  /**
+   * The throw through the world (TUNE.crash): each breakable piece the sliding hero meets takes one
+   * world.impact of the throw's power at the contact (it breaks behind him, or holds and stops him: the
+   * collision after this pushes him out as always), the slide slows, and he takes `damage` more (never
+   * the last of his health). Off when the slide is slow, after TUNE.crash.max s, out of a stagger /
+   * knockdown, or after TUNE.crash.pieces pieces.
+   */
+  _crashStep(dt) {
+    const C = this.crash, K = TUNE.crash, p = this.position;
+    C.t += dt;
+    const sp = Math.hypot(this.kb.x, this.kb.z);
+    if (!(sp >= K.minSpeed) || C.t > K.max || C.n >= K.pieces || (this.state !== 'stagger' && this.state !== 'knockdown')) {
+      C.on = false;
+      return;
+    }
+    const W = this.game.world, D = W?.destructibles;
+    if (!D?.around || typeof W.impact !== 'function') return;
+    const near = this._crashNear, r = this.radius;
+    const n = D.around(p.x, p.z, r + K.reach, near, 8);
+    const ux = this.kb.x / sp, uz = this.kb.z / sp;
+    for (let i = 0; i < n; i++) {
+      const b = near[i];
+      if (C.hits.includes(b) || (b.y0 > 0 && b.y0 > 1.4)) continue;
+      // (only a piece AHEAD of him along the throw: not one he slides away from)
+      if ((b.x - p.x) * ux + (b.z - p.z) * uz < -0.2) continue;
+      C.hits.push(b);
+      C.n++;
+      const cx = p.x + ux * r, cz = p.z + uz * r;
+      const o = (this._crashO ??= { kind: 'blunt', by: 'boss', dx: 0, dz: 0, y: 0.9, src: -1 });
+      o.dx = ux;
+      o.dz = uz;
+      o.src = D.swing?.() ?? -1;
+      try {
+        W.impact(cx, cz, 0.7, C.power, o);
+      } catch (err) {
+        console.error('[player] crash impact', err);
+      }
+      this.kb.x *= K.keep;
+      this.kb.z *= K.keep;
+      if (C.damage > 0 && this.hp > 1 && !this.debug.god) {
+        const d = Math.min(C.damage, this.hp - 1);
+        this._damage(d);
+        this._emit('player:hurt', { damage: d, kind: 'crash', hp: this.hp });
+      }
+      this.game.shake?.(0.25);
+      C.by?.fx?.crash?.(cx, cz, ux, uz, C.power);
+      if (C.n >= K.pieces) break;
+    }
+  }
+
   /** Short freeze-frame, skipped while a longer slow-mo (Ghostep) runs so it can't turn into a freeze. */
   _hitstop(sec, scale = 0.04) {
     const g = this.game;
@@ -3142,6 +3244,7 @@ export class Player {
     const ox = p.x, oz = p.z;
     p.x += (v.x + this.kb.x) * dt;
     p.z += (v.z + this.kb.z) * dt;
+    if (this.crash.on) this._crashStep(dt);
     this._collide();
     if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) {
       p.x = fin(ox, CONFIG.world.playerSpawn.x);
@@ -3231,6 +3334,7 @@ export class Player {
   _combat() {
     const sw = this.sweep;
     if (!sw.sample()) return;
+    this.slashFx?.update(); // (the straight line where the blade passed: slashFx.js)
     const a = this.atk;
     if (a && !a.pending && (this.state === 'attack' || this.state === 'heavy')) {
       const d = a.def, t = a.t;
@@ -3246,7 +3350,8 @@ export class Player {
         // the blade meets the world too (ADR-107): what it sweeps through is chipped, cut down, felled
         if (prevT <= end) this._cutWorld(a, sw, prevT);
         // (the arc bites as a cut lands: white-hot for 0.06 s of the attack clock after the contact)
-        this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
+        // (the instant slash draws one straight line instead of the crescent: slashFx.js; ?slash=arc the crescent)
+        if (!this.slashFx?.owns(a)) this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, d.kind, crit, true, a.hit && a.hitAt >= 0 && a.t - a.hitAt < 0.06);
         // a glint on the arc's edge as the cut comes through (the cleave cuts late in its dash). The
         // edge runs just past the steel's point (fx.arcAt), not at the end of the reach. A landed
         // cut's core is the beat's one star: a whiff keeps the glint
@@ -3325,7 +3430,8 @@ export class Player {
     const pl = this.pl, ph = pl.phase;
     sw.point(1, this._tip);
     if (ph === PL.DIVE || (ph === PL.RIDE && pl.streak)) {
-      this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, 'slam', pl.exec, false); // (the dive carries the blade: no turn to gate on)
+      // (the dive carries the blade: no turn to gate on. The instant slash look keeps only the straight streak)
+      if (slashMode() === 'arc') this.fx.trail(sw.pa, sw.pb, sw.a, sw.b, 'slam', pl.exec, false);
       this.fx.thrustStreak(this._tipPrev, this._tip, 1, pl.exec);
       pl.streak = ph === PL.DIVE;
     } else pl.streak = false;

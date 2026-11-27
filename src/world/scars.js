@@ -17,6 +17,11 @@ import { mowOn } from './scorch.js';
 //   scars.object(owner, x, y, z, power, M)   a nick on a struck object (dropped when it breaks)
 //   scars.rubble(x, z, r, M, n)              what is left where something came down
 //   scars.drop(owner)  scars.reset()  scars.count  scars.on  scars.setQuality(k)
+//   scars.layer                              a tag the marks made from now on carry (a set's scene: null by default)
+//   scars.shade(x, z, r, hide, except)       the marks within r of (x, z) not tagged `except` hidden (hide) or shown
+//                                            again (a scene that is another floor: the Veiled Crossing's void hides
+//                                            the city's marks as its front passes, and shows them on the way back).
+//                                            Returns how many changed; no rebuild (their letters' alpha in place)
 // When the batch is full (SCAR.max x the quality factor) the oldest SCAR.evict share fades out over
 // SCAR.fade s and goes (one rebuild of the batch, not one per new mark). `ink` is the set's crack colour
 // (`scarInk` in a set's output: dark on pale paving, an ember red on the hall's black tiles).
@@ -38,6 +43,8 @@ const KINDS = ['slam', 'cut', 'thrust', 'dash', 'blast', 'beam', 'step'];
 let seed = 0x7a3c19e5;
 const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
 const pick = (s) => s[Math.floor(rnd() * s.length)];
+/** n x k glyphs, rounded at random (k = 1: n, and no draw: a level without thinning keeps its stream) */
+const thinN = (n, k) => (k >= 1 ? n : Math.floor(n * k + rnd()));
 
 /** Is the kind marking on (`?marks=0`: today's cracks only)? Read per blow (a Map lookup). */
 export const marksOn = () => lookOf('marks', '1') !== '0';
@@ -58,6 +65,11 @@ export class Scars {
     const lip = SCAR.mark.lip[game?.level?.id] ?? SCAR.mark.lip.default;
     this.lip = lip.color;
     this.lipA = lip.alpha;
+    // the level's thinning (SCAR.thin): the share of grit, rubble and today's crack spokes it keeps (1: all)
+    const th = SCAR.thin?.[game?.level?.id] ?? null;
+    // (`?coolRubble=1` / `=0`: the cold rubble on or off on any level, over the table: the owner's films)
+    const cu = lookOf('coolRubble', '');
+    this.thin = { grit: th?.grit ?? 1, rubble: th?.rubble ?? 1, ground: th?.ground ?? 1, cool: cu === '1' ? true : cu === '0' ? false : !!th?.cool };
     this.max = SCAR.max;
     this.cap = SCAR.max;
     /** the marks, oldest first: { x, y, z, glyph, size, color: [r, g, b], alpha, rot, owner } (records are reused) */
@@ -71,6 +83,8 @@ export class Scars {
     this._liftDens = null; // (inside mark() with the mow on: the density each glyph's lift is read by)
     this._sc = null; // (inside mark() with the mow on: the scorch map it tears)
     this._dieT = 0;
+    /** the tag new marks carry (shade's `except`); a set's scene sets it */
+    this.layer = null;
     /** how many kind marks were made, by kind (the tests', the Lab's) */
     this.made = { slam: 0, cut: 0, thrust: 0, dash: 0, blast: 0, beam: 0, step: 0 };
     this.kinds = 0;
@@ -136,8 +150,9 @@ export class Scars {
         this._dieT = 0;
       } else if (M.length >= this.cap + this._dying) this._evict(this._dying);
     }
-    const m = this._spare.pop() ?? { x: 0, y: 0, z: 0, glyph: '.', size: 0, color: [0, 0, 0], alpha: 1, rot: 0, owner: -1 };
+    const m = this._spare.pop() ?? { x: 0, y: 0, z: 0, glyph: '.', size: 0, color: [0, 0, 0], alpha: 1, rot: 0, owner: -1, layer: null, hid: false };
     m.x = x; m.y = y; m.z = z; m.glyph = glyph; m.size = size; m.alpha = alpha; m.rot = rot; m.owner = owner;
+    m.layer = this.layer; m.hid = false;
     m.color[0] = color[0]; m.color[1] = color[1]; m.color[2] = color[2];
     M.push(m);
     if (!this._stale) this._spawn(m);
@@ -148,7 +163,7 @@ export class Scars {
     if (!this.sys) return;
     const r = this._rec;
     r.x = m.x; r.y = m.y; r.z = m.z; r.size = r.sizeEnd = m.size; r.glyph = m.glyph;
-    r.color = r.colorEnd = m.color; r.alpha = r.alphaEnd = m.alpha; r.rot = m.rot;
+    r.color = r.colorEnd = m.color; r.alpha = r.alphaEnd = m.hid ? 0 : m.alpha; r.rot = m.rot;
     this.sys.spawn(r);
   }
 
@@ -206,7 +221,7 @@ export class Scars {
         this._liftDens = dens;
         this._sc = sc;
         // (a cut tears inside _cut: its bow and its claws' lengths are drawn there)
-        if (kind !== 'cut') this._tearKind(kind, x, z, dx, dz, power, size, len, o.arc ? r : 0, r);
+        if (kind !== 'cut') this._tearKind(kind, x, z, dx, dz, power, size, len, o.arc ? r : 0, r, this._beamW(kind, o.w));
       }
       switch (kind) {
         case 'slam': this._slam(x, z, power, size, keep, r); break;
@@ -214,7 +229,7 @@ export class Scars {
         case 'thrust': this._thrust(x, z, dx, dz, power, keep); break;
         case 'dash': this._dash(x, z, dx, dz, power, len, keep, o.arc ? r : 0); break;
         case 'blast': this._blast(x, z, power, size, keep, !!o.hot); break;
-        case 'beam': this._beam(x, z, dx, dz, power, len, !!o.hot || o.hot === undefined); break;
+        case 'beam': this._beam(x, z, dx, dz, power, len, !!o.hot || o.hot === undefined, this._beamW(kind, o.w)); break;
         case 'step': this._step(x, z, dx, dz, power); break;
       }
     } finally {
@@ -228,6 +243,14 @@ export class Scars {
       this.kinds++;
     }
     return Math.max(0, n);
+  }
+
+  /** A beam's trench half-width from its caller (`o.w`, m; SCAR.mark.beam.w .. wMax), or NaN: the
+   *  beam's own (every beam before Bai Wuji's Null passes none: its marks are as they were). */
+  _beamW(kind, w) {
+    if (kind !== 'beam' || !(Number(w) > 0)) return NaN;
+    const T = SCAR.mark.beam;
+    return Math.min(T.wMax, Math.max(T.w, Number(w)));
   }
 
   /** How high a kind mark's glyph at (x, z) lies with the mow on: on the stubble where the grass is
@@ -262,7 +285,7 @@ export class Scars {
    * kind's own method takes them; a cut's is torn in _cut). Draws no random number: the marks' stream
    * is the same with the mow on or off.
    */
-  _tearKind(kind, x, z, dx, dz, power, size, len, arc, rBlow) {
+  _tearKind(kind, x, z, dx, dz, power, size, len, arc, rBlow, wide = NaN) {
     const G = GRASS.mark, T = SCAR.mark, sc = this._sc, k = this._tearK(kind, power);
     switch (kind) {
       case 'slam': {
@@ -286,7 +309,8 @@ export class Scars {
       }
       case 'beam': {
         const L = Math.min(T.beam.len[1], Math.max(T.beam.len[0], Number.isFinite(len) ? len : 1.4));
-        sc.tearLine(x, z, x + dx * L, z + dz * L, G.beam.w, k);
+        // (a wide trench, the caller's half-width: the strip as wide as the trench, GRASS.mark.beam.pad over)
+        sc.tearLine(x, z, x + dx * L, z + dz * L, wide > 0 ? wide * 2 + G.beam.pad : G.beam.w, k);
         break;
       }
       case 'step':
@@ -343,7 +367,7 @@ export class Scars {
     // the biggest reuse today's crater rim (and its charred disc, which world.impact lays)
     if (power >= SCAR.crater.min) this.crater(x, z, Math.max(R, Math.min(Number.isFinite(rBlow) ? rBlow : 9, 1.2 + power * 1.1)), power, keep, this.lip);
     else {
-      const n = Math.max(3, Math.round((T.grit[0] + (T.grit[1] - T.grit[0]) * k) * keep));
+      const n = Math.max(2, thinN(Math.max(3, Math.round((T.grit[0] + (T.grit[1] - T.grit[0]) * k) * keep)), this.thin.grit));
       const a0 = rnd() * TAU;
       for (let i = 0; i < n; i++) {
         const a = a0 + (i / n) * TAU + (rnd() - 0.5) * 0.7, d = R * (0.78 + 0.38 * rnd());
@@ -504,7 +528,7 @@ export class Scars {
     const T = SCAR.mark.blast, K = SCAR.mark, y = K.y;
     const k = clamp01((power - 0.3) / 1.5);
     const dark = hot ? T.char : this.lineInk;
-    const n = Math.round((T.dots[0] + (T.dots[1] - T.dots[0]) * k) * keep);
+    const n = thinN(Math.round((T.dots[0] + (T.dots[1] - T.dots[0]) * k) * keep), this.thin.grit);
     for (let i = 0; i < n; i++) {
       // (denser toward the middle: the round is scorched, not ringed)
       const a = rnd() * TAU, d = R * 0.7 * Math.sqrt(rnd()) * (0.5 + 0.5 * rnd());
@@ -525,12 +549,16 @@ export class Scars {
     if (hot) this._char(x, z, R * 0.8, K.char.blast);
   }
 
-  /** A beam's trench `len` m along (dx, dz) from (x, z): charred edges and a glassy middle. */
-  _beam(x, z, dx, dz, power, len, hot) {
+  /** A beam's trench `len` m along (dx, dz) from (x, z): charred edges and a glassy middle. `wide` (m,
+   *  the caller's half-width; NaN: the beam's own): the edges that far out, rubble along them and the
+   *  glass in rows across the floor between (a wide trench: Bai Wuji's Null). */
+  _beam(x, z, dx, dz, power, len, hot, wide = NaN) {
     const T = SCAR.mark.beam, K = SCAR.mark, y = K.y;
     const k = clamp01((power - 0.3) / 1.2);
     const L = Math.min(T.len[1], Math.max(T.len[0], Number.isFinite(len) ? len : 1.4));
-    const rot = groundRot(dx, dz), px = -dz, pz = dx, w = T.w * (0.85 + 0.4 * k);
+    const rot = groundRot(dx, dz), px = -dz, pz = dx;
+    if (wide > 0) return this._wideBeam(x, z, dx, dz, L, wide, rot, hot);
+    const w = T.w * (0.85 + 0.4 * k);
     for (let s = 0; s < L; s += T.step) {
       for (const side of [-1, 1]) {
         const d = side * w * (0.9 + 0.25 * rnd());
@@ -541,6 +569,31 @@ export class Scars {
       if (rnd() < 0.55) this._add(x + dx * s + px * (rnd() - 0.5) * w * 0.5, y + 0.01, z + dz * s + pz * (rnd() - 0.5) * w * 0.5, rnd() < 0.7 ? '=' : '~', 0.3, T.glass, T.glassAlpha, rot, -1);
     }
     if (hot) for (let s = 0; s < L; s += 0.9) this._char(x + dx * s, z + dz * s, w * 1.6, K.char.beam);
+  }
+
+  /** _beam's wide trench: both edges `w` m out (a broken lip: strokes and rubble), the glass in rows
+   *  `T.rows` m apart across the floor between (`glassK` of the cells), charred across its width. */
+  _wideBeam(x, z, dx, dz, L, w, rot, hot) {
+    const T = SCAR.mark.beam, K = SCAR.mark, y = K.y, px = -dz, pz = dx;
+    const rows = Math.max(1, Math.floor((w * 2) / T.rows));
+    const E = T.edge, EL = (this._wideLit ??= E ? E.map((c) => Math.min(1, c * (T.lit ?? 1))) : null);
+    for (let s = 0; s < L; s += T.wideStep) {
+      for (const side of [-1, 1]) {
+        const d = side * w * (0.94 + 0.1 * rnd());
+        const lit = pz * side < 0; // (the far edge's lip catches the light)
+        if (E) this._add(x + dx * s + px * d, y, z + dz * s + pz * d, rnd() < 0.8 ? '-' : '=', T.edgeSize + 0.08 * rnd(), lit ? EL : E, T.edgeA, rot + (rnd() - 0.5) * 0.16, -1);
+        else this._add(x + dx * s + px * d, y, z + dz * s + pz * d, '-', 0.36 + 0.08 * rnd(), lit ? this.lip : this.lineInk, K.alpha * (lit ? this.lipA : 1), rot + (rnd() - 0.5) * 0.16, -1);
+        // the broken lip: rubble thrown up just outside the edge, now and then
+        if (rnd() < T.rubble) this._add(x + dx * s + px * (d + side * (0.2 + 0.35 * rnd())), y + 0.02, z + dz * s + pz * (d + side * (0.2 + 0.35 * rnd())), pick('.,:o'), 0.2 + 0.12 * rnd(), this.lip, K.alpha * this.lipA, rnd() * TAU, -1);
+      }
+      // the glass across the floor between: rows, glassK of their cells
+      for (let i = 0; i < rows; i++) {
+        if (rnd() > (T.wideGlassK ?? T.glassK)) continue;
+        const d = -w + ((i + 0.5) / rows) * w * 2 + (rnd() - 0.5) * T.rows * 0.4;
+        this._add(x + dx * s + px * d, y + 0.01, z + dz * s + pz * d, rnd() < 0.7 ? '=' : '~', 0.32, T.wideGlass ?? T.glass, T.wideGlassA ?? T.glassAlpha, rot, -1);
+      }
+    }
+    if (hot) for (let s = 0; s < L; s += 0.9) for (let i = 0; i < rows; i += 2) this._char(x + dx * s + px * (-w + ((i + 1) / rows) * w * 2), z + dz * s + pz * (-w + ((i + 1) / rows) * w * 2), T.rows * 1.4, K.char.beam);
   }
 
   /** A heavy foot at (x, z): a faint print, toes toward (dx, dz); none within SCAR.mark.step.gap of the last. */
@@ -624,7 +677,7 @@ export class Scars {
     const G = SCAR.ground;
     if (!(power >= G.min) || !Number.isFinite(x + z)) return;
     const k = Math.min(1, (power - G.min) / 1.6);
-    const spokes = Math.round(G.spokes[0] + (G.spokes[1] - G.spokes[0]) * k);
+    const spokes = Math.max(2, thinN(Math.round(G.spokes[0] + (G.spokes[1] - G.spokes[0]) * k), this.thin.ground));
     const reach = G.reach[0] + (G.reach[1] - G.reach[0]) * k;
     const lean = Math.hypot(dx, dz) > 1e-3 ? Math.atan2(dz, dx) : rnd() * 6.283;
     const a0 = rnd() * 6.283;
@@ -652,7 +705,7 @@ export class Scars {
     const C = SCAR.crater;
     if (!Number.isFinite(x + z + r + power) || !(r > 0.3)) return;
     const k = Math.min(1, Math.max(0, (power - C.min) / 1.3));
-    const n = Math.max(4, Math.round((C.ring[0] + (C.ring[1] - C.ring[0]) * k) * keep));
+    const n = Math.max(4, thinN(Math.round((C.ring[0] + (C.ring[1] - C.ring[0]) * k) * keep), this.thin.grit));
     const col = color ?? this._col;
     if (!color) { col[0] = 0.07; col[1] = 0.06; col[2] = 0.055; }
     const alpha = color ? SCAR.mark.alpha * this.lipA : 0.9;
@@ -682,6 +735,13 @@ export class Scars {
     const c = M?.colorEnd ?? [0.16, 0.17, 0.2];
     const col = this._col;
     col[0] = c[0] * 1.5; col[1] = c[1] * 1.5; col[2] = c[2] * 1.5;
+    // (SCAR.thin `cool`: a material whose end colour is a spark's ember (metal) lies as cold grey
+    // rubble, not as embers glowing on the floor till the reset)
+    if (this.thin.cool && c[0] > 1.8 * c[1]) {
+      const L = (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) * 1.5 * 0.7;
+      col[0] = L; col[1] = L; col[2] = L * 1.1;
+    }
+    n = thinN(n, this.thin.rubble);
     for (let i = 0; i < n; i++) {
       const a = rnd() * 6.283, d = Math.sqrt(rnd()) * r;
       this._add(x + Math.cos(a) * d, 0.09, z + Math.sin(a) * d, glyphs[Math.floor(rnd() * glyphs.length)], 0.2 + rnd() * 0.22, col, 0.85, rnd() * 6.283, -1);
@@ -719,6 +779,26 @@ export class Scars {
     this.sys?.clear();
   }
 
+  /** The marks within r of (x, z), but those tagged `except`, hidden (`hide`) or shown again (header). */
+  shade(x, z, r, hide = true, except = null) {
+    if (!Number.isFinite(x + z) || !(r >= 0)) return 0;
+    const M = this.marks, h = !!hide, r2 = r * r;
+    const D = this.sys && !this._stale ? this.sys.data : null, nD = D ? Math.min(M.length, this.sys.count) : 0;
+    const f = this._dying > 0 ? clamp01(1 - this._dieT / SCAR.fade) : 1;
+    let n = 0;
+    for (let i = 0; i < M.length; i++) {
+      const m = M[i];
+      if (m.hid === h || (except !== null && m.layer === except)) continue;
+      const dx = m.x - x, dz = m.z - z;
+      if (dx * dx + dz * dz > r2) continue;
+      m.hid = h;
+      n++;
+      if (i < nD) D[i * PF + 16] = D[i * PF + 17] = h ? 0 : m.alpha * (i < this._dying ? f : 1);
+    }
+    if (n) this._dirty = true;
+    return n;
+  }
+
   setVisible(on) {
     if (this.sys?.mesh) this.sys.mesh.visible = !!on;
   }
@@ -731,7 +811,7 @@ export class Scars {
       if (f <= 0) this._evict(this._dying);
       else if (this.sys && !this._stale) {
         const D = this.sys.data, M = this.marks, n = Math.min(this._dying, this.sys.count, M.length);
-        for (let i = 0; i < n; i++) D[i * PF + 16] = D[i * PF + 17] = M[i].alpha * f;
+        for (let i = 0; i < n; i++) D[i * PF + 16] = D[i * PF + 17] = M[i].hid ? 0 : M[i].alpha * f;
         this._dirty = true;
       }
     }

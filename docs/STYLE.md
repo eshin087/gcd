@@ -1227,6 +1227,13 @@ is the look as it was before the option existed, `a` its author's proposal, `b` 
 | `?halCapeSize=` | Halcyon's cape's size (ADR-166; read when his rig is built) | as picked (1.54 m) | ~80 % | ~65 % (1.00 m, past his knees) | ~50 %, to the back of his knees | **b** (the owner's pick, 2026-11-23) |
 | `?glare=` | his eyes' heat: the beams, the eyes, the crimson screens (a palette swapped into the void slot) | - | crimson with a white-hot steel core | crimson alone | the engine's orange fire with a steel core | **a**, the owner's pick (2026-11-23) |
 | `?city=` | Halcyon Plaza's light (ADR-159; read when the level is built) | - | Neon Rain: night, rain, wet dark asphalt, pale neon | Golden Hour: his perfect city at dusk, warm, no rain | Lockdown: red emergency light, two search beams sweeping the plaza | **a**, the owner's pick (2026-11-23) |
+| `?wjLook=` | Bai Wuji's coat (ADR-241; read when his rig is built; ink-line art) | - | a black high-collared coat, a black band, pure white hair, ice-blue eyes | a long indigo-black robe with a crossed front and a sash, a white cloth band | a bone-white coat, its collar dark, a dark band | **c**, the owner's pick (2026-11-25) |
+| `?wjHair=` | Bai Wuji's hair, up (phase 1) and fallen (phases 2 - 3) (read when his rig is built) | - | a tall swept crown / long soft locks | a short spiky burst / a choppy fringe | - | **b**, the owner's pick (2026-11-25) |
+| `?wjLetters=` | Bai Wuji's letters (live) | the bosses' fixed fine cell | they follow his size on screen by the hero's rule | - | - | **a** |
+| `?wjShell=` | his barrier while it stands (ADR-241) | - | all but invisible: only the side a blade nears lights | a faint standing shell of sparse strokes crawling round it | two dashed rings that breathe | **a**, the owner's pick (2026-11-25) |
+| `?wjNull=` | the Violet Null's line | - | a hard-edged slab of violet: crisp strokes along both edges, a pale core | a round bore: a soft body brightest at its core, rings of light running down it | - | **a**, the owner's pick (2026-11-25) |
+| `?wjCity=` | the Veiled Crossing's reading (read when the level is built) | - | ash moon: cold moonlit ash-grey, pale bars | last lamps: the last sodium lamps' amber, two dead screens' glow, warm grey asphalt | black wet: wet black asphalt, pale bars, a cold blue moon | **a**, the owner's pick (2026-11-25) |
+| `?wjVoid=` | the void (read when the level is built) | - | drifts: star clumps and drifts only | the ring: the stars and one great pale ring lying on the floor round the fight | the fall: the stars falling slowly as fine streaks, a line of light where the floor ends | **b**, the owner's pick (2026-11-25) |
 | `?gradeLook=` | the record screen's grade (ADR-179; `ui/recordLooks.js`; sheet `docs/looks/records/grade-options.jpg`) | - | the grade in block letters over its time, marks and the best before | the block letters beside those lines | the banners' plain `#` letters, the time beside | **a**, the owner's pick (2026-11-24) |
 | `?recLook=` | the title's best under each level (ADR-179; sheet `docs/looks/records/title-options.jpg`) | - | a small line under each button: grade and time | the grade in the button after the name, the time on a second line | one line under the picker for the button the mouse or pad is on | **b**, the owner's pick (2026-11-24; sheet `docs/looks/records/title-shipped.jpg`) |
 | `?incant=` | the wyrm's seal of burning script, opening each roar-cast move (ADR-197; read once; no Lab row) | - | **the seal (default)**: rings, a band of sigils, a seven-point star and a small ring at its heart, all flat on the ground (a seal before the jaws stands upright, facing the camera) | the rings and star flat, the sigils standing up on the ring as burning letters 2 m tall that face the camera (they read at the game camera, where flat ones are 2 - 3 rows tall); `c` (script streaming off its body as motes) was dropped in round 2 | - | **a**, the owner’s pick (2026-11-25: the defaults kept) |
@@ -1763,6 +1770,20 @@ breaks into the hero's pale dotted hem along a ragged line (materials.js `uBossP
 `uBossLike`). Done in the shader: a new boss in the ink-line art gets it with no change; pick his fills for
 hue, not for brightness. The face, the eyes and what glows (parts 1, 2, 17 - 19) keep their own fill.
 
+### The bosses drawn in the hero's style (2026-11-26, ADR-220; `?ashHero=` / `lordHero` / `ascHero` / `sheathHero` / `halHero`)
+On top of ADR-194's print, each human boss is drawn in the hero's style, never in his colours or his clothes (the
+owner: "i didnt mean make it the same color or cloth texture as the main character. i meant the style and engine
+look"):
+- **His shading** (a): a boss's cloth keeps its own colour and brightness where the key light (upper left) catches
+  it and on his shoulders, and falls off toward dark letters on the shadow side and down his body, as the hero's
+  cloak does. His head and hat, his face and the pale hem print as ADR-194 left them.
+- **His outline** (b): the boss's ink lines (silhouette, dotted rim, lines between parts) step at the hero's line
+  width, two pixels at 1440p; his letters stay his own fine ones. At 720p and on the phone both are one pixel.
+- **Picks:** both (c) on Shen Hui, Varr Nihil and Lu Wusheng; the shading (a) on Tian Lei and Halcyon, whose
+  letters already follow their size and so already draw the hero's lines.
+A new human boss: give his level a switch in `duelist/heroPrint.js` and a Lab row; pick his colours for hue and
+brightness on the lit side, the shading does the dark.
+
 ### The Hall of Falling Script and Xin Yi (2026-11-22, ADR-156, ADR-157; `world/scriptHall.js`, `enemies/wokenOne/`, `?level=code`)
 "More extra ASCII" (the owner) is four layers INSIDE the game's letter systems: none of it is a pass over the
 frame (a terminal post-process and one character grid over the frame were turned down: "Tried and turned
@@ -1801,6 +1822,51 @@ down"), and none of it touches the hero, the boss or the HUD.
   one bright cell. At ~40 px the homage is the silhouette: the long coat to the ankles with split tails that
   stream behind him when he runs (from phase 2), the high collar. `?oneLook=a` the Long Coat, `b` the Cassock,
   `c` the Grey Coat.
+- **His figure rebuilt** (2026-11-26, ADR-221; `?oneBody=a|b|c`, the owner picked **b**, the open coat; '0' as above). Filmed
+  beside the hero at the game camera he read as a hollow bottle: a bright jade outline round a near-black fill, a
+  skirt flaring from the chest past narrow shoulders, a three-letter head. The redraws print him the hero's way
+  (look.js `BODY_INK`: HERO_INK's cloth rules in his jade-grey, the dim dotted rim, no ink gain over 1.5, far fills
+  at ~0.6 of the hero's because the bosses' print lifts his near-grey fill to ~3x the hero's coat) on a man's
+  build (gear.js `SHELL_MAN`: broader square shoulders, a deeper chest, a belt at the waist; fuller swept-back
+  hair; the collar lower) with a skirt that hangs near straight (`COAT_MAN`, panelSkirt's per-panel `cone` 0.1:
+  the hem about the shoulders' width). a the long coat, closed in phase 1; b open in every phase, the legs
+  walking in the split; c a duster to mid-shin, the boots below it. **One coat, not the hero's cloak** (the owner:
+  "one big coat put together"): five panels overlapping all round with one back panel (no vent, no gaps), a straight
+  hem, the inside the same cloth; the coat prints as part 5, so the bosses' print never gives it the hero's pale
+  ragged hem; it swings 30 degrees out at most, so it stays one coat through his flips.
+
+### The Veiled Crossing and Bai Wuji (2026-11-26, ADR-241; `world/veiledCrossing.js`, `enemies/untouched/`, `?level=veil`)
+- **The crossing** (prop art throughout): a rubble plain, not a standing city (Halcyon Plaza is that): cracked
+  asphalt with the scramble's white bars carved in its slabs, craters, an old wide trench, the fallen tower
+  lying across the north, tower stumps and low ruins, wrecks; nothing tall south of the fight. `?wjCity=a` ash
+  moon (cold moonlit ash-grey, pale bars), the owner's pick. Floor marks are thinner here (`SCAR.thin`: a fight of
+  grit read as snow on the black asphalt) and the metal wrecks' rubble lies cold grey, not as embers (Halcyon Plaza's too since ADR-243: the orange
+  read as embers that never go out; `?coolRubble=0|1` on any level). The
+  lamps that still burn are `steel`.
+- **The void**: the floor under a near-black light, a close black fog, a few floating pieces of the crossing; the
+  stars are many tiny faint letters in clumps and drifts (a `LetterBatch`, never heat, so a slot's palette never
+  recolours the sky). `?wjVoid=b` the ring (the stars and one great pale ring lying on the floor round the fight),
+  the owner's pick. The morph's front lets pieces go as dim digits rising into the dark. The city's floor marks
+  hide in it and come back with the city; the bonfire goes out as the front passes it (flame, embers, light,
+  sound) and burns again on the way back.
+- **His figure** (`untouched/gear.js`, `look.js`): the hero's skeleton in INK-LINE art, printed the bossPrint way
+  (ADR-194): lit letter bodies, a pale hem, his letters following his size on screen (`?wjLetters`). A tall,
+  lean, relaxed man, a high-collared coat, hands in his pockets. Phase 1 the white hair stands up over a dark band
+  across his eyes; from phase 2 the band hangs at his neck, the hair falls, the eyes burn; in phase 3 the coat's
+  front parts and its hem lifts. `?wjLook=c` a bone-white coat with a dark collar and band, `?wjHair=b` a short
+  spiky burst, then a choppy mop (the owner's picks). His EYES are one-cell points printed after the letter pass
+  (heat on a face is covered by his letters); on the phone the two merge into one. When his patience runs out
+  (ADR-243) they burn for 1.2 s, through the band in phase 1 too: his one cue that he has stopped waiting.
+- **His effects in the fire field** (`untouched/fx.js`, `fxSpells.js`, `fxDomain.js`; `FIRE_PALETTES.azure`,
+  `crimson`): the `void` slot is AZURE at rest (Draw's knots, his eyes, the blink) and VIOLET (the void's colours
+  without tongues) while the Null is merged, lit or its trench glows, and while the domain's sign, wall or break
+  draws: the merged ball over his fingers IS the swap. The `fire` slot is CRIMSON only while a red thing of his
+  lives (a Cast, the Null's red charge, Dark Spark, a fall mark, the wall's red stretch) and a moment after, so the
+  bonfire burns its own fire otherwise. `steel` is the barrier: `?wjShell=a` (the pick) all but invisible, the side
+  a blade nears lit; cracks; shards of strokes falling when it opens. `?wjNull=a` (the pick) a hard-edged violet
+  slab with crisp edges and a pale core; the wide trench it leaves has pale violet-grey edges and rows of glass.
+  Weight is a skid of two pale lines that stay 3 s and grit fanned forward. Every slot comes back on reset.
+
 ### The Training Room (2026-11-15, ADR-099; `world/trainingRoom.js`, `?stage=lab`)
 A lab stage for any boss: a dark dojo of light (the owner's pick of three looks: "Holo", over a
 pale "Grid" and a starry "Void"). Great 2 m tiles of near-black glass in a two-shade checker (carved

@@ -45,6 +45,9 @@ const LORD_OWN = ['fxlooks', 'pace'];
 // city's (Halcyon Plaza): the pace meter and the fencing bot's three fights, each a process of its own
 const CITY = 'tests/integration/city.mjs';
 const CITY_OWN = ['pace', 'win'];
+// veil's (the Veiled Crossing): the pace meter, a process of its own (the later agents' scenarios run in `veil`)
+const VEIL = 'tests/integration/veil.mjs';
+const VEIL_OWN = ['pace'];
 // fxlooks' TERRAIN check (TERRAIN under '0', then under one look) was nearly all of it: about 9 min,
 // the whole CI run's wall. Each look is a process of its own (lord.mjs GCD_FX); the main fxlooks task
 // leaves those out, so a part added there runs in it by itself.
@@ -77,12 +80,15 @@ const TASKS = [
   ['lord fxlooks', [LORD, '.', 'fxlooks'], { GCD_FX: FX_TERRAIN.map((k) => `!${k}`).join(',') }, 80],
   ['city win', [CITY, '.', 'win'], {}, 69],
   ['dbfx', ['tests/integration/dbfx.mjs', '.', 'all'], {}, 8],
+  ['veil', [VEIL, '.', 'all'], { GCD_SKIP: VEIL_OWN.join(',') }, 45],
+  ['veil pace', [VEIL, '.', 'pace'], {}, 90],
   ['groundfx', ['tests/integration/groundfx.mjs', '.', 'all'], {}, 15],
   ['dragonProps', ['tests/integration/dragonProps.mjs', '.', 'all'], {}, 15],
   ['dggrass', ['tests/integration/dgGrass.mjs', '.'], {}, 15],
   ['dpfloor', ['tests/integration/dpfloor.mjs', '.', 'all'], {}, 15],
   ['records', ['tests/integration/records.mjs', '.', 'all'], {}, 1],
   ['autoq', ['tests/integration/autoq.mjs', '.', 'all'], {}, 1],
+  ['bosshero', ['tests/integration/bosshero.mjs', '.'], {}, 3],
   ['cost', ['tests/integration/cost.mjs', '.', 'all'], {}, 12],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],

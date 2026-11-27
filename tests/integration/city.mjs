@@ -410,7 +410,9 @@ async function scenarioData() {
         if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
         if (!A.beats.filter((b) => b.feint && !b.def.stance).every((b) => b.def.tell === undefined && !b.def.zone && !b.def.damage)) assert(false, `${tag}: a feint says nothing (no tell, no zone, no damage)`);
         const first = real[0];
-        if (!def.transition && first && !(first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${(first.impact - first.tellAt).toFixed(3)} >= ${TUNING.minFirstWindup}`);
+        // (a snap, ADR-225: a white blow from the guard may wind up shorter: >= snap.min, little damage, its flash after its tell)
+        const snapOk = (b) => b?.def.snap && b.def.tell === TELL.NORMAL && b.impact - b.tellAt >= TUNING.snap.min - 1e-6 && b.def.damage <= TUNING.snap.maxDamage && b.flash > b.tellAt;
+        if (!def.transition && first && !(first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6 || snapOk(first))) assert(false, `${tag}: first real windup ${(first.impact - first.tellAt).toFixed(3)} >= ${TUNING.minFirstWindup}`);
         for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(3)} s apart >= ${TUNING.minHitGap}`);
         for (const b of real) if (!(b.def.zone || b.def.release || b.def.cast)) assert(false, `${tag}: hit ${b.hit} has a zone, a release or a cast`);
         for (const b of real) if (b.def.tell === TELL.RED && b.def.zone?.kind === 'ring' && !b.def.ring) assert(false, `${tag}: a red ring has its ring`);
@@ -1159,8 +1161,10 @@ async function scenarioWin() {
     marksCheck(MK, 'city', out, assert);
     assert(won && d.phase === 3, `seed ${seed}: the fencing bot wins through all three phases`);
     // (130 since ADR-227: the bot's parries, pressed 0.12 s early, are perfect now (x 1.5 posture, the
-    // counter cut, his glare returned): the three seeds won in 140 / 137 / 142 s instead of 140 - 145)
-    const [lo, hi] = (process.env.GCD_WRANGE ?? '130,250').split(',').map(Number);
+    // counter cut, his glare returned): the three seeds won in 140 / 137 / 142 s instead of 140 - 145;
+    // 120 since ADR-242: his thrown pieces land on the road, and from phase 2 the seeds part: 145 / 125 / 149 s,
+    // the same mean as main's 149 / 137 / 141)
+    const [lo, hi] = (process.env.GCD_WRANGE ?? '120,250').split(',').map(Number);
     assert(T > lo && T < hi, `seed ${seed}: the fight takes ${T.toFixed(0)} s (${lo} - ${hi})`);
   }
   } finally {
@@ -1363,8 +1367,228 @@ async function scenarioLooks() {
   LS.setLook('city', null);
 }
 
+// ================================================================== scenario: audit (opt-in)
+/**
+ * AUDIT (opt-in, asc.mjs AUDIT's measure for him): every move run once (AI off, the hero still in front
+ * of him at the middle of its band, then circling him at 3.5 m/s), his joints tracked frame by frame in
+ * his own frame and round his root: the largest one-frame jolts (second difference, mm a frame²) and where
+ * they fall, the fastest turn of his facing, his facing off the hero at each blow (deg), how far his feet
+ * hang below his root at each blow (a planted stance in the air reads ~0.85 m: his legs standing on
+ * nothing) and his root's height, the joints' range, and how far each blow's limb stops from the hero.
+ * He flies: a frame is left out only where his root jumps (a blink) or a pass carries him (> 9 m/s).
+ * GCD_AUDIT=name,name runs only those; GCD_AUDIT_TOP=n lists the n worst frames of each move;
+ * GCD_AUDIT_JSON=file writes the rows.
+ */
+function auditMoves(names, orbits = [false, true], TOP = 0) {
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const inv = new THREE.Matrix4(), v = new THREE.Vector3();
+  const DEG = 180 / Math.PI;
+  const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  const ang3 = (a, b, c) => {
+    const u = new THREE.Vector3().subVectors(a, b).normalize(), w = new THREE.Vector3().subVectors(c, b).normalize();
+    return Math.acos(clamp(u.dot(w), -1, 1)) * DEG;
+  };
+  const PTS = ['fistR', 'fistL', 'elbowR', 'elbowL', 'kneeR', 'kneeL', 'footR', 'footL', 'head', 'chest', 'pelvis'];
+  const sample = (d) => {
+    const R = d.rig;
+    R.root.updateMatrixWorld(true);
+    inv.copy(R.root.matrixWorld).invert();
+    const at = (o, x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z).applyMatrix4(o.matrixWorld);
+    const W = {
+      fistR: at(R.sword), fistL: at(R.arms.L.wrist ?? R.arms.L.fore), elbowR: at(R.arms.R.fore), elbowL: at(R.arms.L.fore),
+      shR: at(R.arms.R.upper), shL: at(R.arms.L.upper), hipR: at(R.legs.R.thigh), hipL: at(R.legs.L.thigh),
+      kneeR: at(R.legs.R.shin), kneeL: at(R.legs.L.shin), footR: at(R.legs.R.foot), footL: at(R.legs.L.foot),
+      head: at(R.head, 0, 0.1, 0), chest: at(R.chest, 0, 0.12, 0), pelvis: at(R.pelvis),
+    };
+    const B = {}, Wr = {};
+    const root = new THREE.Vector3().setFromMatrixPosition(R.root.matrixWorld);
+    for (const k in W) {
+      B[k] = W[k].clone().applyMatrix4(inv);
+      Wr[k] = W[k].clone().sub(root);
+    }
+    return { W, B, Wr, yaw: d.yaw, x: d.position.x, z: d.position.z, y: d.position.y };
+  };
+  const phaseOf = (a, t) => {
+    for (const b of a.beats) {
+      if (t < b.start) continue;
+      if (t < b.impact - 0.12) return `b${b.index ?? a.beats.indexOf(b)} windup`;
+      if (t <= b.impact + 0.06) return `b${b.index ?? a.beats.indexOf(b)} strike`;
+      if (t <= b.end + 1e-6) return `b${b.index ?? a.beats.indexOf(b)} active`;
+    }
+    return t < (a.recoveryStart ?? a.end) ? 'follow' : 'recovery';
+  };
+  const rows = [], worst = [];
+  for (const orbit of orbits) {
+    for (const name of names) {
+      const def = MOVES[name];
+      if (def.transition) continue;
+      const f = phasesOf(name)[0] ?? def.phase ?? 1;
+      const G = build();
+      const band = def.band ?? [0, 4];
+      const dist = clamp((band[0] + Math.min(band[1], 8)) / 2, 1.6, 7);
+      duel(G, { dist, form: Math.max(1, f) });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      settle(G, 2);
+      d.position.set(0, d.T.fly.hover, 0);
+      d.yaw = Math.PI / 2;
+      p.debug.teleport(dist, 0);
+      run(G, 0.7);
+      if (!d.debug.trigger(name)) { rows.push({ name, orbit, fail: 'trigger' }); continue; }
+      const A = d.brain.act;
+      const F = [];
+      let after = -1, th = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z), px = d.position.x, pz = d.position.z, py = d.position.y;
+      const contact = [];
+      for (let i = 0; i < 1500; i++) {
+        if (orbit) {
+          th += (3.5 / Math.max(1.5, dist)) * DT;
+          p.debug.teleport(d.position.x + Math.sin(th) * dist, d.position.z + Math.cos(th) * dist);
+        }
+        p.hp = p.maxHp;
+        const inAct = d.brain.act === A;
+        if (!inAct && after < 0) after = 0;
+        if (after >= 0 && after++ > 14) break;
+        const s = sample(d);
+        s.t = inAct ? A.t : A.end + after * DT;
+        s.ph = inAct ? phaseOf(A, A.t) : 'blend out';
+        const sp = Math.hypot(d.position.x - px, d.position.z - pz, d.position.y - py) / DT;
+        s.jump = sp * DT > 0.4;
+        s.air = s.jump || sp > 9;
+        px = d.position.x;
+        pz = d.position.z;
+        py = d.position.y;
+        F.push(s);
+        if (inAct) for (const b of A.beats) {
+          if (b.feint || b._aud || A.t < b.impact || !b.def.zone || b.def.cast || b.def.halGlare) continue;
+          b._aud = true;
+          const tp = d._tip, pp = p.position, pr = p.radius ?? 0.45;
+          const flat = Math.hypot(tp.x - pp.x, tp.z - pp.z) - pr;
+          const face = Math.abs(wrapA(d.yaw - Math.atan2(pp.x - d.position.x, pp.z - d.position.z))) * DEG;
+          const sm = sample(d), arm = b.def.part === 'fistL' ? ['shL', 'elbowL', 'fistL'] : ['shR', 'elbowR', 'fistR'];
+          const hang = d.position.y - Math.min(sm.W.footR.y, sm.W.footL.y);
+          contact.push({ i: b.index ?? A.beats.indexOf(b), part: b.def.part, tell: b.def.tell, gap: flat, y: tp.y, sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2), reachX: +Math.hypot(tp.x - d.position.x, tp.z - d.position.z).toFixed(2), feetZ: +(Math.max(sm.B.footR.z, sm.B.footL.z) - sm.B.pelvis.z).toFixed(2), side: +(((tp.x - d.position.x) * (pp.z - d.position.z) - (tp.z - d.position.z) * (pp.x - d.position.x)) / Math.max(0.01, Math.hypot(pp.x - d.position.x, pp.z - d.position.z))).toFixed(2), face: Math.round(face), root: +d.position.y.toFixed(2),
+            hang: +hang.toFixed(2), feetLow: +Math.min(sm.W.footR.y, sm.W.footL.y).toFixed(2), elbow: Math.round(ang3(sm.B[arm[0]], sm.B[arm[1]], sm.B[arm[2]])) });
+        }
+        G.tick(DT);
+      }
+      let pb = { v: 0 }, pw = { v: 0 }, out1 = { v: 0 }, in1 = { v: 0 };
+      const jolts = [];
+      for (let i = 2; i < F.length; i++) {
+        if (F[i].air || F[i - 1].air || F[i - 2].air) continue;
+        for (const k of PTS) {
+          const jb = v.copy(F[i].B[k]).addScaledVector(F[i - 1].B[k], -2).add(F[i - 2].B[k]).length() * 1000;
+          const jw = v.copy(F[i].Wr[k]).addScaledVector(F[i - 1].Wr[k], -2).add(F[i - 2].Wr[k]).length() * 1000;
+          const j = Math.max(jb, jw);
+          jolts.push({ j, k, t: F[i].t, ph: F[i].ph, w: jw > jb });
+          if (jb > pb.v) pb = { v: jb, k, t: F[i].t, ph: F[i].ph };
+          if (jw > pw.v) pw = { v: jw, k, t: F[i].t, ph: F[i].ph };
+          if (F[i].ph === 'blend out' && j > out1.v) out1 = { v: j, k };
+          if (i < 12 && j > in1.v) in1 = { v: j, k };
+        }
+      }
+      jolts.sort((a, b) => b.j - a.j);
+      let yawR = 0, yawAt = '';
+      for (let i = 1; i < F.length; i++) {
+        if (F[i].jump) continue;
+        const r = Math.abs(wrapA(F[i].yaw - F[i - 1].yaw)) / DT * DEG;
+        if (r > yawR) { yawR = r; yawAt = F[i].ph; }
+      }
+      let elbow = 180, knee = 180, yMin = 9, yMax = -9, hangMin = 9, hangMax = -9;
+      for (const s of F) {
+        elbow = Math.min(elbow, ang3(s.B.shR, s.B.elbowR, s.B.fistR), ang3(s.B.shL, s.B.elbowL, s.B.fistL));
+        knee = Math.min(knee, ang3(s.B.hipR, s.B.kneeR, s.B.footR), ang3(s.B.hipL, s.B.kneeL, s.B.footL));
+        yMin = Math.min(yMin, s.y);
+        yMax = Math.max(yMax, s.y);
+        const h = -Math.min(s.Wr.footR.y, s.Wr.footL.y);
+        hangMin = Math.min(hangMin, h);
+        hangMax = Math.max(hangMax, h);
+      }
+      rows.push({ name, orbit, f, dist: +dist.toFixed(1), frames: F.length, pb, pw, out: out1, in: in1, yawR: Math.round(yawR), yawAt, elbow: Math.round(elbow), knee: Math.round(knee),
+        yMin: +yMin.toFixed(2), yMax: +yMax.toFixed(2), hangMin: +hangMin.toFixed(2), hangMax: +hangMax.toFixed(2), contact });
+      if (TOP) worst.push(`   ${name}${orbit ? ' (orbit)' : ''}: ` + jolts.filter((x, i, L) => L.findIndex((y) => y.k === x.k && Math.abs(y.t - x.t) < 0.05) === i).slice(0, TOP).map((x) => `${x.k} ${Math.round(x.j)}${x.w ? 'w' : ''} @${x.t.toFixed(2)} ${x.ph}`).join(' · '));
+    }
+  }
+  return { rows, worst };
+}
+
+async function scenarioAudit() {
+  out('\n== scenario AUDIT (every move: jolts, turns, his facing and legs at each blow, joints, the blow against the hero) ==');
+  // (GCD_LOOK='ascMotion=a,halMotion=a': the looks the audit plays, live)
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  for (const kv of (process.env.GCD_LOOK ?? '').split(',').filter(Boolean)) LS.setLook(...kv.split('='));
+  const only = (process.env.GCD_AUDIT ?? '').split(',').filter(Boolean);
+  const TOP = Number(process.env.GCD_AUDIT_TOP ?? 0);
+  const { rows, worst } = auditMoves(MOVE_NAMES.filter((n) => !only.length || only.includes(n)), [false, true], TOP);
+  const fmt = (o) => (o.v ? `${Math.round(o.v)} ${o.k} ${o.ph ?? ''}`.trim() : '-');
+  out('   move             f orbit jolt(own frame)                 jolt(world)                     blend-in    blend-out    turn°/s (when)        elbow knee  root y     feet below root  per blow: part tell gap-m face° hang-m');
+  for (const r of rows) {
+    if (r.fail) { out(`   ${r.name} FAIL ${r.fail}`); continue; }
+    const c = r.contact.map((x) => `${x.part}/${x.tell}:${x.gap.toFixed(2)}/${x.face}°/${x.hang.toFixed(2)}`).join(' ');
+    out(`   ${r.name.padEnd(16)} ${r.f} ${r.orbit ? 'yes' : '   '}   ${fmt(r.pb).padEnd(31)} ${fmt(r.pw).padEnd(31)} ${fmt(r.in).padEnd(11)} ${fmt(r.out).padEnd(12)} ${String(r.yawR).padStart(5)} (${r.yawAt})`.padEnd(150) + ` ${String(r.elbow).padStart(4)} ${String(r.knee).padStart(4)}  ${r.yMin.toFixed(2)}-${r.yMax.toFixed(2)}  ${r.hangMin.toFixed(2)}-${r.hangMax.toFixed(2)}   ${c}`);
+  }
+  if (TOP) for (const w of worst) out(w);
+  const J = process.env.GCD_AUDIT_JSON;
+  if (J) fs.writeFileSync(J, JSON.stringify(rows, null, 1));
+}
+
+/**
+ * HALMOTION (ADR-225, `?halMotion=a`): the switch moves poses and his height only: every move realises
+ * with the same beats, windups, impacts and flashes on and off. On (AUDIT's measure), a builder's blow
+ * meets the hero's chest and head instead of the air over him (the fist under 1.75 m, it was 1.9 - 2.0),
+ * with the arm open (>= 145°, it was ~130°), his root dipped toward the hero, and his feet trailing behind
+ * his hips (a flier's), never a planted stance; the snap blows are weighed only with the switch.
+ */
+async function scenarioHalMotion() {
+  out('\n== scenario HALMOTION (?halMotion=a: the same timings; blows at the hero\'s height, open arms, a flier\'s legs; the snap blows) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  let n = 0;
+  const diff = [];
+  for (const name of MOVE_NAMES) for (let ph = 1; ph <= 3; ph++) for (const r of [0.001, 0.5, 0.999]) {
+    LS.setLook('halMotion', '0');
+    const a = realise(name, ph, () => r);
+    LS.setLook('halMotion', 'a');
+    const b = realise(name, ph, () => r);
+    if (!a || !b) continue;
+    n++;
+    const sig = (m) => m.beats.map((x) => [x.start, x.impact, x.end, x.flash, x.W, x.H].map((v) => v.toFixed(5)).join(',')).join(';') + `|${m.end.toFixed(5)}`;
+    if (sig(a) !== sig(b)) diff.push(`${name}/${ph}`);
+  }
+  assert(n > 150 && !diff.length, `${n} realisations: the same beats, windups, impacts, flashes and ends with the switch on and off (${diff.slice(0, 6).join(', ') || 'all'})`);
+  const names = ['meetAndGreet', 'backhand', 'riposte', 'flick', 'tap'];
+  const res = {};
+  for (const opt of ['0', 'a']) {
+    LS.setLook('halMotion', opt);
+    res[opt] = auditMoves(names, [false]).rows.flatMap((r) => r.contact.filter((c) => c.part !== 'palms' || true).map((c) => ({ ...c, name: r.name })));
+  }
+  LS.setLook('halMotion', null);
+  const fmt = (L, k) => L.map((c) => (typeof c[k] === 'number' ? +c[k].toFixed(2) : c[k])).join(', ');
+  out(`   fist height at the blow:  before ${fmt(res['0'], 'y')}  after ${fmt(res.a, 'y')}`);
+  out(`   elbow at the blow (deg):  before ${fmt(res['0'], 'elbow')}  after ${fmt(res.a, 'elbow')}`);
+  out(`   his root at the blow (m): before ${fmt(res['0'], 'root')}  after ${fmt(res.a, 'root')}`);
+  out(`   feet ahead of his hips:   before ${fmt(res['0'], 'feetZ')}  after ${fmt(res.a, 'feetZ')}`);
+  const A = res.a, fists = A.filter((c) => c.part !== 'palms');
+  assert(A.length >= 7 && A.every((c) => c.y < 1.75), `with the switch every blow meets the hero under 1.75 m (${fmt(A, 'y')}; before ${fmt(res['0'], 'y')})`);
+  assert(fists.every((c) => c.elbow >= 145), `... the punching arm open at the blow, >= 145° (${fmt(fists, 'elbow')}; before ${fmt(res['0'].filter((c) => c.part !== 'palms'), 'elbow')})`);
+  assert(A.every((c) => c.root <= 0.35), `... his root dipped from the hover toward the hero (${fmt(A, 'root')} m)`);
+  assert(A.every((c) => c.feetZ < -0.05) && res['0'].some((c) => c.feetZ > -0.05), `... both feet trailing behind his hips, a flier's legs (${fmt(A, 'feetZ')} m; before a planted stance: ${fmt(res['0'], 'feetZ')})`);
+  // the snap blows
+  const snaps = MOVE_NAMES.filter((k) => MOVES[k].snap);
+  const G = build();
+  duel(G, { dist: 1.8 });
+  const d = G.game.dragon;
+  LS.setLook('halMotion', '0');
+  const w0 = snaps.map((k) => d.weigh(k, MOVES[k], 1));
+  LS.setLook('halMotion', 'a');
+  const w1 = snaps.map((k) => d.weigh(k, MOVES[k], 1));
+  LS.setLook('halMotion', null);
+  assert(snaps.length === 2 && w0.every((w) => w === 0) && w1.every((w) => w > 0), `the snap blows (${snaps.join(', ')}) weigh 0 without the switch, ${w1.join(', ')} with it`);
+}
+
 const S = {
   smoke: scenarioSmoke,
+  audit: scenarioAudit,
+  halmotion: scenarioHalMotion,
   levels: scenarioLevels,
   data: scenarioData,
   timing: scenarioTiming,
@@ -1383,7 +1607,9 @@ const S = {
   looks: scenarioLooks,
   herolike: scenarioHeroLike,
 };
-const OPT_IN = new Set(['smoke']);
+// (the bench, tests/integration/bench.mjs: the same mortal bots as veil.mjs, opt-in)
+S.bench = async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'city'); };
+const OPT_IN = new Set(['smoke', 'audit', 'bench']);
 // GCD_SKIP (a comma list) leaves scenarios out of `all` (tests/run.mjs runs pace and win as processes of their own)
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');

@@ -15,6 +15,7 @@ import { LordTerrain } from './terrain.js';
 import { LINKS } from './links.js';
 import { LordSpells } from './spells.js';
 import { dressFrame as dressLord } from './look.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
 // crater of the Obsidian Throne, who fills the boss slot of the Starless level. A duelist (duelist/duelist.js:
@@ -78,6 +79,8 @@ export const LORD_KIT = Object.freeze({
   blade: Object.freeze({ guard: SABER.guard, tip: SABER.tip }),
   scale: TUNING.scale,
   dress: dressLord,
+  // the sword motion pass behind `?lordMotion=` (ADR-226): its numbers while on, null ('0') as before
+  motion: () => (lookOf('lordMotion', '0') === '0' ? null : TUNING.motion),
 });
 
 /** His mind: the duelist's, with each form's own reaction clips. */
@@ -347,6 +350,7 @@ export class StarlessLord extends Duelist {
   // ---------------------------------------------------------------- the crater's pieces (terrain.js)
   /** His AI weighs a move: one that needs a piece of the crater weighs nothing while there is none. */
   weigh(name, def, w) {
+    if (def.motionOnly && lookOf('lordMotion', '0') === '0') return 0; // (ADR-226: only behind its switch)
     if (def.terrain) return this.terrain.weigh(def, w);
     // while his main blade is in the air (the Returning Blade, the wheeling blade) he works the Void
     // or the off-hand blade: nothing that swings the blade he threw
