@@ -4,7 +4,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty pieces of work since 0.4.0:
+One hundred and twenty-one pieces of work since 0.4.0:
+- **The living world draws for less** (2026-11-26, ADR-245). *Changed:* the atmosphere looks exactly the same but costs
+  less: its letters hand the graphics card only what is drawn, empty layers are skipped, and the ground's
+  footprint flash and the grass's wake stop working on pixels they cannot reach (the ground pass about 11 - 17 %
+  cheaper while you leave prints). `?perf`'s BENCH now reports the living world's own share. `?lifeFast=0` runs
+  the old paths.
 - **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
   perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
   curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round
