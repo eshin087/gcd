@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-seven pieces of work since 0.4.0:
+One hundred and twenty-eight pieces of work since 0.4.0:
+- **The Cinder Wyrm raises its head naturally to rain fire** (2026-11-27, ADR-258). *Fixed:* rearing up to roar
+  the meteors into the sky, the wyrm's head no longer tips back past upright and rolls over on its neck: the neck
+  rises up and forward over its forelegs and the head points up at the sky. `?wyrmHead=0` (the Lab's LOOKS row) as
+  before. *Added:* integ `wyrmhead` (opt-in): every fire move's head angle.
 - **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
   level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
   the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the

@@ -5,6 +5,19 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The wyrm's head in the meteors' roar (ADR-258; branch `claude/wyrm-head-motion`)
+
+**Owner:** "The dragons head twists too far back and looks unnatural when it raises its head up to shoot fire."
+
+**What changed:** Meteor Rain's rear-up and cast hold the head up and forward over the forelegs and look straight
+up above it (`fireAttacks.js` `HEAD_UP`, `?wyrmHead=a` the default, `0` as before). New opt-in integ `wyrmhead`
+measures every fire move's head: Meteor Rain was 90° up and 15° past vertical toward the tail, the head behind the
+neck's base, the brow rolled 149°; now 66° up in the chest's frame, never past upright, the head ahead of the
+neck's base. Films before / after sent.
+
+**Open:** the flights' head in a banked body (skyStrafe's recovery, skyCataclysm's wheel) also measures past
+vertical; not touched.
+
 ## 2026-11-27 — Lu Wusheng audited: the form, the pace, three looks for the draw (ADR-252; branch `claude/lu-wusheng-motion`)
 
 **Goal:** the owner's motion audit of every boss (one session and one draft PR each, batch 2), for Lu Wusheng:

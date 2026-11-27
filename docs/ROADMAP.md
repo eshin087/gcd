@@ -1223,6 +1223,8 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [x] The Cinder Wyrm (ADR-257): the anatomy audit at each blow's contact (`wyrmanatomy`), every bite led by the
       body and snapped onto the beat, behind `?wyrmStrike=a`
   - [x] The owner's pick from the films (2026-11-27): `a`, the default
+  - [x] The head in the meteors' roar no longer tips back past upright (ADR-258, `?wyrmHead=`)
+  - [ ] The flights' head in a banked body (skyStrafe's recovery, skyCataclysm's wheel) past vertical
   - [ ] Next: the forelegs straight through the whole rake, the wing blows flapping as one rigid wing, the feet
         skating up to ~1 m in some strings
 - [x] Halcyon (ADR-254): measured at every blow's contact in his upright frame (city `audit`, `GCD_AUDIT_IMPACT=1`);
