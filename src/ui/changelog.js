@@ -24,6 +24,7 @@ export const RELEASES = [
           "Bai Wuji's palm, his straight poke, Dark Spark and the fist he pulls you onto now land on the line to your chest instead of crossing past you.",
           'His kicks ease back after they land instead of snapping back off a dead stop.',
           'In his first phase his right hand comes out of its pocket to cast Azure Draw and the Yank, so the blue fist he pulls you onto is a fist you can see.',
+          'Fixed: a spell or a thrown piece of his no longer knocks you down again the moment you stand up from a knockdown.',
         ],
       },
       {

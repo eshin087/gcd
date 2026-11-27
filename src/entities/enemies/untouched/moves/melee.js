@@ -388,6 +388,15 @@ export class WjMelee {
     W.L += (L - W.L) * k;
   }
 
+  /** Would a blow that lands NOW (and holds him `hold` s more: a knockdown's 1.3) chain onto a stretch the hero
+   *  has just spent out of his own hands past the cap? (ADR-255: his spells and thrown pieces ask it, as his
+   *  melee beats do through _spare: a burst landing as he stands up from a knockdown passes over him.) */
+  chainsLock(knockdown = true) {
+    const M = this.T.mercy ?? TM.mercy, p = this.game.player;
+    if (!(M?.lockCap > 0) || !p || OUT.has(p.state)) return false;
+    return this.outT > 0 && this.freeT < M.free && this.outT + this.freeT + (knockdown ? KD : 0.4) > M.lockCap + 1e-3;
+  }
+
   /** s the hero has left in the state that holds him now (0: he is his own). */
   _outLeft(p) {
     const t = fin(p.stateT, 0);

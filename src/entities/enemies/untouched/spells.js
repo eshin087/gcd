@@ -274,6 +274,8 @@ export class WjSpells {
     // (the owner's rule: nothing of his hits a hero who is down; the melee's mercy spares its beats, this
     // the spells' blows: a knot collapsing, a burst, a line on a hero lying in it pass over him)
     if (p.state === 'knockdown') return RESULT.IGNORED;
+    // (... nor one just up from a knockdown that this blow would chain past the cap: the melee's mercy, ADR-255)
+    if (d.parts?.melee?.chainsLock?.(o.knockdown ?? true)) return RESULT.IGNORED;
     const scale = d.T.damageScale ?? 1;
     const cap = (fin(this.T.null.lethalCap, 0.78) * (p.maxHp ?? 160)) / scale;
     const r = d.hitPlayer({
