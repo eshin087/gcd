@@ -16,6 +16,7 @@ import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
 import { DB_FX, getDbFx, setDbFx } from '../combat/deathblowFx.js';
+import { DB_SFX, getDbSfx, setDbSfx } from '../audio/deathblowSfx.js';
 import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
 import { RIPOSTE_CUT, riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
@@ -1344,6 +1345,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.dbfxBtn.title = "the deathblow's hit effect (?dbfx=): a Steel Bloom (orange heat bloom, sparks, embers), b Shatter Web (long cut-lines through him that snap on the finisher), c Storm Crack (lightning crawling over him, a bolt on the finisher), d Gold Crescent (gold arcs along each swing)";
+    this.ui.dbsfxBtn = button(stkGrid, `dbsfx ${getDbSfx()}`, () => {
+      const M = DB_SFX.opts;
+      setDbSfx(M[(M.indexOf(getDbSfx()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbsfxBtn.title = "the deathblow's sound (?dbsfx=): 0 the dodge flurry's sounds, a Flesh (wet tear per blow, deep impact), b Steel (metal strike and ring, a huge clang), c Cinematic (muffled thump, reverse swell, deep boom)";
     this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
       setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
       this._syncCutBtns();
@@ -1606,6 +1613,7 @@ export class Lab {
     if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;
     if (this.ui.riposteBtn) this.ui.riposteBtn.textContent = `riposte ${riposteMode()}`;
     if (this.ui.dbfxBtn) this.ui.dbfxBtn.textContent = `dbfx ${getDbFx()}`;
+    if (this.ui.dbsfxBtn) this.ui.dbsfxBtn.textContent = `dbsfx ${getDbSfx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;
