@@ -3,7 +3,7 @@ import { DIM } from '../../player/model.js';
 import { TUNING_MELEE } from './tuningMelee.js';
 
 // Bai Wuji's melee MOTION takes (round 3; the MOTION AGENT's file), behind the live look switch
-// `?wjMotion=0|a|b|c` ('0' = his melee as it shipped; the default until the owner picks: lookSwitch PENDING).
+// `?wjMotion=0|a|b|c` ('0' = his melee as it first shipped; the owner picked b, glide: lookSwitch PICKED).
 // The owner (2026-11-26): his kicks and punches "do not look natural and look off"; "faster and cooler";
 // "effortless, one-handed": the hands in his pockets most of phase 1 (short sharp kicks, a flick, a palm,
 // blinks behind the hero), one hand out in phase 2, both in phase 3; fast snaps, no big wind-ups; long held

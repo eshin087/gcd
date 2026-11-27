@@ -95,7 +95,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['wjHair', ['a', 'b'], 'b', 'b', true, ['veil'], 'his white hair: a a tall swept crown over the band (phase 1), long soft locks once it falls; b a shorter spikier burst, a choppier fringe (a reload)'],
 
   // Bai Wuji: motion rows (round 3; awaiting: the owner picks from the sheets and films)
-  ['wjMotion', ['0', 'a', 'b', 'c'], '0', 'a', false, ['veil'], 'his melee motion: 0 as shipped; a pocket kicks (upright, planted, the leg straight at the contact, a blink when the hero slid away); b glide (the same blows, every later beat of a string out of a blink round the hero); c turned away (back kicks, spinning heels, backhand flicks, looking over his shoulder). Every take: blue / red held, snap blows, short recoveries, the hands in his pockets in phase 1, one out in phase 2, both in phase 3 (live, from his next move)', 'awaiting'],
+  ['wjMotion', ['0', 'a', 'b', 'c'], 'b', 'b', false, ['veil'], 'his melee motion: 0 as shipped; a pocket kicks (upright, planted, the leg straight at the contact, a blink when the hero slid away); b glide (the same blows, every later beat of a string out of a blink round the hero); c turned away (back kicks, spinning heels, backhand flicks, looking over his shoulder). Every take: blue / red held, snap blows, short recoveries, the hands in his pockets in phase 1, one out in phase 2, both in phase 3 (live, from his next move)'],
 
   // Bai Wuji: fx rows
   ['wjShell', ['a', 'b', 'c'], 'a', 'a', false, ['veil'], 'his barrier while up: a all but invisible, it shows where the blade comes at it; b a faint standing shell of sparse strokes; c two faint rings that breathe (live)'],
