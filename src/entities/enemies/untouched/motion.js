@@ -46,7 +46,7 @@ export const TAKES = Object.freeze({
   },
   b: {
     label: 'glide', heldAt: 0.28,
-    time: { first: 0.42, next: 0.31, normalK: 0.74, heldK: 0.88, snapN: 0.18, snapH: 0.12, rec: 0.62 },
+    time: { first: 0.42, next: 0.32, normalK: 0.8, heldK: 0.92, snapN: 0.18, snapH: 0.12, rec: 0.66 },
     // (every later beat of a string out of a blink, round the hero: his flank, behind, the other flank)
     blink: { near: 0, r: 1.6, u: 0.22, pattern: [1.5708, Math.PI, -1.5708, 0.7854, -0.7854] },
   },
@@ -240,7 +240,11 @@ export function makeTakes(base, X, TUNING) {
           const nb = retake(b, { t, T, K, H, M, WJ, F, i, prevReal, scale, minFirst, minGap, blinkI, name });
           return nb;
         };
-        const r = Array.isArray(raw.pick) ? { ...raw, pick: raw.pick.map(one) } : one(raw);
+        // (a pick of a blue and a red blow draws the blue one two times in three: the faster normal blows
+        // left phase 1's blue cues under 12 % of his cues, veil.mjs MIX)
+        const alts = Array.isArray(raw.pick) ? raw.pick.map(one) : null;
+        if (alts && alts.length === 2 && alts[0].tell === 'blue' && alts[1].tell === 'red') alts.splice(1, 0, alts[0]);
+        const r = alts ? { ...raw, pick: alts } : one(raw);
         const real = Array.isArray(r.pick) ? r.pick[0] : r;
         if (!real.feint) {
           prevReal = real;
