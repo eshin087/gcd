@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RESULT } from '../../../../combat/rules.js';
+import { RESULT, GUARD } from '../../../../combat/rules.js';
 import { TUNING_MELEE } from '../tuningMelee.js';
 import { liveTakes, wjMotionNow, ANIM as MOTION_ANIM } from '../motion.js';
 
@@ -335,14 +335,15 @@ export class WjMelee {
     }
     if (this.chase) this._chaseFrame(dt);
     // the hero out of his own hands (staggered, guard broken, down): how long in a row (a gap under
-    // `free` s does not end it)
+    // `free` s does not end it), in real time: a hit's freeze holds the hero as long as it holds the clock
     const p = this.game.player, M = this.T.mercy ?? TM.mercy;
+    const rdt = fin(this.game.realDt, fin(dt));
     if (p && OUT.has(p.state)) {
-      this.outT += fin(dt) + (this.freeT < M.free ? this.freeT : 0);
-      if (this.freeT >= M.free) this.outT = fin(dt);
+      this.outT += rdt + (this.freeT < M.free ? this.freeT : 0);
+      if (this.freeT >= M.free) this.outT = rdt;
       this.freeT = 0;
     } else {
-      this.freeT += fin(dt);
+      this.freeT += rdt;
       if (this.freeT >= M.free) this.outT = 0;
     }
   }
@@ -402,7 +403,19 @@ export class WjMelee {
     let stretch = 0;
     if (OUT.has(p.state)) stretch = left - outLeft < M.free ? this.outT + left : 0;
     else if (this.outT > 0 && this.freeT + left < M.free) stretch = this.outT + this.freeT + left;
-    return stretch > 0 && stretch + (D.knockdown ? KD : 0.4) > M.lockCap + 1e-3;
+    // what this blow adds: a knockdown, a guard it knocks open (a block that empties the meter: the
+    // open stagger and its hitstop, longer than a plain stagger), else a stagger
+    const adds = D.knockdown ? KD : this._opensGuard(D, p) ? fin(GUARD.openDur, 0.55) + 0.25 : 0.4;
+    return stretch > 0 && stretch + adds > M.lockCap + 1e-3;
+  }
+
+  /** Would this blow, met on the hero's guard, empty the meter (untouched.js _weighted's cost)? */
+  _opensGuard(D, p) {
+    if (!p?.blocking) return false;
+    const T = this.d?.T, max = GUARD.max ?? 100;
+    const gc = Number.isFinite(D?.guardCost) ? D.guardCost : fin(T?.wjWeight?.guardCost, 0) * max;
+    const gp = this.d?.patience?.impatient ? fin(T?.wjPatience?.guardCost, 0) * max : 0;
+    return Math.max(gc, gp) >= fin(p.guard, max) - 1e-3;
   }
 
   /** The missed Dark Spark's fist: a sweep of the line ahead of where it was thrown. */
