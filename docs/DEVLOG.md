@@ -5,6 +5,28 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The animation guide (`docs/ANIMATION.md`; branch `docs/animation-guide`)
+
+**Owner:** "can you research online and find the material that will be helpful for future agents to follow
+to make accurate good looking animation, poses, and combat for our game?" (after scrapping the
+reference-footage approach, ADR-236).
+
+**What.** Four research passes, published talks and articles only, no footage:
+- animation fundamentals (Cooper, Williams, Cartwright, AnimSchool);
+- readability at small size and a high camera (Riot, Dead Cells, Slynyrd, Valve);
+- combat feel (the DS3 attack anatomy, GD Keys, God of War cancels, Sakurai's hit-stop, Eiserloh's
+  trauma shake, kendo and Silver);
+- code-driven animation (Rosen, Holden's springs and IK, t3ssel8r, Little Polygon).
+
+They are folded into `docs/ANIMATION.md`, mapped onto this engine's fields (`swings.js`' coil, `lead`, the
+whip, `flat`, `step`; `feel.js`; `anim.js`' springs) and the owner's taste. The guide closes with a
+checklist and a source list. CLAUDE.md's start-of-session docs list now points to it. Docs only, no game
+change.
+
+**Next.** Use it on the next animation pass (ROADMAP P2, the bosses' swings): one narrow change at a time,
+filmed at the game camera. Several numbers are the researchers' starting values, marked as such: tune them
+by film.
+
 ## 2026-11-26 — Instant slashes on every attack, and four left-hand looks to pick from (ADR-240; branch `claude/hero-instant-slash`, held)
 
 **Owner:** "lets just do this. use the current production auto attack combo and remove the curvy slashes with the
