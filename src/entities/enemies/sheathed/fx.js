@@ -16,8 +16,8 @@ const PALE = 0.34;
 const TAU = Math.PI * 2;
 // the draw's looks (ADR-252, `?drawFx=a|b|c`, '0' = as shipped; awaiting the owner's pick from the films): the
 // letters' colours (the add pool: above 1 a letter glows), pale steel, never blue (the blue flare is the cue)
-const AIR = [0.55, 0.6, 0.7], AIR_HOT = [1.5, 1.6, 1.8], LEAF = [0.62, 0.66, 0.6], LEAF_END = [0.3, 0.33, 0.3];
-const HANG = 48; // b: the letters left hanging along a cut (dropped on the click)
+const AIR = [0.8, 0.85, 1.0], AIR_HOT = [2.2, 2.3, 2.6], LEAF = [1.0, 1.05, 0.95], LEAF_END = [0.45, 0.48, 0.42];
+const HANG = 110; // b: the letters left hanging along a cut (dropped on the click)
 
 export class SheathFx extends DuelFx {
   constructor(d) {
@@ -56,7 +56,7 @@ export class SheathFx extends DuelFx {
    *  as the click nears (tiny pale letters converging, a faint ring tightening round the mouth). */
   _breathIn(x, y, z, k) {
     const fdt = Math.max(0, Math.min(0.1, Number(this.game.fxDt ?? this.game.dt) || 0.016));
-    this._inAcc += fdt * (14 + 46 * k);
+    this._inAcc += fdt * (30 + 90 * k);
     while (this._inAcc >= 1) {
       this._inAcc -= 1;
       const a = this.lr() * TAU, e = this.lrand(-0.5, 0.7), r = this.lrand(0.7, 1.4), T = this.lrand(0.22, 0.34);
@@ -71,7 +71,7 @@ export class SheathFx extends DuelFx {
     }
     const life = this._frame();
     if (life > 0 && k > 0.2) {
-      const P = this._toCamera(x, y, z), A = this._axes(), rr = 0.34 - 0.16 * k, h = 0.12 + 0.3 * k;
+      const P = this._toCamera(x, y, z), A = this._axes(), rr = 0.34 - 0.16 * k, h = 0.2 + 0.5 * k;
       for (let i = 0; i < 10; i++) {
         const a = (i / 10) * TAU, ca = Math.cos(a) * rr, sa = Math.sin(a) * rr;
         this._blob(P.x + A.rx * ca + A.ux * sa, P.y + A.ry * ca + A.uy * sa, P.z + A.rz * ca + A.uz * sa, 0, 0, 0, life, 0.12, 0.12, h, h, K_STEEL);
@@ -108,8 +108,8 @@ export class SheathFx extends DuelFx {
    *  cut air round where the cut ended. */
   _breathOut(ax, ay, az, bx, by, bz) {
     const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
-    for (let i = 0; i < 44; i++) {
-      const t = this.lrand(0.25, 1), sp = this.lrand(5, 13), side = this.lrand(-0.35, 0.35);
+    for (let i = 0; i < 110; i++) {
+      const t = this.lrand(0.25, 1), sp = this.lrand(6, 16), side = this.lrand(-0.35, 0.35);
       const o = this._rec(ax + dx * t, ay + this.lrand(-0.12, 0.12), az + dz * t, this.lrand(0.22, 0.45), this.lrand(0.12, 0.17), 0.04, "'-.", AIR_HOT, AIR);
       o.vx = (ux - uz * side) * sp;
       o.vy = this.lrand(-0.4, 0.8);
@@ -117,7 +117,7 @@ export class SheathFx extends DuelFx {
       o.drag = 3.2;
       this._spawn(this.add, o);
     }
-    this._airRipple(bx, bz, by, 0.3, 2.2, 0.34, 0.5, 0.42, 0.26, 0.35);
+    this._airRipple(bx, bz, by, 0.3, 2.4, 0.36, 0.85, 0.45, 0.22, 0.3);
   }
 
   /** b: hanging leaves: the blade's unseen arc drawn for an instant at cut height round where he ended,
@@ -128,7 +128,7 @@ export class SheathFx extends DuelFx {
     let px = NaN, pz = NaN;
     for (let i = 0; i <= 14; i++) {
       const a = yaw + 1.7 - (i / 14) * 2.9, qx = ox + Math.sin(a) * 1.05, qz = oz + Math.cos(a) * 1.05;
-      if (i) this._ink(px, ay, pz, qx, ay, qz, 0.3, 0.5 + 0.7 * (i / 14), 0, 0.6 + 0.6 * (i / 14), 1);
+      if (i) this._ink(px, ay, pz, qx, ay, qz, 0.35, 0.8 + 0.8 * (i / 14), 0, 0.9 + 0.7 * (i / 14), 1);
       px = qx;
       pz = qz;
     }
@@ -141,10 +141,10 @@ export class SheathFx extends DuelFx {
       o.vx = wx + this.lrand(-0.08, 0.08);
       o.vy = this.lrand(-0.12, 0.02);
       o.vz = wz + this.lrand(-0.08, 0.08);
-      o.alpha = 0.85;
-      o.alphaEnd = 0.6;
+      o.alpha = 0.9;
+      o.alphaEnd = 0.7;
       o.flicker = 0.3;
-      this._spawn(this.alpha, o);
+      this._spawn(this.add, o);
       this._hang[i * 3] = x + o.vx * 0.9;
       this._hang[i * 3 + 1] = y + o.vy * 0.9;
       this._hang[i * 3 + 2] = z + o.vz * 0.9;
@@ -165,18 +165,18 @@ export class SheathFx extends DuelFx {
         o.vz = this.lrand(-0.3, 0.3);
         o.gravity = -5;
         o.drag = 0.8;
-        o.alpha = 0.85;
+        o.alpha = 0.9;
         o.spin = this.lrand(-6, 6);
-        this._spawn(this.alpha, o);
+        this._spawn(this.add, o);
       }
       this._hangN = 0;
       return;
     }
     if (L !== 'c') return;
     const ex = cx - ax, ez = cz - az, l = Math.hypot(ex, ez) || 1, nx = -ez / l, nz = ex / l;
-    this._ink(ax, y, az, cx, y, cz, 0.22, 1.7, 0, 1.2);
-    for (let i = 0; i < 60; i++) {
-      const t = this.lr(), s = this.lr() < 0.5 ? -1 : 1, sp = this.lrand(3, 9);
+    this._ink(ax, y, az, cx, y, cz, 0.26, 1.9, 0, 1.5);
+    for (let i = 0; i < 140; i++) {
+      const t = this.lr(), s = this.lr() < 0.5 ? -1 : 1, sp = this.lrand(4, 11);
       const o = this._rec(ax + ex * t, y + this.lrand(-0.1, 0.1), az + ez * t, this.lrand(0.3, 0.6), this.lrand(0.12, 0.17), 0.04, "*'-", AIR_HOT, AIR);
       o.vx = nx * s * sp + this.lrand(-0.6, 0.6);
       o.vy = this.lrand(-0.5, 2.2);
@@ -189,7 +189,7 @@ export class SheathFx extends DuelFx {
       const t = this.lr();
       this._blob(ax + ex * t, y + this.lrand(-0.1, 0.1), az + ez * t, nx * this.lrand(-1, 1), this.lrand(0, 0.5), nz * this.lrand(-1, 1), this.lrand(0.3, 0.5), 0.35, 0.7, 0.32, 0, K_SMOKE, 1.4);
     }
-    for (const t of [0.3, 0.7]) this._airRipple(ax + ex * t, az + ez * t, y, 0.25, 1.7, 0.36, 0.55, 0.42, 0.26, 0.35);
+    for (const t of [0.15, 0.4, 0.65, 0.9]) this._airRipple(ax + ex * t, az + ez * t, y, 0.25, 1.8, 0.38, 0.8, 0.45, 0.22, 0.3);
     this._lookLight?.({ x: ax + ex * 0.5, y, z: az + ez * 0.5, color: [1, 1, 1.05], intensity: 3, radius: 8, life: 0.18 });
   }
 
