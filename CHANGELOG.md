@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-four pieces of work since 0.4.0:
+One hundred and twenty-five pieces of work since 0.4.0:
 - **A slice of digits along the blade, and a left hand that stays out of his body** (2026-11-26, ADR-247). *Changed:* every
   sword attack's slash is now a thin seam of fine digits printed exactly along the path the blade's point swept,
   as if the sword cut the world's code open: bright where the blade was fastest, a few digits dripping out of
@@ -22,6 +22,18 @@ One hundred and twenty-four pieces of work since 0.4.0:
   (heavier for heavies). The blade smears for a frame or two at the fastest part of every swing. The light combo
   steps in further, holds each finishing pose while its slash flashes, then rises. Checked facing all four ways
   and on the phone camera, upright and sideways.
+- **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
+  longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
+  bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and
+  opens a short window for your own counter cut. When a parry breaks his posture, or you parry a blue warning blow,
+  the hero answers with N DEATHBLOWS where he stands (N = the perfect parries banked, 1 to 7): a combo of his own
+  cuts in a new order every time, each freezing for a beat at the contact with the blade in him, under the dodge
+  flurry's cold cast and a camera lean; ~3 s for seven. *Added:* every deathblow leaves a straight cut on his body
+  that crosses the last and shatters on the finisher (Shatter Web), blood (a spray, a wound along the cut, pools on
+  the floor until the fight resets), and its own sound, a blade through flesh; a chain of perfect parries throws
+  more sparks and embers. Switches: `?dbfx=a|b|c|d`, `?dbsfx=0|a|b|c|d`, `?blood=0`, `?dbmatrix=rain|world`
+  (off by default), `?parryRiposte=deathblow|planted|old`, `?parryGrow=a|0`; Lab streak row; TRAINING: Deathblow
+  x3 / x7, Deathblow on a blue blow.
 - **The flash chain: counter him three times in a row** (2026-11-26, ADR-246). *Changed (the owner's pick from films of every duelist):* a flash
   counter no longer ends his string at once: he is thrown back and strikes back straight
   away, and a flash counter of that blow is the next link. Three in a row (70, 85, then 100 damage, each freeze

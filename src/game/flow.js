@@ -210,15 +210,21 @@ export class GameFlow {
     // the flurry: the cold cast holds for as long as he cuts; every cut flickers the frame, the last
     // blow flashes it
     ev?.on('player:flurry', (d) => {
-      if (finite(d?.strikes) >= 2) this.grade.ghostPulse(finite(d?.dur, 0.6));
+      // (the deathblow combo, a planted answer, takes the same cold cast for its whole length; a single planted cut none)
+      if ((finite(d?.strikes) >= 2 && !d?.planted) || d?.art === 'deathblow') this.grade.ghostPulse(finite(d?.dur, 0.6));
     });
     ev?.on('player:flurryHit', (d) => {
       // the burst level (player/flurryBurst.js; ?burst=): 1 / 1 / 1 at level 0, as before
       const B = burstScreen();
+      // (the planted answers, a riposte's cut or a deathblow's beats, never touch the screen's grade)
+      if (d?.planted) return;
       if (!d?.last) {
         if (B.cut > 0) this.grade.flashPulse(Math.min(0.32, 0.14 + 0.03 * finite(d?.n)) * B.cut); // every cut a little brighter
         return;
       }
+      // the planted riposte (?parryRiposte=planted) never touches the screen's grade (the owner: no
+      // background change for a combat moment)
+      if (d?.planted) return;
       // the last blow's impact frame: the screen dips dark for a blink, then flashes
       this.grade.dip(Math.min(0.95, 0.42 * B.dip), 0.1);
       if (B.last > 0) this.grade.flashPulse((0.5 + Math.min(0.4, 0.06 * finite(d?.of))) * B.last);
