@@ -26,6 +26,7 @@ const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 /** Glyphs this module prints: none of its own (the hit effect is combat/deathblowFx.js'). */
 export const DEATHBLOW_GLYPHS = [];
 
+const PATH_MAX = 16; // the blade tip's world points kept for the hit effect (`path`)
 const SAMPLES = 8; // the blade tip's screen samples kept (a ring), for the swing's angles
 
 /** The deathblow's own state on the player (one object, reused). */
@@ -36,6 +37,7 @@ export function newDeathblowState() {
     ox: 0, oz: 0, dx: 0, dz: 1, side: 1, rip: null, point: { x: 0, y: 0, z: 0 },
     last: '', lastFin: '', moveOf: null, clips: [], seq: [], rng: mulberry32(0x0db10c5), // (the stream: advances over every combo of the run)
     tip: new Float32Array(SAMPLES * 3), tipN: 0, tipI: 0, // the blade tip's NDC x, y and the time, a ring
+    path: new Float32Array(PATH_MAX * 3), pathN: 0, holdT: 0, easeT: 0, hitLog: [], // this swing's blade tip in the world (pooled), the ease after the pause
   };
 }
 
@@ -89,7 +91,7 @@ export const deathblowMoves = () => {
 /** The attack definition of blow `i` (0-based) of `n` (its own clip and contact look, the combo's weights). */
 const blowStop = (i, n) => {
   const D = DEFENSE.deathblow;
-  return i >= n - 1 ? D.finStop : lerp(D.stop[0], D.stop[1], n > 2 ? clamp(i / (n - 2), 0, 1) : 1);
+  return i >= n - 1 ? D.finHold : lerp(D.hold[0], D.hold[1], n > 2 ? clamp(i / (n - 2), 0, 1) : 1);
 };
 function blowDef(e, wind, last, i, n) {
   const D = DEFENSE.deathblow, b = e.base, stop = blowStop(i, n);
@@ -109,7 +111,7 @@ export const deathblowWind = (i, n) => {
 export const deathblowDuration = (n) => {
   const D = DEFENSE.deathblow;
   let t = 0;
-  for (let i = 0; i < n; i++) t += deathblowWind(i, n) + (i === n - 1 ? D.finActive + D.finStop : D.active + D.stop[1] * 0.8 + D.gap);
+  for (let i = 0; i < n; i++) t += deathblowWind(i, n) + D.ease.dur * 0.6 + (i === n - 1 ? D.finActive + D.finHold : D.active + blowStop(i, n) + D.gap);
   return t;
 };
 
@@ -196,7 +198,9 @@ export function tickDeathblow(P, dt) {
     if (a.hit) {
       const d = a.def;
       // (a non-final blow gives way to the next the moment its freeze is over: the blows are one rush; the finisher plays out)
-      if (fin(g.hitstopTimer) > 0 || (S.i >= S.n - 1 && a.t < d.windup + d.active + DEFENSE.deathblow.gap)) return true;
+      if (S.holdT > 0 || S.easeT > 0) return holdEase(S, g);
+      if (fin(g.hitstopTimer) > 0) { g.hitstopTimer = 0; g.hitstopScale = 1; } // (a stray freeze of his own: the pause is ours)
+      if (S.i >= S.n - 1 && a.t < d.windup + d.active + DEFENSE.deathblow.gap) return true;
       if (S.i >= S.n - 1) {
         S.phase = 'tail';
         end(P);
@@ -216,9 +220,52 @@ export function tickDeathblow(P, dt) {
   return false;
 }
 
+/** The hit-pause, then its ease: the world stands still for `holdT` real s however many freezes pile on (his reel's
+ *  own included), then the time runs at `ease.scale` and eases back to 1 over `ease.dur` real s (the follow-through
+ *  snaps on; the next blow waits for it). */
+function holdEase(S, g) {
+  const E = DEFENSE.deathblow, rd = fin(g.realDt, 0.016);
+  if (S.holdT > 0) {
+    S.holdT = Math.max(0, S.holdT - rd);
+    g.hitstopTimer = S.holdT + 1e-4;
+    g.hitstopScale = E.holdScale;
+    return true;
+  }
+  S.easeT = Math.max(0, S.easeT - rd);
+  if (S.easeT > 0) {
+    g.hitstopScale = lerp(E.ease.scale, 1, 1 - S.easeT / E.ease.dur);
+    g.hitstopTimer = Math.max(fin(g.hitstopTimer), 0.03);
+  }
+  return true;
+}
+
+/** The blade tip's world points along this swing's active part, into the pooled path (thinned when full). */
+function samplePath(P, world) {
+  const S = P.db, a = P.atk;
+  if (!(P.sweep?.valid) || !a || (a.hit && !world)) return;
+  if (!world && a.t < a.def.windup - 0.03) return;
+  P._bladePoint(1, V);
+  if (!Number.isFinite(V.x + V.y + V.z)) return;
+  if (S.pathN >= PATH_MAX) { // (full: keep every other point)
+    let m = 0;
+    for (let j = 0; j < S.pathN; j += 2, m++) {
+      S.path[m * 3] = S.path[j * 3];
+      S.path[m * 3 + 1] = S.path[j * 3 + 1];
+      S.path[m * 3 + 2] = S.path[j * 3 + 2];
+    }
+    S.pathN = m;
+  }
+  const k = S.pathN * 3;
+  S.path[k] = V.x;
+  S.path[k + 1] = V.y;
+  S.path[k + 2] = V.z;
+  S.pathN++;
+}
+
 /** The blade tip's screen position this frame, into the ring (the swing's angles at contact read it). */
 function sampleTip(P, g) {
   const cam = g.camera, S = P.db;
+  samplePath(P, false);
   if (!cam?.isCamera || !(P.sweep?.valid)) return;
   P._bladePoint(1, V);
   V.project(cam);
@@ -291,6 +338,9 @@ function startCombo(P, att) {
   S.oz = p.z;
   S.tipN = 0;
   S.tipI = 0;
+  S.holdT = 0;
+  S.easeT = 0;
+  S.hitLog.length = 0;
   S.side = S.rng() < 0.5 ? 1 : -1;
   const seq = pickSeq(S, S.n);
   S.seq = seq;
@@ -351,6 +401,9 @@ function startBlow(P, att, i) {
   P.hb.held = false;
   P.iframeT = Math.max(fin(P.iframeT), def.windup + def.active + def.recovery + D.iframePad);
   S.i = i;
+  S.pathN = 0;
+  S.holdT = 0;
+  S.easeT = 0;
   S.clips.push(e.id);
   S.moveOf = e;
   return true;
@@ -393,9 +446,13 @@ export function deathblowLanded(P, dealt) {
   g.shake?.(Math.min(1, (PL.impactShake + R.shakePerN * n) * k) * G.shake);
   g.punch?.((R.punch + R.punchPerN * n) * k * G.kick);
   P.anim?.kickCoat?.(1.1, P.anim.noise);
-  // (the foe's own crit freeze is longer than a rush of blows can bear: the combo's freeze grows blow by blow)
-  const stop = blowStop(i, n);
-  if (fin(g.hitstopTimer) > stop) g.hitstopTimer = stop;
+  // the hit-pause: the world and the hero stand still for exactly `hold` real s (the foe's own crit freeze and the
+  // contact's own are replaced by it), the blade inside him; the ease follows it
+  const hold = blowStop(i, n);
+  g.hitstopTimer = hold;
+  g.hitstopScale = D.holdScale;
+  S.holdT = hold;
+  S.easeT = D.ease.dur;
   // his body jolts with every blow (the finisher's stagger is takeHit's reel 2)
   const att = S.att;
   if (att && Number.isFinite(att.jolt)) att.jolt = Math.max(att.jolt, last ? 1.2 : D.jolt);
@@ -412,8 +469,28 @@ export function deathblowLanded(P, dealt) {
       a1 = ANG[1];
     }
   }
+  // the blade's sweep: the tip's world points to the contact (the last is at contact), the hilt at contact
+  samplePath(P, true);
+  // (the last point is the contact itself: the hit point on him, which the tip's own last position is near)
+  if (S.pathN >= PATH_MAX) S.pathN--;
+  S.path[S.pathN * 3] = pt.x;
+  S.path[S.pathN * 3 + 1] = pt.y;
+  S.path[S.pathN * 3 + 2] = pt.z;
+  S.pathN++;
+  if (S.pathN < 2) { // (a contact in the swing's first step: one point back along the bearing)
+    if (S.pathN < 1) { S.path[0] = pt.x; S.path[1] = pt.y; S.path[2] = pt.z; }
+    S.path[3] = S.path[0];
+    S.path[4] = S.path[1];
+    S.path[5] = S.path[2];
+    S.path[0] -= S.dx * 0.5;
+    S.path[2] -= S.dz * 0.5;
+    S.pathN = 2;
+  }
+  S.hitLog.push({ n: i + 1, k: S.pathN, end: Math.hypot(S.path[S.pathN * 3 - 3] - pt.x, S.path[S.pathN * 3 - 2] - pt.y, S.path[S.pathN * 3 - 1] - pt.z), hold });
+  const hilt = P.sweep?.valid ? P._bladePoint(0, V) : null;
+  const base = { x: fin(hilt?.x, pt.x), y: fin(hilt?.y, pt.y), z: fin(hilt?.z, pt.z) };
   try {
-    deathblowHit?.(g, { x: pt.x, y: pt.y, z: pt.z, dx: S.dx, dz: S.dz, i: i + 1, n, last, a0, a1, thrust: S.moveOf?.kind === 'thrust' });
+    deathblowHit?.(g, { x: pt.x, y: pt.y, z: pt.z, dx: S.dx, dz: S.dz, i: i + 1, n, last, a0, a1, thrust: S.moveOf?.kind === 'thrust', path: S.path.subarray(0, S.pathN * 3), base, hold });
   } catch (err) {
     console.error('[deathblow] fx failed', err);
   }

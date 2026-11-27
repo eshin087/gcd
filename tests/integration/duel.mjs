@@ -4242,6 +4242,7 @@ async function scenarioDeathblow() {
     t.streakAfter = p.streak;
     t.runAfter = p.parryRun;
     t.clips = [...p.db.clips];
+    t.holds = p.db.hitLog.map((h) => ({ ...h }));
     t.moves = t.clips;
     return t;
   };
@@ -4290,7 +4291,13 @@ async function scenarioDeathblow() {
     assert(t.ghost > 0.3, `${tag}: the cold cast ran (grade.ghost ${t.ghost.toFixed(2)})`);
     assert(t.moves.every((m) => MOVES.includes(m)) && t.moves.every((m, i) => i === 0 || m !== t.moves[i - 1]) && (n < 3 || new Set(t.moves).size >= Math.min(n - 1, 3)), `${tag}: the moves of the combo differ from their neighbours (${t.moves.join(' > ')})`);
     assert(n < 2 || ['overhead', 'thrust', 'spinFin'].includes(t.moves[n - 1]), `${tag}: the finisher is one of the big ones (${t.moves[n - 1]})`);
-    if (n === 7) assert(t.tCut - t.tFlurry >= 1.4 && t.tCut - t.tFlurry <= 1.8, `${tag}: the combo's whole time ${(t.tCut - t.tFlurry).toFixed(2)} s (1.4-1.8)`);
+    // the hit-pause: N=7 about 3 s, N=3 about 1.5 s; every blow's path ends at its contact; the hold grows, the finisher's the longest
+    const T = t.tCut - t.tFlurry;
+    out(`   ${tag}: whole time ${T.toFixed(2)} s · holds ${t.holds.map((h) => h.hold.toFixed(2)).join(' ')} · path points ${t.holds.map((h) => h.k).join(' ')}`);
+    if (n === 7) assert(T >= 2.6 && T <= 3.4, `${tag}: the combo's whole time ${T.toFixed(2)} s (2.6-3.4)`);
+    if (n === 3) assert(T >= 1.2 && T <= 1.8, `${tag}: the combo's whole time ${T.toFixed(2)} s (1.2-1.8)`);
+    assert(t.holds.length === n && t.holds.every((h) => h.k >= 2 && h.k <= 16 && h.end < 0.05), `${tag}: every blow's path has 2-16 points and ends at its contact (${t.holds.map((h) => h.k + '/' + h.end.toFixed(2)).join(' ')})`);
+    assert(t.holds.every((h, i) => h.hold >= 0.16 - 1e-6 && (i === 0 || i === n - 1 || h.hold >= t.holds[i - 1].hold - 1e-6)) && t.holds[n - 1].hold >= 0.38 - 1e-6 || n === 1, `${tag}: the hit-pause grows blow by blow and the finisher's is the longest`);
   };
   // (b) a posture-breaking perfect parry: n perfect parries behind it, posture one parry from breaking
   for (const [run, n] of [[2, 3], [6, 7], [0, 1], [9, 7]]) {
