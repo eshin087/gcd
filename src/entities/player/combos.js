@@ -28,10 +28,12 @@ export const COMBOS = {
   a: {
     name: 'Iai', feel: 'iai', hand: 'back',
     hits: [
-      hit('drawCut', 0.09, 0.1, 0.28, 0.28, { turn: 0.3 }, null, F(0.075, 0.16, 0.5, 0.14, 0.75)),
-      hit('flatBackhand', 0.09, 0.1, 0.28, 0.28, { turn: -0.4 }, null, F(0.075, 0.16, 0.5, 0.14, 0.75)),
-      hit('risingSlash', 0.1, 0.11, 0.28, 0.28, { hop: 0.12 }, null, F(0.085, 0.2, 0.55, 0.16, 0.85)),
-      hit('risingThrust', 0.09, 0.09, 0.28, 0.28, null, null, F(0.09, 0.18, 0.7, 0.16, 1.0)),
+      // (hit-stop by the tiers of docs/ANIMATION.md 5.4: the lights 0.065-0.07 s, the thrust a medium 0.08,
+      // the finisher a heavy 0.15)
+      hit('drawCut', 0.09, 0.1, 0.28, 0.28, { turn: 0.3 }, null, F(0.065, 0.16, 0.5, 0.14, 0.75)),
+      hit('flatBackhand', 0.09, 0.1, 0.28, 0.28, { turn: -0.4 }, null, F(0.065, 0.16, 0.5, 0.14, 0.75)),
+      hit('risingSlash', 0.1, 0.11, 0.28, 0.28, { hop: 0.12 }, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),
+      hit('risingThrust', 0.09, 0.09, 0.28, 0.28, null, null, F(0.08, 0.18, 0.7, 0.16, 1.0)),
       hit('heavyCrush', 0.24, 0.13, 0.45, 0.3, null, FIN, F(0.15, 0.5, 1.8, 0.3, 0.9)),
     ],
   },

@@ -92,11 +92,12 @@ export const IMPACT = {
   n: [14, 26], speed: [7, 10], out: 2.2, life: [0.12, 0.26], size: [0.09, 0.14],
   heat: [7, 12], heatLife: 0.16, heatSize: 0.32,
 };
-/** THE SMEAR: through the fast frames of a swing (the point moving at least `min` m a frame), the space the
+/** THE SMEAR: through the fast frames of a swing's strike (its active window only, docs/ANIMATION.md 6; the point
+ *  moving at least `min` m a frame), the space the
  *  blade swept since the frame before is filled with steel heat in the fire field for `life` s: `n` points up the
  *  blade (from `from` of it to its drawn point) × `sub` steps between the two frames: the swing's blur printed in
  *  the field's small letters (STYLE.md: a blade's trail is heat in the fire field). */
-export const SMEAR = { min: 0.16, n: 6, sub: 2, from: 0.3, life: 0.07, size: 0.13, heat: 0.85, until: 0.25 };
+export const SMEAR = { min: 0.16, n: 6, sub: 2, from: 0.3, life: 0.07, size: 0.13, heat: 0.85 };
 // (`at`: the point along the blade, from its base to its drawn point, whose way across the screen is the
 // slash's direction: near the hand, so a blade raised overhead with its point back toward the camera still
 // reads as the swing does, from where the sword came down to where it went; `reveal` pieces drawn `step` s
@@ -225,8 +226,9 @@ export class SlashFx {
       this.look = d.heavy ? 1 : 0;
     }
     const W = d.windup, Ac = d.active, R = d.recovery, t = at.t;
-    // (the smear: from late in the windup to a little past the active window, on a frame that moved)
-    if (t !== this.lastT && t >= SWING.from * W && t <= W + Ac + SMEAR.until * R) this._smear();
+    // (the smear: on the strike only, the active window, on a frame that moved; never the anticipation or the
+    // recovery: docs/ANIMATION.md 6)
+    if (t !== this.lastT && t >= W && t <= W + Ac) this._smear();
     else if (t !== this.lastT) this._keepBlade();
     // (the point is followed from late in the windup; a frozen frame, the hit-pause, moves nothing)
     if (this.st === 2 || t < SWING.from * W || t === this.lastT) return;
