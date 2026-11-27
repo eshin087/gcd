@@ -242,7 +242,9 @@ export class SlashFx {
       this.hit[0] = q.x;
       this.hit[1] = q.y;
       this.hit[2] = q.z;
-      // (the slice's impact on the contact's own frame: the hit test runs after this frame's update)
+      // (the slice's impact on the contact's own frame: the hit test runs after this frame's update; none on a
+      // guarded strike, which throws no kick: COMBAT.md, scenario cutfx)
+      if (e.guarded) return;
       if (slashNow === 'slice' && this.rec === at && this._blade()) this._sliceHit();
       else this._hitNew = true;
     });
