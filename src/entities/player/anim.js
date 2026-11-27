@@ -2887,6 +2887,10 @@ const SIDE_HZ = 240, SIDE_SNAP = 0.1, SIDE_REACH = 0.58, SIDE_FOLD = 0.25, SIDE_
 // at either end; `left`: how hard a way through the middle is sent round his left side (the free arm's); `hold` (m):
 // the last frame's way out, added in (near the spine it wins: a hand passing through the middle never flips sides)
 const SIDE_KEEP = { y: [-0.75, 0.15], edge: 0.1, left: 0.35, hold: 0.06 };
+// … and its way to and from the side (_sideArc), with a keep-out: round his axis in the chest's frame, never past
+// his right side (`cut`, rad from ahead: the left arm cannot reach round there), bowed out `bulge` m mid-way (a
+// straight way from the grip to behind his back went through his middle, the hand gone in the coat)
+const SIDE_ARC = { cut: Math.PI / 2, bulge: 0.05 };
 const _shR = new THREE.Vector3(), _shO = new THREE.Vector3(), _shQ = new THREE.Vector3(), _shG = new THREE.Vector3(), _shA = new THREE.Vector3(), _shB = new THREE.Vector3(), _shC = new THREE.Vector3();
 // × the arm's length: the free elbow on the grip keeps ≥ 23° of bend (the cleave locked it at 176°)
 const LOCK_REACH = 0.98;
@@ -2974,7 +2978,7 @@ export class HeroAnimator {
     // (c), last frame's hand (last), the way's ease (e), the way (mode: 1 to the side, -1 home, 0 off), p[sd]
     // last frame (pw); after a one-handed swing how long it still lingers (lg), how much it still holds
     // (hold), whether what plays now needs the hand back quickly (quick); the look it hangs in (L)
-    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false, lg: 0, hold: 0, quick: false, L: null, kx: 0.35, kz: -0.94 };
+    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false, lg: 0, hold: 0, quick: false, L: null, kx: 0.35, kz: -0.94, cl: new THREE.Vector3() };
     this.gripGap = 1;
     this.rig = rig;
     this.player = player;
@@ -4176,9 +4180,12 @@ export class HeroAnimator {
       return;
     }
     const e = ch.matrixWorld.elements, sc = Math.hypot(e[0], e[1], e[2]) || 1;
+    // (a look with a keep-out carries the hand's offset from its rest turned with the chest: held in the world's
+    // axes, combo A's windup spun the chest ~150° under it and the hand came out through his middle)
+    const yc = Math.atan2(e[8], e[10]), cyc = SIDE.body > 0 ? Math.cos(yc) : 1, syc = SIDE.body > 0 ? Math.sin(yc) : 0;
     // the anchor: under the shoulder (the chest's yaw), drawn toward beside the hip (the pelvis's)
     {
-      const yc = Math.atan2(e[8], e[10]), H = SIDE.hang, c = Math.cos(yc), s = Math.sin(yc);
+      const H = SIDE.hang, c = Math.cos(yc), s = Math.sin(yc);
       _shA.setFromMatrixPosition(r.arms.L.upper.matrixWorld).sub(_shO);
       _shA.x += sc * (H[0] * c + H[2] * s);
       _shA.y += sc * H[1];
@@ -4206,7 +4213,14 @@ export class HeroAnimator {
         S.v.subVectors(_shA, S.last).multiplyScalar(SIDE.drop); // (let go already falling toward its rest)
       }
       S.c.copy(S.last);
-      if (way > 0) S.r.subVectors(S.last, _shA);
+      S.cl.copy(S.last).add(_shO);
+      ch.worldToLocal(S.cl); // (where it began, in the chest's frame: the way round him starts there)
+      if (way > 0) {
+        S.r.subVectors(S.last, _shA);
+        const rx = S.r.x, rz = S.r.z;
+        S.r.x = rx * cyc - rz * syc;
+        S.r.z = rx * syc + rz * cyc;
+      }
       S.mode = way;
       S.e = 0;
     }
@@ -4254,8 +4268,13 @@ export class HeroAnimator {
       _shR.copy(_shA);
       // (the quiet look: the clip's own gestures, `keep` of the way out from the rest)
       if (SIDE.keep > 0) _shG.lerp(_shQ, SIDE.keep * kIn);
-    } else if (ew < 1) _shG.lerpVectors(S.c, _shQ, ew); // home: from where the way began, by the ease
-    else _shG.copy(_shQ);
+      // (with a keep-out, from where it let go to there round him, not through him)
+      if (SIDE.body > 0 && ew < 1) this._sideArc(ch, S.cl, _shG, ew, SIDE.body);
+    } else if (ew < 1) {
+      // home: from where the way began, by the ease (with a keep-out, round him)
+      if (SIDE.body > 0) this._sideArc(ch, S.cl, _shQ, ew, SIDE.body);
+      else _shG.lerpVectors(S.c, _shQ, ew);
+    } else _shG.copy(_shQ);
     if (S.mode < 0 && ew >= 1 && !(want > 1e-4)) {
       S.mode = 0; // home: the pose's own hand, untouched
       return;
@@ -4270,10 +4289,14 @@ export class HeroAnimator {
     if (S.mode > 0) {
       // … at most SIDE.vIn against the body carrying it (its rest; the pendulum let go 60 cm from
       // there, out of a sprint, and the arm opening onto it stepped 13 cm a frame)
-      _shC.subVectors(_shG, _shR).sub(S.r);
+      _shB.set(S.r.x * cyc + S.r.z * syc, S.r.y, -S.r.x * syc + S.r.z * cyc); // (its offset, turned with the chest)
+      _shC.subVectors(_shG, _shR).sub(_shB);
       const st = _shC.length(), most = SIDE.vIn * sc * dt;
       if (st > most) _shG.addScaledVector(_shC, most / st - 1);
       S.r.subVectors(_shG, _shR);
+      const rx = S.r.x, rz = S.r.z;
+      S.r.x = rx * cyc - rz * syc;
+      S.r.z = rx * syc + rz * cyc;
     }
     // clear of the left thigh (its line from the hip to the knee, as the legs stood last frame), the
     // way it already is from it (pushed out to his left instead, a thigh lifted out to the side in a
@@ -4325,6 +4348,29 @@ export class HeroAnimator {
     S.last.copy(_shG);
     _T.copy(_shG).add(_shO);
     ch.worldToLocal(_T);
+  }
+
+  /** The side hand's way round his body (a look with a keep-out, `body` R): from a (chest local) to b (an offset
+   *  from the root's origin, _shO) by w, in the chest's frame: the angle about his axis (never past his right side: SIDE_ARC.cut),
+   *  the distance from it (bowed out mid-way, at least R there) and the height, each by w. Writes _shG; uses
+   *  _shB, _shC. */
+  _sideArc(ch, a, b, w, R) {
+    _shB.copy(a);
+    _shC.copy(b).add(_shO);
+    ch.worldToLocal(_shC);
+    const C = SIDE_ARC.cut, T = Math.PI * 2;
+    let ta = Math.atan2(_shB.x, _shB.z), tb = Math.atan2(_shC.x, _shC.z);
+    if (ta <= -C) ta += T;
+    if (tb <= -C) tb += T;
+    const ra = Math.hypot(_shB.x, _shB.z), rb = Math.hypot(_shC.x, _shC.z), bow = Math.sin(Math.PI * w);
+    const t = ta + (tb - ta) * w, rr = Math.max(ra + (rb - ra) * w + SIDE_ARC.bulge * bow, R * bow);
+    if (!Number.isFinite(t + rr)) {
+      _shG.copy(b);
+      return;
+    }
+    _shG.set(Math.sin(t) * rr, _shB.y + (_shC.y - _shB.y) * w, Math.cos(t) * rr);
+    ch.localToWorld(_shG);
+    _shG.sub(_shO);
   }
 
   /** The free hand's wrist (rig.arms.L.wrist; the hero only, opts.freeHand): the fingers toward

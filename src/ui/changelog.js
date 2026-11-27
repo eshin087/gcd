@@ -47,8 +47,8 @@ export const RELEASES = [
         date: '2026-11-27',
         title: 'A slash of fine digits, and a left hand that stays out of his body',
         notes: [
-          'Every sword slash is now a thin straight line of small steel-blue digits across your foe, drawn the way your blade crossed the screen, as if it cut the world's code open: gone in about a fifth of a second.',
-          'A landed blow throws the camera along the blade. The free hand behind your back no longer passes through your coat, and on the finisher it travels round your side to the grip.',
+          'Every sword slash is now a thin straight line of small steel-blue digits across your foe, drawn the way your blade crossed the screen, as if it cut open the code of the world: gone in about a fifth of a second.',
+          'A landed blow throws the camera along the blade. The free hand rests on the small of your back with the elbow bent, no longer passes through your coat, and on the finisher it travels round your left side to the grip.',
         ],
       },
       {

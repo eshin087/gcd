@@ -6324,6 +6324,9 @@ async function scenarioHandAudit() {
   const c0 = CO.comboMode(), o0 = OHm.offHandMode();
   CO.setCombo(process.env.GCD_HAND_COMBO || 'a');
   if (process.env.GCD_HAND_OFF) OHm.setOffHand(process.env.GCD_HAND_OFF);
+  // (GCD_HAND_SET='{"back":{"hang":[..],"body":..}}': try a look's numbers without editing it)
+  const set0 = {};
+  if (process.env.GCD_HAND_SET) for (const [k, v] of Object.entries(JSON.parse(process.env.GCD_HAND_SET))) { set0[k] = { ...OHm.OFFHAND[k] }; Object.assign(OHm.OFFHAND[k], v); }
   const G = build();
   try {
     fightSetup(G);
@@ -6352,10 +6355,28 @@ async function scenarioHandAudit() {
       Wwp.copy(Ww);
       const H = r.offHand;
       const mesh = H?.grip?.visible ? 'FIST' : H?.fingers?.visible ? 'fingers' : H?.open?.visible ? 'open' : '-';
-      rows.push(`${String(i).padStart(3)} ${(p.state === 'attack' ? `${p.atk.def.combo}:${p.atk.def.name}` : p.state).padEnd(22)} rad ${Math.hypot(W.x, W.z).toFixed(2)} x ${W.x.toFixed(2)} y ${(W.y - HD.shoulder[1]).toFixed(2)} z ${W.z.toFixed(2)} sd ${A.cur[P.sd].toFixed(2)} two ${A.cur[P.twoHand].toFixed(2)} step ${(stp * 100).toFixed(1)} wstep ${(wst * 100).toFixed(1)} yaw ${((p.yaw * 180) / Math.PI).toFixed(0)} chestYaw ${cyaw.toFixed(0)} ${mesh}`);
+      // the arm's joints: the elbow's bend (0 straight), the wrist's bend off the forearm's line and its twist about it
+      const fq = r.arms.L.fore.quaternion, wq = r.arms.L.wrist?.quaternion ?? new THREE.Quaternion();
+      const fd = new THREE.Vector3(0, -1, 0).applyQuaternion(fq), elb = (Math.acos(Math.max(-1, Math.min(1, -fd.y))) * 180) / Math.PI;
+      const wd = new THREE.Vector3(0, -1, 0).applyQuaternion(wq), wb = (Math.acos(Math.max(-1, Math.min(1, -wd.y))) * 180) / Math.PI;
+      let tw = (2 * Math.atan2(wq.y, wq.w) * 180) / Math.PI;
+      if (tw > 180) tw -= 360;
+      if (tw < -180) tw += 360;
+      // its clearance from the sword arm (the elbow → the grip) and the sword's hilt → forte (world m)
+      const Lw = new THREE.Vector3(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+      const Re = new THREE.Vector3().setFromMatrixPosition(r.arms.R.fore.matrixWorld), Rg = new THREE.Vector3(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+      const segD = (a, b) => { const ab = b.clone().sub(a), t = Math.max(0, Math.min(1, Lw.clone().sub(a).dot(ab) / Math.max(1e-9, ab.lengthSq()))); return Lw.distanceTo(a.clone().addScaledVector(ab, t)); };
+      const Sh = new THREE.Vector3(0, 0, -0.1).applyMatrix4(r.sword.matrixWorld), Sf = new THREE.Vector3(0, 0, 0.5).applyMatrix4(r.sword.matrixWorld);
+      const clr = Math.min(segD(Re, Rg), segD(Sh, Sf)) / (p.drawScale || 1);
+      // the forearm's own line (elbow → wrist) in the chest's frame
+      const Le = new THREE.Vector3().setFromMatrixPosition(r.arms.L.fore.matrixWorld), cq = new THREE.Quaternion();
+      r.chest.getWorldQuaternion(cq);
+      const fl = Lw.clone().sub(Le).normalize().applyQuaternion(cq.invert());
+      rows.push(`${String(i).padStart(3)} fore ${fl.x.toFixed(2)},${fl.y.toFixed(2)},${fl.z.toFixed(2)} clr ${clr.toFixed(2)} elb ${elb.toFixed(0).padStart(3)} wbend ${wb.toFixed(0).padStart(3)} twist ${tw.toFixed(0).padStart(4)} ${(p.state === 'attack' ? `${p.atk.def.combo}:${p.atk.def.name}` : p.state).padEnd(22)} rad ${Math.hypot(W.x, W.z).toFixed(2)} x ${W.x.toFixed(2)} y ${(W.y - HD.shoulder[1]).toFixed(2)} z ${W.z.toFixed(2)} sd ${A.cur[P.sd].toFixed(2)} two ${A.cur[P.twoHand].toFixed(2)} step ${(stp * 100).toFixed(1)} wstep ${(wst * 100).toFixed(1)} yaw ${((p.yaw * 180) / Math.PI).toFixed(0)} chestYaw ${cyaw.toFixed(0)} ${mesh}`);
     }
     for (const l of rows) out('   ' + l);
   } finally {
+    for (const [k, v] of Object.entries(set0)) Object.assign(OHm.OFFHAND[k], v);
     CO.setCombo(c0);
     OHm.setOffHand(o0);
   }
@@ -6670,7 +6691,7 @@ async function scenarioOffHand() {
   const off0 = OH.offHandMode();
   let last = null, prodStep = 0;
   try {
-    for (const mode of ['0', 'side', 'back', 'quiet']) {
+    for (const mode of ['0', 'side', 'belt', 'guard', 'back', 'quiet']) {
       OH.setOffHand(mode);
       const G = (last = build());
       fightSetup(G);
@@ -6709,8 +6730,11 @@ async function scenarioOffHand() {
     }
     // combo A's own hand behind his back (ADR-258; the owner: "its yellow fist randomly during the light attack
     // combo", "on the 5th attack the left hand angle motion and animation looks unnatural"): while it hangs (sd 1)
-    // through hits 1-4 the free wrist stays out of his coat (≥ 0.18 m from the spine between hip and chest; it came
-    // within 0.07), and hit 5 takes it to the grip round his side, no frame stepping more than 22 cm (it snapped 34)
+    // through hits 1-4 the free wrist stays out of his coat (≥ 0.125 m from the spine between hip and chest: the coat's
+    // back is 0.11 from it; it came within 0.07), with the elbow bent (≥ 50°: the hand on the small of his back; a rest
+    // 0.32 m back hung the arm nearly straight, 21°, "twisted and broken", the owner 2026-11-27), and hit 5 takes it
+    // to the grip round his side (never nearer than 0.12 m; through him it came to 0.11), no frame stepping more than
+    // 22 cm (it snapped 34)
     {
       const CO = await imp('src/entities/player/combos.js');
       const c0 = CO.comboMode();
@@ -6726,7 +6750,8 @@ async function scenarioOffHand() {
         aimAt(G);
         for (let i = 0; i < 60; i++) G.tick(DT);
         const W = new THREE.Vector3(), Wp = new THREE.Vector3(), Wr = new THREE.Vector3(), inv = new THREE.Matrix4(), invR = new THREE.Matrix4();
-        let near = Infinity, reach = 0, have = false, grip = false;
+        let near = Infinity, reach = 0, have = false, grip = false, elb = 180, near5 = Infinity;
+        const fd = new THREE.Vector3();
         const plan = [0, 0.35, 0.7, 1.08, 1.43];
         for (let i = 0, N = Math.round(2.6 / DT); i < N; i++) {
           if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
@@ -6737,12 +6762,14 @@ async function scenarioOffHand() {
           Wr.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(invR).multiplyScalar(1 / (p.drawScale || 1));
           const combo = p.state === 'attack' ? p.atk?.def?.combo : 0, sd = A.cur[P.sd], y = W.y - HD.shoulder[1];
           if (combo >= 1 && combo <= 4 && sd >= 0.99 && y > -0.75 && y < 0.15) near = Math.min(near, Math.hypot(W.x, W.z));
+          if (combo >= 1 && combo <= 4 && sd >= 0.99) elb = Math.min(elb, (Math.acos(Math.max(-1, Math.min(1, -fd.set(0, -1, 0).applyQuaternion(r.arms.L.fore.quaternion).y))) * 180) / Math.PI);
           if (combo === 5 && !grip && have) reach = Math.max(reach, Wr.distanceTo(Wp));
+          if (combo === 5 && !grip && y > -0.75 && y < 0.15) near5 = Math.min(near5, Math.hypot(W.x, W.z));
           if (combo === 5 && sd < 0.01) grip = true;
           Wp.copy(Wr);
           have = true;
         }
-        assert(near >= 0.18 && grip && reach <= 0.22, `combo A's hand behind his back: out of his coat through hits 1-4 (its nearest ${near.toFixed(2)} m to his spine), hit 5 takes it to the grip (${grip}) round his side, at most ${(reach * 100).toFixed(1)} cm a frame`);
+        assert(near >= 0.125 && elb >= 50 && grip && near5 >= 0.12 && reach <= 0.22, `combo A's hand behind his back: out of his coat through hits 1-4 (its nearest ${near.toFixed(2)} m to his spine), the elbow bent (at least ${elb.toFixed(0)}°), hit 5 takes it to the grip (${grip}) round his side (its nearest ${near5.toFixed(2)} m), at most ${(reach * 100).toFixed(1)} cm a frame`);
       } finally {
         CO.setCombo(c0);
       }
