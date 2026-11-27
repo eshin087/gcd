@@ -3,6 +3,7 @@ import { makeRealise } from '../duelist/realise.js';
 import { X as ASC } from '../ascendant/moves.js';
 import { compileClip, completeBeat, GUARD, FRAGS, CLIPS as POSE_CLIPS, REACT as POSE_REACT, OPEN as POSE_OPEN, TRANSITION_KEYS as TK } from './poses.js';
 import { TUNING, perPhase } from './tuning.js';
+import { wjPolishNow } from './motion.js';
 import * as MELEE from './moves/melee.js';
 import * as SPELLS from './moves/spells.js';
 import * as TERRAIN from './moves/terrain.js';
@@ -126,7 +127,8 @@ export const REACT = POSE_REACT;
 export const OPEN = POSE_OPEN;
 
 // ---------------------------------------------------------------- realising a move
-export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat });
+// (ADR-255: a beat's `wjKeysP`, its polished keys, plays under `?wjPolish=a`: the duelist realiser's keysOf)
+export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: (b) => (b.wjKeysP && wjPolishNow() === 'a' ? b.wjKeysP : null) });
 
 /** The guard pose (for tools). */
 export { GUARD };

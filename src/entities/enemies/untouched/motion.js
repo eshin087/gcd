@@ -34,6 +34,34 @@ export function wjMotionNow() {
   return MOTION_OPTS.includes(v) ? v : '0';
 }
 
+// ---------------------------------------------------------------- THE POLISH (ADR-255, `?wjPolish=0|a`)
+// The boss motion audit (2026-11-27), measured on the rig (veil.mjs `anatomy`), over every take: 'a' (the
+// proposal) fixes what the measures found; '0' plays the takes exactly as round 3 built them.
+//   - A KICK'S RETURN: the contact pose was held dead still (u 1.0 - 1.22), then the leg snapped back to the
+//     chamber in the follow-through's last frames: inside a string (a follow-through of ~0.15 s) the foot
+//     went from standing still to ~22 m/s in one frame (a 0.4 - 0.57 m pop). Polished: a moving hold (the
+//     foot already drawing back a little) that eases into the chamber, the chamber reached later.
+//   - A STRAIGHT HAND BLOW'S LINE: the palm, the poke and Dark Spark's fist crossed past his centreline at
+//     the contact (12 - 31 deg off the line from his shoulder to the hero's chest; Dark Spark's fist passed
+//     the hero by most of a metre). Polished: the contact hand moved back onto that line (AIM, below).
+// (The Yank's fist is the spells file's: moves/spells.js `wjKeysP`, the same rule.)
+export const POLISH_OPTS = Object.freeze(['0', 'a']);
+/** THE CASTING HAND (`?wjCastHand=0|a|b`; moves/melee.js WjMelee._motionFrame): phase 1's Azure Draw and
+ *  the Yank, cast with the right hand ('0' in its pocket, round 3's pin; 'a' out for the whole cast; 'b'
+ *  out only for the pull / the flick, the last part of the windup). */
+export const CASTHAND_OPTS = Object.freeze(['0', 'a', 'b']);
+export function wjCastHandNow() {
+  const v = lookOf('wjCastHand', 'a');
+  return CASTHAND_OPTS.includes(v) ? v : 'a';
+}
+export function wjPolishNow() {
+  const v = lookOf('wjPolish', 'a');
+  return POLISH_OPTS.includes(v) ? v : 'a';
+}
+/** How far (m, body space, +x his left) each straight hand blow's contact hand moves back toward his
+ *  centreline, so the arm points at the hero's chest (tuned on the rig: veil.mjs `anatomy`). */
+export const AIM = Object.freeze({ palm: -0.12, poke: -0.1, spark: -0.2 });
+
 // ---------------------------------------------------------------- the takes
 /** Each take's numbers (THE TIMING above; `blink`: a string's later beat blinks to `at` round the hero when
  *  he is further than `near` m; `anim`: the animator's limb rules while it plays: legs that land straight,
@@ -212,7 +240,7 @@ const KICK_PART = new Set(['front', 'side', 'round', 'axe', 'knee', 'back', 'hoo
  * (moves.js X). Returns { a: { name: { beats, recovery } }, b: ..., c: ... }; a move with nothing to
  * retake (none today) keeps its own.
  */
-export function makeTakes(base, X, TUNING) {
+export function makeTakes(base, X, TUNING, polish = false) {
   const { F, mirror } = X;
   const STAND = X.FRAGS?.STAND ?? {};
   const out = {};
@@ -237,7 +265,7 @@ export function makeTakes(base, X, TUNING) {
       const beats = def.beats.map((raw, i) => {
         const one = (b) => {
           if (b.feint) return { ...b, keys: b.keys, wjHands: '' };
-          const nb = retake(b, { t, T, K, H, M, WJ, F, i, prevReal, scale, minFirst, minGap, blinkI, name });
+          const nb = retake(b, { t, T, K, H, M, WJ, F, i, prevReal, scale, minFirst, minGap, blinkI, name, polish });
           return nb;
         };
         // (a pick of a blue and a red blow draws the blue one two times in three: the faster normal blows
@@ -289,8 +317,10 @@ function mid(a, b, k) {
   return o;
 }
 
+const p0hasRH = (keys) => keys.some(([, p]) => Array.isArray(p?.rH));
+
 function retake(b, C) {
-  const { T, K, H, M, WJ, F, i, prevReal, scale, minFirst, minGap } = C;
+  const { T, K, H, M, WJ, F, i, prevReal, scale, minFirst, minGap, polish } = C;
   const tm = T.time;
   const held = b.tell === 'blue' || b.tell === 'red' || b.tell === 'black';
   const red = b.tell === 'red' || b.tell === 'black';
@@ -347,11 +377,21 @@ function retake(b, C) {
       keys.push([cock, { ...wrap(S.held), e: 's' }]);
     }
     // (the strike: accelerating out of the cock, then at full speed into the contact: a snap, not a pop)
-    const c = keys[keys.length - 1][1], h = wrap(S.hit);
+    // (polish: a straight hand blow's contact hand back on the line to the hero's chest)
+    const aim = polish && !kick ? AIM[blow] ?? 0 : 0;
+    const hitP = aim ? { ...S.hit, rH: [S.hit.rH[0] + aim, S.hit.rH[1], S.hit.rH[2]] } : S.hit;
+    const c = keys[keys.length - 1][1], h = wrap(hitP);
     keys.push([cock + (1 - cock) * 0.45, { ...mid(c, h, 0.3), e: 'i' }]);
     keys.push([1.0, { ...h, e: 'l' }]);
-    keys.push([1.22, { ...wrap(S.hit), e: 'l' }]);
-    keys.push([1.62, { ...wrap(S.re), e: 'o' }]);
+    if (polish && kick) {
+      // (polish: a moving hold, the foot already drawing back, easing into the chamber: no snap off a dead stop)
+      const re = wrap(S.re);
+      keys.push([1.14, { ...mid(h, re, 0.12), e: 'o' }]);
+      keys.push([1.7, { ...re, e: 's' }]);
+    } else {
+      keys.push([1.22, { ...wrap(hitP), e: 'l' }]);
+      keys.push([1.62, { ...wrap(S.re), e: 'o' }]);
+    }
     keys.push([2.0, { ...wrap({ ...(S.load ?? S.held), ...(kick ? { rF: [-0.15, ANK, -0.04], rK: [-0.25, 0, 1] } : {}) }), e: 's', settle: true }]);
     nb.keys = keys;
     nb.cock = cock;
@@ -375,6 +415,8 @@ function retake(b, C) {
       }
       return [cock + ((u - c0) / (1 - c0)) * (1 - cock), p];
     });
+    // (polish: Dark Spark's fist on the line to the hero, from its strike on)
+    if (polish && b.wjSpark && p0hasRH(nb.keys)) nb.keys = nb.keys.map(([u, p]) => (u > cock + 1e-6 && p.rH ? [u, { ...p, rH: [p.rH[0] + AIM.spark, p.rH[1], p.rH[2]] }] : [u, p]));
     nb.cock = cock;
   }
   return nb;
@@ -386,7 +428,7 @@ function retake(b, C) {
  * the Lab see them as plain fields.
  */
 export function liveTakes(base, X) {
-  const takes = makeTakes(base, X, X.TUNING);
+  const takes0 = makeTakes(base, X, X.TUNING, false), takesP = makeTakes(base, X, X.TUNING, true);
   const out = {};
   for (const [name, def] of Object.entries(base)) {
     const own = { beats: def.beats, recovery: def.recovery };
@@ -395,7 +437,7 @@ export function liveTakes(base, X) {
       Object.defineProperty(m, f, {
         enumerable: true, configurable: true,
         get() {
-          const t = wjMotionNow();
+          const t = wjMotionNow(), takes = wjPolishNow() === 'a' ? takesP : takes0;
           return t === '0' ? own[f] : takes[t]?.[name]?.[f] ?? own[f];
         },
       });

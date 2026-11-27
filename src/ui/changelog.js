@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: "Bai Wuji's blows land where they aim",
+        notes: [
+          "Bai Wuji's palm, his straight poke, Dark Spark and the fist he pulls you onto now land on the line to your chest instead of crossing past you.",
+          'His kicks ease back after they land instead of snapping back off a dead stop.',
+          'In his first phase his right hand comes out of its pocket to cast Azure Draw and the Yank, so the blue fist he pulls you onto is a fist you can see.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'Bai Wuji glides: quicker, one-handed, and his barrier opens easier',
         notes: [
           "Bai Wuji fights with his hands in his pockets now: short, sharp kicks that land straight, a hand coming out in his second phase and both in his last. His blue and red blows hold a pose you can read; every later blow of a string comes out of a short blink around you.",

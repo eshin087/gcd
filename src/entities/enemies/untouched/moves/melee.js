@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RESULT, GUARD } from '../../../../combat/rules.js';
 import { TUNING_MELEE } from '../tuningMelee.js';
-import { liveTakes, wjMotionNow, ANIM as MOTION_ANIM } from '../motion.js';
+import { liveTakes, wjMotionNow, wjCastHandNow, ANIM as MOTION_ANIM } from '../motion.js';
 
 // Bai Wuji's hands and feet (the MELEE AGENT's file; moves.js is the router: its header has the format
 // and the rules). A man who does not take the hero seriously, then does: in phase 1 his hands never leave
@@ -372,7 +372,14 @@ export class WjMelee {
       const ph = d.phase ?? 1;
       // (the beat that is on, or the one about to start; its follow-through counts as its own)
       const b = a.beats.find((x) => a.t < x.end + 0.22) ?? null;
-      const uses = b && a.t >= b.start - 0.06 ? b.def.wjHands ?? '' : '';
+      let uses = b && a.t >= b.start - 0.06 ? b.def.wjHands ?? '' : '';
+      // THE CASTING HAND (ADR-255, `?wjCastHand=0|a|b`): a phase-1 spell's right hand (Azure Draw's finger,
+      // the Yank's reach) out of its pocket for the cast: 'a' through the whole cast, 'b' only from the
+      // pull / the flick (u 0.55 of its windup) on; '0' kept in the pocket (round 3's pin)
+      if (b && !uses && (b.def.wjDraw || b.def.wjYank)) {
+        const ch = wjCastHandNow();
+        if (ch === 'a' ? a.t >= b.start - 0.06 : ch === 'b' && typeof b.at === 'function' && a.t >= b.at(0.55) - 0.08) uses = 'R';
+      }
       R = ph <= 1 && !uses.includes('R') ? 1 : 0;
       L = ph <= 2 && !uses.includes('L') ? 1 : 0;
     }
