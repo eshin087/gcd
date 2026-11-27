@@ -23,18 +23,23 @@
 //          timings and bounds)
 //   pole, ld, ln  the elbow's way, the fingers, the palm (body axes turned with the chest); lw their weight
 //   hs     the hand's shape (0 open, 1 sword fingers); `keep` (quiet) how far toward the clip's own hand
+//   body   (m, chest local) the nearest the hand comes to his spine between hip and chest (anim.js SIDE_KEEP): the
+//          back look's hand kept out of his coat (ADR-247); 0 none (beside the hip the side's hand sits at 0.23)
 
 import { feelHand } from './feel.js';
 
-const COMMON = { easeIn: 0.16, ease: 0.3, easeBack: 0.1, linger: 0.35, drop: 12, vIn: 3.3, trail: 0.012, trailMax: 0.1, thighR: 0.095 };
+// (easeBack 0.2 s: the hand leaving the side for a two-handed blow reaches round him to the hilt through its windup;
+// at 0.1 it snapped there)
+const COMMON = { easeIn: 0.16, ease: 0.3, easeBack: 0.2, linger: 0.35, drop: 12, vIn: 3.3, trail: 0.012, trailMax: 0.1, thighR: 0.095, body: 0 };
 export const OFFHAND = {
   side: {
     ...COMMON, hang: [0.07, -0.53, 0.06], thigh: [0.14, -0.02, 0.05], hip: 0.5, near: 0.5, w: 10.5, z: 0.42, k: 0.35, sway: 0.07,
     pole: [0.15, -0.25, -0.95], ld: [0.06, -0.97, 0.2], ln: [-0.92, -0.05, 0.25], lw: 0.85, hs: 0, keep: 0,
   },
+  // (back: its rest 0.32 m behind the shoulder, clear of his coat; at 0.21 it sat inside it, ADR-247)
   back: {
-    ...COMMON, hang: [-0.1, -0.42, -0.21], thigh: [0, 0, 0], hip: 0, near: 0.3, w: 12, z: 0.55, k: 0.25, sway: 0.04, thighR: 0,
-    pole: [0.85, -0.15, -0.5], ld: [-0.9, -0.25, -0.2], ln: [0, 0, -1], lw: 0.8, hs: 0, keep: 0,
+    ...COMMON, hang: [-0.1, -0.42, -0.32], thigh: [0, 0, 0], hip: 0, near: 0.3, w: 12, z: 0.55, k: 0.25, sway: 0.04, thighR: 0,
+    pole: [0.85, -0.15, -0.5], ld: [-0.9, -0.25, -0.2], ln: [0, 0, -1], lw: 0.8, hs: 0, keep: 0, body: 0.27,
   },
   quiet: {
     ...COMMON, hang: [0.1, -0.5, 0.1], thigh: [0.14, -0.02, 0.08], hip: 0.4, near: 0.3, w: 11, z: 0.5, k: 0.3, sway: 0.05,

@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'A slice of digits along the blade, and a left hand that stays out of his body',
+        notes: [
+          'Every sword slash is now a thin seam of fine digits printed exactly along the path your blade swept, as if it cut the world\'s code open: brightest where the blade was fastest, gone in about a fifth of a second. It follows the swing from every side and moves on with you through a dash.',
+          'A landed blow throws the camera along the blade on the frame it connects. The free hand behind your back no longer passes through your coat, and on the finisher it travels round your side to the grip.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'Harder-hitting swings, and slashes that stay in front of you',
         notes: [
           'A heavy attack\'s slash no longer appears behind you as you dash forward: every slash is drawn in front of you, and one that only cuts air moves on with you.',

@@ -22,7 +22,7 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
-import { SLASH_IDS, slashMode, setSlash } from '../entities/player/slashFx.js';
+import { SLASH_IDS, slashMode, setSlash, SLICE_IDS, sliceMode, setSlice, SLICE_WHEN_IDS, sliceWhenMode, setSliceWhen } from '../entities/player/slashFx.js';
 import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
 import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combos.js';
@@ -1446,7 +1446,9 @@ export class Lab {
     // every swing's mark (slashFx.js, ?slash=arc) and the free hand in a one-handed swing (offHand.js,
     // ?offhand=side|back|quiet), live
     for (const [lbl, ids, set, key, tip, name] of [
-      ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: line = the instant straight slash, arc = the curved crescent as before (?slash=arc)", (m) => m],
+      ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: slice = a seam of digits along the blade's path, line = the ending slash line, arc = the curved crescent as before (?slash=)", (m) => m],
+      ['slice', SLICE_IDS, setSlice, 'sliceBtns', "the slice's colour: steel = white-blue, green = the matrix (?slice=)", (m) => m],
+      ['slicewhen', SLICE_WHEN_IDS, setSliceWhen, 'sliceWhenBtns', 'when the slice is laid: trace = as the blade passes, end = the whole cut at once as the swing ends (?slicewhen=)', (m) => m],
       ['combo', COMBO_IDS, setCombo, 'comboBtns', 'four light combos for the ending slash: prod = as it ships, a Iai, b Tempest, c Mountain, d Dancer (each with its feel and its free hand) (?combo=)', (m) => (m === '0' ? 'prod' : `${m} ${COMBOS[m].name}`)],
       ['endslash', PLACE_IDS, setPlace, 'placeBtns', "where the ending slash is drawn: target = ahead of him where the foe stands, body = across him, enemy = across what it hit, blade = along the blade's path (?endslash=)", (m) => m],
       ['endbeat', BEAT_IDS, setBeat, 'beatBtns', 'when the ending slash comes: beat = a short pause after the swing, 0 = as it ends (?endbeat=)', (m) => m],
@@ -1577,6 +1579,8 @@ export class Lab {
     }
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     for (const { m, el: b } of this.ui.slashBtns ?? []) setClass(b, 'on', slashMode() === m);
+    for (const { m, el: b } of this.ui.sliceBtns ?? []) setClass(b, 'on', sliceMode() === m);
+    for (const { m, el: b } of this.ui.sliceWhenBtns ?? []) setClass(b, 'on', sliceWhenMode() === m);
     for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
     for (const { m, el: b } of this.ui.feelBtns ?? []) setClass(b, 'on', feelMode() === m);
     for (const { m, el: b } of this.ui.comboBtns ?? []) setClass(b, 'on', comboMode() === m);

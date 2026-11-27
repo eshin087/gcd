@@ -20,6 +20,10 @@
 // camera kicked along the cut with a small shake. Nothing on a dead hero, no allocation a frame, no
 // Math.random. The lines were first drawn for the instant cuts of ADR-233 (PR 118, closed); this is their
 // drawing, driven by the production attacks.
+//
+// THE SLICE (the default since 2026-11-26, ADR-247; `?slash=line` the ending line above, `?slash=arc` the
+// crescent): no line at all, but the path the blade's point swept, printed as a thin seam of fine digits on the
+// picture's grid, gone in ~0.2 s: "his sword cutting the matrix" (the owner). See SLICE below.
 
 import { SWINGS } from './swings.js';
 import { DIM } from './model.js';
@@ -28,9 +32,10 @@ import * as THREE from 'three';
 
 const _pv = new THREE.Vector3(), _OUT = [0, 0, 0];
 
-/** 'line' (the default): the instant slash; 'arc': the curved crescent as before. */
-export const SLASH_IDS = ['line', 'arc'];
-let slashNow = 'line';
+/** 'slice' (the default): the seam of digits along the blade's path (SLICE); 'line': the instant (ending) slash
+ *  line; 'arc': the curved crescent as before. */
+export const SLASH_IDS = ['slice', 'line', 'arc'];
+let slashNow = 'slice';
 export const slashMode = () => slashNow;
 /** Pick the look of every swing's mark; false for an unknown id. */
 export function setSlash(m) {
@@ -98,6 +103,58 @@ export const IMPACT = {
  *  blade (from `from` of it to its drawn point) × `sub` steps between the two frames: the swing's blur printed in
  *  the field's small letters (STYLE.md: a blade's trail is heat in the fire field). */
 export const SMEAR = { min: 0.16, n: 6, sub: 2, from: 0.3, life: 0.07, size: 0.13, heat: 0.85 };
+/** THE SLICE (ADR-247; the owner, 2026-11-26, of the ending line: "very distracting and seems to linger a bit too
+ *  long and looks off when attacking from the side. make sure the slice effect is exactly matching the swords
+ *  attack swing ... i want the slices to be like a cool matrix ascii of his sword cutting the matrix/universe. make
+ *  it subtle and cool"; asked, ~0.2 s, and both colours and both timings to pick from). The path the blade's
+ *  drawn point swept, frame by frame (each frame's blade turned onto the next round its base, so the curve is the
+ *  swing's own and not a chord), is printed as ONE thin seam of fine digits on the picture's grid: each digit moved
+ *  onto its cell of a lattice in the screen's plane, one digit a cell (a line rasterised into the world's print, as
+ *  the afterimage's digits stand in rows and columns); one in `drip` drips out of the cut; all gone in `life`.
+ *  Laid against his body (his own travel through the swing taken off: the shape is the swing's, from every side)
+ *  and carried on at his ground speed (a dash never leaves it behind). Bright where the blade was fast, nothing
+ *  where it was slow (`v`). Its colour (`?slice=`): steel (white-blue, default) or green (the matrix); when
+ *  (`?slicewhen=`): trace (laid as the blade passes, default) or end (the whole cut at once as the swing ends). A
+ *  landed blow: the camera thrown along the blade's way AT the contact, a small spray of sparks there (IMPACT ×
+ *  `burst`, `reach` m either side). */
+export const SLICE_IDS = ['steel', 'green'];
+export const SLICE_WHEN_IDS = ['trace', 'end'];
+let sliceNow = 'steel', sliceWhenNow = 'trace';
+export const sliceMode = () => sliceNow;
+export const sliceWhenMode = () => sliceWhenNow;
+export function setSlice(m) {
+  if (!SLICE_IDS.includes(m)) return false;
+  sliceNow = m;
+  return true;
+}
+export function setSliceWhen(m) {
+  if (!SLICE_WHEN_IDS.includes(m)) return false;
+  sliceWhenNow = m;
+  return true;
+}
+{
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+  if (q?.get('slice')) setSlice(q.get('slice'));
+  if (q?.get('slicewhen')) setSliceWhen(q.get('slicewhen'));
+}
+/** The slice's numbers: `cell` (m, × his scale) the lattice's cell, and so the digits' spacing; `size` × the cell
+ *  a digit's size at birth and death; `life` [light, heavy] (s); `from` × the windup: followed from there on; `v`
+ *  (m/s, × his scale) the point's speed that prints nothing … full strength; `alpha` a digit's opacity at full;
+ *  `rows` the shares up the blade (its base → its drawn point) of each seam [light, heavy] (a heavy's second seam
+ *  inside the first, `inner` × its opacity); one digit in `drip` drips out (`dripV` m/s down, `dripLife` × the
+ *  life); `carry` 1/s the rate the carry at his ground speed slows; `flicker` the digits' shimmer. */
+export const SLICE = {
+  cell: 0.13, size: [1.3, 0.9], life: [0.2, 0.24], from: 0.6, v: [3, 12], alpha: 0.9,
+  rows: [[1], [1, 0.72]], inner: 0.5, drip: 5, dripV: [0.6, 1.5], dripLife: 1.35, carry: 4, flicker: 0.35,
+  burst: 0.45, reach: 0.35,
+};
+/** The slice's colours: `hot` its brightest digits (the fastest of the swing), `core` the rest, `end` what they
+ *  cool to as they go. */
+export const SLICE_COL = {
+  steel: { hot: [2.0, 2.3, 3.0], core: [0.75, 1.05, 1.8], end: [0.1, 0.2, 0.6] },
+  green: { hot: [1.2, 2.9, 1.4], core: [0.2, 1.5, 0.45], end: [0.02, 0.35, 0.1] },
+};
+const DIGITS = '0123456789';
 // (`at`: the point along the blade, from its base to its drawn point, whose way across the screen is the
 // slash's direction: near the hand, so a blade raised overhead with its point back toward the camera still
 // reads as the swing does, from where the sword came down to where it went; `reveal` pieces drawn `step` s
@@ -151,6 +208,17 @@ export class SlashFx {
     this.buf = new Float32Array(NB * 3); // the point, frame by frame
     this.mid = new Float32Array(NB * 3); // … and the blade near the hand (END.at): the swing's way on the screen
     this.spd = new Float32Array(NB); // … and how far it moved that frame
+    this.hb = new Float32Array(NB * 3); // … the blade's base (the slice turns each frame's blade onto the next)
+    this.vel = new Float32Array(NB); // … the point's speed (m/s)
+    this.ps = new Float32Array(NB * 2); // … and where he stood (the slice takes his travel off)
+    this.cells = new Set(); // the slice's lattice cells this swing has printed (one digit a cell)
+    this.seamN = 0; // the slice's digits so far (tests)
+    this.drips = 0;
+    this._dripC = 0;
+    this._hitNew = false; // a landed blow this frame (the slice's impact is at the contact)
+    /** Tests: (x, y, z, w, row) as each of the slice's digits is laid (w its strength 0..1, row its seam). */
+    this.onSlice = null;
+    this._c = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.2, size: 0.12, sizeEnd: 0.08, glyph: DIGITS, rot: 0, spin: 0, stretch: 0, color: [1, 1, 1], colorEnd: [0, 0, 0], alpha: 1, alphaEnd: 0, drag: 0, gravity: 0, flicker: 0 };
     this.nb = 0;
     this.peak = 0; // the fastest frame's step, and its index
     this.pi = -1;
@@ -174,6 +242,9 @@ export class SlashFx {
       this.hit[0] = q.x;
       this.hit[1] = q.y;
       this.hit[2] = q.z;
+      // (the slice's impact on the contact's own frame: the hit test runs after this frame's update)
+      if (slashNow === 'slice' && this.rec === at && this._blade()) this._sliceHit();
+      else this._hitNew = true;
     });
     this.lines = 0; // drawn so far (tests)
     this.last = new Float32Array(8); // the last line drawn: its ends, heavy, the kind (tests)
@@ -185,7 +256,7 @@ export class SlashFx {
 
   /** Does this attack draw its line here (player.js: then no crescent behind the blade)? */
   owns(at) {
-    return slashNow === 'line' && !!at?.def;
+    return slashNow !== 'arc' && !!at?.def;
   }
 
   _blade() {
@@ -206,8 +277,9 @@ export class SlashFx {
   update() {
     if (this.np) this._flush();
     const P = this.p, at = P.atk, d = at?.def;
-    if (slashNow !== 'line' || !(P.hp > 0) || !d || (P.state !== 'attack' && P.state !== 'heavy') || at.pending) {
+    if (slashNow === 'arc' || !(P.hp > 0) || !d || (P.state !== 'attack' && P.state !== 'heavy') || at.pending) {
       this.rec = null;
+      this._hitNew = false;
       return;
     }
     if (!this._blade()) return;
@@ -224,6 +296,12 @@ export class SlashFx {
       const C = an?.clip ? SWINGS[an.clip] : null;
       this.kind = d.kind === 'thrust' || an?.kind === 'thrust' || C?.line === 'point' ? 2 : an?.spin ? 1 : 0;
       this.look = d.heavy ? 1 : 0;
+      this.cells.clear();
+    }
+    // (the slice's impact: at the contact, the blade's way then)
+    if (this._hitNew) {
+      this._hitNew = false;
+      if (slashNow === 'slice' && this.hitRec === this.rec) this._sliceHit();
     }
     const W = d.windup, Ac = d.active, R = d.recovery, t = at.t;
     // (the smear: on the strike only, the active window, on a frame that moved; never the anticipation or the
@@ -232,6 +310,7 @@ export class SlashFx {
     else if (t !== this.lastT) this._keepBlade();
     // (the point is followed from late in the windup; a frozen frame, the hit-pause, moves nothing)
     if (this.st === 2 || t < SWING.from * W || t === this.lastT) return;
+    const dtf = this.lastT >= 0 ? t - this.lastT : 0;
     this.lastT = t;
     const T = this.T, B = this.buf, n = this.nb;
     const sp = n > 0 ? Math.hypot(T[0] - B[n * 3 - 3], T[1] - B[n * 3 - 2], T[2] - B[n * 3 - 1]) : 0;
@@ -240,9 +319,17 @@ export class SlashFx {
       B[n * 3 + 1] = T[1];
       B[n * 3 + 2] = T[2];
       const H = this.H, M = this.mid, f = END.at;
-      for (let c = 0; c < 3; c++) M[n * 3 + c] = H[c] + (T[c] - H[c]) * f;
+      for (let c = 0; c < 3; c++) {
+        M[n * 3 + c] = H[c] + (T[c] - H[c]) * f;
+        this.hb[n * 3 + c] = H[c];
+      }
       this.spd[n] = sp;
+      this.vel[n] = dtf > 1e-5 ? sp / dtf : 0;
+      this.ps[n * 2] = P.position.x;
+      this.ps[n * 2 + 1] = P.position.z;
       this.nb = n + 1;
+      // the slice, traced: this frame's stretch of the point's path, as the blade passes
+      if (slashNow === 'slice' && sliceWhenNow === 'trace' && n > 0 && t >= SLICE.from * W) this._sliceSeg(n - 1, n);
     }
     // the swing: its fastest frame from the windup's end on; it has ENDED on the first frame after that
     // peak (the cut proper: from the active window on) whose point moves under SWING.end of it (at the latest SWING.late of the recovery in)
@@ -263,6 +350,10 @@ export class SlashFx {
     let s = 0;
     while (s < this.pi && this.spd[s] < SWING.start * this.peak) s++;
     const a = Math.max(0, s - 1), e = this.nb - 1;
+    if (slashNow === 'slice') {
+      this._sliceEnd(a, e);
+      return;
+    }
     if (this.kind === 2) this._streak(SLASH.thrust * (this.look ? 1.4 : 1));
     else if (this.kind === 1) {
       // a turn: three straight cuts between points evenly along the stretch
@@ -272,6 +363,133 @@ export class SlashFx {
         if (i1 > i0) this._swing(i0, i1, j === 1, (j - 1) * END.reveal * END.step);
       }
     } else this._swing(a, e, true, 0);
+  }
+
+  /** The slice's stretch from buffered frame i0 to i1 (SLICE): the point's path between the two frames, each
+   *  frame's blade turned onto the next round its base (the curve the point drew, not the chord), both where they
+   *  stand against him now; a digit on each lattice cell it crosses, for each of the look's seams. */
+  _sliceSeg(i0, i1) {
+    const P = this.p, S = SLICE, sc = P.drawScale || 1, hv = this.look ? 1 : 0;
+    const w = Math.min(1, Math.max(0, (this.vel[i1] / sc - S.v[0]) / (S.v[1] - S.v[0])));
+    if (!(w > 0) || !this.p.fx?.add?.spawn) return;
+    const B = this.buf, Hb = this.hb, PS = this.ps, px = P.position.x, pz = P.position.z;
+    const o0x = px - PS[i0 * 2], o0z = pz - PS[i0 * 2 + 1], o1x = px - PS[i1 * 2], o1z = pz - PS[i1 * 2 + 1];
+    const h0x = Hb[i0 * 3] + o0x, h0y = Hb[i0 * 3 + 1], h0z = Hb[i0 * 3 + 2] + o0z;
+    const h1x = Hb[i1 * 3] + o1x, h1y = Hb[i1 * 3 + 1], h1z = Hb[i1 * 3 + 2] + o1z;
+    let u0x = B[i0 * 3] + o0x - h0x, u0y = B[i0 * 3 + 1] - h0y, u0z = B[i0 * 3 + 2] + o0z - h0z;
+    let u1x = B[i1 * 3] + o1x - h1x, u1y = B[i1 * 3 + 1] - h1y, u1z = B[i1 * 3 + 2] + o1z - h1z;
+    const l0 = Math.hypot(u0x, u0y, u0z), l1 = Math.hypot(u1x, u1y, u1z);
+    if (!(l0 > 1e-4 && l1 > 1e-4)) return;
+    u0x /= l0;
+    u0y /= l0;
+    u0z /= l0;
+    u1x /= l1;
+    u1y /= l1;
+    u1z /= l1;
+    const chord = Math.hypot(h1x + u1x * l1 - h0x - u0x * l0, h1y + u1y * l1 - h0y - u0y * l0, h1z + u1z * l1 - h0z - u0z * l0);
+    const steps = Math.min(48, Math.max(1, Math.ceil(chord / (S.cell * sc * 0.5))));
+    const rows = S.rows[hv];
+    for (let r = 0; r < rows.length; r++) {
+      const f = rows[r];
+      for (let k = 0; k <= steps; k++) {
+        const b = k / steps, ib = 1 - b;
+        let ux = u0x * ib + u1x * b, uy = u0y * ib + u1y * b, uz = u0z * ib + u1z * b;
+        const ul = Math.hypot(ux, uy, uz);
+        if (!(ul > 1e-4)) continue;
+        const l = ((l0 * ib + l1 * b) * f) / ul;
+        this._sliceCell(h0x * ib + h1x * b + ux * l, h0y * ib + h1y * b + uy * l, h0z * ib + h1z * b + uz * l, w, r);
+      }
+    }
+  }
+
+  /** One of the slice's digits, moved onto its cell of the screen-plane lattice (none where one already is). */
+  _sliceCell(x, y, z, w, row) {
+    const fx = this.p.fx?.add, C = this.game?.camera?.matrixWorld?.elements;
+    if (!fx?.spawn || !C || !(y > SLASH.floor) || !Number.isFinite(x + y + z)) return;
+    const S = SLICE, sc = this.p.drawScale || 1, cell = S.cell * sc, q = 1 / cell, hv = this.look ? 1 : 0;
+    const rx = C[0], ry = C[1], rz = C[2], ux = C[4], uy = C[5], uz = C[6];
+    const sx = x * rx + y * ry + z * rz, sy = x * ux + y * uy + z * uz;
+    const cx = Math.round(sx * q), cy = Math.round(sy * q);
+    const key = (cx & 0xffff) * 65536 + (cy & 0xffff);
+    if (this.cells.has(key)) return;
+    this.cells.add(key);
+    const mx = cx * cell - sx, my = cy * cell - sy;
+    x += rx * mx + ux * my;
+    y += ry * mx + uy * my;
+    z += rz * mx + uz * my;
+    const col = SLICE_COL[sliceNow] ?? SLICE_COL.steel, o = this._c, gv = this.p.groundVel;
+    o.x = x;
+    o.y = y;
+    o.z = z;
+    o.vx = Number(gv?.x) || 0;
+    o.vy = 0;
+    o.vz = Number(gv?.z) || 0;
+    o.drag = S.carry;
+    o.life = S.life[hv] * (0.75 + 0.25 * w);
+    o.size = cell * S.size[0];
+    o.sizeEnd = cell * S.size[1];
+    o.color = w > 0.8 && row === 0 ? col.hot : col.core;
+    o.colorEnd = col.end;
+    o.alpha = S.alpha * (0.3 + 0.7 * w) * (row > 0 ? S.inner : 1);
+    o.alphaEnd = 0;
+    o.flicker = S.flicker;
+    fx.spawn(o);
+    this.seamN++;
+    this.onSlice?.(x, y, z, w, row);
+    // (one in `drip` drips out of the cut: the code spilling from where the world was cut)
+    if (row === 0 && ++this._dripC % S.drip === 0) {
+      const v = Math.sin(this._dripC * 12.9898) * 43758.5453, h = v - Math.floor(v);
+      o.vy = -(S.dripV[0] + (S.dripV[1] - S.dripV[0]) * h);
+      o.life *= S.dripLife;
+      o.alpha *= 0.55;
+      o.size *= 0.9;
+      o.color = col.core;
+      fx.spawn(o);
+      this.drips++;
+    }
+  }
+
+  /** The slice's impact at the contact (a landed blow): the camera thrown along the blade's way there, a shake,
+   *  a small spray of sparks either side of the contact (IMPACT × SLICE.burst). */
+  _sliceHit() {
+    const T = this.T, B = this.buf, n = this.nb, C = this.game?.camera?.matrixWorld?.elements, g = this.game;
+    if (!C) return;
+    let dx = 0, dy = 0, dz = 0;
+    if (n >= 1) {
+      dx = T[0] - B[n * 3 - 3];
+      dy = T[1] - B[n * 3 - 2];
+      dz = T[2] - B[n * 3 - 1];
+    }
+    if (!(Math.hypot(dx, dy, dz) > 1e-4) && n >= 2) {
+      dx = B[n * 3 - 3] - B[n * 3 - 6];
+      dy = B[n * 3 - 2] - B[n * 3 - 5];
+      dz = B[n * 3 - 1] - B[n * 3 - 4];
+    }
+    // (in the screen's plane: the picture thrown the way the blade crossed it)
+    if (!this._screen(dx * C[0] + dy * C[1] + dz * C[2], dx * C[4] + dy * C[5] + dz * C[6])) return;
+    const D = _OUT, ux = D[0], uy = D[1], uz = D[2], hv = this.look ? 1 : 0, H = this.hit, r = SLICE.reach * (this.p.drawScale || 1);
+    g?.kick?.(ux, uy, uz, IMPACT.kick[hv]);
+    g?.shake?.(IMPACT.shake[hv]);
+    this.kicks++;
+    this._burst(H[0] - ux * r, H[1] - uy * r, H[2] - uz * r, H[0] + ux * r, H[1] + uy * r, H[2] + uz * r, ux, uy, uz, hv, SLICE.burst);
+  }
+
+  /** The slice's swing has ended (frames a … e): drawn now if it waits for the end; announced (the audio's ring,
+   *  `player:slash`; tests: onLine with the path's two ends). */
+  _sliceEnd(a, e) {
+    if (sliceWhenNow === 'end') for (let i = a + 1; i <= e; i++) this._sliceSeg(i - 1, i);
+    const B = this.buf, hv = this.look ? 1 : 0, la = this.last, hit = this.hitRec === this.rec;
+    this._hit = hit;
+    this.onLine?.(B[a * 3], B[a * 3 + 1], B[a * 3 + 2], B[e * 3], B[e * 3 + 1], B[e * 3 + 2], LOOKS[hv], this.kind);
+    for (let c = 0; c < 3; c++) {
+      la[c] = B[a * 3 + c];
+      la[3 + c] = B[e * 3 + c];
+    }
+    la[6] = hv;
+    la[7] = this.kind;
+    this.lines++;
+    const H = this.hit, m = ((a + e) >> 1) * 3;
+    this.game?.events?.emit?.('player:slash', { heavy: hv === 1, hit, thrust: this.kind === 2, x: hit ? H[0] : B[m], y: hit ? H[1] : B[m + 1], z: hit ? H[2] : B[m + 2] });
   }
 
   /** Last frame's blade, for the smear (a frame outside the smear's stretch). */
@@ -318,7 +536,7 @@ export class SlashFx {
 
   /** A landed blow's burst along its line (IMPACT): glyph sparks thrown both ways along the cut and a little
    *  across it from the line's middle, and a bright scar of steel heat down the line. */
-  _burst(ax, ay, az, bx, by, bz, dx, dy, dz, hv) {
+  _burst(ax, ay, az, bx, by, bz, dx, dy, dz, hv, k = 1) {
     const fx = this.p.fx?.add, fire = this.game?.fx?.fire, I = IMPACT, Lk = SLASH[LOOKS[hv]];
     const cx = (ax + bx) / 2, cy = (ay + by) / 2, cz = (az + bz) / 2, len = Math.hypot(bx - ax, by - ay, bz - az);
     this.bursts++;
@@ -345,7 +563,7 @@ export class SlashFx {
       if (sx * sx + sy * sy > 1e-10) rot = Math.atan2(sy, sx) - Math.PI / 2;
     }
     if (fx?.spawn) {
-      const o = this._s, n = I.n[hv];
+      const o = this._s, n = Math.round(I.n[hv] * k);
       o.color = Lk.hot;
       o.colorEnd = Lk.end;
       for (let i = 0; i < n; i++) {
@@ -369,7 +587,7 @@ export class SlashFx {
       }
     }
     if (fire?.spawn) {
-      const f = this._f, m = I.heat[hv];
+      const f = this._f, m = Math.round(I.heat[hv] * k);
       f.life = I.heatLife;
       f.size = I.heatSize;
       f.sizeEnd = I.heatSize * 0.3;

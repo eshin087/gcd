@@ -2882,6 +2882,11 @@ export const OFF_SNAP = [0.035, 0.05, 0.08];
 // elbow of ~155°), eased in from SIDE_FOLD (a hand held folded at the chest is not thrown out in a frame);
 // its lag on the way in (no limit: it falls from wherever it was). The nearest: the look's `near`
 const SIDE_HZ = 240, SIDE_SNAP = 0.1, SIDE_REACH = 0.58, SIDE_FOLD = 0.25, SIDE_FREE = 1.5;
+// … and the keep-out round his spine (the look's `body` m, chest local: the torso and the coat round it, with the
+// hand's own size) between these heights (chest local y: from mid-thigh to the upper chest), coming in over `edge` m
+// at either end; `left`: how hard a way through the middle is sent round his left side (the free arm's); `hold` (m):
+// the last frame's way out, added in (near the spine it wins: a hand passing through the middle never flips sides)
+const SIDE_KEEP = { y: [-0.75, 0.15], edge: 0.1, left: 0.35, hold: 0.06 };
 const _shR = new THREE.Vector3(), _shO = new THREE.Vector3(), _shQ = new THREE.Vector3(), _shG = new THREE.Vector3(), _shA = new THREE.Vector3(), _shB = new THREE.Vector3(), _shC = new THREE.Vector3();
 // × the arm's length: the free elbow on the grip keeps ≥ 23° of bend (the cleave locked it at 176°)
 const LOCK_REACH = 0.98;
@@ -2969,7 +2974,7 @@ export class HeroAnimator {
     // (c), last frame's hand (last), the way's ease (e), the way (mode: 1 to the side, -1 home, 0 off), p[sd]
     // last frame (pw); after a one-handed swing how long it still lingers (lg), how much it still holds
     // (hold), whether what plays now needs the hand back quickly (quick); the look it hangs in (L)
-    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false, lg: 0, hold: 0, quick: false, L: null };
+    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false, lg: 0, hold: 0, quick: false, L: null, kx: 0.35, kz: -0.94 };
     this.gripGap = 1;
     this.rig = rig;
     this.player = player;
@@ -3943,7 +3948,6 @@ export class HeroAnimator {
     if (this.gripMax > 0) this._gripAlign(r.arms.R, p);
     // off hand: its own target, or (twoHand) down the grip below the sword hand
     this._handTarget(r.arms.L, p, P.lH);
-    if (this.freeHand) this._sideHand(r, p); // (offHand.js: a one-handed swing's free hand on its pendulum)
     let lk = 0;
     if (this.freeHand) {
       // the sword fingers on the sword wrist (lk): the right wrist (chest local) from the solved sword
@@ -3978,6 +3982,10 @@ export class HeroAnimator {
       r.chest.worldToLocal(_G);
       _T.copy(_TL).lerp(_G, two);
     }
+    // (offHand.js: a one-handed swing's free hand on its pendulum. After the grip above, so a two-handed blow
+    // takes the hand from where the side left it to the hilt over the side's own ease, round his body: it
+    // snapped from behind his back to the grip in two frames, through him)
+    if (this.freeHand) this._sideHand(r, p);
     this._arm(r.arms.L, _T, p, P.lP, false, two);
     // (before _wristLimit, which reuses _G) how far the free hand is from its place on the grip
     // (chest local, model metres: the measure of the tests' offGap)
@@ -4281,6 +4289,35 @@ export class HeroAnimator {
       if (d < R) {
         if (d > 1e-5) _shG.addScaledVector(_shC, (R - d) / d);
         else _shG.x += R * e[0] / sc, _shG.z += R * e[2] / sc; // (on the line: out to his left)
+      }
+    }
+    // clear of his body (the torso and the coat round it, SIDE_KEEP; the look's `body`): within its height a hand
+    // nearer the spine than that is moved out to it, a way through the middle going round his left side (behind his
+    // back it slipped in and out of the coat, a flash of the bare hand; to and from the grip it went through his belly)
+    if (SIDE.body > 0) {
+      _shC.copy(_shG).add(_shO);
+      ch.worldToLocal(_shC); // chest local, model m
+      const K = SIDE_KEEP, yb = Math.min(_shC.y - K.y[0], K.y[1] - _shC.y);
+      if (yb > 0) {
+        // (eased in with the way out and off with the way home: the pose's own hand on the grip sits nearer)
+        const R = SIDE.body * Math.min(1, yb / K.edge) * (S.mode > 0 ? ew : 1 - ew), rad = Math.hypot(_shC.x, _shC.z);
+        if (rad < R) {
+          let ux = _shC.x + K.left * rad + S.kx * K.hold, uz = _shC.z + S.kz * K.hold;
+          const ul = Math.hypot(ux, uz);
+          if (ul > 1e-6) {
+            ux /= ul;
+            uz /= ul;
+            S.kx = ux;
+            S.kz = uz;
+          } else {
+            ux = S.kx;
+            uz = S.kz;
+          }
+          _shC.x = ux * R;
+          _shC.z = uz * R;
+          ch.localToWorld(_shC);
+          _shG.copy(_shC).sub(_shO);
+        }
       }
     }
     // … and above the ground
