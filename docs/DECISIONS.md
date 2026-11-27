@@ -6934,3 +6934,46 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Consequences:** a single flash counter under the chain pays less at once than today (no reel, no crit window)
   and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
   `link`, `links`, `last`.
+## ADR-248 — Tian Lei audited: straight limbs, a readable pace and two ki blasts to choose (2026-11-26)
+- **Context:** the owner's motion audit of every boss (2026-11-26: "weird looking arm angles ... kicks aren't
+  straight during the attack and still bended ... make sure all their attacks have clear tells ... make all the
+  special moves and effects very cool"), one session per fighter, by hand from `docs/ANIMATION.md` (no footage:
+  ADR-236). Tian Lei measured on the rig (asc.mjs AUDIT, the striking limb's joint at contact added): every
+  straight punch landed with the elbow at 141 - 155° and its fist 0.17 - 0.24 m ACROSS his centre line (the
+  cross's "sideways line"); the back-fist 0.6 m off to his right, short of the hero; every roundhouse with the knee
+  at ~100°, the front and side kicks at ~150°; the sweep's tuck folded the leg so tight (the foot ~15 cm from the
+  hip) that its knee flipped twice (709 mm/f²), its planted foot stood 0.16 m off his pivot and circled a metre of
+  floor as he spun, and the close-in slid the root 0.5 m under him through the drop (the planted knee flipped
+  again, 869). His pace sat under COMBAT rule 10: a move's first blow 0.4 - 0.5 s, string blows 0.37 - 0.46 s
+  apart, the cue 0.26 s before the impact.
+- **Decision (three switches; the owner picks from the films):**
+  1. `?ascMotion=b` (on top of ADR-225's `a`; `ascendant/motion.js` straightLimbs, his realiser's `keysOf`): a
+     straight blow's contact key aims the hand on the line from its shoulder to his centre line, `armReach` x the
+     arm out; a kick's puts the foot `legReach` x the leg from its hip; the animator opens the arms and legs
+     further and carries a kick's foot out (Xin Yi's ADR-221 kit: `armSoft`, `legSoft`, `kickStretch`, set live
+     in ascendant.js). The sweep's windup is a DROP STANCE (sunk on the planted leg, the sweeping leg slid out
+     long, wound back), the planted foot at his pivot, the sweeping knee's pole up, and the close-in done by u 0.4
+     (`closeBy`, a new opt-in beat field of the duelist brain: a number or a function read live; no other boss
+     sets it, so nothing else moves). Hooks, uppercuts, hammers, elbows, knees and the shoulder keep their bend.
+     Timings identical to `a`. Measured: punches 170 - 172°, kicks 172 - 173°, the fists within 0.1 m of his
+     centre line, Eight Gates' worst jolt 455.
+  2. `?ascPace=a` (`ascendant/pace.js`): rule 10's floor, the time added as a held cock (the realiser's `hold`
+     hook): a move's first blow >= 0.7 s x the form's windupScale, later blows >= 0.45 s apart (feints count),
+     the cue 0.35 s before each impact; the snap blows (ADR-225, the owner's quick white jabs) and the
+     transformations keep theirs. Shots, beams and floor pieces cue themselves, unchanged.
+  3. `?ascShot=a|b` (`ascendant/fxShot.js`): his ki blast (every blast he throws, not Heaven's Lantern) redrawn in
+     the Fox's and Bai Wuji's idiom: a THE SUN (a white heart, gold turning round it, a spinning torn ring, the
+     air drawn in on spirals, a pool on the floor under it, a two-strand wake; a burst that folds in and breaks
+     with a ball front, a floor ring, dust and letters); b THE COMET (a white-hot head on a teardrop, a tail of
+     tiny letters left hanging on the wind, a lit streak on the floor, grit kicked up; a splash forward that
+     scores the floor). The world's share of a burst (scorch, impact) as today's.
+- **Why these and not more:** the owner's words were limbs, tells and effects; the stance, the guard, the
+  transformations and his look are theirs from earlier picks and were left. The pace is a gameplay change, so it
+  is its own switch, not folded into the motion. Effects: the blast is what he throws most (Spirit Shot, the
+  scatter, Blast Dance, Golden Rain, Sky Volley, Raining Suns); the beam and the orb already went through option
+  sheets (ADR-150, ADR-155), and the orb's pick is still open.
+- **Consequences / open:** the defaults are today's until the owner picks (`ascMotion` a, `ascPace` 0, `ascShot`
+  0); tests asc LIMBS and READABLE hold each switch's promise. Some strings' worst jolt rose a little with the
+  longer roundhouse leg (Thousand Shadows 275 → 424 mm/f², under the 450 the suite allows). Not done: the
+  transformations' kneel-to-stand (jolts ~600), Thousand Hands' last palm (671, as before), the dash thrusts'
+  feet (the audit leaves dashes out).

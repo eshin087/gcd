@@ -5,6 +5,31 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Tian Lei audited: straight limbs, a readable pace, two ki blasts (ADR-248; branch `claude/tian-lei-motion-32bb13`)
+
+**Owner (the boss motion audit, one session a fighter):** weird arm angles, unrealistic attacks, kicks that stay bent
+at the strike; every attack with a clear tell; the special effects as cool as the Fox's and Bai Wuji's, 2-3 options.
+
+**Measured** (asc.mjs AUDIT, now with the striking elbow / knee and the standing knee at contact, and the fist in his
+own frame): punches at 141 - 155° crossing his centre line by 0.17 - 0.24 m, the back-fist 0.6 m off to his right;
+roundhouses at ~100°, front / side kicks ~150°; the sweep's tuck flipping its knee (709 mm/f²), its planted foot
+circling a metre of floor, the close-in sliding the root under the drop (the planted knee flipped, 869); his pace
+under rule 10 (first blows 0.4 - 0.5 s, string blows 0.37 - 0.46 s apart, the cue 0.26 s).
+
+**What.** `?ascMotion=b` (`motion.js` straightLimbs / dropStance; `ascendant.js` sets the animator's armSoft /
+legSoft / kickStretch live; `brain.js` gains the opt-in beat field `closeBy`, set only by his sweep); `?ascPace=a`
+(`pace.js`: the extra held cock through the realiser's `hold`, the cue in his realise wrapper); `?ascShot=a|b`
+(`fxShot.js`, hooked from fx.js `_drawBlast` / `_blastBurst`; `_blastWorld` split out). Lab LOOKS rows (pace and
+shot `awaiting`). Tests: asc LIMBS, READABLE.
+
+**Result** (b): punches 170 - 172°, fists within 0.1 m of his centre line; kicks 172 - 173°; Eight Gates' worst jolt
+455, its slide 2.19 → 1.23 m (the rest is the sweeping foot on the floor, by design). Films: before / after per
+form, game camera and close side, half speed; the blast and pace options.
+
+**Next.** The owner's picks (make them PICKED, `ascPace` / `ascShot` out of `awaiting`, mark the PR ready). Open: the
+dash thrusts' feet, the transformations' kneel-to-stand, Thousand Hands' last palm; the beam and the orb as effect
+options if the owner wants them.
+
 ## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
 
 **Owner:** asked for research into the combat of three sword games and five additions; picked the counter-kill
