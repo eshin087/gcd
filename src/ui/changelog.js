@@ -18,6 +18,14 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: "The Cinder Wyrm's bites, to try",
+        notes: [
+          'Add ?wyrmStrike=a to the address to try it: the wyrm drives its body into a bite first, the head hanging back, then snaps onto the beat of its warning, its jaws reaching you as the hit lands.',
+          'No change to any warning, timing or damage. Without the switch the wyrm moves as before.',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [

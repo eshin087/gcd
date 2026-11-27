@@ -28,3 +28,14 @@ export const WYRM_HELD = Object.freeze({
 export const WYRM_QUICK = Object.freeze({
   weight: [1.1, 1.2, 1.3], // (×0 with the switch off)
 });
+
+/** THE STRIKE PASS (ADR-257, strike.js; `?wyrmStrike=a`, '0' as it shipped): the order a blow runs
+ *  through the body. Measured by integ.mjs `wyrmanatomy`. Model units / pose fields / seconds. */
+export const WYRM_STRIKE = Object.freeze({
+  // BITES: over the last `lead` s of the windup the chest drops to `lower` and pitches to `pitch` (the
+  // active's own 0.3 / 0.14, a little past: it settles back over `settle` s of the snap) while the head
+  // hangs in the air; the snap runs the head to its goal on u^2 (`ease` its start's share of linear)
+  // arriving on the impact, `headRate` the rig's follow (high: the path is the motion)
+  // the body also surges `surge` units toward the hero over the lead (only when it stands `surgeFrom` units off)
+  bite: Object.freeze({ lead: 0.1, lower: 0.42, pitch: 0.22, settle: 0.12, ease: 0.35, headRate: 70, surge: 0.4, surgeFrom: 4 }),
+});
