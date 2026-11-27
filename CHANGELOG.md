@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty pieces of work since 0.4.0:
+One hundred and twenty-one pieces of work since 0.4.0:
+- **Bai Wuji glides: quicker, one-handed, and his barrier opens easier** (2026-11-27, ADR-250). *Changed:* Bai Wuji's kicks and punches are
+  rebuilt by hand: his legs land straight, his hands stay in his pockets for most of phase 1 (one comes out in
+  phase 2, both in phase 3), normal blows snap out of the stance, blue and red ones hold a pose you can read, and
+  every later blow of a string comes out of a short blink round you (`?wjMotion=0` as before; `a`, `c` the other
+  takes). His barrier opens easier: two ordinary parries crack it open, it stays open longer (6 / 5 / 4.2 s after a
+  perfect answer), your cuts deal x2.5 through it, and his health is 20000 (was 26000); his patience runs out
+  after 20 s. *Fixed:* a falling piece no longer lands on you while you are down, and his mercy counts the time
+  you are held in real time, so a quick string cannot hold you past the cap through hit freezes.
 - **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
   perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
   curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round

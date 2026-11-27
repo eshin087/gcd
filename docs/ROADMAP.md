@@ -196,6 +196,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
 - [x] The owner's picks made the defaults (a for all three, every quick blow)
 - [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
+## M1.98 — Bai Wuji glides: quicker, one-handed, and his barrier opens easier (2026-11-27, `enemies/untouched`, ADR-250)
+- [x] Three motion takes behind `?wjMotion=0|a|b|c` (`untouched/motion.js`; the hand layer keeps his hands in his pockets); the owner picked b, the glide
+- [x] The barrier opens easier: two cracks, longer openings, cuts x2.5 through it; hp 20000; patience after 20 s
+- [x] The bench's bots answer falling pieces and paired cues as a person would; the perfect bot untouched on 12 seeds
+- [x] His mercy counts the lock in real time; no falling piece on a downed hero
+- [ ] The ledger forgets a landed red (shared duelist code); patience against a pure defender is slow
+
 ## M1.94 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-241 – ADR-243)
 - [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
       fallen tower in sections, two scenes (`crossing`, `void`: the city's pieces let go, the void's float),
