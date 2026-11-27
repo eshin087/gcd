@@ -72,6 +72,11 @@ export const PICKED = Object.freeze({
   // the sword motion pass (ADR-226; the owner's pick, 2026-11-26, from the before / after films)
   ashMotion: 'a', // Shen Hui: the jian in line with the arm, held blue / red windups (Piercing Ash keeps its thrust), quick blows
   lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl
+  // the Starless Lord's audit (ADR-251; the owner's picks, 2026-11-27, from the before / after and option films)
+  lordForm: 'a', // thrusts on the arm's line out of a real lunge, diagonal overheads, sweeps on the feet, the step on the blow
+  lordPace: 'a', // COMBAT rule 10's floor as a held cock (0: his fast pace before)
+  boltFx: 'c', // Void Lightning: the storm (the floor answers, the bolt grounds three times)
+  igniteFx: 'a', // a form's ignition: the cocoon (a column of letters, bursting out flat)
   // every human boss
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
   // the motion pass (ADR-223; the owner's picks, 2026-11-26, from the films: A for all three, every quick blow)

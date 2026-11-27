@@ -7015,7 +7015,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   - the front foot was still in the air (15 - 25 cm) at about half of all impacts;
   - fine already: the wrist on the blade (≤ 40 - 59°, ADR-226), the blade clear of his body, the form-2 off-hand
     blade at its own blows (elbow 161 - 166°, the blade 25 - 60° off the forearm).
-- **Decision** (`?lordForm=a`, `0` = as before; Lab LOOKS `lordForm`; awaiting the owner's pick): ADR-250's recipe
+- **Decision** (`?lordForm=a`, `0` = as before; Lab LOOKS `lordForm`; the owner's pick, 2026-11-27, from the before /
+  after films, with the readable pace, `?boltFx=c` and `?igniteFx=a`; all four in `PICKED`): ADR-250's recipe
   in his own move data, every beat's `formKeys` / `formMotionKeys` and the moves' `formRecovery`, played through his
   realisers' `keysOf` / `recoveryKeysOf`; the same windups, impacts, zones, cues and root motion (LORDFORM: 187
   realisations to the frame):
@@ -7037,7 +7038,13 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   owner's ("faster than Shen Hui and ramping": a string's blows ~0.34 s apart in form 1, ~0.3 s in form 4, first
   blows from 0.4 s), under COMBAT rule 10's floor. Under `a`: a move's first blow >= 0.7 s × the form's windup
   scale, blows >= 0.45 s apart, the cue 0.35 s before, the time added a hold of the cocked pose (a fixed delay); his
-  quick blows, counters, flurry and ignitions keep their timings. Offered, not imposed.
+  quick blows, counters, flurry and ignitions keep their timings, and so do his spells (a beat that casts, throws,
+  releases or reaches out with the Void: rule 10 is the melee's floor, and each cues itself; a hazard or a move of
+  the crater's pieces is left alone). Offered, and the owner took it (2026-11-27). Tests that asserted the fast pace
+  read it now (lord DATA: the gaps at the floor and the first blows sooner form by form; TIMING: a blow 0.35 s after
+  its glint, a spell 0.26 s; FLARE's parry bot). Known: the shared cue ledger's flash-fed entries and the Training
+  room's answer time read `TUNING.flashLead` (0.26 s), so they place a paced blade blow 0.09 s early (the ledger also
+  reads the running move's beats exactly; Training's 122 situations still pass). Fixing them is shared code.
 - **Two specials' looks** (`starlessLord/specialFx.js`; heat in the fire field and one-cell glyph particles at his
   hand, arm, the bolt's line or round his feet, on the looks' own stream; no hit, cue or floor mark of their own):
   - `?boltFx=` Void Lightning: `a` the thread (motes spiral into a white heart at his fingers, the bolt braided with
@@ -7052,8 +7059,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Why** the same method as batch 1: it measured and fixed the same faults on Shen Hui, whom the Lord's move data
   was built from; hand-keyed poses judged on film, no footage (ADR-236).
 - **Consequences / open:**
-  - Defaults are today's until the owner picks (`lordForm`, `lordPace`, `boltFx`, `igniteFx` are Lab rows marked
-    awaiting); the picks move into `PICKED` (or the call sites' defaults) and the PR goes ready.
+  - The owner's picks (2026-11-27): the form `a`, the pace `a`, Void Lightning `c` (the storm), the ignitions `a`
+    (the cocoon); in `PICKED`, the losing options behind their switches.
   - Found, not changed: Grasp and Sever's chop closes in with the shared step-in (`close`) over planted feet, so a
     hero who rolls the pull clear watches him skate 3.4 m (every form); the fix (a dash like Severance's) changes the
     beat's root motion, so it waits for the owner. The strings' close-in between blows still slides the feet

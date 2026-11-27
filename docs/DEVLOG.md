@@ -26,8 +26,8 @@ identical (LORDFORM). `?lordPace=a` (pace.js, Tian Lei's recipe: rule 10 as a he
 **Film.** Forms 1 - 4, before / after, at the game camera (cropped round the pair) and close from his side, real and
 half speed; the effect options as 2 × 2 grids. Rig: the batch's film server and `move.js`, my ports 5284 / 9484.
 
-**Next.** The owner's picks (the form, the pace, one look per special); then the defaults flip and the PR goes
-ready. Open: Grasp and Sever's chop skates 3.4 m when its pull is rolled (needs a root-motion change: asked); the
+**Picked** (the owner, from the films): the form, the readable pace, Void Lightning `c` (the storm), the ignitions
+`a` (the cocoon); all four in `PICKED`. Open: Grasp and Sever's chop skates 3.4 m when its pull is rolled (needs a root-motion change: asked); the
 strings' close-in slides the feet (the hero animator's planner); the off-hand blade points back along the forearm
 through form 2's two-handed chops.
 

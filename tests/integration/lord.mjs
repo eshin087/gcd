@@ -34,6 +34,9 @@ const { Duelist } = await imp('src/entities/enemies/duelist/duelist.js');
 const { glaiveHome } = await imp('src/entities/enemies/duelist/ledger.js');
 const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, STREAKS, TRANSITIONS, realise } = await imp('src/entities/enemies/starlessLord/moves.js');
 const { TUNING } = await imp('src/entities/enemies/starlessLord/tuning.js');
+const { paceOn } = await imp('src/entities/enemies/starlessLord/pace.js');
+/** The cue's lead of a melee blow now: the readable pace's (ADR-251, `?lordPace=a`) or the fast pace's. */
+const meleeLead = () => (paceOn() ? TUNING.pace.flashLead : TUNING.flashLead);
 const { LORD_ITEMS, LORD_LOADOUT, LORD_CAPE, LORD_PANELS } = await imp('src/entities/enemies/starlessLord/gear.js');
 const { Hud } = await imp('src/ui/hud.js');
 const { Bindings, installActions } = await imp('src/core/bindings.js');
@@ -747,7 +750,12 @@ async function scenarioData() {
   // the gaps really tighten form by form
   const gap = (f) => { const A = realise(f === 1 ? 'litany' : f === 2 ? 'tempest' : f === 3 ? 'cyclone' : 'judgment', f, () => 0.2); const h = A.beats.filter((b) => !b.feint); return h[1].impact - h[0].impact; };
   const gaps = [1, 2, 3, 4].map(gap);
-  assert(gaps[0] > gaps[1] && gaps[1] > gaps[2] && gaps[2] > gaps[3] && gaps[3] >= TUNING.minHitGap, `a string's hits come faster form by form: ${gaps.map((g) => g.toFixed(3)).join(' > ')} s`);
+  if (!paceOn()) assert(gaps[0] > gaps[1] && gaps[1] > gaps[2] && gaps[2] > gaps[3] && gaps[3] >= TUNING.minHitGap, `a string's hits come faster form by form: ${gaps.map((g) => g.toFixed(3)).join(' > ')} s`);
+  else {
+    // (ADR-251, the readable pace: every gap at rule 10's floor, the first blows still quicker form by form)
+    const first = [1, 2, 3, 4].map((f) => realise(f === 1 ? 'litany' : f === 2 ? 'tempest' : f === 3 ? 'cyclone' : 'judgment', f, () => 0.2).beats.find((b) => !b.feint).impact);
+    assert(gaps.every((g) => g >= TUNING.pace.gap - 1e-6) && first[0] > first[1] && first[1] > first[2] && first[2] > first[3], `the readable pace: a string's hits ${gaps.map((g) => g.toFixed(3)).join(' / ')} s apart (>= ${TUNING.pace.gap}), its first blow sooner form by form: ${first.map((t) => t.toFixed(3)).join(' > ')} s`);
+  }
 }
 
 // ================================================================== scenario: timing (flash → contact)
@@ -778,7 +786,11 @@ async function scenarioTiming() {
       let w = 0;
       for (const c of contacts) {
         const fl = flashes.filter((t) => t <= c + 1e-6).pop();
-        const lead = fl === undefined ? Infinity : Math.abs(c - fl - TUNING.flashLead);
+        // (the readable pace, ADR-251: a melee blow is cued pace.flashLead before; a spell keeps its own lead,
+        // so a blow's earlier glint may come between a thrown stone's glint and its contact: any glint of the
+        // last 0.6 s that cued it on time counts)
+        const leadOf = (t) => Math.min(Math.abs(c - t - TUNING.flashLead), paceOn() ? Math.abs(c - t - TUNING.pace.flashLead) : Infinity);
+        const lead = fl === undefined ? Infinity : paceOn() ? Math.min(...flashes.filter((t) => t <= c + 1e-6 && t >= c - 0.6).map(leadOf)) : leadOf(fl);
         w = Math.max(w, lead);
       }
       worst = Math.max(worst, Number.isFinite(w) ? w : 9);
@@ -789,7 +801,7 @@ async function scenarioTiming() {
     }
   }
   if (only) return;
-  assert(moves >= 30 && worst <= 0.09, `${moves} move × form runs: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${TUNING.flashLead} s, and every move's first hit lands`);
+  assert(moves >= 30 && worst <= 0.09, `${moves} move × form runs: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${paceOn() ? `${TUNING.pace.flashLead} (a blow) / ${TUNING.flashLead} (a spell)` : TUNING.flashLead} s, and every move's first hit lands`);
 }
 
 // ================================================================== scenario: clashdance (his posture's recovery by HP)
@@ -1862,7 +1874,7 @@ async function scenarioFlare() {
     input.up(1);
     return { ev, flashT, warnPre, rings, charges, hits: G.hits.slice(h0), lost: hp0 - p.hp, has: (n) => ev.some((x) => x[0] === n), get: (n) => ev.find((x) => x[0] === n)?.[1], all: (n) => ev.filter((x) => x[0] === n).map((x) => x[1]) };
   };
-  const at = (fT, lead) => fT !== null && game.time >= fT + TUNING.flashLead - lead - DT;
+  const at = (fT, lead) => fT !== null && game.time >= fT + meleeLead() - lead - DT;
   // Red Meridian: two red blows, nothing on the floor, nothing on him before the cue
   p.debug.god = true;
   const mer = play('meridian', 3.0);
@@ -1872,7 +1884,12 @@ async function scenarioFlare() {
   // Severance parried: the counter
   let pressed = false;
   // a plain parry: Severance is also a `lock` blow, and a perfect parry of it locks the blades first
-  const sev = play('severance', 5.0, (fT) => { if (!pressed && at(fT, PLAIN_LEAD + DT)) { pressed = true; input.up(1); input.click(1); } });
+  // (the press PLAIN_LEAD before the blow's own impact: the glint's lead is the fast pace's 0.26 s or the
+  // readable pace's 0.35 s, ADR-251, and the realised beat knows which)
+  const sev = play('severance', 5.0, (fT) => {
+    const A = d.brain.act, b = A?.name === 'severance' ? A.beats.find((x) => !x.feint && x.impact > A.t - 1e-6) : null;
+    if (!pressed && fT !== null && b && b.impact - A.t <= PLAIN_LEAD + DT) { pressed = true; input.up(1); input.click(1); }
+  });
   // (the answer to a blue flare parried: the counter cut, or, in the default deathblow mode, the combo that replaces it)
   const dbEnd = sev.get('player:flurryEnd')?.art === 'deathblow' ? sev.get('player:flurryEnd') : null;
   const cnt = sev.get('player:flareCounter') ?? (dbEnd ? { damage: dbEnd.damage, strikes: dbEnd.strikes } : null);

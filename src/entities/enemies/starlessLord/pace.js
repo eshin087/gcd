@@ -14,7 +14,11 @@ import { perPhase } from '../duelist/realise.js';
 //     fast as before; a delay that is always the same (a fair one);
 //   - his quick blows (ADR-226: `motionOnly`, thrown from the guard), his counters out of a guard and his
 //     flurry (the answers to the hero's own play, timed with the flash chain, ADR-246) and the ignitions keep
-//     their own timings. Spells and the crater's pieces cue themselves: a beat already slower is untouched.
+//     their own timings;
+//   - his spells keep theirs too (rule 10 is the melee's floor): a beat that casts, throws, releases or reaches
+//     out with the Void (a bolt, the pull, the grip, the push, the crescents, the stones, the Dark Star) gets no
+//     hold and keeps its own cue (each cues itself), and a hazard or a move of the crater's pieces is left alone.
+//     A spell still counts in a string's run: the blade blow after it lands at least `gap` s after it.
 
 /** Is the readable pace on (read live). */
 export const paceOn = () => lookOf('lordPace', '0') === 'a';
@@ -27,7 +31,9 @@ const lead = (b, ws) => b.windup * (b.fixed ? 1 : ws) + (Array.isArray(b.hold) ?
 const tail = (b) => (b.active ?? 0) + Math.max(0, Number(b.sustain?.dur) || 0);
 const alts = (raw) => (Array.isArray(raw.pick) ? raw.pick : [raw]);
 /** A move the pace leaves alone. */
-const exempt = (def) => !!(def.transition || def.motionOnly || def.counter || def.streak);
+const exempt = (def) => !!(def.transition || def.motionOnly || def.counter || def.streak || def.cat === 'hazard' || def.terrain);
+/** A spell beat (its own cue, no hold). */
+const spell = (b) => !!(b.cast || b.release || b.bolt || b.pull || b.grip);
 
 /**
  * The extra hold of every beat of every move, per form (index 0 = form 1): a Map beat → s. A beat that needs
@@ -51,7 +57,7 @@ export function buildPace(MOVES, T) {
             const want = since === null ? first : gap;
             const have = since === null ? w : since + w;
             const x = want - have;
-            if (x > 1e-4) out.set(b, x);
+            if (x > 1e-4 && !spell(b)) out.set(b, x);
             lastTail = Math.min(lastTail, tail(b));
           } else after = Math.min(after, w + tail(b));
         }
@@ -68,6 +74,6 @@ export function buildPace(MOVES, T) {
  *  (never before its tell); an exempt move keeps its own cue. */
 export function paceCue(A, T) {
   if (!A || exempt(A.def)) return A;
-  for (const b of A.beats) if (Number.isFinite(b.tellAt) && Number.isFinite(b.impact)) b.flash = Math.max(b.tellAt, b.impact - T.pace.flashLead);
+  for (const b of A.beats) if (!spell(b.def ?? {}) && Number.isFinite(b.tellAt) && Number.isFinite(b.impact)) b.flash = Math.max(b.tellAt, b.impact - T.pace.flashLead);
   return A;
 }

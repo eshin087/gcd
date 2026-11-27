@@ -21,8 +21,9 @@ export const RELEASES = [
         date: '2026-11-27',
         title: 'The Starless Lord fights with better form',
         notes: [
-          'Being tried out: add ?lordForm=a and Varr Nihil thrusts on a long straight arm out of a real lunge, brings his two-handed overheads down on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quieter and lands his front foot with the blade, in all four forms. Same timings, same cues.',
-          'Also to choose from: a slower, more readable pace (?lordPace=a), three looks for Void Lightning (?boltFx=a, b or c) and three for the ignition of each form (?igniteFx=a, b or c).',
+          'Varr Nihil thrusts on a long straight arm out of a real lunge, brings his two-handed overheads down on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quieter and lands his front foot with the blade, in all four forms.',
+          'He is easier to read: every attack holds its windup longer before it lands, and the glint comes earlier.',
+          'His Void Lightning now grounds along its line with the floor crackling round his feet, and each new form rises out of a column of violet letters.',
         ],
       },
       {

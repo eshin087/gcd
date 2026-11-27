@@ -1216,11 +1216,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
-- [ ] The Starless Lord's form (ADR-251, `?lordForm`): thrusts on the arm's line in a real lunge, diagonal
+- [x] The Starless Lord's form (ADR-251, `?lordForm`): thrusts on the arm's line in a real lunge, diagonal
       two-handed overheads, sweeps on the feet, a quieter free hand, the step landing with the blow, all four forms;
       measured per form (`lord.mjs . formaudit`) and filmed
-  - [ ] The owner's pick from the films; the pace (`?lordPace`); the looks for Void Lightning (`?boltFx`) and the
-        ignitions (`?igniteFx`)
+  - [x] The owner's picks from the films (2026-11-27): the form, the readable pace (`?lordPace=a`), Void Lightning
+        `?boltFx=c` (the storm), the ignitions `?igniteFx=a` (the cocoon)
   - [ ] Grasp and Sever's chop skates 3.4 m over planted feet when the pull is rolled (a dash, as Severance's?)
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
