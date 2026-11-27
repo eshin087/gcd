@@ -18,6 +18,7 @@ import { Flurry } from './flurry.js';
 import { riposteMode, startRiposteCut, riposteTakeHit, riposteCutLanded, riposteContact } from './riposteCut.js';
 import { newDeathblowState, armDeathblow, tickDeathblow, deathblowTakeHit, deathblowLanded } from './deathblow.js';
 import { deathblowFxUpdate, deathblowFxClear } from '../../combat/deathblowFx.js';
+import { deathblowMatrixUpdate, deathblowMatrixClear } from '../../combat/deathblowMatrix.js';
 import { SwordMystic } from './swordMystic.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
@@ -743,6 +744,7 @@ export class Player {
     this.db.phase = '';
     this.db.att = null;
     deathblowFxClear?.(this.game);
+    deathblowMatrixClear?.(this.game);
     this.guard = this.maxGuard;
     this.guardWait = 0;
     this.riposte.att = null;
@@ -3786,6 +3788,7 @@ export class Player {
   _updateFx(dt) {
     const p = this.position;
     deathblowFxUpdate?.(this.game, fin(this.game.realDt, dt));
+    deathblowMatrixUpdate?.(this.game, fin(this.game.realDt, dt));
     if (this.state === 'heal') {
       const t = this.stateT;
       this.fx.healTick(dt, p.x, p.z, smoothstep(0.27, 0.5, t) * (1 - smoothstep(0.7, 0.84, t)));

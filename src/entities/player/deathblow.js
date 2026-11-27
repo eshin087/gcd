@@ -18,6 +18,7 @@ import { mulberry32 } from '../../core/rng.js';
 import { DEFENSE } from '../../combat/rules.js';
 import { streakTier } from '../../combat/streak.js';
 import { deathblowHit } from '../../combat/deathblowFx.js';
+import { deathblowMatrixStart, deathblowMatrixHit, deathblowMatrixEnd } from '../../combat/deathblowMatrix.js';
 import { LIGHT, HEAVY, THRUST, ROLL_ATK, CHARGE, HIT_FEEL, chargeStats } from './combat.js';
 import * as THREE from 'three';
 
@@ -157,6 +158,7 @@ export function armDeathblow(P, att, attack, tell, blue = false) {
 }
 
 const clear = (P) => {
+  deathblowMatrixEnd?.(); // (the code eases out if the combo did not end it)
   const S = P.db;
   S.phase = '';
   S.att = null;
@@ -308,6 +310,7 @@ function end(P) {
   const S = P.db;
   if (S.done) return;
   S.done = true;
+  deathblowMatrixEnd?.();
   P.parryRun = 0;
   P._emit('player:flurryEnd', { strikes: S.n, damage: Math.round(S.dealt), art: 'deathblow', label: 'Deathblow' });
 }
@@ -363,6 +366,7 @@ function startCombo(P, att) {
   P._emit('player:flurry', {
     strikes: S.n, art: 'deathblow', air: false, dur: deathblowDuration(S.n), streak: S.n, tier: streakTier(S.n), storm: false, at: AT, figure: '', planted: true,
   });
+  deathblowMatrixStart?.(g, { n: S.n, dur: deathblowDuration(S.n), hero: p, boss: tp }); // (the code: ?dbmatrix=)
   return true;
 }
 
@@ -494,4 +498,5 @@ export function deathblowLanded(P, dealt) {
   } catch (err) {
     console.error('[deathblow] fx failed', err);
   }
+  deathblowMatrixHit?.(g, { last, hold, i: i + 1, n });
 }
