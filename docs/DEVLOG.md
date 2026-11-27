@@ -431,6 +431,43 @@ script. **What:** BENCH (`perf.bench()`, a button): each step's share of the fra
 frame at ~0.7x pixels. Test: world `perfreadout`. **Next:** the owner's BENCH from a busy moment on fox and grove;
 then the step it names, cut at AUTO's floor, shown as options; AUTO's step hitch (the letter atlases rebuilt).
 
+## 2026-11-26 — The perfect parry's own streak: the deathblow (ADR-211; branch `claude/parry-riposte`, PR #145)
+
+**Owner:** "have perfect parry have its own streak animation/effect instead of using the perfect dodge one", with a
+reference clip of a sword-deflect chain; after the planted riposte: "riposte x3 / x7 ... doesn't seem as rewarding
+as the perfect dodge streak ... i also want the character to have to parry multiple sequences to get the reward".
+Picks (asked): posture break as the trigger, recoil + your own cut per string, a deathblow, separate counts; the
+chain grows "gently"; then "Yes, make it default".
+
+**Reference study.** Frames of the owner's clip at 30 fps through a headless Edge (CDP), a timing card of one
+deflect: an orange bloom at the contact 0.03 - 0.07 s, sparks spread and fall 0.2 - 0.3 s, stragglers to 0.5 s;
+contacts 0.30 - 0.35 s apart in a chain; the defender stays planted; the last deflect bigger, then the posture
+breaks. Our translation is smaller and calmer.
+
+**What.** `player/riposteCut.js` (`?parryRiposte=deathblow|planted|old`, default deathblow), `player/deathblow.js`
+(the finisher), `DEFENSE.riposteCut` / `DEFENSE.deathblow` (rules.js), `player.parryRun`, `combat/parrySparks.js`
+`?parryGrow=a|0` (default a: more sparks per tier, embers from tier 2 on the wind, a fire-field heat flash),
+flow.js skips the grade dip / flash / cold cast for a planted answer, the HUD's DEATHBLOW banner, the Lab's streak
+row (`riposte`, `parryGrow`), TRAINING: Deathblow x3 / x7 and the counter cut after a parried string. Built by
+three Sonnet subagents in worktrees (riposte, sparks, deathblow), merged and wired by the lead. Tests: duel
+`riposteplanted`, `parrygrow`, `deathblow`.
+
+**Verification.** Filmed at the game camera (headless Edge, `__tick`, ffmpeg; full frame + 3x inset): planted at
+streak 1 / 7, the deathblow at 3 and 7 (160 / 240 damage), the hero within 0.01 m of where he parried. The
+deathblow's thrust was a fully charged one and printed a large white blot at the tip: now uncharged (the tip's own
+small streak stays, as the shipped thrust has it).
+
+**Later rounds (same day).** The two-beat deathblow was turned down; the owner asked for "# of streak death
+blows" with a special effect per hit. Built by Sonnet subagents, filmed each round: N planted blows (13 moves) on a
+posture break or a blue-blow parry, a hit-pause per blow (~3 s for 7), the blade's real path into one straight cut
+on the body, blood (spray, wound, pools), four hit looks (`?dbfx`; Shatter Web picked), four sounds on an audition
+page (https://claude.ai/artifact/AiJ7MzqvymQrvzLZryLEfH; Flesh picked), a matrix look (`?dbmatrix`, skipped:
+off). The hero's own blade line is hidden during a combo (the owner: "huge slashes ... distracting"). The
+deathblow's fire-field heat was budgeted after it blew the phase-3 cap (4959 blobs).
+
+**Open.** The wyrm keeps today's flurry riposte. Played on the iPhone. `?dbmatrix` and the other looks / sounds
+can go if they stay unused.
+
 ## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
 
 **Owner:** "i tried playing a few levels like the neo, bamboo, and fox level and the fps does dip during the

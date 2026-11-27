@@ -1491,6 +1491,8 @@ export class Pipeline {
         uFade: { value: 0 }, // fade to black 0..1
         uDesat: { value: 0 }, // death desaturation 0..1
         uWarm: { value: 0 }, // boss-fight warm grade 0..1
+        uMatrix: { value: 0 }, // the deathblow's code view 0..1 (game/grade.js matrixSet): green on black
+        uMatrixFlash: { value: 0 }, // its finisher's brighter beat 0..1
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
@@ -1505,6 +1507,8 @@ export class Pipeline {
         uniform float uFade;
         uniform float uDesat;
         uniform float uWarm;
+        uniform float uMatrix;
+        uniform float uMatrixFlash;
         varying vec2 vUv;
         vec3 aces(vec3 x) {
           return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
@@ -1525,6 +1529,17 @@ export class Pipeline {
           col = mix(col, col * vec3(0.92, 0.98, 1.08), (1.0 - l) * 0.5);
           col = mix(col, col * vec3(1.06, 0.98, 0.9), uWarm * 0.6);
           col = mix(col, vec3(l), uDesat * 0.85);
+          if (uMatrix > 0.001) {
+            // the code view: darks to near-black green, lights to matrix green, the fighters' own colours kept in part,
+            // faint scan lines and one slow band rising through the frame (only when the grade is strong)
+            float ml = dot(col, vec3(0.2126, 0.7152, 0.0722));
+            vec3 code = vec3(0.03, 1.0, 0.3) * pow(max(ml, 0.0), 0.85) * (1.0 + 0.9 * uMatrixFlash) + vec3(0.0, 0.012, 0.004);
+            code += (col - vec3(ml)) * 0.38;
+            float strong = smoothstep(0.5, 1.0, uMatrix);
+            code *= 1.0 - 0.1 * strong * step(2.0, mod(gl_FragCoord.y, 3.0));
+            code += vec3(0.0, 0.025, 0.006) * strong * exp(-pow((fract(uTime * 0.45) - vUv.y) * 45.0, 2.0));
+            col = mix(col, max(code, 0.0), clamp(uMatrix, 0.0, 1.0));
+          }
           vec2 q = (vUv - 0.5) * vec2(uAspect, 1.0);
           float r = length(q);
           col *= mix(0.45, 1.0, smoothstep(0.95, 0.25, r));

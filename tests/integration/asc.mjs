@@ -597,7 +597,9 @@ async function scenarioFlare() {
   const hun = play('hundred', 2.2, () => G.defend.act(), 9, 1, 5);
   G.defend = null;
   const pal = hun.all('combat:flash').filter((x) => x.attack === 'hundred' && x.flare);
-  const cnt = hun.get('player:flareCounter');
+  // (the counter cut, or, in the default deathblow mode, the combo that replaces it)
+  const dbEnd = hun.get('player:flurryEnd')?.art === 'deathblow' ? hun.get('player:flurryEnd') : null;
+  const cnt = hun.get('player:flareCounter') ?? (dbEnd ? { damage: dbEnd.damage, strikes: dbEnd.strikes } : null);
   assert(pal.length === 1 && pal[0].tell === TELL.BLUE && hun.all('dragon:parried').some((x) => x.flare && x.last) && !!cnt, `Hundred Hands: the palm thrust is a blue flare (${pal.length}); parried, his string ends and the hero counters (${cnt ? `${cnt.strikes} blow(s)` : 'no counter'})`);
   void at;
 }
@@ -1233,6 +1235,7 @@ async function scenarioShots() {
   {
     const G = shotStage(3, 2.4);
     G.game.player.debug.god = true;
+    G.game.player.debug.noRiposte = true; // (a parried blue bolt would answer with a deathblow combo: this is about the bolts)
     G.defend = makeDefender(G);
     const s0 = S0(G);
     const r = shotCast(G, 'thunderGates', { step: () => G.defend.act() });
