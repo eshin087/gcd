@@ -406,7 +406,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A calm spit of orange spark letters off the crossed blades on a perfect parry (`?parryFx=a`, the default; `0` as before)
 - [x] The shipped mark, freeze, slow motion, sound and the perfect dodge's afterimage unchanged (the owner's call after three rejected passes)
 - [ ] Played and seen on the iPhone
-- [ ] A next round on the perfect dodge / parry, if any: from a concrete reference and one narrow prototype; never the background
+- [x] The perfect parry's own reward from the owner's reference: posture break -> deathblow, the chain's sparks grow (ADR-211)
+- [ ] The deathblow played on the iPhone; the wyrm's parry answer (it keeps the flurry riposte)
+- [ ] A next round on the perfect dodge, if any: from a concrete reference and one narrow prototype; never the background
 
 ## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)
 - [x] The recorded / designed sounds off by default (`?sfx=new` turns them on; no files fetched while off)

@@ -14,6 +14,7 @@ import { FIRE_SFX, subscribeFire } from './fire.js';
 import { TrackBank, TrackLoop } from './tracks.js';
 import { THUMP_SFX, Thump } from './thump.js';
 import { LIFE_SFX } from './lifeSfx.js';
+import { DB_SFX_DEFS, getDbSfx, deathblowSound } from './deathblowSfx.js';
 
 // the flash chain's ring (player:counter with a link > 1): + gain and + playback rate (pitch) per link past the first
 const CHAIN_RING = { gain: 0.12, rate: 0.07 };
@@ -137,6 +138,7 @@ export class AudioEngine {
     this._ducked = false;
     this._staggerAt = -10;
     this._hurtAt = -10;
+    this._db = null; // the deathblow in progress { at, gap } (player:flurry art 'deathblow'), else null
     this._cutN = 0; // landed cuts: the 'cut' layer alternates its detune
     this._painPending = false;
     // end-of-frame decisions (events of one blow can arrive in any order within a frame)
@@ -222,7 +224,7 @@ export class AudioEngine {
     const ctx = this.ctx;
     if (!ctx || ctx.state === 'closed' || typeof name !== 'string') return false;
     let o = opts && typeof opts === 'object' ? opts : EMPTY;
-    let def = SFX[name] ?? FIRE_SFX[name] ?? THUMP_SFX[name] ?? LIFE_SFX[name];
+    let def = SFX[name] ?? FIRE_SFX[name] ?? THUMP_SFX[name] ?? LIFE_SFX[name] ?? DB_SFX_DEFS[name];
     if (!def && ALIASES[name]) {
       const [n, extra] = ALIASES[name];
       name = n;
@@ -888,6 +890,7 @@ export class AudioEngine {
         // a flash cut has its own sound (player:flurryHit); the last blow lands in the open
         if (!d.heavy) return;
         this._slowOpen();
+        if (this._db && getDbSfx() !== '0') return; // (the deathblow's finisher has its own sound)
       }
       const x = d.point?.x, z = d.point?.z, beast = this.game.dragon?.kind !== 'duelist';
       this._hit(d, x, z, beast);
@@ -913,9 +916,19 @@ export class AudioEngine {
     // the flurry (player/flurry.js): the world is held and muffled for as long as he cuts; every
     // flash cut rings a tone higher, the last blow's coil rises, the hanging cuts open in a run of rings
     on('player:flurry', (d) => {
+      this._db = d.art === 'deathblow' ? { at: -1, gap: 0.4 } : null; // (a deathblow's own sounds: deathblowSfx.js)
       if (num(d.strikes, 1) >= 2) this._slowDuck(num(d.dur, 0.6));
     });
     on('player:flurryHit', (d) => {
+      // a deathblow under ?dbsfx=a|b|c: the option's blow / finisher instead of the flurry's cut (0: today's)
+      if (this._db && getDbSfx() !== '0') {
+        const now = this.ctx?.currentTime ?? 0;
+        if (this._db.at >= 0 && now > this._db.at) this._db.gap = Math.max(0.2, (now - this._db.at) * 0.9); // the next gap, a little shorter
+        this._db.at = now;
+        const s = deathblowSound(d, getDbSfx(), this._db.gap);
+        if (s) this.play(s.name, s.opts);
+        return;
+      }
       // (the streak's sound: the ring on the scale, a fast run merged into one sweep; off: null)
       if (!d.last) this._flurryCut(this.streakSound?.flurryCut(d) ?? { n: num(d.n, 1) });
     });
@@ -943,7 +956,9 @@ export class AudioEngine {
     });
     on('player:flurryEnd', (d) => {
       this._slowOpen();
-      if (num(d.strikes, 1) >= 2) this.play('flurryBurst', this.streakSound?.burst(d) ?? { n: num(d.strikes, 2) - 1 });
+      const db = this._db && getDbSfx() !== '0';
+      this._db = null;
+      if (!db && num(d.strikes, 1) >= 2) this.play('flurryBurst', this.streakSound?.burst(d) ?? { n: num(d.strikes, 2) - 1 });
     });
     on('player:hurt', (d) => {
       // (a hit that interrupts a charge is caught by the charge hum's player-state poll)

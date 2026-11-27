@@ -158,6 +158,9 @@ export class SlashFx {
 
   /** Does this attack draw its line here (player.js: then no crescent behind the blade)? */
   owns(at) {
+    // (a deathblow's swing draws no blade line of its own, neither this line nor the arc: the owner found the
+    // big slashes across the screen distracting; the deathblow's hit effect marks the cut, deathblowFx.js)
+    if (at?.rip?.db) return true;
     return slashNow === 'line' && !!at?.def;
   }
 
@@ -179,7 +182,7 @@ export class SlashFx {
   update() {
     if (this.np) this._flush();
     const P = this.p, at = P.atk, d = at?.def;
-    if (slashNow !== 'line' || !(P.hp > 0) || !d || (P.state !== 'attack' && P.state !== 'heavy') || at.pending) {
+    if (slashNow !== 'line' || !(P.hp > 0) || !d || (P.state !== 'attack' && P.state !== 'heavy') || at.pending || at.rip?.db) {
       this.rec = null;
       return;
     }
