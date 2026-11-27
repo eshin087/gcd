@@ -30,7 +30,7 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 
 // (oneLetters and onePrint are redraws: their call-site default is '0', as he shipped, so `?looks=old` shows
 // it; the owner's pick, a, comes from lookSwitch.js PICKED, 2026-11-23, ADR-170)
-export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: '0', onePrint: '0', oneBody: '0', oneMoves: '0', oneGunFx: '0' });
+export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: '0', onePrint: '0', oneBody: '0', oneMoves: '0', oneGunFx: '0', oneBoltFx: '0' });
 export const oneLook = (name = 'oneLook') => lookOf(name, ONE_LOOKS[name] ?? 'a');
 /** The outfit chosen ('a' | 'b' | 'c'; anything else draws a), read when his rig is built. */
 export function oneLookNow() {

@@ -1,7 +1,7 @@
 import { AscFx, ASC_WORLD } from '../ascendant/fx.js';
 import { K_VOID, K_SMOKE, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 import { FIRE_PALETTES } from '../../../render/firePalettes.js';
-import { drawGunMuzzle, drawGunSlug } from './fxIron.js';
+import { drawGunMuzzle, drawGunSlug, drawBoltFx } from './fxIron.js';
 
 // Xin Yi's effects (ADR-156): Tian Lei's effects class (AscFx: LordFx's pool of thrown things grown to
 // 24, blasts that cover stops, the perfect parry's return, the craters, the stance's glow) with the
@@ -355,6 +355,7 @@ export class WokenFx extends AscFx {
   /** A palm bolt (or any other blast of his): a ball of green script, a tail of heat, loose digits
    *  shed behind it; hanging (`hang`): it swells with letters drawn in. ~25 blobs a frame. */
   _drawBolt(s, hang) {
+    if (drawBoltFx(this, s, hang)) return; // (?oneBoltFx=a|b, ADR-253: fxIron.js)
     const k = s.size ?? 1, ret = !!s.returned;
     const grow = hang ? Math.min(1, s.age / Math.max(0.15, s.delay)) : 1;
     const R = 0.42 * k * (0.5 + 0.5 * grow);

@@ -136,7 +136,6 @@ export class GunAim {
           hand.updateMatrixWorld(true);
         }
       }
-      arm.upper.getWorldPosition(_a);
       hand.getWorldPosition(_b);
       // the barrel: down the forearm, onto the hero's chest when the arm points near him
       arm.fore.getWorldPosition(_a);

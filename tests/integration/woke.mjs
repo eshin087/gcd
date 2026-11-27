@@ -2587,6 +2587,45 @@ async function scenarioLine() {
   LS.setLook('oneMoves', null);
 }
 
+/** GUNFX (ADR-253): the redrawn shots and bolts (`?oneGunFx`, `?oneBoltFx`) draw without a bad number, on
+ *  the code's palette, and what they cost: the fire field's live blobs and his glyph particles through Two
+ *  Thunders, Iron Rain and Pushing Hands, each option against '0'. */
+async function scenarioGunFx() {
+  out('\n== scenario GUNFX (the shots and bolts redrawn: they draw, and what they cost) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  LS.setLook('oneMoves', 'b');
+  const cost = {};
+  for (const [sw, moves, form] of [['oneGunFx', ['twoThunders', 'ironRain'], 2], ['oneBoltFx', ['pushingHands'], 3]]) {
+    for (const o of ['0', 'a', 'b']) {
+      LS.setLook(sw, o);
+      let peak = 0, sum = 0, n = 0, glyph = 0, bad = 0;
+      for (const mv of moves) {
+        const G = build(SEED);
+        const { game } = G;
+        const d = game.dragon, p = game.player;
+        duel(G, { dist: 6, form });
+        p.debug.god = true;
+        d.debug.trigger(mv);
+        const A = d.brain.act, F = game.fx?.fire;
+        run(G, 4, () => {
+          const c = F?.count ?? 0;
+          peak = Math.max(peak, c);
+          sum += c;
+          n++;
+          glyph = Math.max(glyph, d.fx.add?.alive ?? d.fx.add?.count ?? 0);
+          if (!Number.isFinite(c)) bad++;
+        }, () => d.brain.act !== A && !d.fx.shots.some((s) => s.alive));
+      }
+      cost[`${sw}=${o}`] = { peak, mean: Math.round(sum / Math.max(1, n)), glyph };
+      assert(bad === 0 && peak > 0, `${sw}=${o}: draws (the fire field's blobs: mean ${Math.round(sum / Math.max(1, n))}, peak ${peak}; glyph particles at most ${glyph})`);
+    }
+    LS.setLook(sw, null);
+  }
+  LS.setLook('oneMoves', null);
+  const J = process.env.GCD_AUDIT_JSON;
+  if (J) fs.writeFileSync(J.replace(/\.json$/, '-gunfx.json'), JSON.stringify(cost, null, 1));
+}
+
 /** PROBE (opt-in, ADR-253): one move (GCD_PROBE=name:phase), frame by frame round each blow's impact: u, the
  *  striking limb's elbow / knee, its gap to the hero and its line. For finding where a limb folds. */
 async function scenarioProbe() {
@@ -2945,6 +2984,7 @@ const S = {
   guns: scenarioGuns,
   probe: scenarioProbe,
   line: scenarioLine,
+  gunfx: scenarioGunFx,
   motionfix: scenarioMotionFix,
   pursuit: scenarioPursuit,
   smoke: scenarioSmoke,

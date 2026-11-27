@@ -117,3 +117,83 @@ export function drawGunSlug(fx, s) {
   (o === 'a' ? slugA : slugB)(fx, s);
   return true;
 }
+
+// ---------------------------------------------------------------- the Source's palm bolts (`?oneBoltFx=0|a|b`)
+// Pushing Hands' bolts and Return to Sender's (a blast of his that is not a gun's: fx.js _drawBolt), redrawn
+// in the same idiom; their flight, hang (THE STOP), hits and answers untouched. Today's is a ball of soft heat
+// blobs a third of a metre wide with a white heart: a glow, where the house style asks for letters.
+//   a  THE SEED: a hot core of two cells inside three thin rings of digits turning on tilted planes (an atom
+//      of script), a short tail of digits falling behind it
+//   b  THE FOLD: the air folds round it: a core of four hot cells stacked like a falling column, and a ring
+//      of stilled air left standing across its way every ~0.35 m (the lens it pushes through)
+// Hanging before his palm (the stop) each keeps its core and swells; a returned bolt is hotter.
+// Cost: a about 34 blobs a frame a bolt, b about 12 and a ring of 12 every few frames.
+
+/** The bolts' switch, read live ('0' | 'a' | 'b'). */
+export function boltFxNow() {
+  const o = lookOf('oneBoltFx', '0');
+  return o === 'a' || o === 'b' ? o : '0';
+}
+
+const RINGS = [[1, 0.35, 0], [0.2, 1, 0.5], [-0.6, 0.4, 1]];
+/** A: the seed. */
+function boltA(fx, s, hang) {
+  const k = s.size ?? 1, ret = !!s.returned, t = fin(s.age) + fin(s.seed);
+  const grow = hang ? Math.min(1, s.age / Math.max(0.15, s.delay)) : 1;
+  const R = 0.3 * k * (0.55 + 0.45 * grow), x = s.x, y = s.y, z = s.z;
+  const P = fx._toCamera(x, y, z);
+  fx._dot(P.x, P.y, P.z, 0.16 * k, ret ? 1.6 : 1.3, K_VOID);
+  fx._dot(P.x, P.y + 0.07, P.z, 0.12 * k, ret ? 1.3 : 1.05, K_VOID);
+  // three rings on tilted planes, turning: each a dozen cells of digits
+  for (let r = 0; r < 3; r++) {
+    const n0 = RINGS[r], nl = Math.hypot(...n0), nx = n0[0] / nl, ny = n0[1] / nl, nz = n0[2] / nl;
+    // (a basis on the ring's plane)
+    let ux = -nz, uy = 0, uz = nx;
+    if (Math.abs(nx) + Math.abs(nz) < 1e-3) { ux = 1; uz = 0; }
+    const ul = Math.hypot(ux, uy, uz);
+    ux /= ul; uz /= ul;
+    const vx = ny * uz - nz * uy, vy = nz * ux - nx * uz, vz = nx * uy - ny * ux;
+    const rr = R * (0.85 + 0.2 * r), spin = t * (2.4 + r * 0.9) * (r % 2 ? -1 : 1);
+    for (let i = 0; i < 11; i++) {
+      const a = spin + (i / 11) * Math.PI * 2, c = Math.cos(a) * rr, sn = Math.sin(a) * rr;
+      fx._dot(x + ux * c + vx * sn, y + uy * c + vy * sn, z + uz * c + vz * sn, 0.1 * k, (ret ? 0.75 : 0.55) + 0.25 * Math.max(0, Math.cos(a * 3)), K_VOID);
+    }
+  }
+  if (hang) return;
+  // the tail: digits falling behind it
+  if (fx.lr() < 0.7) fx._letter(x - s.dx * R * 1.4, y + fx.lrand(-R, R) * 0.5, z - s.dz * R * 1.4, -s.dx * 0.8, fx.lrand(-0.8, -0.3), -s.dz * 0.8, fx.lrand(0.35, 0.6), DIG, fx.lr() < 0.3 ? MINT : CODE, CODE_END, 0.12, 1.4, -2);
+  fx._keep(s, x, y, z, [0.36, 1.0, 0.5], ret ? 2 : 1.4, 4.5 * k, 0.12);
+}
+/** B: the fold. */
+function boltB(fx, s, hang) {
+  const k = s.size ?? 1, ret = !!s.returned, x = s.x, y = s.y, z = s.z;
+  const grow = hang ? Math.min(1, s.age / Math.max(0.15, s.delay)) : 1;
+  const P = fx._toCamera(x, y, z), A = fx._axes();
+  // the core: four hot cells stacked, the column shimmering down through them
+  const ph = (fin(s.age) * 7) % 1;
+  for (let i = 0; i < 4; i++) {
+    const oy = (1.5 - i - ph) * 0.09 * k * (0.6 + 0.4 * grow);
+    fx._dot(P.x + A.ux * oy, P.y + A.uy * oy, P.z + A.uz * oy, 0.11 * k, (ret ? 1.5 : 1.2) - 0.18 * i, K_VOID);
+  }
+  if (hang) {
+    // hanging: a ring of stilled air round it now and then
+    s._foldB = fin(s._foldB, 0) + (fx.game.fxDt ?? 0.016);
+    if (s._foldB > 0.18) { s._foldB = 0; fx._wakeRing(x, y, z, s.dx, s.dz, 0.22 * k, 12, 0.25, 0.3, 0.45); }
+    return;
+  }
+  // the lens: a ring of stilled air across its way every `every` m
+  const every = ret ? 0.28 : 0.35;
+  s._foldB = fin(s._foldB, 0) + Math.min(2, fin(s.speed) * (ret ? 1.25 : 1) * (fx.game.fxDt ?? 0.016));
+  if (s._foldB >= every) {
+    s._foldB = 0;
+    fx._wakeRing(x - s.dx * 0.1, y, z - s.dz * 0.1, s.dx, s.dz, 0.24 * k, 12, 0.35, ret ? 0.45 : 0.36, ret ? 0.6 : 0.5);
+  }
+  fx._keep(s, x, y, z, [0.36, 1.0, 0.5], ret ? 2 : 1.4, 4.5 * k, 0.12);
+}
+/** WokenFx's hook (fx.js _drawBolt): true when the switch drew it. */
+export function drawBoltFx(fx, s, hang) {
+  const o = boltFxNow();
+  if (o === '0' || !fx.fire || !Number.isFinite(s.x + s.y + s.z)) return false;
+  (o === 'a' ? boltA : boltB)(fx, s, hang);
+  return true;
+}

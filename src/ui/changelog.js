@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: "Xin Yi's limbs on the line, to try",
+        notes: [
+          'Add ?oneMoves=b to the address to try Xin Yi with cleaner motion: his punches land straight at you, his kicks stay straight through the hit, his elbows and spinning kicks reach you instead of striking short, and his low sweep passes right through you.',
+          'His guns now point where they fire, each shot leaving the muzzle with a kick of his arm.',
+          'Also to try: ?oneGunFx=a or b for two new looks of his gun shots, and ?oneBoltFx=a or b for his palm bolts in the last phase.',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [
