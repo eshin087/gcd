@@ -33,6 +33,65 @@ look as shipped (their options stay behind `?sheathPace` / `?drawFx`).
 
 **Open:** a planted foot's one-frame jumps (the hero's `_feetClip`, the hero session's). PR 170
 (draft) also uses ADR-252.
+## 2026-11-27 — The Cinder Wyrm's motion audit: the bites (ADR-257; branch `claude/wyrm-motion-ccc88f`)
+
+**Owner:** the boss motion audit (one session and one draft PR per fighter, the shared brief): weird limb angles,
+unrealistic attacks, every attack readable; for the wyrm, keep its look (the owner's "perfect ascii look") and
+change motion and tells only, in small steps.
+
+**What changed:**
+- `tests/integration/wyrmAnatomy.mjs` + integ `wyrmanatomy` (opt-in): each blow measured at its contact: the gap
+  to the hero at the announced impact, a foreleg's elbow and reach, a bite's neck, the order the chain reaches top
+  speed, the tail's tip against its middle, the planted feet's skating, pops (hit-stop frames left out).
+- `dragon/strike.js` behind `?wyrmStrike=a` (the owner's pick from the films, the default; `0` as before; the Lab's LOOKS row): every bite's
+  body surges first (the chest drops and pitches in, the body lunges 0.4 units) while the head hangs, then the head
+  snaps onto the impact. Measured: the body 50 - 117 ms ahead of the head (was on one frame); the jaws 0.17 - 2.07 m
+  from the hero at the impact (was 0.79 - 3.10).
+- Films (before / after, the game camera and a close front three-quarter view, all three phases, real and half
+  speed) sent to the owner; the before set covers every melee move and the flights.
+
+**Found and left (ROADMAP):** the forelegs straight through the whole rake (the paw's path is beyond reach); the
+wing blows flap as one rigid wing; feet skate up to ~1 m in some strings. A tail with a softer tip was tried and
+dropped: the shipped tail already trails its middle by 44 - 123° and the film showed no difference. The first
+reading ("the tail swings as one rod") came from comparing top-speed times in a spin, where every point peaks
+together: measure the tip's bearing against the middle's instead.
+
+**Verification:** integ green with the switch off and forced on (`GCD_STRIKE_DEF`, a temporary hook, removed).
+
+**Owner's pick:** `a` ("AFTER, make it default"), 2026-11-27.
+
+**Next:** the forelegs and the wings, each with its hit spheres measured before and after.
+## 2026-11-27 — Halcyon's motion audit: a flier's limbs, the readable pace, eye-beam and shockwave looks (ADR-254; branch `claude/halcyon-motion-7d73eb`)
+
+**Owner (through the audit's lead session):** every boss audited with docs/ANIMATION.md; "weird looking arm angles
+... kicks aren't straight"; every attack readable; special effects to the Fox's and Bai Wuji's bar with 2 - 3 looks
+to pick; a draft PR and films each.
+
+**Measured** (city `audit`, `GCD_AUDIT_IMPACT=1`: the striking arm's reach and its line to the hero, both knees,
+the feet's trail, the body line, the fist's height, in his UPRIGHT frame: the drawn body is sheared toward the
+camera, duelist.js lean, which read a straight punch 20 - 40° off in world points): see ADR-254 and COMBAT.md
+"Halcyon" for the before / after numbers.
+
+**What changed** (all behind switches; the defaults are today's): `halcyon/limbs.js` (`?halMotion=b`: the
+straight blows on the line, the kicks long, the flier's legs on every key of his blows and his own beats, a level
+pass `FLY_B` / `LAUNCH_B`), `motion.js` (halKeys routes `b`; `halLimbsOn`), `poses.js` (hoverLegs), `flight.js`
+(the pass's root at `motion.b.passY` under `b`), `halcyon.js` (the animator's armSoft / legSoft, kickStretch only
+in a kick; the clap / landing ask HalFx.shockwave first), `pace.js` + `moves.js` (`?halPace=a`: a held cock through
+the realiser's `hold`, the cue 0.35 s), `fxEyes.js` / `fxShock.js` + `fx.js` (`?halEyes=a|b`, `?halShock=a|b`),
+`tuning.js` (`motion.b`, `pace`), the Lab's LOOKS rows. Tests: city `limbs`, `readable`; `audit` prints the
+contact anatomy.
+
+**Decisions:** fixed in `halcyon/` only (Tian Lei's PR 174 keeps its own pass behind his realiser); the legs trail
+further back rather than shorter where the hip is low (the animator keeps a foot over his root's floor, anim.js,
+the hero session's); `kickStretch` only through a kick (it locked his trailing legs straight).
+
+**The owner's picks** (from the films, 2026-11-27): `halMotion` b, his fast pace kept (`halPace` 0), `halEyes` a
+(heat vision), `halShock` a (the thunderclap): in PICKED, the Lab rows out of `awaiting`. The first cut of both
+effect options printed a white core the whole time (they read as white beams, his crimson lost): redrawn as crimson
+strokes, white only at the first peak, before the films were sent.
+
+**Open:** the kick and the palm snap harder at the contact (largest frame jolt 282 → 424, 174 → 236 mm/f²); the
+lead foot's step lives in the hero's animator (anim.js) and was left alone.
 
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 

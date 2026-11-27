@@ -21,6 +21,9 @@ export const TUNING = {
   minFirstWindup: 0.45,
   minHitGap: 0.34,
   windupScale: [1, 0.93, 0.86],
+  // the readable pace (ADR-254, `?halPace=a`, pace.js): a move's first blow >= `first` s (x windupScale),
+  // its later blows >= `gap` s apart, the cue `flashLead` s before the impact; the time is a held cock
+  pace: { first: 0.7, gap: 0.45, flashLead: 0.35 },
   recoveryScale: [0.95, 0.88, 0.78],
   close: { first: 3.2, next: 1.6, speed: 14 },
   // (the strike builders' reach: ascendant/moves.js reads ITS tuning's; these are his for his own zones)
@@ -33,7 +36,22 @@ export const TUNING = {
   // ---- the snap blows (ADR-225, with `?halMotion=a`): white, from his guard, a short unscaled windup
   // (ascendant/tuning.js snap says why each number is what it is)
   snap: { windup: 0.3, damage: 8, close: 0.6, band: 2.4, cooldown: 5, recovery: 0.5, min: 0.28, maxDamage: 10 },
-  motion: { dip: 0.2, from: 0.45, aim: { hand: -0.12, pitch: 0.1 }, armSoft: [0.93, 0.99], legSoft: [0.9, 0.985] },
+  motion: {
+    dip: 0.2, from: 0.45, aim: { hand: -0.12, pitch: 0.1 }, armSoft: [0.93, 0.99], legSoft: [0.9, 0.985],
+    // ---- the flier's limbs (ADR-254, `?halMotion=b`; limbs.js says why each is what it is). A straight
+    // blow's hand `reach` x the arm out on the line from its shoulder to `aim` (his model space at the dip:
+    // the hero's upper chest before him), a kick's foot `leg` x the leg, a hook / uppercut's hand `bent` x
+    // the arm; the legs `k` x the leg from the hip, `trail` rad back from straight down (+ the body's
+    // pitch), right / left; the pass level at `fly.pitch`, his root at `passY` m through it; the animator
+    // opened further (armSoft / legSoft in place of the two above; kickStretch: Xin Yi's, ADR-221)
+    b: {
+      reach: 1.08, leg: 1.05, bent: { hook: 0.8, uppercut: 0.82 }, aim: { y: 0.86, z: 1.4 },
+      legs: { coil: { k: [0.9, 0.95], trail: [0.14, 0.3] }, hit: { k: [0.95, 0.985], trail: [0.32, 0.5] } },
+      hover: { k: [0.9, 0.985], trail: [0.1, 0.26] },
+      fly: { pitch: 1.35, k: [0.96, 0.99] }, launch: { k: [0.8, 0.88], trail: [0.25, 0.5] }, passY: 0.3,
+      armSoft: [0.96, 0.998], legSoft: [0.95, 0.998], kickStretch: [0.62, 0.86, 0.3, 0.28, 0.5],
+    },
+  },
 
   // ---- posture
   posture: {

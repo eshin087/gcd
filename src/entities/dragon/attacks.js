@@ -11,6 +11,7 @@ import { snapFire, snapSmoke, rakeSparks, wingSlamBurst, tailSlamLine } from './
 import { wallWind } from './wallReach.js';
 import { heldMode, tellPose } from './tellPose.js';
 import { WYRM_HELD } from './tuningMotion.js';
+import { biteLead, biteSnap } from './strike.js';
 
 /** Wing spread the actions return to (the mantled HALF sails, TUNING.rest). */
 const REST_SPREAD = TUNING.rest.spread;
@@ -198,6 +199,11 @@ function biteStart(st) {
   st.target = V();
   st.goal = V();
   st.snapped = false;
+  // the strike pass (strike.js): where the head hung while the body led, where the snap left from
+  st.hold = V();
+  st.from = V();
+  st.held = false;
+  st.snapFrom = false;
   return st;
 }
 
@@ -243,7 +249,7 @@ function strikeLead(d, a, dt, reach) {
  * sink, the neck coils back into a tight S (head cocked up and back over the neck base), the throat
  * glows faintly and the wings flare briefly (threat display).
  */
-function biteWindup(d, a, k, dt, reach = T.bite.reach) {
+function biteWindup(d, a, k, dt, reach = T.bite.reach, st = a) {
   const pose = d.pose, nb = d.rig.pt.neckBase, f = d.fwd;
   d.turnToward(d.sense.yawTo, d.turnRate * 1.3, dt);
   pose.head = pose.headTarget.set(nb.x + f.x * 0.9 * S, nb.y + 1.95 * S, nb.z + f.z * 0.9 * S);
@@ -256,11 +262,11 @@ function biteWindup(d, a, k, dt, reach = T.bite.reach) {
   pose.spread[0] = pose.spread[1] = k < 0.75 ? 0.6 : REST_SPREAD;
   pose.spreadRate = 6;
   d.throat = 0.3 * k;
-  strikeLead(d, a, dt, reach);
+  if (!biteLead(d, a, st, dt)) strikeLead(d, a, dt, reach);
 }
 
 /** The neck uncoils and the shoulders drive forward off the planted hind feet; the jaw snaps at k 0.62. */
-function biteActive(d, st, k, dt, speed) {
+function biteActive(d, st, k, dt, speed, t = -1, impact = 0) {
   const pose = d.pose;
   pose.headExact = true; // the snout / head spheres ride on the head's aim
   pose.head = pose.headTarget.copy(st.goal);
@@ -276,6 +282,7 @@ function biteActive(d, st, k, dt, speed) {
   pose.stanceF = 0.25;
   pose.hindLock = true; // the hind feet push; the forelegs take a fast half-step
   d.throat = 0;
+  if (t >= 0) biteSnap(d, st, t, impact); // (the strike pass: the head onto the beat, the body settling)
   if (speed > 0) d.moveForward(speed, dt);
   if (k >= 0.62 && !st.snapped) {
     st.snapped = true;
@@ -327,7 +334,7 @@ const bite = {
   },
   update(d, a, dt) {
     if (a.phase === 'windup') biteWindup(d, a, a.k, dt);
-    else if (a.phase === 'active') biteActive(d, a, a.k, dt, 3.0 * S);
+    else if (a.phase === 'active') biteActive(d, a, a.k, dt, 3.0 * S, a.t, T.bite.impact);
     else biteRecover(d, a, a.k);
   },
   hit(d, a) {
@@ -1572,13 +1579,13 @@ const BITE = {
     h.st = biteStart({});
   },
   windup(d, a, h, k, dt) {
-    biteWindup(d, a, k, dt, h.spec.reach ?? T.bite.reach);
+    biteWindup(d, a, k, dt, h.spec.reach ?? T.bite.reach, h.st);
   },
   aim(d, a, h) {
     biteAim(d, h.st, h.spec.reach ?? T.bite.reach);
   },
   active(d, a, h, k, dt) {
-    biteActive(d, h.st, k, dt, 3.0 * S);
+    biteActive(d, h.st, k, dt, 3.0 * S, a.t, h.spec.impact ?? T.bite.impact);
   },
   recover(d, a, h, k) {
     biteRecover(d, h.st, k);
@@ -1624,7 +1631,7 @@ const REAR_BITE = {
       pose.headOffset.y += Math.sin(d.time * 5.3) * 0.08 * S * w;
       pose.jaw += Math.sin(d.time * 27) * 0.06 * w;
     }
-    strikeLead(d, a, dt, h.spec.reach ?? T.bite.reach);
+    if (!biteLead(d, a, h.st, dt)) strikeLead(d, a, dt, h.spec.reach ?? T.bite.reach);
   },
   aim: BITE.aim,
   active: BITE.active,
@@ -1653,7 +1660,7 @@ const LUNGE_BITE = {
     pose.spread[0] = pose.spread[1] = REST_SPREAD + 0.12 * Math.sin(Math.PI * k);
     pose.spreadRate = 8;
     d.throat = 0.25 * k;
-    strikeLead(d, a, dt, h.spec.reach);
+    if (!biteLead(d, a, h.st, dt)) strikeLead(d, a, dt, h.spec.reach);
   },
   aim(d, a, h) {
     biteAim(d, h.st, h.spec.reach);
@@ -1662,7 +1669,7 @@ const LUNGE_BITE = {
     h.lungeV = travel / Math.max(0.05, a.dur);
   },
   active(d, a, h, k, dt) {
-    biteActive(d, h.st, k, dt, h.lungeV);
+    biteActive(d, h.st, k, dt, h.lungeV, a.t, h.spec.impact ?? T.bite.impact);
   },
   recover: BITE.recover,
   hit: BITE.hit,
