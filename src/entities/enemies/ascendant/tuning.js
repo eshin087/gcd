@@ -29,6 +29,13 @@ export const TUNING = {
   armSoft: [0.93, 0.99],
   // ... and his legs' (anim.js `legSoft`): a kick at full stretch keeps ~15° at the knee
   legSoft: [0.9, 0.985],
+  // the straight limbs (ADR-248, `?ascMotion=b`: ascendant/motion.js straightLimbs): a straight blow's hand
+  // put `armReach` x the arm out along the line from its shoulder to his centre line `aim.z` m ahead (the
+  // double palms `aim.half` m either side), a kick's foot `legReach` x the leg from its hip, the sweep's planted
+  // foot `sweepPivot` m from his root (he turns on it); the arms and
+  // legs then open further (`armSoft` / `legSoft` in place of the two above) and a lifted foot far from the
+  // hip is carried out (anim.js kickStretch [from, to, add, lift0, lift1]: Xin Yi's, ADR-221)
+  limbs: { armReach: 1.12, legReach: 1.05, sweepPivot: 0.05, sweepKnee: [0.3, 1, 0.2], sweepWind: 0.8, sweepDrop: [-0.62, 0.3], sweepClose: 0.4, aim: { z: 0.95, half: 0.1 }, armSoft: [0.96, 0.998], legSoft: [0.95, 0.998], kickStretch: [0.62, 0.86, 0.3, 0.28, 0.5] },
   // the circle he keeps to: the level's CONFIG.world.dragonBound (the ring's floor) caps it
   bound: 16,
 
@@ -39,6 +46,9 @@ export const TUNING = {
   minFirstWindup: 0.4,
   minHitGap: 0.34,
   windupScale: [1, 0.93, 0.86],
+  // the readable pace (ADR-248, `?ascPace=a`, pace.js): a move's first blow >= `first` s (x windupScale),
+  // its later blows >= `gap` s apart, the cue `flashLead` s before the impact; the time is a held cock
+  pace: { first: 0.7, gap: 0.45, flashLead: 0.35 },
   recoveryScale: [0.9, 0.82, 0.74],
   close: { first: 3.0, next: 1.5, speed: 13 },
 

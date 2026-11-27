@@ -340,6 +340,14 @@ export class Ascendant extends Duelist {
 
   _animate(dt) {
     this.pilot.form = this.phase;
+    // (the straight limbs, `?ascMotion=b`, ADR-248: the arms and legs open further and a kick's lifted
+    // foot is carried out to a straight leg; read live, three numbers)
+    if (this.anim) {
+      const S = lookOf('ascMotion', '0') === 'b' ? TUNING.limbs : null;
+      this.anim.armSoft = S?.armSoft ?? TUNING.armSoft;
+      this.anim.legSoft = S?.legSoft ?? TUNING.legSoft;
+      this.anim.kickStretch = S?.kickStretch ?? null;
+    }
     this._planFeet(dt);
     super._animate(dt);
   }

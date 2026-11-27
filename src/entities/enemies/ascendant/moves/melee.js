@@ -1,4 +1,4 @@
-import { SNAP_KEYS } from '../motion.js';
+import { SNAP_KEYS, sweepCloseBy } from '../motion.js';
 
 // Tian Lei's blows (MOVES.md): the three forms' strings, closers and areas, his counters, his flurries
 // and the transformations. Data only, built with the builders `X` (ascendant/moves.js header). Weights
@@ -128,7 +128,7 @@ export function meleeMoves(X) {
         punch('cross', N, 0.34, 12),
         kick('knee', N, 0.36, 13),
         { pick: [kick('round', B, 0.44, 20, { lock: true, hold: [0.1, 0.3] }), punch('backfist', N, 0.34, 12)] },
-        kick('sweep', N, 0.38, 13, { left: true }),
+        kick('sweep', N, 0.38, 13, { left: true, closeBy: sweepCloseBy }),
         punch('uppercut', B, 0.56, 22, { flare: true }),
       ],
     },

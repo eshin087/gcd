@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-two pieces of work since 0.4.0:
+One hundred and twenty-three pieces of work since 0.4.0:
+- **Tian Lei audited: straight limbs, a readable pace and two ki blasts to choose** (2026-11-26, ADR-248). *Added, to choose (not the default yet):* `?ascMotion=b`
+  lands Tian Lei's straight punches with the arm long and in one line down his centre (they crossed it, elbows at
+  ~150°), his kicks with the leg straight (the roundhouses at ~100°), and his sweep from a drop stance, turning on a
+  planted foot (the tuck's knee flipped and the planted foot slid a metre). `?ascPace=a` puts every blow at the
+  fairness floor: a move's first blow 0.7 s, its blows 0.45 s apart, the glint 0.35 s before, the extra time a
+  held pose. `?ascShot=a` (the sun) or `b` (the comet) redraws his ki blasts. The Lab's LOOKS rows for each.
 - **The flash chain: counter him three times in a row** (2026-11-26, ADR-246). *Changed (the owner's pick from films of every duelist):* a flash
   counter no longer ends his string at once: he is thrown back and strikes back straight
   away, and a flash counter of that blow is the next link. Three in a row (70, 85, then 100 damage, each freeze

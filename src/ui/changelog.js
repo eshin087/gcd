@@ -19,6 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'Tian Lei audited: straight limbs, a readable pace and two ki blasts to choose',
+        notes: ['Tian Lei, to try before it becomes the default: ?ascMotion=b lands his punches with the arm long and straight down his centre, his kicks with the leg straight, and his low sweep from a drop stance; ?ascPace=a gives every blow a longer, held windup and the glint earlier; ?ascShot=a or b redraws his ki blasts (a sun, or a comet). All three are in the Lab: LOOKS.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'The flash chain: counter him three times in a row',
         notes: ['A flash counter (attack just before his blow lands) no longer ends his combo. He is knocked back and strikes back at once; counter that too, and once more. The third counter in a row hits hardest and leaves him reeling. Add ?counter=0 for the old single counter.'],
       },

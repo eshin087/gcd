@@ -2613,7 +2613,11 @@ function auditMoves(names, orbits = [false, true], TOP = 0) {
           const flat = orbit ? Math.hypot(tp.x - pp.x, tp.z - pp.z) - pr : Math.abs(pp.x - tp.x) - pr, up = tp.y < 0 ? -tp.y : tp.y > 1.85 ? tp.y - 1.85 : 0;
           const sm = sample(d), arm = b.def.part === 'fistL' ? ['shL', 'elbowL', 'fistL'] : ['shR', 'elbowR', 'fistR'];
           contact.push({ i: b.index ?? A.beats.indexOf(b), gap: Math.max(flat, up), flat, y: tp.y, zone: b.def.zone.kind, part: b.def.part,
-            sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2), side: +(((tp.x - d.position.x) * (pp.z - d.position.z) - (tp.z - d.position.z) * (pp.x - d.position.x)) / Math.max(0.01, Math.hypot(pp.x - d.position.x, pp.z - d.position.z))).toFixed(2), elbow: Math.round(ang3(sm.B[arm[0]], sm.B[arm[1]], sm.B[arm[2]])) });
+            sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2), side: +(((tp.x - d.position.x) * (pp.z - d.position.z) - (tp.z - d.position.z) * (pp.x - d.position.x)) / Math.max(0.01, Math.hypot(pp.x - d.position.x, pp.z - d.position.z))).toFixed(2), elbow: Math.round(ang3(sm.B[arm[0]], sm.B[arm[1]], sm.B[arm[2]])),
+            // (a kick: the striking knee and the standing knee at contact, deg; 180 = straight)
+            knee: Math.round(ang3(sm.B[b.def.part === 'footL' ? 'hipL' : 'hipR'], sm.B[b.def.part === 'footL' ? 'kneeL' : 'kneeR'], sm.B[b.def.part === 'footL' ? 'footL' : 'footR'])),
+            own: [sm.B[arm[2]].x, sm.B[arm[2]].y, sm.B[arm[2]].z].map((x) => +x.toFixed(2)), sh: [sm.B[arm[0]].x, sm.B[arm[0]].y, sm.B[arm[0]].z].map((x) => +x.toFixed(2)),
+            stand: Math.round(ang3(sm.B[b.def.part === 'footL' ? 'hipR' : 'hipL'], sm.B[b.def.part === 'footL' ? 'kneeR' : 'kneeL'], sm.B[b.def.part === 'footL' ? 'footR' : 'footL'])) });
         }
         if (process.env.GCD_SLIDE === name && !orbit && F.length > 1) {
           const q = F[F.length - 2], fo = d.pilot?.feetOff;
@@ -2695,7 +2699,7 @@ async function scenarioAudit() {
   out('   move               f  orbit  jolt(own frame, mm/f²)              jolt(world)                         blend-out     turn°/s (when)          slide  elbow knee  low   blow vs hero (gap m per beat; - = inside him)');
   for (const r of rows) {
     if (r.fail) { out(`   ${r.name} FAIL ${r.fail}`); continue; }
-    const c = r.contact.map((x) => `${x.part}:${x.gap.toFixed(2)}`).join(' ');
+    const c = r.contact.map((x) => `${x.part}:${x.gap.toFixed(2)}${/^fist|palms/.test(x.part) ? `/e${x.elbow}` : /^foot/.test(x.part) ? `/k${x.knee}s${x.stand}` : ''}`).join(' ');
     out(`   ${r.name.padEnd(18)} ${r.f}  ${r.orbit ? 'yes' : '   '}  ${fmt(r.pb).padEnd(36)} ${fmt(r.pw).padEnd(36)} ${fmt(r.out).padEnd(13)} ${String(r.yawR).padStart(5)} (${r.yawAt})`.padEnd(170) + ` ${r.slide.toFixed(2).padStart(5)} ${String(r.elbow).padStart(5)} ${String(r.knee).padStart(4)} ${r.low.toFixed(2).padStart(5)}  ${c}`);
   }
   if (TOP) for (const w of worst) out(w);
@@ -3832,6 +3836,133 @@ async function scenarioHeldMotion() {
   assert(!nan && used.size >= 5, `40 s of his AI with the switch on: ${used.size} moves (${[...used].filter((k) => MOVES[k]?.snap).join(', ') || 'no snap drawn'} among them), no NaN`);
 }
 
+/**
+ * LIMBS (ADR-248, `?ascMotion=b`): the straight limbs. Poses only, on top of `a`: every move realises with
+ * the same timings as `a`; every straight blow's contact key puts its hand `armReach` x the arm out on the
+ * line from its shoulder to his centre line, every kick's its foot `legReach` x the leg from its hip; the
+ * other beats' keys are `a`'s. On his body: the punches land with the arm long (>= 165 deg at the elbow) and
+ * their fists near his centre line, the kicks with the leg straight (>= 165 deg at the knee), the sweep's
+ * knees no longer flip (Eight Gates' worst jolt was 709 mm/f2) and the animator carries the kick out.
+ */
+async function scenarioLimbs() {
+  out('\n== scenario LIMBS (?ascMotion=b: long punches in one line, straight kicks, the sweep from a drop stance) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { MOTION } = await imp('src/entities/enemies/ascendant/moves.js');
+  const { LIMBS, hipOf } = await imp('src/entities/enemies/ascendant/motion.js');
+  const { DIM } = await imp('src/entities/player/model.js');
+  const T = TUNING.limbs;
+  // 1. timings identical to `a`
+  let n = 0;
+  const diff = [];
+  const sig = (m) => m.beats.map((x) => [x.start, x.impact, x.end, x.flash, x.W, x.H].map((v) => v.toFixed(5)).join(',')).join(';') + `|${m.end.toFixed(5)}`;
+  for (const name of MOVE_NAMES) for (let ph = 1; ph <= 3; ph++) for (const r of [0.001, 0.999]) {
+    LS.setLook('ascMotion', 'a');
+    const a = realise(name, ph, () => r);
+    LS.setLook('ascMotion', 'b');
+    const b = realise(name, ph, () => r);
+    if (!a || !b) continue;
+    n++;
+    if (sig(a) !== sig(b)) diff.push(`${name}/${ph}`);
+  }
+  LS.setLook('ascMotion', null);
+  assert(n > 200 && !diff.length, `${n} realisations: the same beats, windups, impacts, flashes and ends as a (${diff.slice(0, 6).join(', ') || 'all'})`);
+  // 2. the keys: straight blows long, kicks long, the rest a's
+  const beats = [];
+  for (const [name, def] of Object.entries(MOVES)) for (const b0 of def.beats) for (const b of b0.pick ?? [b0]) if (b.mo) beats.push([name, b]);
+  let punches = 0, kicks = 0, same = 0;
+  const shortP = [], shortK = [], changed = [];
+  for (const [name, b] of beats) {
+    const kb = MOTION.limbKeysFor(b), ka = MOTION.keysFor(b) ?? b.keys;
+    const hb = kb?.find(([u]) => Math.abs(u - 1) < 1e-6)?.[1];
+    const st = (b.mo.fam === 'punch' && LIMBS.STRAIGHT.has(b.mo.kind)) || b.mo.fam === 'bolt', kk = b.mo.fam === 'kick' && LIMBS.KICKS.has(b.mo.kind);
+    if (st && hb) {
+      const hs = b.part === 'palms' && b.mo.kind === 'double' ? ['rH', 'lH'] : b.part === 'fistL' ? ['lH'] : ['rH'];
+      for (const h of hs) {
+        punches++;
+        if (!(Math.hypot(...hb[h]) >= T.armReach * LIMBS.L_ARM * 0.99)) shortP.push(`${name}:${b.mo.kind}`);
+      }
+    } else if (kk && hb) {
+      const f = b.part === 'footL' ? 'lF' : 'rF', v = hb[f];
+      if (Array.isArray(v) && v.length === 3) {
+        kicks++;
+        const h = hipOf(hb, f === 'lF' ? 1 : -1), l = Math.hypot(v[0] - h[0], v[1] - h[1], v[2] - h[2]);
+        if (!(l >= T.legReach * LIMBS.L_LEG * 0.97 || v[1] <= DIM.ankle + 1e-6)) shortK.push(`${name}:${b.mo.kind} ${l.toFixed(2)}`);
+      }
+    } else {
+      same++;
+      if (JSON.stringify(kb) !== JSON.stringify(ka)) changed.push(`${name}:${b.mo.fam}/${b.mo.kind ?? ''}`);
+    }
+  }
+  assert(punches >= 40 && !shortP.length, `${punches} straight blows put the hand ${T.armReach} x the arm out at contact (${shortP.slice(0, 5).join(', ') || 'all'})`);
+  assert(kicks >= 15 && !shortK.length, `${kicks} kicks put the foot ${T.legReach} x the leg from its hip at contact (${shortK.slice(0, 5).join(', ') || 'all'})`);
+  assert(same >= 20 && !changed.length, `${same} other builder blows (hooks, uppercuts, elbows, knees, the shoulder, the hammer) keep a's keys (${changed.slice(0, 5).join(', ') || 'all'})`);
+  // 3. on his body
+  LS.setLook('ascMotion', 'b');
+  const { rows } = auditMoves(['hundred', 'gates', 'stormWaltz', 'streakFlurry2'], [false]);
+  const by = Object.fromEntries(rows.map((r) => [r.name, r]));
+  const fists = ['hundred', 'stormWaltz'].flatMap((m) => by[m].contact.filter((c) => (c.part === 'fistR' || c.part === 'fistL') && c.own));
+  const straightF = fists.filter((c) => c.elbow >= 165);
+  assert(fists.length >= 8 && straightF.length >= fists.length - 2, `the straight punches land with the arm long: elbows ${fists.map((c) => c.elbow).join(' ')} deg (>= 165; the hooks keep their bend)`);
+  const centre = by.hundred.contact.filter((c) => c.part === 'fistR' || c.part === 'fistL').map((c) => Math.abs(c.own[0]));
+  assert(centre.length >= 7 && Math.max(...centre) < 0.14, `... down his centre line: the fists at most ${Math.max(...centre).toFixed(2)} m off it in his frame (were 0.17 - 0.24 across it)`);
+  const feet = ['gates', 'stormWaltz', 'streakFlurry2'].flatMap((m) => by[m].contact.filter((c) => c.part === 'footR' || c.part === 'footL'));
+  assert(feet.length >= 4 && feet.every((c) => c.knee >= 155), `the kicks land with the leg straight: knees ${feet.map((c) => c.knee).join(' ')} deg (>= 155; the roundhouses were ~100)`);
+  const jolt = Math.round(Math.max(by.gates.pb.v, by.gates.pw.v));
+  assert(jolt < 520, `the sweep's knees no longer flip: Eight Gates' worst jolt ${jolt} mm/f2 (was 709 at the sweep)`);
+  // 4. the animator, live
+  {
+    const G = build();
+    const d = G.game.dragon;
+    duel(G, { dist: 3 });
+    run(G, 0.1);
+    const on = d.anim.kickStretch === T.kickStretch && d.anim.legSoft === T.legSoft && d.anim.armSoft === T.armSoft;
+    LS.setLook('ascMotion', 'a');
+    run(G, 0.1);
+    const off = d.anim.kickStretch === null && d.anim.legSoft === TUNING.legSoft && d.anim.armSoft === TUNING.armSoft;
+    assert(on && off, 'the arms and legs open further and the kick is carried out on b only (anim armSoft / legSoft / kickStretch, live)');
+  }
+  LS.setLook('ascMotion', null);
+}
+
+/**
+ * READABLE (ADR-248, `?ascPace=a`): his blows at COMBAT rule 10's floor. Under the switch every move (not a
+ * snap blow, not a transformation) has its first real blow at least pace.first s (x the form's windupScale)
+ * after its start, its later real blows at least pace.gap s apart, the cue pace.flashLead s before each
+ * impact (never before its tell), the time a held cock (its keys as they were, the hold longer); off, it is
+ * exactly as shipped.
+ */
+async function scenarioReadable() {
+  out('\n== scenario READABLE (?ascPace=a: first blows >= 0.7 s, blows >= 0.45 s apart, the cue 0.35 s before) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const P = TUNING.pace;
+  let n = 0;
+  const bad = [], same = [];
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    for (const f of formsOf(name)) for (const r of [0.001, 0.999]) {
+      LS.setLook('ascPace', null);
+      const A0 = realise(name, f, () => r);
+      LS.setLook('ascPace', 'a');
+      const A = realise(name, f, () => r);
+      if (!A || !A0) continue;
+      // (off: the realiser's own cue; on: the same windups, only the holds longer)
+      const lead0 = Array.isArray(TUNING.flashLead) ? TUNING.flashLead[f - 1] : TUNING.flashLead;
+      if (A0.beats.some((b) => Math.abs(b.impact - b.flash - lead0) > 1e-6)) same.push(`${name}/${f} cue`);
+      if (A0.beats.length !== A.beats.length || A0.beats.some((b, i) => Math.abs(b.W - A.beats[i].W) > 1e-6 || A.beats[i].H < b.H - 1e-6)) same.push(`${name}/${f} windup`);
+      if (def.snap || def.transition) continue;
+      n++;
+      const ws = Array.isArray(TUNING.windupScale) ? TUNING.windupScale[f - 1] : 1;
+      const real = A.beats.filter((b) => !b.feint && (b.def.damage ?? 0) > 0);
+      if (real.length && real[0].impact - real[0].start < P.first * ws - 1e-6) bad.push(`${name}/${f} first ${(real[0].impact - real[0].start).toFixed(2)}`);
+      for (let i = 1; i < real.length; i++) if (real[i].impact - real[i - 1].impact < P.gap - 1e-6) bad.push(`${name}/${f} gap ${(real[i].impact - real[i - 1].impact).toFixed(2)}`);
+      for (const b of A.beats) if (Math.abs(b.flash - Math.max(b.tellAt, b.impact - P.flashLead)) > 1e-6) bad.push(`${name}/${f} cue`);
+    }
+  }
+  LS.setLook('ascPace', null);
+  assert(n > 80 && !bad.length, `${n} realisations under the pace: first blows >= ${P.first} s x the form, blows >= ${P.gap} s apart, the cue ${P.flashLead} s before (${bad.slice(0, 5).join(', ') || 'all'})`);
+  assert(!same.length, `off, the cue is the realiser's own; on, the same windups, only the held cock longer (${same.slice(0, 5).join(', ') || 'all'})`);
+}
+
 const S = {
   level: scenarioLevel,
   data: scenarioData,
@@ -3868,6 +3999,8 @@ const S = {
   herolike: scenarioHeroLike,
   motionfix: scenarioMotionFix,
   heldmotion: scenarioHeldMotion,
+  limbs: scenarioLimbs,
+  readable: scenarioReadable,
   //
   //
   // --- terrain
