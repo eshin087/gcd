@@ -18,6 +18,14 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: "The hero's wrist and thrusts, natural",
+        notes: [
+          "The hero's sword wrist no longer bends further than a wrist can through his cuts, his rolls and the held charge: the blade follows the forearm, the swings and their timing are the same.",
+          'His rising thrust and Piercing Gale now drive the arm straight out along the point.',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [

@@ -23,6 +23,7 @@ import { SwordMystic } from './swordMystic.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
 import { mowSwing } from '../../world/grass.js';
+import { wristSoft } from './heroMotion.js';
 
 // The Wanderer. Owns input → state machine → movement/collision → animation → sword hits → FX.
 // Contract: docs/ARCHITECTURE.md (Player). Combat rules: docs/COMBAT.md + src/combat/rules.js.
@@ -909,6 +910,7 @@ export class Player {
     this._updateLean();
     // the animator poses the plain upright body; the drawn one (lean, drawScale) is applied after
     this.lean.on = false;
+    this.anim.wristSoft = wristSoft(); // (heroMotion.js, ADR-256: the soft wrist, live)
     // (the flurry runs on real time while the world is held: so do his pose and his cloth)
     this.anim.update(this.state === 'flurry' ? this.flurry.animDt : dt);
     this.lean.on = true;

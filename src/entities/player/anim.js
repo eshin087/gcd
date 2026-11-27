@@ -747,6 +747,11 @@ const SW_V = new Float32Array(6);
 const SW_UP = [0, 1, 0];
 const SW_PICK = new Uint8Array(8); // _pickVariant: the looks it may choose from
 
+/** Forget a compiled clip (its keys were changed in place: player/heroMotion.js), so the next swing compiles it anew. */
+export function forgetSwing(name) {
+  SW_CACHE.delete(name);
+}
+
 /** Compile a swings.js clip into tracks (slot 0 of each = the entry pose, filled at play time). */
 function swingClip(name) {
   let C = SW_CACHE.get(name);
@@ -2750,6 +2755,7 @@ const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
 const _S = new THREE.Vector3(), _T = new THREE.Vector3(), _pole = new THREE.Vector3(), _end = new THREE.Vector3();
 const _w = new THREE.Vector3(), _v = new THREE.Vector3(), _g = new THREE.Vector3();
 const _bx = new THREE.Vector3(), _by = new THREE.Vector3(), _bz = new THREE.Vector3();
+const _sF = new THREE.Vector3(), _sW = new THREE.Vector3(); // (the hero's soft wrist, _wristEase)
 const _m4 = new THREE.Matrix4();
 const _qInv = new THREE.Quaternion(), _qA = new THREE.Quaternion(), _q0 = new THREE.Quaternion();
 const _qs = new THREE.Quaternion(), _pa = new THREE.Vector3(), _e0 = new THREE.Vector3(), _e1 = new THREE.Vector3();
@@ -2961,6 +2967,11 @@ export class HeroAnimator {
      *  ADR-221; _leg). A lifted foot asked for past `from` of the leg's length is carried out, by up to
      *  `add` of it at `to`, so the leg reaches its full length at a kick's extension. */
     this.kickStretch = null;
+    /** [from, max] rad or null: the hero's soft wrist (ADR-256; the player sets it from player/heroMotion.js,
+     *  live). Past `from` the blade's fold off the sword forearm's line is eased toward `max` and never
+     *  reaches it (the keys' hand and blade are two splines: between keys the fist bent to WRIST_BACK, 128°).
+     *  null: WRIST_BACK alone, as every duelist. */
+    this.wristSoft = null;
     this.wristL = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ok: false, clamped: false };
     this.handFX = { fingers: false, fist: false };
     this.lkState = { prev: new THREE.Vector3(), ok: false, k: 1 };
@@ -3973,6 +3984,7 @@ export class HeroAnimator {
       _bz.set(p[P.swD], p[P.swD + 1], p[P.swD + 2]);
       if (_bz.lengthSq() < 1e-6) _bz.set(0, 0, 1);
       _bz.normalize();
+      if (this.wristSoft) this._wristEase(r.arms.R, _bz);
       _G.copy(r.sword.position).addScaledVector(_bz, fin(p[P.offAt]) - TWO_HAND_GRIP); // body space
       r.body.localToWorld(_G);
       r.chest.worldToLocal(_G);
@@ -4001,6 +4013,7 @@ export class HeroAnimator {
       this._tipFloor(r);
       this._bladeClear(r, false);
     }
+    if (this.wristSoft) this._wristEase(r.arms.R, _bz);
     this._wristLimit(r);
     this._tipFloor(r);
     _by.set(p[P.swF], p[P.swF + 1], p[P.swF + 2]);
@@ -4065,6 +4078,24 @@ export class HeroAnimator {
       }
     }
     this._stowK = k <= 0.001 ? 0 : k;
+  }
+
+  /** The hero's soft wrist (this.wristSoft = [from, max] rad, ADR-256): `dir` (the blade, body space, unit) folded
+   *  off the sword forearm's line by more than `from` is turned back toward it, the fold eased from `from` toward
+   *  `max` (a tanh knee: continuous, no plateau), round the same side. The hand stays where the arm put it (the
+   *  grip-align of the bosses moved the hand instead: 0.7 m in a frame through a whip). Allocates nothing. */
+  _wristEase(A, dir) {
+    const W = this.wristSoft, a0 = W[0], a1 = W[1];
+    if (!(a1 > a0)) return;
+    _sF.set(0, -1, 0).applyQuaternion(_q1.copy(A.upper.quaternion).multiply(A.fore.quaternion)).applyQuaternion(_q2.copy(_qBC).invert());
+    const c = clamp(_sF.dot(dir), -1, 1), th = Math.acos(c);
+    if (!(th > a0)) return;
+    _sW.copy(dir).addScaledVector(_sF, -c);
+    if (_sW.lengthSq() < 1e-8) return;
+    _sW.normalize();
+    const th2 = a0 + (a1 - a0) * Math.tanh((th - a0) / (a1 - a0));
+    if (!Number.isFinite(th2)) return;
+    dir.copy(_sF).multiplyScalar(Math.cos(th2)).addScaledVector(_sW, Math.sin(th2)).normalize();
   }
 
   /** The sword wrist's limit (ADR-078): the blade (_bz, body space) never folds back along the
