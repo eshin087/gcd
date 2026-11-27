@@ -321,7 +321,10 @@ Render helpers for creature modules:
     where the arm put it. The player sets it every frame from `player/heroMotion.js` `wristSoft()` (`?heroWrist=a|b|0`,
     default a: 60° → 80°). `heroMotion.js` `setHeroThrust` (`?heroThrust=a|0`) rewrites two keys of the
     `risingThrust` and `heavyThrust` clips in place and drops their compiled tracks (`anim.js` `forgetSwing(name)`);
-    `'0'` puts production's keys back exactly. Measured by integ.mjs `heromotion` (asserted) and `heroaudit` (opt-in).
+    `'0'` puts production's keys back exactly. `?parryFlick=a|b|0` (`parryFlick()` s, default a: 0.16): a block press
+    the button lets go of at once leaves the state idle as before but keeps the animator on 'block' that long
+    (`Player._toLocoAfter`, `flickT`; any `_enter` clears it). Measured by integ.mjs `heromotion` (asserted) and
+    `heroaudit` (opt-in).
   - **The bosses' letters** (ADR-154, ADR-155, ADR-170): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
     `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; Halcyon's
     `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166; and Xin Yi's `WOKEN_KIT`, the same getter

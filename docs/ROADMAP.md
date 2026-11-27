@@ -1217,10 +1217,10 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
 - [~] The hero, gcd (ADR-256): the motion audit (`heroaudit`: every move, joints, snaps, pops, the wrist, the feet),
       the soft wrist (`?heroWrist`: the blade never folds more than ~80° off the sword forearm, was 128°) and the
-      thrusts on the point's line (`?heroThrust`); films sent, draft PR
-  - [ ] The owner's pick from the films
+      thrusts on the point's line (`?heroThrust`), the parry tap's guard shown (`?parryFlick`); films sent
+  - [x] The owner's picks from the films: wrist a, thrusts a, flick a (the defaults)
   - [ ] Left for later: combo A's snap windup moves the sword hand 0.5-0.6 m in its first frame (the approved
-        feel); a light parry tap shows nothing until a blow meets it, then the deflect pose arrives in one frame
+        feel); hit 3 → hit 4 turns the chest 68° in one frame
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction

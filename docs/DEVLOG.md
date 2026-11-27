@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-27 — The hero's motion audit: a soft sword wrist, the thrusts on the point's line (ADR-256; branch `claude/hero-motion-b0e298`)
+## 2026-11-27 — The hero's motion audit: a soft sword wrist, the thrusts on the point's line, the parry flick (ADR-256; branch `claude/hero-motion-b0e298`)
 
 **Owner:** a motion audit of every boss and the hero, one draft PR each (docs/ANIMATION.md; "weird looking arm
 angles and sword positioning and attacks that look unrealistic"). For the hero: keep combo A, the pace, the arc, the
@@ -30,8 +30,14 @@ frame; hit 3 → 4 turns the chest 68° in a frame (PR 170 saw it too); a parry 
 then the deflect pose in one frame; combo A's free hand is PR 170's; the hero's feet never use `_feetClip` and do not
 jump. Tried and dropped: the bosses' `gripMax` on the hero (the hand jumped 0.72 m a frame).
 
+**The parry flick** (the owner asked for it on the first films): `?parryFlick=a|b|0`, a tap shows the guard 0.16 s
+(state unchanged). **The owner's picks:** wrist a, thrusts a, flick a (the defaults now).
+
+**The lord suite** fails "every situation plays out" (9 of 122) and dies out of memory on `main` too: not this branch.
+
 **Verification:** `heromotion` green; duel / lord / asc / fox suites unchanged; films at the game camera, four
-facings, before | after, real and half speed. **Next:** the owner's picks become the defaults, then ready.
+facings, before | after, real and half speed; the flick's three options side by side. **Next:** combo A's first-frame
+windup jump and hit 3 → 4's chest snap, if the owner wants them looked at.
 
 ---
 

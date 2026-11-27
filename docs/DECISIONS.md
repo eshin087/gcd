@@ -7030,6 +7030,11 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Not taken:** re-keying every clip's in-betweens (the owner approved these swings; the ease fixes them all at
   once); a hard clamp at 80° (the blade would stop on the limit and catch up, a hitch); slowing the snap windup or
   adding a guard flick on the parry press (both change approved feel or gameplay: shown to the owner as findings).
-- **Consequences / open:** the owner picks a / b / 0 and the thrust from the films. The sims keep production's motion
+- **The parry flick** (the owner asked for a prototype on the first films, then picked a): a tap entered the guard for one
+  frame (the state goes idle as the button comes up), so nothing showed until a blow met it and the deflect pose arrived
+  in one frame (the elbows 99° in a frame). `?parryFlick=a` keeps the animator on the guard 0.16 s from the press (`b`
+  0.24 s; `player.js _toLocoAfter`, `flickT`): only the pose waits; the state is idle at once as before, so blocks,
+  parries, windows and actions are unchanged (`_enter` clears it). The jump into the deflect pose 99° → 64°.
+- **Consequences / open:** the owner's picks from the films (2026-11-27): wrist a, thrusts a, flick a: the defaults. The sims keep production's motion
   (`heromotion` checks the fixes: the wrist, the thrusts, no faster hand, the thrusts still land, `0` exact, duelists
   without `wristSoft`).
