@@ -1,7 +1,8 @@
 // The deathblow's hit effect, headless (combat/deathblowFx.js, ?dbfx=a|b|c|d): the REAL module on a real
 // camera, uniforms, FireField and LetterBatch (a stub pipeline hands over the batch). A combo of 7 blows
-// 0.2 s apart (the last the finisher) is run for 2 s at 60 fps under each look.
-// usage: node dbfx.mjs <repoRoot> [scenario]    scenario: combo | switch | edge | all
+// 0.4 s apart (the last the finisher) is run for 5.7 s at 60 fps under each look, with a synthetic blade path,
+// the blood (?blood), the slash on the path and the hit-pause's slow clock.
+// usage: node dbfx.mjs <repoRoot> [scenario]    scenario: combo | switch | edge | blood | slash | hold | all
 import { pathToFileURL } from 'node:url';
 import './shim.mjs';
 
@@ -21,7 +22,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
 let fails = 0;
 const assert = (c, m) => { if (!c) { fails++; out('FAIL', m); } else out('ok  ', m); };
 const DT = 1 / 60;
-const CAP = 300; // letters alive at once, at most
+const CAP = 700; // letters alive at once, at most
 
 /** The game the effect reads: camera + uniforms + pipeline stub + fire field + the hero. */
 function build(withPipeline = true) {
@@ -50,7 +51,6 @@ function stats(G, frames, perFrame) {
   const S = { peak: 0, maxCh: 0, nan: 0, heatBad: 0, heatFrames: 0, randCalls: 0, threw: null };
   const real = Math.random;
   const count = () => { S.randCalls++; return real(); };
-  const b = () => G.batches[0];
   for (let f = 0; f < frames; f++) {
     G.game.time += DT;
     G.game.fx.fire.clear();
@@ -68,9 +68,9 @@ function stats(G, frames, perFrame) {
       S.heatFrames++;
       if (!(L.flash > 0)) S.heatBad++; // heat written with no blow's flash alive
     }
-    const bb = b();
-    if (bb) {
-      S.peak = Math.max(S.peak, bb.count);
+    for (let bi = 0; bi < G.batches.length; bi++) {
+      const bb = G.batches[bi];
+      if (bi === 0) S.peak = Math.max(S.peak, bb.count);
       for (let i = 0; i < bb.count; i++) {
         const c = bb.iColor.array, p = bb.iPos.array;
         for (let j = 0; j < 3; j++) { if (!Number.isFinite(c[i * 4 + j]) || !Number.isFinite(p[i * 3 + j])) S.nan++; S.maxCh = Math.max(S.maxCh, c[i * 4 + j]); }
@@ -81,26 +81,42 @@ function stats(G, frames, perFrame) {
   return S;
 }
 
-/** One blow's data: the contact on the boss (x ~ 0, y ~ 1.1), the blow's way alternating. */
-const blow = (k, last, n = 7) => ({
-  x: Math.sin(k * 1.7) * 0.15, y: 1.0 + 0.1 * (k % 3), z: -0.2 + 0.1 * Math.cos(k), dx: k % 2 ? 0.8 : -0.6, dz: k % 2 ? -0.6 : 0.8,
-  i: k + 1, n, last, a0: k % 3 === 2 ? NaN : -0.8 + 0.2 * k, a1: k % 3 === 2 ? NaN : 0.7 + 0.1 * k,
-});
+/** One blow's data: the contact on the boss (x ~ 0, y ~ 1.1), the blow's way alternating; a synthetic `path`: the blade tip's arc
+ *  (1.4 m long, on the screen's right / up plane) ending at the contact, its hilt behind the hero. */
+const blow = (k, last, n = 7, withPath = true) => {
+  const o = {
+    x: Math.sin(k * 1.7) * 0.15, y: 1.0 + 0.1 * (k % 3), z: -0.2 + 0.1 * Math.cos(k), dx: k % 2 ? 0.8 : -0.6, dz: k % 2 ? -0.6 : 0.8,
+    i: k + 1, n, last, a0: k % 3 === 2 ? NaN : -0.8 + 0.2 * k, a1: k % 3 === 2 ? NaN : 0.7 + 0.1 * k, hold: last ? 0.38 : 0.16,
+  };
+  if (withPath) {
+    const m = 10, p = new Float32Array(3 * m), a0 = 0.5 + 0.35 * k, sgn = k % 2 ? -1 : 1;
+    for (let j = 0; j < m; j++) {
+      const u = j / (m - 1), a = a0 + sgn * (1 - u) * 1.3; // (the arc comes in to the contact: the last point is the contact)
+      p[j * 3] = o.x + sgn * Math.cos(a) * 0.9 - sgn * Math.cos(a0) * 0.9 * 0 + (1 - u) * -0.5 * sgn;
+      p[j * 3 + 1] = o.y + (Math.sin(a) - Math.sin(a0)) * 0.9;
+      p[j * 3 + 2] = o.z + (1 - u) * 0.3;
+    }
+    p[(m - 1) * 3] = o.x; p[(m - 1) * 3 + 1] = o.y; p[(m - 1) * 3 + 2] = o.z;
+    o.path = p;
+    o.base = { x: o.x - o.dx * 0.8, y: o.y, z: o.z - o.dz * 0.8 };
+  }
+  return o;
+};
 
 const SCENARIOS = {
   combo() {
-    out('\n== scenario COMBO (7 blows 0.2 s apart, the last the finisher; 2 s at 60 fps; each look) ==');
+    out('\n== scenario COMBO (7 blows 0.4 s apart, the last the finisher; 5.7 s at 60 fps; each look) ==');
     FX.setDbFx('a');
     for (const mode of FX.DB_FX.opts) {
       FX.setDbFx(mode);
       FX.deathblowFxClear();
       const G = build();
-      const S = stats(G, 120, (f) => {
-        if (f % 12 === 0 && f / 12 < 7) FX.deathblowHit(G.game, blow(f / 12, f / 12 === 6));
+      const S = stats(G, 340, (f) => {
+        if (f % 24 === 0 && f / 24 < 7) FX.deathblowHit(G.game, blow(f / 24, f / 24 === 6));
       });
       assert(!S.threw, `${mode}: no throw (${S.threw?.message ?? 'ok'})`);
       assert(S.nan === 0 && L.bad === 0, `${mode}: no NaN in the letters (${S.nan}) or the pool (${L.bad})`);
-      assert(!FX.deathblowFxBusy() && L.alive === 0, `${mode}: nothing alive after 2 s`);
+      assert(!FX.deathblowFxBusy() && L.alive === 0, `${mode}: nothing alive 3 s after the last hit (only the pools stay: ${L.pools})`);
       out(`   ${mode}: ${L.spawned} letters made in all, peak alive ${S.peak} (cap ${CAP}), heat on ${S.heatFrames} frames, brightest channel ${S.maxCh.toFixed(2)}, ${L.white} white, snapped ${L.snapped}`);
       assert(S.peak > 0 && S.peak <= CAP, `${mode}: peak live letters ${S.peak} is within 1..${CAP}`);
       assert(S.heatFrames > 0 && S.heatBad === 0, `${mode}: heat written only while a blow's flash lives (${S.heatBad} stray frames)`);
@@ -127,10 +143,10 @@ const SCENARIOS = {
     const G = build();
     FX.deathblowFxClear();
     const seq = ['a', 'b', 'c', 'd', 'a', 'c', 'b'];
-    const S = stats(G, 120, (f) => {
-      if (f % 12 === 0 && f / 12 < 7) {
-        FX.setDbFx(seq[f / 12]);
-        FX.deathblowHit(G.game, blow(f / 12, f / 12 === 6));
+    const S = stats(G, 340, (f) => {
+      if (f % 24 === 0 && f / 24 < 7) {
+        FX.setDbFx(seq[f / 24]);
+        FX.deathblowHit(G.game, blow(f / 24, f / 24 === 6));
       }
     });
     assert(!S.threw, `a switch at every blow does not throw (${S.threw?.message ?? 'ok'})`);
@@ -139,6 +155,99 @@ const SCENARIOS = {
     FX.setDbFx('zzz');
     assert(FX.getDbFx() === 'a', 'an unknown look falls back to a');
     out(`   peak alive ${S.peak}`);
+  },
+
+  blood() {
+    out('\n== scenario BLOOD (on / off; the pools stay until a clear; dark reds only) ==');
+    for (const mode of FX.DB_FX.opts) {
+      FX.setDbFx(mode);
+      for (const on of [true, false]) {
+        FX.setBlood(on);
+        FX.deathblowFxClear();
+        const G = build();
+        const b0 = L.blood;
+        const S = stats(G, 340, (f) => {
+          if (f % 24 === 0 && f / 24 < 7) FX.deathblowHit(G.game, blow(f / 24, f / 24 === 6));
+        });
+        const made = L.blood - b0, pools = L.pools;
+        if (on) {
+          assert(made > 150, `${mode}: blood on: ${made} droplets and wound letters made`);
+          assert(pools > 20, `${mode}: blood on: ${pools} pools on the floor, 3 s after the last hit`);
+          assert(G.batches.length === 2 && G.batches[1].count === pools, `${mode}: the pools are printed (${G.batches[1]?.count} of ${pools})`);
+          // every pool letter dark red, under the threshold
+          const c = G.batches[1].iColor.array;
+          let bad = 0;
+          for (let i = 0; i < G.batches[1].count; i++) if (!(c[i * 4] >= 0.2 && c[i * 4] <= 0.45 && c[i * 4 + 1] < 0.06 && c[i * 4 + 2] < 0.04)) bad++;
+          assert(bad === 0, `${mode}: every pool letter is a dark red (${bad} off)`);
+          const py = G.batches[1].iPos.array;
+          let low = 0;
+          for (let i = 0; i < G.batches[1].count; i++) if (py[i * 3 + 1] > 0.3) low++;
+          assert(low === 0, `${mode}: the pools lie on the floor`);
+          FX.deathblowFxClear();
+          assert(L.pools === 0 && G.batches[1].count === 0 && !FX.deathblowFxBusy(), `${mode}: a clear takes the pools away`);
+        } else {
+          assert(made === 0 && pools === 0, `${mode}: blood off: none (${made} letters, ${pools} pools)`);
+        }
+        assert(S.maxCh <= 0.55 + 1e-6 && S.randCalls === 0 && S.nan === 0, `${mode} blood ${on}: under the threshold, no Math.random, no NaN`);
+      }
+    }
+    FX.setBlood(true);
+    FX.setDbFx('a');
+  },
+
+  slash() {
+    out('\n== scenario SLASH (the cut starts on the path\'s first point and ends past the contact) ==');
+    for (const mode of FX.DB_FX.opts) {
+      FX.setDbFx(mode);
+      for (const k of [0, 1, 3, 6]) {
+        FX.deathblowFxClear();
+        const G = build();
+        const o = blow(k, k === 6);
+        FX.deathblowHit(G.game, o);
+        const Rg = G.game.U.uCamRight.value, Up = G.game.U.uCamUp.value;
+        const rel = (px, py, pz) => [(px - o.x) * Rg.x + (py - o.y) * Rg.y + (pz - o.z) * Rg.z, (px - o.x) * Up.x + (py - o.y) * Up.y + (pz - o.z) * Up.z];
+        const s0 = rel(o.path[0], o.path[1], o.path[2]);
+        const sl = L.slash;
+        const d0 = Math.hypot(sl[0] - s0[0], sl[1] - s0[1]);
+        const past = sl[2] * sl[4] + sl[3] * sl[5]; // the end's distance past the contact, along the cut
+        assert(L.src === 'path', `${mode} blow ${k}: the line came from the path`);
+        assert(d0 < 0.05, `${mode} blow ${k}: the slash starts on the path's first point (${d0.toFixed(3)} m off)`);
+        assert(past > 0.3, `${mode} blow ${k}: it ends past the contact (${past.toFixed(2)} m)`);
+      }
+      // the fallback: no path, a straight sweep along the bearing
+      FX.deathblowFxClear();
+      const G = build();
+      FX.deathblowHit(G.game, blow(2, false, 7, false));
+      assert(L.src === 'fallback' && L.slash[2] * L.slash[4] + L.slash[3] * L.slash[5] > 0.3, `${mode}: without a path a straight sweep through the contact`);
+    }
+    FX.setDbFx('a');
+  },
+
+  hold() {
+    out('\n== scenario HOLD (the clock runs at ~15 % while the hit-pause holds, then at full) ==');
+    FX.setDbFx('a');
+    FX.deathblowFxClear();
+    const G = build();
+    const o = blow(0, false);
+    FX.deathblowHit(G.game, o);
+    const ages = [];
+    for (let f = 0; f < 30; f++) {
+      G.game.time += DT;
+      FX.deathblowFxUpdate(G.game, DT);
+      ages.push(L.ts);
+    }
+    assert(ages[0] === 0.15 && ages[8] === 0.15, 'slowed to 15 % through the hold');
+    assert(ages[20] === 1 && ages[29] === 1, 'back to full after the hold (0.16 s)');
+    const heldTs = ages.filter((v) => v < 1).length;
+    assert(heldTs >= 9 && heldTs <= 11, `the hold lasts about 0.16 s of real time (${heldTs} frames)`);
+    // a blow with no hold is never slowed
+    FX.deathblowFxClear();
+    const o2 = blow(1, false);
+    delete o2.hold;
+    FX.deathblowHit(G.game, o2);
+    FX.deathblowFxUpdate(G.game, DT);
+    assert(L.ts === 1, 'no hold: the clock stays full');
+    FX.deathblowFxClear();
   },
 
   edge() {
@@ -154,6 +263,9 @@ const SCENARIOS = {
         FX.deathblowHit(G.game, { x: 0, y: 1, z: 0, dx: NaN, dz: NaN, i: 1, n: 1, last: true, a0: NaN, a1: NaN });
         FX.deathblowHit(G.game, null);
         FX.deathblowHit(null, blow(0, false));
+        FX.deathblowHit(G.game, { ...blow(1, false), path: new Float32Array([NaN, 1, 0, NaN, 2, 0, 0, 0, 0]), base: { x: NaN, y: 0, z: 0 }, hold: NaN });
+        FX.deathblowHit(G.game, { ...blow(1, true), path: new Float32Array(3), hold: 5 });
+        FX.deathblowHit(G.game, { ...blow(1, true), path: new Float32Array(3 * 40).fill(1) });
         G.game.fx = {};
         for (let f = 0; f < 150; f++) FX.deathblowFxUpdate(G.game, DT);
         FX.deathblowHit(G.game, blow(2, true));
