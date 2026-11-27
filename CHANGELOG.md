@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and nineteen pieces of work since 0.4.0:
+One hundred and twenty pieces of work since 0.4.0:
 - **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
   perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
   curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round
@@ -32,6 +32,13 @@ One hundred and nineteen pieces of work since 0.4.0:
   default on the site (`?combo=0` plays today's chain). Each ending slash now runs the way the sword crossed the
   screen, drawn from where the swing began to where it ended over three frames, once the swing is over (a landed
   blow's bite no longer reads as its end). The free hand no longer flickers through the coat behind his back.
+- **Blue and red blows you can read, and quick blows** (2026-11-26, ADR-223). *Changed:* Lu Wusheng, Wen Yao and the
+  Cinder Wyrm stop and hold their pose for a moment before every blue or red blow, standing tall for blue and sinking
+  low for red (the wyrm rears its head for blue, crouches with its tail up for red); the blow lands that moment later,
+  its cue and timing windows as before. Wen Yao's feet no longer jump as he steps into a blow. *Added:* a quick white
+  blow each, straight from the stance with no wind-up: Lu Wusheng's Before the Word, Wen Yao's Fox Snap and Fox Knee,
+  the wyrm's Snap swipe; block it or parry it on the glint. `?sheathMotion=0`, `?foxMotion=0`, `?wyrmMotion=0` and
+  `?sheathQuick=0`, `?foxQuick=0`, `?wyrmQuick=0` give the fights before.
 - **A ninth level: the Veiled Crossing and Bai Wuji, the Untouched** (2026-11-26, ADR-241 – ADR-243). *Added:* a ninth
   level, `?level=veil` (the title screen lists it). **The Veiled Crossing**: a city crossing at night after the fight
   has already levelled it, under a black veil: cracked asphalt with a great diagonal crossing's white bars, craters,

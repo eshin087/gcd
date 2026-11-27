@@ -2703,6 +2703,52 @@ rests of 0.12 - 0.28 s; idle gaps 0.03 - 0.1 s.
 WIN (the fencing bot in god mode): 157 - 164 s on three seeds (the plan asked 150 - 210; 156 - 183 s before the review fixes). The bar was sized
 for it: 3400 hp gave 40 - 46 s (a crash is a long opening), 7000 / 700 posture 81 s.
 
+## Held tells and quick blows (2026-11-26, ADR-223; the owner's picks: `a` and every quick blow, the default)
+The owner asked for every boss's motion to be audited, for every blue and red blow to have a **readable held
+windup pose**, and for a few **much faster normal blows**. This pass covers Lu Wusheng, Wen Yao and the Cinder
+Wyrm (`?sheathMotion=` `?foxMotion=` `?wyrmMotion=` `0|a|b`, `?sheathQuick=` `?foxQuick=` `?wyrmQuick=` `0|a`;
+the Lab's LOOKS rows). The owner picked `a` for all three and every quick blow from the films (2026-11-26):
+they are the default; `0` gives the bosses as they were before, `b` the hold without the posture.
+
+**What the audit measured** (`tests/integration/motionAudit.mjs`: `node tests/integration/sheath.mjs . audit`,
+`fox.mjs . audit`, `integ.mjs . wyrmaudit`; every move once from the same start, the joints in the boss's own
+frame every frame). The draws, the charged blows, the transitions and the Pearl's charge already hold still
+for 0.6 - 1.5 s. Every other blue and red blow moved all the way from the guard into the strike: held 0.00 -
+0.13 s (Still in Its Sleep 0.10, Sweeping the Road 0.12, Ladder to the Moon 0.05, Sweeping Tail 0.08, Fox-Fire
+Pounce 0.07; the wyrm's lunge bites, wing buffet, wing slam and every red tail blow 0.00 - 0.13 s of its own
+strike speed), and the wyrm's blue and white windups of a kind looked alike. Wen Yao's planted foot jumped
+0.41 - 0.53 m in one frame when a clip lifted it after his root had closed in (Three Paws, the riposte,
+Sweeping Tail, Burning Tail). Facing at every impact was within 2° of the hero (the tail blows and the wing
+sweeps turn their flank or back on purpose).
+
+**Held tells** (`a` held and coloured, `b` held only):
+- A blue or red blow that is not a draw, a cast, a pack call or a windup of 0.9 s or more (the wyrm: 0.95 s)
+  **stops at its cock and holds it** 0.16 s (the wyrm 0.18 s) before the strike. Its windup is that much
+  longer; the strike from the cock to the impact, the cue (`combat:flash`, flashLead before the impact), every
+  window and every number are as before. More time to read, never less.
+- `a` colours the held pose: **blue stands tall and drawn back** (the duelists +3.5 cm, leaning back, chin up;
+  the wyrm rears its forequarters for a bite, the head high and drawn back, the jaw open, the sails lifted);
+  **red sinks and coils** (the duelists 4 - 10 cm lower, leaning in, eyes down, the feet wider; the wyrm sinks
+  onto braced forelegs, the head low, the sails folded, the tail up).
+- Measured with `a` (duel: `motion`; integ: `wyrmheld`): Still in Its Sleep held 0.10 -> 0.22 s, Sweeping the
+  Road 0.12 -> 0.28, Go Back Down the Road 0.23 -> 0.38, The Walking Staff 0.33 -> 0.47; Ladder to the Moon
+  0.05 -> 0.20, Sweeping Tail 0.08 -> 0.20, the riposte 0.15 -> 0.25.
+- With either on, a duelist's planted foot that its clip lifts **eases off the spot it stood on** over 0.12 s
+  (`HeroAnimator` `opts.liftEase`, bosses only): Wen Yao's worst jump 0.53 -> 0.16 m in a frame.
+
+**Quick blows** (white; a windup that no phase shortens and never under flashLead, so the glint shows as it
+starts; read from the stance, no gather; close range; light; exempt from the first-windup floors):
+
+| Boss | Blow | Windup | Damage | Range |
+|---|---|---|---|---|
+| Lu Wusheng | **Before the Word**: the pommel snapped out of the carry | 0.32 s | 9 | 0 - 2.2 m |
+| Wen Yao | **Fox Snap**: the open lead hand snaps shut into a jab | 0.30 s | 8 | 0 - 2.0 m |
+| Wen Yao | **Fox Knee**: the rear knee driven up from the guard | 0.32 s | 8 | 0 - 1.7 m |
+| the wyrm | **Snap swipe**: a paw snapped out of its stance | 0.50 s (0.35 at phase 3) | 11 | 0 - 4.4 units, ahead |
+
+**Found on the way** (the wyrm's seeded fights with the picks on): the sky hunt's crash landing now stays on
+the wyrm's ground; a drakeling's dive released onto a blow after its longest wait is ADR-237's (on `main`).
+
 ## Bai Wuji (2026-11-26, ADR-241; `?level=veil`)
 
 Bai Wuji, the Untouched: a tall, relaxed man in a bone-white coat, his eyes covered, his hands in his pockets,

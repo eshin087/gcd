@@ -74,6 +74,13 @@ export const PICKED = Object.freeze({
   lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl
   // every human boss
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
+  // the motion pass (ADR-223; the owner's picks, 2026-11-26, from the films: A for all three, every quick blow)
+  sheathMotion: 'a', // Lu Wusheng's blue / red blows held at the cock, blue tall, red sunk
+  foxMotion: 'a', // Wen Yao's, the same, and his lifted feet eased off their spot
+  wyrmMotion: 'a', // the wyrm's string hits held, blue rearing its head, red sunk with the tail up
+  sheathQuick: 'a', // Before the Word
+  foxQuick: 'a', // Fox Snap, Fox Knee
+  wyrmQuick: 'a', // Snap swipe
   // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
   ashHero: 'c', // Shen Hui: the hero's shading and his outline (a the shading, b the outline)
   lordHero: 'c', // Varr Nihil: the hero's shading and his outline

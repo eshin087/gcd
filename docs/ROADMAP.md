@@ -189,6 +189,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.93 — Boss motion: Lu Wusheng, Wen Yao, the wyrm (2026-11-26, `claude/enemies-grove-fox-wyrm-motion-59bc46`, ADR-223)
+- [x] The audit tool (`tests/integration/motionAudit.mjs`): hands, pops, sliding feet, facing, the held windup per tell
+- [x] Held blue / red windups, coloured (blue tall, red low), behind `?sheathMotion=` `?foxMotion=` `?wyrmMotion=`
+- [x] Wen Yao's lifted feet no longer jump (the release ease)
+- [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
+- [x] The owner's picks made the defaults (a for all three, every quick blow)
+- [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
 ## M1.94 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-241 – ADR-243)
 - [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
       fallen tower in sections, two scenes (`crossing`, `void`: the city's pieces let go, the void's float),

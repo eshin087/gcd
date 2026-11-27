@@ -16,6 +16,8 @@ import { FoxClones } from './clones.js';
 import { FoxPearl } from './pearl.js';
 import { FoxFx } from './fx.js';
 import { FoxHowl } from './beam.js';
+import { MOTION_FIX } from '../duelist/heldTells.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 
 // Wen Yao, the Thousand-Body Fox: the boss of the Foxfire Terrace (`?level=fox`; ADR-147). A masked dao
 // swordsman on the shared duelist engine (duelist/duelist.js: the body, the contract, the guard, posture,
@@ -50,6 +52,8 @@ export const FOX_KIT = Object.freeze({
   streakMove: () => 'streakFlurry',
   loadout: FOX_LOADOUT,
   poses: FOX_POSES,
+  // (ADR-223, `?foxMotion=a|b`: a planted foot his clip lifts eases off its spot, not at once)
+  animOpts: Object.freeze({ liftEase: () => (lookOf('foxMotion', '0') === '0' ? 0 : MOTION_FIX.liftEase) }),
   // (bare-handed: the right fist on the sword joint; fox.js makes the striking limb the engine's blade)
   blade: FOX_FIST,
   dress: (d, dt) => dressFox(d, dt),

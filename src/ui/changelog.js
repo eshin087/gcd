@@ -29,6 +29,11 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'Blue and red blows you can read, and quick blows',
+        notes: ['Lu Wusheng, Wen Yao and the Cinder Wyrm now hold still for a moment before every blue or red blow: tall for blue, low for red. The blow lands that moment later; its cue and timing are as before.', 'Each of them has a new quick white blow, straight from the stance with no wind-up: block it or parry it on the glint.', "Wen Yao's feet no longer jump as he steps into a blow."],
+      },
+      {
+        date: '2026-11-26',
         title: 'A ninth level: the Veiled Crossing and Bai Wuji, the Untouched',
         notes: [
           'A new level, the Veiled Crossing: a city crossing levelled before you came, at night under a black veil. Pick it on the title screen.',

@@ -4,6 +4,8 @@ import { compileClip, completeBeat, GUARD } from './poses.js';
 import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
 import { GUARD_CLIPS } from '../duelist/guard.js';
+import { makeHeldKeys } from '../duelist/heldTells.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 
 // Lu Wusheng's moves and reaction clips, as data (COMBAT.md → "The Sheathed"; the format is the Ash
 // Disciple's: ashDisciple/moves.js header). His weapon in the engine's sense is the SHEATHED sword in his
@@ -199,6 +201,13 @@ export const MOVES = {
   knock: {
     label: 'A Knock, Not a Cut', phase: 1, weight: [2.0, 1.8, 2.4], cooldown: 2.5, band: [0, 2.6], recovery: 0.42,
     beats: [blow('thrust', N, 0.46, 12, { zone: { kind: 'line', r: 1.7, w: 0.7 }, dash: { from: 0.7, to: 1.0, stop: 1.0, max: 1.6 }, close: 0 })],
+  },
+  /** Before the Word (`?sheathQuick=a`, ADR-223): the pommel snapped out of the carry, no gather: the
+   *  quiet stance is the only warning. White, fast, light; close range. */
+  snapKnock: {
+    label: 'Before the Word', phase: 1, quick: true, cooldown: TUNING.quick.cooldown, band: TUNING.quick.band, recovery: 0.45,
+    get weight() { return lookOf('sheathQuick', '0') === 'a' ? TUNING.quick.weight : [0, 0, 0]; },
+    beats: [blow('thrust', N, TUNING.quick.windup, TUNING.quick.damage, { fixed: true, cock: 0.5, keys: thrustKeys(0.45, 0.5).filter(([, p]) => !p.gather), knockback: TUNING.quick.knockback, close: 0, track: 0.9 })],
   },
   /** Still in Its Sleep: the sheathed sword raised two-handed and brought down like a beam. */
   lintel: {
@@ -486,6 +495,7 @@ export const CLIP = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k,
 for (const [k, c] of Object.entries(CLIP)) c.name = k;
 
 /** A move as it will play this time (duelist/realise.js). */
-export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat });
+// (`?sheathMotion=a|b`: his blue and red blows hold their cock, coloured / not; ADR-223, duelist/heldTells.js)
+export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: makeHeldKeys('sheathMotion', GUARD) });
 
 export { GUARD, ANK };

@@ -43,6 +43,32 @@ projection, speed-weighted), revealed from the swing's start side; measured per 
 
 **Open / next:** the owner's verdict on the revised baseline.
 
+## 2026-11-26 — Lu Wusheng, Wen Yao and the wyrm audited; held blue / red windups, released feet, quick blows (ADR-223; branch `claude/enemies-grove-fox-wyrm-motion-59bc46`)
+
+**Task** (from the session coordinating the boss motion pass): audit and fix Lu Wusheng's, Wen Yao's and the Cinder
+Wyrm's poses and motion; give their blue / red attacks readable held windup poses; add a few much faster normal
+blows; films before / after, the owner picks; behind switches.
+
+**Measured** (`tests/integration/motionAudit.mjs`; `sheath.mjs . audit`, `fox.mjs . audit`, `integ.mjs . wyrmaudit`,
+env `GCD_MOVES`, `GCD_LOOKS`, `GCD_TRACE`, `GCD_AUDIT_OUT`): the blue / red blows that are not draws / casts / long
+charges held 0.00 - 0.13 s; Wen Yao's planted foot jumped up to 0.53 m in a frame (his clip lifting a foot his root
+had left behind); Lu Wusheng's scabbard cuts fling the free hand 0.32 m in a frame; facing at the impact fine.
+
+**What.** `duelist/heldTells.js` (+ `realise.js` `keysOf` → `{ keys, hold }`); `anim.js` `opts.liftEase` (bosses
+only, `kit.animOpts`); `dragon/tellPose.js`, `tuningMotion.js`, attacks.js makeString; the quick blows in each boss's
+moves / tuning; Lab LOOKS rows (awaiting). Tests: sheath / fox `motion`, integ `wyrmheld`, the data floors.
+
+**Verified.** The suites' scenarios; films at the game camera and a side view (headless Edge, `__tick`): before
+| a | b for four blows a boss, the quick blows, sent to the owner.
+
+**The owner's picks** (from the films): `a` for all three bosses, every quick blow: the defaults (PICKED).
+With them on, `npm test` found latent wyrm faults through the seeded fights' drift: a drakeling's dive released
+onto a blow (fixed on `main` by ADR-237 meanwhile; my own fix for it dropped in the merge) and the sky hunt
+landing up to its radius off its ground (fixed here). The attack table's hash re-pinned (the Snap swipe); the
+clearing's burn budget 9 -> 12.
+
+**Open.** Lu Wusheng's free hand in the scabbard cuts; the same foot ease for Shen Hui and Varr Nihil (their
+session).
 ## 2026-11-26 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (ADR-241 – ADR-243; branch `enemies/untouched`; planned by the lead, built by Opus agents)
 
 **Owner:** a boss after a famous white-haired, blindfolded sorcerer (named as the reference; nowhere in the game):

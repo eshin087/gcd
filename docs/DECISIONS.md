@@ -6415,6 +6415,61 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   sheet's C in the same page (474 of 580 000 pixels differ, from the relief alone). The look changes once, when
   it turns on, mid-page (one frame). Not measured on the phone; the next `?perf` BENCH there says how much.
 
+## ADR-223 — Held blue / red windups, released feet and quick blows for Lu Wusheng, Wen Yao and the wyrm (2026-11-26)
+
+- **Context:** the owner asked for every boss's poses and motion to be audited and to look accurate, for each blue
+  (parry) and red (perfect-dodge) attack to have a readable held windup pose, and for some much faster normal
+  blows that stay fair. This pass took Lu Wusheng, Wen Yao and the Cinder Wyrm (other sessions the rest). The
+  audit (`tests/integration/motionAudit.mjs`) stepped every move from the same start and measured, in the boss's
+  own frame: the fastest step of each hand, the largest one-frame change of speed of any joint (a pop), the
+  planted feet's sliding, the elbows, the facing at the impact and, per blow, the longest still stretch of the
+  windup. Found: every blue / red blow that is not a draw, a cast or a long charge moved all the way into its
+  strike (held 0.00 - 0.13 s); the wyrm's blue and white windups of a kind looked the same; Wen Yao's planted foot
+  jumped 0.41 - 0.53 m in a frame when his clip lifted it after his root had closed in under it (anim.js
+  `_feetClip` handed it to the clip's key at once). The facing at the impact was right (within 2°).
+- **Decision** (behind switches; the owner's picks, below, the default):
+  1. `?sheathMotion=` / `?foxMotion=` `a|b` (duelist/heldTells.js): such a blow holds its cock `HELD.hold` (0.16
+     s) more, through the realiser's bait hold (the cocked pose repeated as the hold ends, so the strike leaves it
+     from rest). `realise.js` `keysOf` (ADR-236 had removed it while nothing used it; it is back) returns the keys
+     or `{ keys, hold }`. The cock is the last key at or before the
+     beat's `cock` mark that is not the gather, else the first non-strike key after it (moved onto the mark).
+     `a` colours the cock: blue +3.5 cm, leaning back, chin up; red sinks 4 - 10 cm (to -0.6 at most), leans in,
+     eyes down, the feet 7 cm wider. A first try played the way to the cock faster to make room for the hold in the
+     same windup: the raise snapped at 18 m/s; the authored way and a longer windup it is.
+  2. `HeroAnimator` `opts.liftEase` (a function, the boss's kit `animOpts`, passed by duelist.js and the fox's
+     selves): a planted foot the clip lifts is eased from its spot to the key over 0.12 s; on with the boss's motion
+     switch. The hero passes no option: his feet are untouched.
+  3. `?wyrmMotion=` `a|b` (dragon/tellPose.js, tuningMotion.js `WYRM_HELD`): a blue / red hit of a string wound
+     up under 0.95 s holds its kind's k = 1 pose 0.18 s more (its windup phase longer: the beats' impactIn follows,
+     so the cue stays flashLead before the impact); `a` adds the colour's posture to the pose targets while it
+     winds up: blue rears its forequarters for a blow of the head (`rear` 0.32: the rig turns a rise past the
+     forelegs' reach into sitting back, so a plain rise read lower), the head high and back, the jaw open, the
+     sails lifted; red sinks onto braced forelegs (`lower` 0.42, `elbowsOut`), the head low, the sails folded, the
+     tail up.
+  4. Quick blows (`?sheathQuick=` `?foxQuick=` `?wyrmQuick=` `a`; weight 0 otherwise): Before the Word, Fox Snap,
+     Fox Knee, Snap swipe (COMBAT.md "Held tells and quick blows"). White, a `fixed` windup in [flashLead,
+     minFirstWindup) (the wyrm's 0.5 s, 0.35 at phase 3), close range, light; the suites' first-windup floors
+     exempt `quick` and check flashLead instead.
+- **Why this way:** the hold is the realiser's own bait hold, so the strike's motion, its active frames and every
+  window stay as authored and tested; only time at the cock is added, which can only make a blow easier to read.
+  Colouring the existing cock by body height (tall / low) reads at the game camera, where arms are a few letters.
+  Per-boss data and an opt-in hook keep the other duelists (being audited by other sessions) as they are.
+- **Consequences:** `sheath.mjs` / `fox.mjs` `motion` and `integ.mjs` `wyrmheld` hold the rules (the authored keys
+  with '0', the windups +hold with 'a' / 'b', the cues unmoved, the held poses coloured, the feet's jumps <= 0.3 m).
+  The paces of those bosses with a motion switch on are a little slower (+0.16 / 0.18 s on each such blow); the
+  PACE suites run with the switches off. Shen Hui and Varr Nihil likely have the same foot jump (the same
+  `_feetClip`): their kits can pass `animOpts`. Open: the owner's picks; Lu Wusheng's scabbard cuts swing the free
+  hand forward in one frame (0.32 m a frame), left for a pass on his arms; the wyrm's tail is a spring and never
+  quite still while the body pivots.
+- **Outcome (the owner, 2026-11-26, from the films before | a | b at the game camera and a side view):** `a` for
+  Lu Wusheng, Wen Yao and the wyrm, and every quick blow: `PICKED` sheathMotion / foxMotion / wyrmMotion /
+  sheathQuick / foxQuick / wyrmQuick = 'a'. The seeded fights and pace meters of those suites run with them.
+  With them on, the wyrm's seeded fights drifted into latent faults: a drakeling's dive released onto a
+  string's blow after its longest hold (fixed on `main` the same day by ADR-237, which this branch takes), and
+  the sky hunt's crash landing up to its radius off its ground (fixed here: fireAttacks.js `crash` keeps the
+  spot `inReach`). A hit with its own bait hold (the Hesitant Maw's rear bite) is not held again. The clearing's
+  burn budget (`TUNING.world.meter.burnt`) 9 -> 12: seed 1337 rolls other moves and burns 11 of 184 pieces.
+
 ## ADR-227 — The perfect parry gets the perfect dodge's window: 0.20 s (2026-11-26)
 
 - **Context:** the owner: parrying is very hard and the timing feels too tight; make the parry window like

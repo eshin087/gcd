@@ -407,6 +407,9 @@ async function scenarioLevels() {
 async function scenarioData() {
   out('\n== scenario DATA (move data rules in every phase a move is used in, both ends of every roll) ==');
   let checked = 0;
+  // (the quick blows, ADR-223: checked with their switch on; exempt from minFirstWindup, never under flashLead)
+  const { setLook: setQuick } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  setQuick('foxQuick', 'a');
   const CAP = { [TELL.NORMAL]: 26, [TELL.BLUE]: 26, [TELL.RED]: 30, [TELL.BLACK]: 44 };
   for (const name of MOVE_NAMES) {
     const def = MOVES[name];
@@ -421,7 +424,7 @@ async function scenarioData() {
         if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
         if (!A.beats.filter((b) => b.feint).every((b) => b.def.tell === undefined && !b.def.zone && !b.def.damage)) assert(false, `${tag}: a feint says nothing (no tell, no zone, no damage)`);
         const first = real[0];
-        if (!def.transition && first && !(first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${(first.impact - first.tellAt).toFixed(3)} >= ${TUNING.minFirstWindup}`);
+        if (!def.transition && first && !(first.impact - first.tellAt >= (def.quick ? TUNING.flashLead : TUNING.minFirstWindup) - 1e-6)) assert(false, `${tag}: first real windup ${(first.impact - first.tellAt).toFixed(3)} >= ${TUNING.minFirstWindup}`);
         for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(3)} s apart >= ${TUNING.minHitGap}`);
         for (const b of real) if (!(b.flash >= b.tellAt - 1e-6)) assert(false, `${tag}: hit ${b.hit} flashes after its tell`);
         for (const b of real) if (!(b.def.zone || b.def.release || b.def.cast)) assert(false, `${tag}: hit ${b.hit} has a zone, a release or a cast`);
@@ -433,6 +436,15 @@ async function scenarioData() {
     }
   }
   assert(checked > 60, `${checked} realisations obey the rules (a tell per hit, feints silent, first windup >= ${TUNING.minFirstWindup} s, hits >= ${TUNING.minHitGap} s apart)`);
+  {
+    // the quick blows (ADR-223): one white hit each, fixed, never under flashLead (the glint as it starts), light; off by default
+    const quick = MOVE_NAMES.filter((n) => MOVES[n].quick);
+    const ok = quick.every((n) => { const a = realise(n, 3, () => 0.5); const r = a.beats.filter((b) => !b.feint); return r.length === 1 && r[0].def.tell === TELL.NORMAL && r[0].def.fixed && r[0].impact - r[0].tellAt >= TUNING.flashLead - 1e-6 && r[0].impact - r[0].tellAt < TUNING.minFirstWindup && r[0].def.damage <= 12; });
+    setQuick('foxQuick', '0');
+    const off = quick.every((n) => [1, 2, 3].every((f) => !((Array.isArray(MOVES[n].weight) ? MOVES[n].weight[f - 1] : MOVES[n].weight) > 0)));
+    assert(quick.length > 0 && ok && off, `the quick blows (${quick.join(', ')}): one white hit, fixed, windup in [flashLead, minFirstWindup), light; weight 0 with ?foxQuick=0`);
+    setQuick('foxQuick', null);
+  }
   // the plan's table: windups, damage, bands, weights
   const W = (n, i = 0) => MOVES[n].beats.filter((b) => !b.feint)[i];
   assert(W('foxBite').windup === 0.5 && W('foxBite').damage === 18 && W('foxBite').dash.max === 4.5, 'Fox Bite: N 0.50, 18, a dash of up to 4.5 m');
@@ -1691,8 +1703,91 @@ async function scenarioBeam() {
 }
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
+// ================================================================== scenario: motion (ADR-223: held tells, the feet, the quick blows)
+/** With `?foxMotion=a` every blue / red blow that is not a draw, a cast or a long charge holds its cock
+ *  >= 0.12 s, in a pose that is coloured (blue taller, red lower than as authored); its windup is HELD.hold
+ *  longer, the strike from the cock and the cue as before; '0' plays the authored keys exactly; no foot
+ *  jumps more than 0.3 m in a frame (the release ease). */
+async function scenarioMotion() {
+  out('\n== scenario MOTION (ADR-223: the held blue / red windups, the released feet, the quick blows) ==');
+  const { makeAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/motionAudit.mjs`).href);
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { HELD } = await imp('src/entities/enemies/duelist/heldTells.js');
+  // 1. the data: off = authored; on = the same strike, HELD.hold more at the cock
+  {
+    let n = 0;
+    const bad = [];
+    for (const name of MOVE_NAMES) {
+      const def = MOVES[name];
+      if (def.transition || def.hidden || def.manual) continue;
+      const ph = Math.max(1, def.phase ?? 1);
+      setLook('foxMotion', '0');
+      const A0 = realise(name, ph, () => 0.5);
+      setLook('foxMotion', 'a');
+      const A1 = realise(name, ph, () => 0.5);
+      setLook('foxMotion', null);
+      if (!A0 || !A1 || A0.beats.length !== A1.beats.length) { bad.push(`${name}: beats differ`); continue; }
+      A0.beats.forEach((b0, i) => {
+        const b1 = A1.beats[i], D = b0.def;
+        const held = !b0.feint && (D.tell === TELL.BLUE || D.tell === TELL.RED) && !D.draw && !D.cast && !D.pack && D.windup < HELD.longer;
+        const dW = (b1.impact - b1.start) - (b0.impact - b0.start);
+        if (held) n++;
+        if (Math.abs(dW - (held ? HELD.hold : 0)) > 1e-6) bad.push(`${name} b${i}: windup +${dW.toFixed(3)}`);
+        if (Math.abs((b1.impact - b1.flash) - (b0.impact - b0.flash)) > 1e-6) bad.push(`${name} b${i}: cue moved`);
+      });
+    }
+    assert(n >= 6 && !bad.length, `?foxMotion=a: ${n} blue / red blows wind up ${HELD.hold} s longer at the cock, every other beat and every cue as authored (${bad.slice(0, 4).join(' | ')})`);
+  }
+  // 2. on the rig: the held blows hold, coloured; the feet do not jump
+  const rows = {};
+  for (const mode of ['0', 'a']) {
+    setLook('foxMotion', mode);
+    for (const [name, ph, dist] of [['moonLadder', 1, 3], ['sweepingBrush', 1, 2.4], ['riposte', 1, 2.4], ['brushstrokes', 1, 2.4]]) {
+      const G = build();
+      duel(G, { dist: 4, form: ph });
+      const A = makeAudit({ THREE, G, DT, place });
+      rows[mode + name] = A.measure(name, { dist, phase: ph });
+    }
+  }
+  setLook('foxMotion', null);
+  for (const [name] of [['moonLadder', 1, 3], ['sweepingBrush', 1, 2.4], ['riposte', 1, 2.4], ['brushstrokes', 1, 2.4]]) {
+    const r0 = rows['0' + name], r1 = rows['a' + name];
+    const k0 = r0.beats.find((b) => b.tell === TELL.BLUE || b.tell === TELL.RED), k1 = r1.beats.find((b) => b.tell === TELL.BLUE || b.tell === TELL.RED);
+    if (name === 'brushstrokes') { assert(r1.pop <= 0.3, `${name}: the jab's lifted foot no longer jumps (${r0.pop.toFixed(2)} ${r0.popK} -> ${r1.pop.toFixed(2)} ${r1.popK} m in a frame)`); continue; }
+    if (!k0 || !k1) { assert(false, `${name}: a blue / red beat measured`); continue; }
+    const taller = k1.tell === TELL.BLUE ? k1.cock.pel > k0.cock.pel + 0.01 : k1.cock.pel < k0.cock.pel - 0.03;
+    assert(k1.held >= 0.12 && k1.held > k0.held && taller, `${name} (${k1.tell}): held ${k0.held.toFixed(2)} -> ${k1.held.toFixed(2)} s (>= 0.12), the cock's pelvis ${k0.cock.pel} -> ${k1.cock.pel} m (${k1.tell === TELL.BLUE ? 'taller' : 'lower'})`);
+    if (true) assert(r1.pop <= 0.3, `${name}: no joint jumps more than 0.3 m in a frame (${r0.pop.toFixed(2)} ${r0.popK} -> ${r1.pop.toFixed(2)} ${r1.popK})`);
+  }
+}
+
+// ================================================================== scenario: audit (opt-in: every move's motion, printed)
+/** Every move measured on the rig (motionAudit.mjs): a table for the eye, no assertions. GCD_MOVES=a,b to pick. */
+async function scenarioAudit() {
+  out('== scenario AUDIT (every move as motion: hand speed, pops, sliding feet, the held windup per tell, facing) ==');
+  const { makeAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/motionAudit.mjs`).href);
+  // (GCD_LOOKS='sheathMotion=a,...': switches set for the run)
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].hidden && !MOVES[n].transition && !MOVES[n].verdict);
+  const rows = [];
+  for (const name of names) {
+    const def = MOVES[name];
+    const phase = Math.max(1, def.phase ?? 1);
+    const G = build();
+    duel(G, { dist: 4, form: phase });
+    const A = makeAudit({ THREE, G, DT, place });
+    const band = def.band ?? [0, 4];
+    const dist = Math.max(2.0, Math.min(6, (band[0] + Math.min(band[1], 8)) / 2));
+    const r = A.measure(name, { dist, phase });
+    rows.push(r);
+    A.print(out, r);
+  }
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
+}
 
 const S = {
+  audit: scenarioAudit,
+  motion: scenarioMotion,
   cost: scenarioCost,
   levels: scenarioLevels,
   data: scenarioData,
@@ -1710,7 +1805,7 @@ const S = {
   beam: scenarioBeam,
 };
 // (smoke is opt-in: a minute per phase of a fight, for a quick look)
-const OPT_IN = new Set(['smoke', 'cost']);
+const OPT_IN = new Set(['smoke', 'cost', 'audit']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }
