@@ -4177,6 +4177,9 @@ async function scenarioDeathblow() {
   duel(G, { dist: 2.0 });
   const { game, input } = G;
   const d = game.dragon, p = game.player, DB = DEFENSE.deathblow;
+  const { deathblowMoves } = await imp('src/entities/player/deathblow.js');
+  const MOVES = deathblowMoves();
+  assert(MOVES.length >= 8, `the move library has at least 8 moves (${MOVES.length})`);
   run(G, 0.4);
   const nearBreak = () => d.maxPosture - POSTURE.parry.normal * POSTURE.perfect + 1;
   const take = (mode, o = {}) => {
@@ -4194,14 +4197,14 @@ async function scenarioDeathblow() {
     p.streakT = 0;
     p.parryRun = o.run ?? 0;
     const move = o.move ?? 'plumThrust';
-    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, brokenAny: false, streaks: [], cine: null, run1: -1, streakAfter: -1, runAfter: -1, clips: [], winds: [], hitT: [], reeled: false, minGap: 99 };
+    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, brokenAny: false, streaks: [], cine: null, run1: -1, streakAfter: -1, runAfter: -1, clips: [], winds: [], hitT: [], hitR: [], reeled: false, minGap: 99, ghost: 0, tFlurry: -1, tCut: -1 };
     let flashT = null, pressed = false, pressedAtk = false, lastAtk = null;
     G.watch = (nm, e) => {
       if (nm === 'combat:flash' && e?.attack === move && flashT === null) flashT = game.time;
       if (nm === 'player:parry' && !t.parry) { t.parry = { ...e }; t.ox = p.position.x; t.oz = p.position.z; t.run1 = p.parryRun; }
-      if (nm === 'player:flurry') t.ev = { ...e };
-      if (nm === 'player:flurryHit') { t.hits.push({ ...e }); t.hitT.push(game.time); }
-      if (nm === 'player:flurryEnd') t.end = { ...e };
+      if (nm === 'player:flurry') { t.ev = { ...e }; t.tFlurry = game.realTime; }
+      if (nm === 'player:flurryHit') { t.hits.push({ ...e }); t.hitT.push(game.time); t.hitR.push(game.realTime); }
+      if (nm === 'player:flurryEnd') { t.end = { ...e }; t.tCut = game.realTime; }
       if (nm === 'player:hurt') t.hurt++;
       if (nm === 'player:streak') t.streaks.push(e.count);
       if (nm === 'dragon:stagger') t.reeled = true;
@@ -4216,6 +4219,7 @@ async function scenarioDeathblow() {
         t.far = Math.max(t.far, Math.hypot(p.position.x - t.ox, p.position.z - t.oz));
         t.minGap = Math.min(t.minGap, Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z));
         t.states.add(p.state);
+        t.ghost = Math.max(t.ghost, game.flow?.grade?.ghost ?? 0);
         if (p.flurry?.on) t.flurry = true;
         if (p.quickUntil > game.time) t.quick = true;
         if (o.press && t.quick && !pressedAtk && p.quickUntil > game.time && p.state !== 'attack') { pressedAtk = true; input.click(0); }
@@ -4232,6 +4236,7 @@ async function scenarioDeathblow() {
     t.streakAfter = p.streak;
     t.runAfter = p.parryRun;
     t.clips = [...p.db.clips];
+    t.moves = t.clips;
     return t;
   };
   // (a) a string's plain last blow: no automatic riposte, no combo, the counter window opens, the dodge streak is untouched
@@ -4263,7 +4268,7 @@ async function scenarioDeathblow() {
   const combo = (tag, t, n) => {
     const k = Math.min(n, DB.cap), mid = DB.mid.base + DB.mid.per * k, fin = DB.fin.base + DB.fin.per * k;
     const exp = mid * (n - 1) + fin;
-    out(`   ${tag}: event ${JSON.stringify(t.ev && { strikes: t.ev.strikes, art: t.ev.art, planted: t.ev.planted })} · hits ${JSON.stringify(t.hits.map((h) => [h.n, h.of, h.last, h.damage]))} · hp lost ${t.hpLost} (expected ${exp}) · far ${t.far.toFixed(2)} m · nearest ${t.minGap.toFixed(2)} m · winds ${t.winds.map((w) => w.toFixed(2)).join(' ')} · clips ${t.clips.join(' > ')} · end ${JSON.stringify(t.end)} · broken ${t.brokenAtEnd}`);
+    out(`   ${tag}: event ${JSON.stringify(t.ev && { strikes: t.ev.strikes, art: t.ev.art, planted: t.ev.planted })} · hits ${JSON.stringify(t.hits.map((h) => [h.n, h.of, h.last, h.damage]))} · hp lost ${t.hpLost} (expected ${exp}) · far ${t.far.toFixed(2)} m · nearest ${t.minGap.toFixed(2)} m · winds ${t.winds.map((w) => w.toFixed(2)).join(' ')} · hit gaps ${t.hitR.map((x, i) => (x - (i ? t.hitR[i - 1] : t.tFlurry)).toFixed(2)).join(' ')} · end ${(t.tCut - t.hitR[t.hitR.length - 1]).toFixed(2)} · clips ${t.clips.join(' > ')} · end ${JSON.stringify(t.end)} · broken ${t.brokenAtEnd}`);
     assert(t.ev?.art === 'deathblow' && t.ev.planted === true && t.ev.strikes === n && t.ev.air === false && t.ev.storm === false, `${tag}: one player:flurry art deathblow, strikes ${n} (${t.ev?.strikes})`);
     assert(t.hits.length === n && t.hits.every((h, i) => h.n === i + 1 && h.of === n && h.planted === true && h.last === (i === n - 1)), `${tag}: ${n} flurryHits, the last flagged (${t.hits.length})`);
     assert(t.hits.every((h, i) => Math.abs(h.damage - (i === n - 1 ? fin : mid)) < 0.51), `${tag}: ${n - 1} x ${mid} then a finisher of ${fin} (${t.hits.map((h) => h.damage).join(',')})`);
@@ -4276,6 +4281,10 @@ async function scenarioDeathblow() {
     assert(t.winds.length === n && t.winds.slice(0, n - 1).every((w, i) => (i === 0 || w <= t.winds[i - 1] + 1e-6) && w >= DB.windMin - 1e-6) && (n < 3 || t.winds[1] < t.winds[0]) && Math.abs(t.winds[n - 1] - DB.finWind) < 1e-6, `${tag}: the tempo quickens, the finisher is held (${t.winds.map((w) => w.toFixed(3)).join(' ')})`);
     assert(t.cine && t.streakAfter === 0 && t.runAfter === 0, `${tag}: the slow beat ran; the dodge streak untouched (${t.streakAfter}); parryRun spent (${t.runAfter})`);
     assert(t.hitT.every((x, i) => i === 0 || x > t.hitT[i - 1]), `${tag}: the blows land one after the other`);
+    assert(t.ghost > 0.3, `${tag}: the cold cast ran (grade.ghost ${t.ghost.toFixed(2)})`);
+    assert(t.moves.every((m) => MOVES.includes(m)) && t.moves.every((m, i) => i === 0 || m !== t.moves[i - 1]) && (n < 3 || new Set(t.moves).size >= Math.min(n - 1, 3)), `${tag}: the moves of the combo differ from their neighbours (${t.moves.join(' > ')})`);
+    assert(n < 2 || ['overhead', 'thrust', 'spinFin'].includes(t.moves[n - 1]), `${tag}: the finisher is one of the big ones (${t.moves[n - 1]})`);
+    if (n === 7) assert(t.tCut - t.tFlurry >= 1.4 && t.tCut - t.tFlurry <= 1.8, `${tag}: the combo's whole time ${(t.tCut - t.tFlurry).toFixed(2)} s (1.4-1.8)`);
   };
   // (b) a posture-breaking perfect parry: n perfect parries behind it, posture one parry from breaking
   for (const [run, n] of [[2, 3], [6, 7], [0, 1], [9, 7]]) {
@@ -4309,6 +4318,7 @@ async function scenarioDeathblow() {
     const t = take(mode, { run: 0, streak: 0, secs: 1.6, until: () => false });
     out(`   (e) ${mode}: streak events ${t.streaks.join(',')} · parryRun ${t.runAfter} · art ${t.ev?.art}`);
     assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(e) ${mode}: the parry counts in the streak, no deathblow`);
+    if (mode === 'planted') assert(t.ghost < 0.05, '(e) planted: the single cut takes no cold cast (' + t.ghost.toFixed(2) + ')');
   }
   RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
   assert(RC.RIPOSTE_CUT.opts.includes('old') && RC.RIPOSTE_CUT.opts.includes('planted') && RC.RIPOSTE_DEFAULT === 'deathblow', 'deathblow is the default; old and planted stay options');

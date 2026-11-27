@@ -210,7 +210,8 @@ export class GameFlow {
     // the flurry: the cold cast holds for as long as he cuts; every cut flickers the frame, the last
     // blow flashes it
     ev?.on('player:flurry', (d) => {
-      if (finite(d?.strikes) >= 2 && !d?.planted) this.grade.ghostPulse(finite(d?.dur, 0.6));
+      // (the deathblow combo, a planted answer, takes the same cold cast for its whole length; a single planted cut none)
+      if ((finite(d?.strikes) >= 2 && !d?.planted) || d?.art === 'deathblow') this.grade.ghostPulse(finite(d?.dur, 0.6));
     });
     ev?.on('player:flurryHit', (d) => {
       // the burst level (player/flurryBurst.js; ?burst=): 1 / 1 / 1 at level 0, as before

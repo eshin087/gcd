@@ -459,8 +459,38 @@ function lookD(game, x, y, z, ang, i, last, floor, cellM, rowM, a0, a1) {
 }
 
 /**
+ * THE EXIT: every blow goes THROUGH him. On the far side of his body, along the blow's direction, the blade's
+ * tip stands out (a short straight streak of letters, held a beat on a thrust) and letters spray out of his
+ * back in the look's own colours. Grows with the blow's number; the finisher's is the largest.
+ */
+function exitBurst(game, o, mode, ang, i, last, floor) {
+  const ramp = mode === 'b' ? 2 : mode === 'c' ? 3 : mode === 'd' ? 1 : 0;
+  let dx = fin(o.dx) ? o.dx : 0, dz = fin(o.dz) ? o.dz : 1;
+  const dl = Math.hypot(dx, dz) || 1;
+  dx /= dl;
+  dz /= dl;
+  const depth = last ? 0.75 : 0.6, x = o.x + dx * depth, z = o.z + dz * depth, y = o.y;
+  const thrust = o.thrust === true;
+  // the tip: a straight streak out of his back along the blow, on the screen's cell grid
+  const S = screen(game, x, y, z), cellM = S.cw * S.mpp, rowM = S.ch * S.mpp;
+  const g = strokeOf(ang), len = (thrust ? 1.4 : 0.8) + (last ? 0.4 : 0), step = stepAlong(ang, cellM, rowM), nt = Math.max(3, Math.min(14, Math.floor(len / step)));
+  const hold = thrust ? 0.12 : last ? 0.1 : 0.07;
+  for (let k = 0; k < nt; k++) {
+    const u = k / (nt - 1), t = u * len;
+    add(x + dx * t, y + R(-0.03, 0.03), z + dz * t, 0, 0, 0, hold * (1 - 0.4 * u), 0, 0, g, ramp, 0.9 - 0.4 * u, 5, u * 0.02, -1e9, 0.35);
+  }
+  // the spray: letters thrown out of his back (the far side), fanned across the blow's direction
+  const ns = last ? 30 : Math.min(18, 6 + 2 * i);
+  for (let k = 0; k < ns; k++) {
+    const sp = R(3.5, 7.5) * (last ? 1.2 : 1), fan = R(-0.5, 0.5), c = Math.cos(fan), sn = Math.sin(fan);
+    const vx = (dx * c - dz * sn) * sp, vz = (dx * sn + dz * c) * sp, vy = R(-0.4, 2.2);
+    add(x + R(-0.12, 0.12), y + R(-0.3, 0.3), z + R(-0.12, 0.12), vx, vy, vz, R(0.16, 0.4), sp / R(0.15, 0.5), -9, -1, ramp, 1, 0, 0, floor, 0.3);
+  }
+}
+
+/**
  * One blow of the combo lands. o: { x, y, z (contact, m), dx, dz (the blow's direction on the floor, unit),
- * i (1..n), n, last, a0, a1 (the blade's swing on the screen, rad; may be NaN) }. Returns the letters now
+ * i (1..n), n, last, a0, a1 (the blade's swing on the screen, rad; may be NaN), thrust (the blow is a thrust) }. Returns the letters now
  * alive; never throws.
  */
 export function deathblowHit(game, o) {
@@ -485,6 +515,7 @@ export function deathblowHit(game, o) {
     else if (mode === 'c') lookC(game, x, y, z, ang, i, last, floor, cellM, rowM);
     else if (mode === 'd') lookD(game, x, y, z, ang, i, last, floor, cellM, rowM, o.a0, o.a1);
     else lookA(game, x, y, z, ang, i, last, floor, cellM);
+    exitBurst(game, o, mode, ang, i, last, floor);
     P.alive = count;
     if (count > P.peak) P.peak = count;
     return count;

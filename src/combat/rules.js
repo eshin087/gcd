@@ -322,8 +322,9 @@ export const DEFENSE = Object.freeze({
   // blows no longer count in the dodge streak: `player.parryRun` counts the PERFECT parries (reset when
   // hurt, when his posture is back to 0, spent by a deathblow). Each blow is one of his own attack clips.
   // cap: the most blows; mid / fin: damage (final, exact, crit) of each non-final blow = mid.base + mid.per x
-  // N, of the finisher = fin.base + fin.per x N (N 1: 55; N 7: 6 x 36 + 145 = 361); mid.stop / mid.shake: the
-  // contact's own freeze (s) and shake of a non-final blow (the finisher keeps its clip's);
+  // N, of the finisher = fin.base + fin.per x N (N 1: 55; N 7: 6 x 36 + 145 = 361); stop: the contact's freeze (s) of the
+  // first and of the last non-final blow (it grows with the blow), finStop the finisher's long one; jolt: how hard each
+  // blow jolts him (0..1; the finisher 1.2);
   // wind0 / windK / windMin: the first blow's wind-up (s), each next one x windK, never under windMin;
   // finWind: the finisher's held wind-up; active / recover: a blow's timeline after it (s), finActive /
   // finRecover the finisher's; gap: the next blow starts this many s after the last one's active window and
@@ -335,11 +336,12 @@ export const DEFENSE = Object.freeze({
   // iframePad: s he stays unhurt after the end
   deathblow: Object.freeze({
     cap: 7,
-    mid: Object.freeze({ base: 22, per: 2, stop: 0.03, shake: 0.08 }),
+    mid: Object.freeze({ base: 22, per: 2 }),
     fin: Object.freeze({ base: 40, per: 15 }),
-    wind0: 0.16, windK: 0.85, windMin: 0.07, finWind: 0.18,
-    active: 0.07, recover: 0.22, finActive: 0.1, finRecover: 0.3, gap: 0.02,
-    step: 0.6, stepMid: 0.3, minGap: 1.0, turn: Object.freeze([0.15, 0.4]),
+    wind0: 0.12, windK: 0.85, windMin: 0.05, finWind: 0.2,
+    active: 0.05, recover: 0.2, finActive: 0.1, finRecover: 0.3, gap: 0,
+    stop: Object.freeze([0.045, 0.07]), finStop: 0.14, jolt: 0.9,
+    step: 0.6, stepMid: 0.3, minGap: 1.0,
     slow: Object.freeze({ slowmo: 0.3, dur: 0.25, zoom: 0, weight: 0.3 }),
     wMid: 0.4, wLast: 1.35, flash: 0.8, iframePad: 0.05,
   }),

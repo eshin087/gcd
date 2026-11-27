@@ -13,12 +13,12 @@
 //
 // Phases (P.db.phase): 'watch' (armed by the parry; starts when the trigger is seen and the parry's freeze is
 // over) -> 'combo' (the blows) -> 'tail' (the finisher's recovery: still unhurt) -> ''.
-import { clamp } from '../../core/math.js';
+import { clamp, lerp } from '../../core/math.js';
 import { mulberry32 } from '../../core/rng.js';
 import { DEFENSE } from '../../combat/rules.js';
 import { streakTier } from '../../combat/streak.js';
 import { deathblowHit } from '../../combat/deathblowFx.js';
-import { LIGHT, HEAVY, THRUST, CHARGE, chargeStats } from './combat.js';
+import { LIGHT, HEAVY, THRUST, ROLL_ATK, CHARGE, HIT_FEEL, chargeStats } from './combat.js';
 import * as THREE from 'three';
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -34,7 +34,7 @@ export function newDeathblowState() {
     phase: '', att: null, was: false, blue: false, t: 0, attack: null, tell: 'normal',
     run: 0, n: 0, i: 0, dealt: 0, done: false, started: false,
     ox: 0, oz: 0, dx: 0, dz: 1, side: 1, rip: null, point: { x: 0, y: 0, z: 0 },
-    last: '', clips: [], seq: [], rng: mulberry32(0x0db10c5), // (the stream: advances over every combo of the run)
+    last: '', lastFin: '', moveOf: null, clips: [], seq: [], rng: mulberry32(0x0db10c5), // (the stream: advances over every combo of the run)
     tip: new Float32Array(SAMPLES * 3), tipN: 0, tipI: 0, // the blade tip's NDC x, y and the time, a ring
   };
 }
@@ -50,28 +50,53 @@ export const deathblowTotal = (n) => {
   return m * (k - 1) + f;
 };
 
-// --- the clip pools (built on first use: nothing exists with the switch off) -------------------------------
+// --- THE MOVE LIBRARY (built on first use: nothing exists with the switch off) -------------------------------
+// Each move is one of the hero's own clips, picked for a silhouette that reads at the game camera (he is ~34 px
+// tall): its blade line (a level cut, a rising or a falling diagonal, an overhead cleave, a thrust, a turn, a
+// crouch), and `yaw`, how far (rad) he turns from the foe's bearing, to alternating sides, for it (0: square on).
+// Never a leap: a clip's hop is 0 here.
 let POOLS = null;
-const entry = (base, anim, kind, name) => ({ base, anim, kind, id: `${base.name}:${anim.clip ?? anim.kind}`, name });
-const looks = (base, kind) => [base.anim, ...(base.variants ?? [])].map((a) => entry(base, a, kind, base.name));
+const mv = (id, name, base, anim, yaw) => Object.freeze({ id, name, base, anim: Object.freeze({ kind: 'clip', hop: 0, ...anim }), yaw, kind: 'swing' });
 function pools() {
   if (POOLS) return POOLS;
-  const lights = [0, 1, 2, 3].flatMap((i) => looks(LIGHT[i], 'light')); // L1..L4 and every look of each
+  const L = LIGHT, H = HEAVY;
+  const cutRL = mv('cutRL', 'a level cut, right to left', L[0], { clip: 'drawCut', turn: 0.3 }, 0.4),
+    cutLR = mv('cutLR', 'a level cut, left to right', L[1], { clip: 'flatBackhand', turn: -0.4 }, 0.4),
+    fallR = mv('fallR', 'a falling diagonal from high right', L[0], { clip: 'fallingCut' }, 0.3),
+    fallL = mv('fallL', 'a falling diagonal from high left', L[1], { clip: 'fallingBackhand' }, 0.3),
+    riseL = mv('riseL', 'a rising diagonal from low left', L[1], { clip: 'risingBackhand' }, 0.3),
+    riseR = mv('riseR', 'a rising diagonal from low right', L[0], { clip: 'risingSlash' }, 0.3),
+    lunge = mv('lunge', 'a lunging stab', L[3], { clip: 'lunge' }, 0.15),
+    lowCut = mv('lowCut', 'a crouching sweep', L[2], { clip: 'lowSweep' }, 0.45),
+    rise = mv('rise', 'a low cut rising out of the crouch', ROLL_ATK, { clip: 'rollCut' }, 0.35),
+    spin = mv('spin', 'a back-cut, a turn', L[2], { clip: 'whirl', spin: -1 }, 0),
+    overhead = mv('overhead', 'an overhead cleave', H[4], { clip: 'slam' }, 0),
+    spinFin = mv('spinFin', 'a spinning cut', H[2], { clip: 'heavySpin', spin: -1 }, 0),
+    thrust = Object.freeze({ id: 'thrust', name: 'a thrust through him', base: THRUST, anim: THRUST.anim, yaw: 0, kind: 'thrust' });
   POOLS = Object.freeze({
-    open: lights.filter((e) => e.base !== LIGHT[2]), // (the first blow: a cut or the lunge, not a whirl)
-    mid: lights,
-    fin: [...looks(HEAVY[1], 'heavy'), ...looks(HEAVY[3], 'heavy'), ...looks(HEAVY[0], 'heavy'), entry(THRUST, THRUST.anim, 'thrust', THRUST.name)],
+    open: [cutRL, cutLR, fallR, fallL, riseL, riseR],
+    mid: [cutRL, cutLR, fallR, fallL, riseL, riseR, lunge, lowCut, rise, spin],
+    fin: [overhead, thrust, spinFin],
   });
   return POOLS;
 }
+/** The move library's ids (tests). */
+export const deathblowMoves = () => {
+  const P = pools();
+  return [...new Set([...P.open, ...P.mid, ...P.fin].map((e) => e.id))];
+};
 
-/** The attack definition of blow `e` on this timeline (its own clip and contact look, the combo's weights). */
-function blowDef(e, wind, last) {
-  const D = DEFENSE.deathblow, b = e.base;
+/** The attack definition of blow `i` (0-based) of `n` (its own clip and contact look, the combo's weights). */
+const blowStop = (i, n) => {
+  const D = DEFENSE.deathblow;
+  return i >= n - 1 ? D.finStop : lerp(D.stop[0], D.stop[1], n > 2 ? clamp(i / (n - 2), 0, 1) : 1);
+};
+function blowDef(e, wind, last, i, n) {
+  const D = DEFENSE.deathblow, b = e.base, stop = blowStop(i, n);
   return Object.freeze({
     ...b, name: `db:${b.name}`, anim: e.anim, variants: null, button: null, keepYaw: true, chain: 9, lunge: 0, travel: 0,
     windup: wind, active: last ? D.finActive : D.active, recovery: last ? D.finRecover : D.recover,
-    ...(last ? null : { hitstop: D.mid.stop, shake: D.mid.shake, punch: 0, kick: 0 }),
+    hitstop: stop / HIT_FEEL.crit.stop, shake: 0, punch: 0, kick: 0, // (the contact's weights are `deathblowLanded`'s)
   });
 }
 
@@ -80,20 +105,32 @@ export const deathblowWind = (i, n) => {
   const D = DEFENSE.deathblow;
   return i === n - 1 ? D.finWind : Math.max(D.windMin, D.wind0 * Math.pow(D.windK, i));
 };
+/** About how long a combo of `n` blows runs (s): the cast's hold. */
+export const deathblowDuration = (n) => {
+  const D = DEFENSE.deathblow;
+  let t = 0;
+  for (let i = 0; i < n; i++) t += deathblowWind(i, n) + (i === n - 1 ? D.finActive + D.finStop : D.active + D.stop[1] * 0.8 + D.gap);
+  return t;
+};
 
-/** Pick the sequence of clips for `n` blows (entries), never the last combo's. */
+/** Pick the sequence of moves for `n` blows (entries): none twice in a row (nor the one before it where the
+ *  pool allows), never the last combo's sequence. */
 function pickSeq(S, n) {
   const P = pools(), r = S.rng, pk = (a, not) => {
     let e = a[Math.floor(r() * a.length) % a.length], g = 0;
-    while (not && g++ < 8 && (e.id === not.id)) e = a[Math.floor(r() * a.length) % a.length];
+    while (not.length && g++ < 12 && not.includes(e.id)) e = a[Math.floor(r() * a.length) % a.length];
     return e;
   };
   const seq = [];
   for (let tries = 0; tries < 6; tries++) {
     seq.length = 0;
     for (let i = 0; i < n; i++) {
-      const prev = seq[i - 1], pool = i === n - 1 ? P.fin : i === 0 ? P.open : P.mid;
-      seq.push(pk(pool, prev));
+      const pool = i === n - 1 ? P.fin : i === 0 ? P.open : P.mid;
+      const not = [];
+      if (i > 0) not.push(seq[i - 1].id);
+      if (i > 1) not.push(seq[i - 2].id);
+      if (i === n - 1 && S.lastFin) not.push(S.lastFin);
+      seq.push(pk(pool, not));
     }
     if (seq.map((e) => e.id).join('|') !== S.last) break;
     if (tries === 5) { // (stuck on the same one: the finisher moves on by one)
@@ -158,7 +195,8 @@ export function tickDeathblow(P, dt) {
     sampleTip(P, g);
     if (a.hit) {
       const d = a.def;
-      if (fin(g.hitstopTimer) > 0 || a.t < d.windup + d.active + DEFENSE.deathblow.gap) return true;
+      // (a non-final blow gives way to the next the moment its freeze is over: the blows are one rush; the finisher plays out)
+      if (fin(g.hitstopTimer) > 0 || (S.i >= S.n - 1 && a.t < d.windup + d.active + DEFENSE.deathblow.gap)) return true;
       if (S.i >= S.n - 1) {
         S.phase = 'tail';
         end(P);
@@ -257,6 +295,7 @@ function startCombo(P, att) {
   const seq = pickSeq(S, S.n);
   S.seq = seq;
   S.last = seq.map((e) => e.id).join('|');
+  S.lastFin = seq[S.n - 1].id;
   S.clips.length = 0;
   P.riposte.att = null; // (a flare counter waiting is replaced by this)
   P.kb.x = P.kb.z = 0;
@@ -271,7 +310,7 @@ function startCombo(P, att) {
   AT[0] = deathblowWind(0, S.n);
   AT[1] = AT[0] + D.active + D.gap;
   P._emit('player:flurry', {
-    strikes: S.n, art: 'deathblow', air: false, dur: AT[0], streak: S.n, tier: streakTier(S.n), storm: false, at: AT, figure: '', planted: true,
+    strikes: S.n, art: 'deathblow', air: false, dur: deathblowDuration(S.n), streak: S.n, tier: streakTier(S.n), storm: false, at: AT, figure: '', planted: true,
   });
   return true;
 }
@@ -281,15 +320,15 @@ function startBlow(P, att, i) {
   const S = P.db, D = DEFENSE.deathblow, p = P.position, e = S.seq[i], last = i === S.n - 1;
   const dist = aim(P, att, S);
   if (dist < 0) return finish(P);
-  const def = blowDef(e, deathblowWind(i, S.n), last);
+  const def = blowDef(e, deathblowWind(i, S.n), last, i, S.n);
   // the turn: the foe's bearing, a little to this blow's side (alternating); the finisher faces him square
   S.side = -S.side;
-  const off = last ? 0 : S.side * (D.turn[0] + (D.turn[1] - D.turn[0]) * S.rng());
+  const off = last ? 0 : S.side * e.yaw * (0.8 + 0.4 * S.rng());
   const yaw = Math.atan2(S.dx, S.dz) + off;
   P.yaw = yaw;
   P.quickUntil = -Infinity;
   P.kb.x = P.kb.z = 0;
-  if (e.kind === 'light' || e.kind === 'heavy' ? !P._startAttack(def) : !startThrust(P, def)) return finish(P);
+  if (e.kind === 'thrust' ? !startThrust(P, def) : !P._startAttack(def)) return finish(P);
   P.yaw = yaw;
   P.object3d.rotation.y = yaw;
   const a = P.atk;
@@ -312,6 +351,7 @@ function startBlow(P, att, i) {
   P.iframeT = Math.max(fin(P.iframeT), def.windup + def.active + def.recovery + D.iframePad);
   S.i = i;
   S.clips.push(e.id);
+  S.moveOf = e;
   return true;
 }
 
@@ -346,13 +386,18 @@ const ANG = [NaN, NaN];
 /** A blow's contact weight and its events (after `_applyHit` dealt `dealt`), and the hit effect. */
 export function deathblowLanded(P, dealt) {
   const S = P.db, D = DEFENSE.deathblow, R = DEFENSE.riposteCut, g = P.game, G = DEFENSE.flurry.ground, PL = DEFENSE.plunge;
-  const n = S.n, i = S.i, last = i >= n - 1, k = last ? D.wLast : D.wMid;
+  const n = S.n, i = S.i, last = i >= n - 1, k = last ? D.wLast : D.wMid * (0.7 + 0.6 * (i / Math.max(1, n - 1))); // (each blow heavier than the last)
   dealt = fin(dealt);
   S.dealt += dealt;
-  P._hitstop(PL.impactStop * R.stopK * k, 0.03);
   g.shake?.(Math.min(1, (PL.impactShake + R.shakePerN * n) * k) * G.shake);
   g.punch?.((R.punch + R.punchPerN * n) * k * G.kick);
   P.anim?.kickCoat?.(1.1, P.anim.noise);
+  // (the foe's own crit freeze is longer than a rush of blows can bear: the combo's freeze grows blow by blow)
+  const stop = blowStop(i, n);
+  if (fin(g.hitstopTimer) > stop) g.hitstopTimer = stop;
+  // his body jolts with every blow (the finisher's stagger is takeHit's reel 2)
+  const att = S.att;
+  if (att && Number.isFinite(att.jolt)) att.jolt = Math.max(att.jolt, last ? 1.2 : D.jolt);
   P._emit('player:flurryHit', { n: i + 1, of: n, last, damage: dealt, planted: true });
   // the hit effect at the contact: the blade's own direction, its swing in the screen
   let a0 = NaN, a1 = NaN;
@@ -367,7 +412,7 @@ export function deathblowLanded(P, dealt) {
     }
   }
   try {
-    deathblowHit?.(g, { x: pt.x, y: pt.y, z: pt.z, dx: Math.sin(P.yaw), dz: Math.cos(P.yaw), i: i + 1, n, last, a0, a1 });
+    deathblowHit?.(g, { x: pt.x, y: pt.y, z: pt.z, dx: S.dx, dz: S.dz, i: i + 1, n, last, a0, a1, thrust: S.moveOf?.kind === 'thrust' });
   } catch (err) {
     console.error('[deathblow] fx failed', err);
   }
