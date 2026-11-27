@@ -30,6 +30,46 @@ after table and the films (all nine bosses, 0 | a | b, half speed) in the PR.
 **Open:** the owner's pick; the wyrm's poses; the execution's thrust, the plunge and the flurry's cuts; blows whose
 zone outreaches the drawn limb (the motion sessions' data, listed in the notes folder).
 
+## 2026-11-27 — The wyrm's head in the meteors' roar (ADR-258; branch `claude/wyrm-head-motion`)
+
+**Owner:** "The dragons head twists too far back and looks unnatural when it raises its head up to shoot fire."
+
+**What changed:** Meteor Rain's rear-up and cast hold the head up and forward over the forelegs and look straight
+up above it (`fireAttacks.js` `HEAD_UP`, `?wyrmHead=a` the default, `0` as before). New opt-in integ `wyrmhead`
+measures every fire move's head: Meteor Rain was 90° up and 15° past vertical toward the tail, the head behind the
+neck's base, the brow rolled 149°; now 66° up in the chest's frame, never past upright, the head ahead of the
+neck's base. Films before / after sent.
+
+**Open:** the flights' head in a banked body (skyStrafe's recovery, skyCataclysm's wheel) also measures past
+vertical; not touched.
+
+## 2026-11-27 — Xin Yi's motion audit: limbs on the line, guns on the line of fire (ADR-253; branch `claude/xin-yi-motion`)
+
+**Owner (through the boss motion audit's lead session):** audit every boss with docs/ANIMATION.md, Sekiro, Phantom
+Blade Zero and Onimusha in mind: weird arm angles, unrealistic attacks, kicks bent at the strike, readable tells;
+special effects as 2-3 options in the fox's and Bai Wuji's style. One draft PR per boss, films, the owner picks.
+
+**Measured** (woke.mjs `audit` with each blow's line (`off`, `lat`), the new opt-in `guns` (the drawn barrel against
+the line of fire, the arm, the muzzle, the other hand) and `probe` (one move frame by frame round its contacts)):
+punches 22 - 63 degrees off the line (the back-fist 0.6 m short and wide); kicks straight two or three frames then
+folded (Sky Turns' first tornado 118 on its hit-stop frame); the elbow / spin kick / knee 0.44 - 0.73 m short; the
+sweep 94 degrees round and 1 m short, its leg flailing (keys a third of a turn apart; the foot the planner's); the
+mirrored palm on the wrong hand; the right gun's barrel 55 - 113 degrees off its shots, shots under the gun, no kick.
+
+**What changed** (all behind `?oneMoves=b`, now the default): `wokenOne/limbs.js` (onLine, holdKick, sweepOn,
+fitZone, aimEarly; `TUNING.motion`), `wokenOne/gunAim.js` (each gun on its line, the kick, the muzzle point;
+`muzzlePoint`), iron.js fires from the muzzle on `b`. Effect options (`fxIron.js`, default '0'): `?oneGunFx=a|b`,
+`?oneBoltFx=a|b`. Lab LOOKS rows. Tests: woke `line` (in the suite); `guns`, `probe` opt-in.
+
+**Verification:** woke `line` and the full woke suite; the audit before / after (ADR-253's numbers); films before
+(main) and after (`b`) at the game camera and from the side, every move of every phase; the effect options close and
+at the game camera.
+
+**The owner's picks** (from the films): motion `b`, the shots `b` (the script), the bolts `a` (the seed): PICKED.
+
+**Open / next:** the hooks from the side, the
+sweep's knee at its very contact, Iron Rain's twin arms; the feet jump in `anim.js _feetClip` belongs to the hero
+session.
 ## 2026-11-27 — Lu Wusheng audited: the form, the pace, three looks for the draw (ADR-252; branch `claude/lu-wusheng-motion`)
 
 **Goal:** the owner's motion audit of every boss (one session and one draft PR each, batch 2), for Lu Wusheng:

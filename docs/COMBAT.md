@@ -2742,6 +2742,26 @@ STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 9
 - **A cued shot is never too fast to answer:** it takes at least `shotCue` 0.26 s from the gun to you (fired close,
   it flies a little slower), so its cue always counts (a shot cued under 0.2 s fizzles, the shots' own rule).
 
+### The limbs on the line (`?oneMoves=b`, 2026-11-27, ADR-253; the owner's pick, the default; `?oneMoves=a` as before)
+`a` and these, every timing as `a` (windups, cues, impacts; the LINE test compares every realisation):
+- **Straight blows on the line**: the cross, jab, palm, double palms and the back-fist land with the hand on the line
+  from its shoulder to his centre line, the arm long (elbows 164 - 169 at contact), reaching the hero (they were 22 -
+  63 degrees off; the back-fist 0.6 m short and to the side). The point-blank shot's arm is aimed at the hero.
+- **Kicks held straight**: the contact pose is held 0.35 of the follow-through before the leg draws back (every kick
+  173 at contact, still straight on the hit-stop's frame; Sky Turns' first tornado folded to 118 there).
+- **Blows that reach**: the elbow, the spin back kick, the hook, the flying knee and the straight blows step in until the
+  limb meets the hero, and their zones reach no further than the limb (the elbow's line 2.2 -> 1.1 m, the spin back
+  kick's 2.5 -> 1.76; the flying knee's dash stops 0.92 m short, not 1.35). The drop heel keeps its ring (it lands
+  0.68 m short; the ring is the blow).
+- **The sweep crosses you**: Low Wind's leg passes through the hero's line at its impact (it was 94 degrees round and 1
+  m short), long through its turn.
+- **The guns** (drawn only): each barrel on the line of fire, every shot from the drawn muzzle falling to chest height
+  along its way, the firing arm kicking; Turning Wheel fires from both guns. Iron Rain's aim is up and held from 0.6 of
+  its windup (the first slugs left while the arms were still rising).
+- **The shots and bolts redrawn** (drawing only): the owner picked the script for the shots (`?oneGunFx=b`: digits fanned
+  from the muzzle, a curtain of falling digits behind each slug) and the seed for the palm bolts (`?oneBoltFx=a`: a hot
+  core in three turning rings of digits); `0` as before, the other option behind its switch.
+
 ## Halcyon (2026-11-22, ADR-160; `?level=city`)
 
 Halcyon, the Last Saviour: a flying strongman from a future that has not happened yet, BARE-HANDED
