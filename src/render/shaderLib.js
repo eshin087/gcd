@@ -143,6 +143,10 @@ export function createSharedUniforms() {
     // stagger), uBendS (amp, along, out, drop), uBendE (dark, edge, jitter, 0). uBend.x 0: the grass as before
     uTrail: { value: Array.from({ length: TRAIL_N }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uTrailBox: { value: Array.from({ length: TRAIL_CH }, () => new THREE.Vector4(0, 0, 0, 0)) },
+    // ... and (the living world's fast path, `?lifeFast=`) one circle round all the chunks' circles: x, z,
+    // radius, w 1 = a cell outside it is bent by nothing (trailBend returns at once; radius 0: no wake at
+    // all). w 0: no such circle, every cell walks the chunks as before
+    uTrailAll: { value: new THREE.Vector4(0, 0, 0, 0) },
     uBend: { value: new THREE.Vector4(0, 0, 0, 0) },
     uBendT: { value: new THREE.Vector4(0, 1, 0, 0) },
     uBendS: { value: new THREE.Vector4(0, 0, 0, 0) },
