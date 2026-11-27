@@ -267,6 +267,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Scenario `heroref`; the Lab's `idles` (ref / new / old), `guard` and `idle ▸` (`stow`) rows; pair sheets against the footage
 - [ ] The owner's look at the films (the hold's hands sit higher than the footage's, the guard from the game camera)
 - [ ] Played on the iPhone
+## M1.94 — The run from the owner's sketch (2026-11-26, `claude/hero-run-sketch-6baa40`, ADR-229)
+- [x] `player/runArms.js` `e` (open) / `f` (wider): the free arm off his side, drawn past the coat from behind (measured on the drawn frame)
+- [x] `player/runSword.js` `trail` / `swept` / `side`: the blade in the forearm's line, behind him and down, rocking with the arm
+- [x] A block / parry / flask / charge out of a trailing blade enters over 0.24 s (no one-frame flip)
+- [x] `herorun` bounds the opened arms and the trailing carries (the wrist, the legs, the coat, the grass, pops)
+- [x] The owner picks a sword carry and an arm width: `trail` and `e` (2026-11-26), now the defaults
+- [x] `trail`'s sword arm: the solver draws the asked elbow (`_swordOpen`); out along the owner's arrow from the game camera, a relaxed elbow
+- [x] `flail`, `b15`-`b45`, `a1`-`a4` tried; `nat` (a real grip: the blade ~right-angled to the forearm, the fist by his hip) the default
+- [x] Rebuilt from the hand's grip (`fistBlade`); `g2` the owner's pick, clear of every cloth sheet (≥ 12.6 cm), the default
+- [x] `runStyle.js` (four postures, behind `?runStyle=`); the free fist at the hip (`h`) and the guard (`g`), both turned down: the free arm stays `e`
+- [ ] The whole run (legs, lean, torso): its own pass
+- [ ] Played on the iPhone
+
 ## M1.90 — The run carried like the owner's reference (2026-11-25, `claude/run-sword-hand`, ADR-204)
 - [x] `player/runSword.js`: the sword carried forward at the hip, rocking with the forearm (`?runSword=hip|old`, the Lab's `run sword` row)
 - [x] `player/runArms.js` `d`: the full pump (the default)

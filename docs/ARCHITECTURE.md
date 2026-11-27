@@ -1366,8 +1366,9 @@ on the move (`FIGHT_RUN`; a sprint trails the blade); a roll and a backstep ease
 of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco clip settles the
 blade into the stance over `LOCO_SETTLE` (0.24 s).
 **The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
-`runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
-`runArmMode()` / `setRunArm(id)`, default `d`, the owner's pick, ADR-204; `d` the full pump), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
+`runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of its carries (`?runArm=a|b|c|d|e|f|old`,
+`runArmMode()` / `setRunArm(id)`, default `e`, the owner's pick, ADR-229; `d` the full pump, ADR-204; `e` / `f` the pump
+opened out from his side), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
 far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
 `lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
 back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as
@@ -1375,9 +1376,16 @@ the sprint builds. The dash's weight eases on `A.time` (`A.runArmS`), so `loco()
 `old` returns false and `loco()` writes the swing before ADR-187. A duelist's footwork never calls it.
 **The run's sword arm** (ADR-204, `runSword.js`): `runSword(OUT, phase, armF, sprint, tilt)` fills the sword
 hand's targets on the run (`OUT.h` → `rH`, `OUT.p` → `rP`, `OUT.d` the blade, `OUT.f` its flat → `swF`) from joint
-angles (`RUN_SWORDS`) posed by forward kinematics against the torso's line, turned by its lean `tilt`; `?runSword=hip|old`,
-`runSwordMode()` / `setRunSword(id)`, default `hip` (the blade forward at the hip). `old` returns false and `loco()`
-keeps the carry before. `loco()` blends the backpedal, the fight carry and the sprint over it.
+angles (`RUN_SWORDS`) posed by forward kinematics against the torso's line, turned by its lean `tilt`;
+`?runSword=hip|trail|swept|side|old`, `runSwordMode()` / `setRunSword(id)`, default `trail` (the owner's pick, ADR-229; `hip` the blade forward at the
+hip, ADR-204); `trail`, `swept`, `side` carry the blade on from the forearm's line behind him and down (`trailing()`:
+lifted `tilt` off the line, turned `yaw` out, its slant held in `down`). `old` returns false and `loco()` keeps the
+carry before. `loco()` blends the backpedal, the fight carry and the sprint over it. A block, a parry, the flask or a
+charge entered from loco with the blade pointing behind him (`from[swD].z < -0.35`) cross-fades over `IDLES.cutFade`
+at least (`_idleLife`, as out of the old trailing rest). `OUT.open` (0..1, `trail`: 1) asks the solver for the sword
+arm's full reach: `loco()` sets `A.reachT` (only for the clip's own pose, `p === A.target`; × the carry's share;
+`locoGuard` × (1 − guardHold)), `HeroAnimator._swordOpen()` cross-fades it across clip changes (`reachFrom`), and
+`_arm` reaches `max(lock, open)` of the way past the soft reach for the hero's sword arm.
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
