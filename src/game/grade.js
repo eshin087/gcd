@@ -36,6 +36,9 @@ export class ScreenGrade {
     this.dim = 0; // the cinema beat's dim 0..1 (uExposure x 1 - DIM_EXPOSURE x dim)
     this.dimHold = 0;
     this.dimTarget = 0;
+    this.mEnv = 0; // the deathblow's code (combat/deathblowMatrix.js): its envelope 0..1 (it replaces the cold cast while it runs)
+    this.mTint = 0; // how far the frame goes to matrix green at full envelope 0..1
+    this.mFlash = 0; // its finisher's flash 0..1
     this.t = 0;
   }
 
@@ -86,6 +89,13 @@ export class ScreenGrade {
     this.dimHold = Math.max(this.dimHold, clamp(finite(hold, 0.4), 0, 3));
   }
 
+  /** The deathblow's code view: `env` 0..1 (the cold cast gives way to it), `tint` how far the frame goes green, `flash` a brighter beat. */
+  matrixSet(env = 0, tint = 0, flash = 0) {
+    this.mEnv = clamp(finite(env), 0, 1);
+    this.mTint = clamp(finite(tint), 0, 1);
+    this.mFlash = clamp(finite(flash), 0, 1);
+  }
+
   /** Instantly drop all effects (used while the screen is fully black). */
   resetInstant() {
     this.flash = 0;
@@ -95,6 +105,7 @@ export class ScreenGrade {
     this.ghost = 0;
     this.ghostHold = 0;
     this.dim = this.dimHold = this.dimTarget = 0;
+    this.mEnv = this.mTint = this.mFlash = 0;
   }
 
   update(dt) {
@@ -127,7 +138,9 @@ export class ScreenGrade {
     const dip = this.dipT > 0 ? this.dipAmt * Math.sin(Math.PI * (1 - this.dipT / this.dipDur)) : 0;
     if (u.uHurt) u.uHurt.value = clamp(Math.max(this.hurt, beat), 0, 1);
     if (u.uFade) u.uFade.value = clamp(Math.max(this.fade, dip), 0, 1);
-    const g = this.ghost * this.ghost * (3 - 2 * this.ghost);
+    const g = this.ghost * this.ghost * (3 - 2 * this.ghost) * (1 - this.mEnv); // (the code view replaces the cold cast)
+    if (u.uMatrix) u.uMatrix.value = this.mEnv * this.mTint;
+    if (u.uMatrixFlash) u.uMatrixFlash.value = this.mFlash;
     if (u.uDesat) u.uDesat.value = clamp(Math.max(this.desat, g * 0.38), 0, 1);
     if (u.uWarm) u.uWarm.value = clamp(this.warm * (1 - 0.85 * g), 0, 1);
     if (u.uExposure) {

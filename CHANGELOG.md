@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-one pieces of work since 0.4.0:
+One hundred and twenty-four pieces of work since 0.4.0:
 - **Bai Wuji glides: quicker, one-handed, and his barrier opens easier** (2026-11-27, ADR-250). *Changed:* Bai Wuji's kicks and punches are
   rebuilt by hand: his legs land straight, his hands stay in his pockets for most of phase 1 (one comes out in
   phase 2, both in phase 3), normal blows snap out of the stance, blue and red ones hold a pose you can read, and
@@ -13,6 +13,29 @@ One hundred and twenty-one pieces of work since 0.4.0:
   perfect answer), your cuts deal x2.5 through it, and his health is 20000 (was 26000); his patience runs out
   after 20 s. *Fixed:* a falling piece no longer lands on you while you are down, and his mercy counts the time
   you are held in real time, so a quick string cannot hold you past the cap through hit freezes.
+- **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
+  longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
+  bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and
+  opens a short window for your own counter cut. When a parry breaks his posture, or you parry a blue warning blow,
+  the hero answers with N DEATHBLOWS where he stands (N = the perfect parries banked, 1 to 7): a combo of his own
+  cuts in a new order every time, each freezing for a beat at the contact with the blade in him, under the dodge
+  flurry's cold cast and a camera lean; ~3 s for seven. *Added:* every deathblow leaves a straight cut on his body
+  that crosses the last and shatters on the finisher (Shatter Web), blood (a spray, a wound along the cut, pools on
+  the floor until the fight resets), and its own sound, a blade through flesh; a chain of perfect parries throws
+  more sparks and embers. Switches: `?dbfx=a|b|c|d`, `?dbsfx=0|a|b|c|d`, `?blood=0`, `?dbmatrix=rain|world`
+  (off by default), `?parryRiposte=deathblow|planted|old`, `?parryGrow=a|0`; Lab streak row; TRAINING: Deathblow
+  x3 / x7, Deathblow on a blue blow.
+- **The flash chain: counter him three times in a row** (2026-11-26, ADR-246). *Changed (the owner's pick from films of every duelist):* a flash
+  counter no longer ends his string at once: he is thrown back and strikes back straight
+  away, and a flash counter of that blow is the next link. Three in a row (70, 85, then 100 damage, each freeze
+  and ring a little bigger) and he reels with the crit window open, as a single flash counter does today. Every
+  duelist; the timing window is the same for every link. `?counter=0` (the Lab's `counter` row: old) gives the
+  flash counter as it was.
+- **The living world draws for less** (2026-11-26, ADR-245). *Changed:* the atmosphere looks exactly the same but costs
+  less: its letters hand the graphics card only what is drawn, empty layers are skipped, and the ground's
+  footprint flash and the grass's wake stop working on pixels they cannot reach (the ground pass about 11 - 17 %
+  cheaper while you leave prints). `?perf`'s BENCH now reports the living world's own share. `?lifeFast=0` runs
+  the old paths.
 - **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
   perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
   curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round

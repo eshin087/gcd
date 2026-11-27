@@ -28,6 +28,10 @@ const { createVeiledCrossing, CROSSING } = await imp('src/world/veiledCrossing.j
 const { Destructibles } = await imp('src/world/destructibles.js');
 const { Scars } = await imp('src/world/scars.js');
 const { Player } = await imp('src/entities/player/player.js');
+// (this suite measures the barrier, the pull and the domain, not the riposte: a parry here answers with the
+// old riposte, as the other suites that parry for something else do; the deathblow has its own, `duel deathblow`)
+const { setRiposteMode } = await imp('src/entities/player/riposteCut.js');
+setRiposteMode('old');
 const { Untouched } = await imp('src/entities/enemies/untouched/untouched.js');
 const { MOVES, MOVE_NAMES, CLIP, TRANSITIONS, realise, HANDLERS, COUNTER, STREAK } = await imp('src/entities/enemies/untouched/moves.js');
 const { TUNING } = await imp('src/entities/enemies/untouched/tuning.js');

@@ -6367,6 +6367,33 @@ fewer letters across. The Cinder Wyrm (the wyrm's art path), the props and the a
   Next: the owner's `?perf` report from the iPhone in a fight on each of the three levels, then the parts
   it names. Not measured: any phone.
 
+## ADR-211 — The perfect parry earns its own reward: N planted deathblows (2026-11-26)
+
+- **Context:** a parried last blow of a string answered with the perfect dodge's flurry (vanish, flash cuts round
+  him, leaping arts), every string, so the parry had no reward of its own. The owner gave reference footage of a
+  sword-deflect chain and of a sword-action game's skills, and shaped the answer over five filmed rounds: a planted
+  single cut (kept as `planted`), then a posture-break two-beat deathblow ("i dont like this"), then "the parry
+  streak ... do # of streak death blows to the boss" with a special effect per hit, then faster / weightier /
+  piercing, then a hit-pause per blow, blood, cuts on the sword's contact, then Shatter Web without the big slashes,
+  the Flesh sound and no matrix effect ("push this out").
+- **Decision:** against a duelist (`?parryRiposte=deathblow`, the default), parries fill posture and `player.parryRun`
+  banks perfect parries (not the dodge streak; spent by a combo, reset when he is hurt or the posture empties). A
+  string's last blow parried opens the counter-cut window, nothing automatic. A parry that breaks posture, or any
+  parry of a blue-tell blow, starts the combo (`player/deathblow.js`, `DEFENSE.deathblow`): N = clamp(parryRun, 1, 7)
+  of the hero's own attack clips (13 moves, no repeat in a row, never the last combo's order, the finisher one of
+  three big ones), within 0.6 m of where he parried, unhurtable; every contact freezes the world `hold` real
+  seconds (0.16 - 0.2 s, the finisher 0.38 s; ~3 s for N = 7) with the dodge flurry's cold cast and a 12 m camera
+  lean; damage 22 + 2N a blow, 40 + 15N the finisher. Each hit calls `combat/deathblowFx.js` `deathblowHit` (the
+  blade's sampled `path`, `base`, `hold`): one straight cut centred on the contact along the swing (`?dbfx=b` Shatter
+  Web, the owner's pick: the cuts cross and snap on the finisher; a, c, d kept), blood (`?blood=0`: a spray, a wound
+  along the cut, LetterBatch pools until the fight resets) and the exit burst; the fire-field heat is budgeted (280
+  blobs). The hero's own blade line / arc is not drawn for a deathblow swing (`slashFx.owns`). Sound
+  `audio/deathblowSfx.js` (`?dbsfx=a` Flesh, the owner's pick; b c d kept, 0 = the flurry's). A matrix look
+  (`combat/deathblowMatrix.js`, `?dbmatrix=rain|world`) is built but off.
+- **Consequences:** the dodge streak and its flurry are the dodge's alone; the wyrm keeps the flurry riposte. Suites
+  whose checks measure something else pin `old` (duel PERFECT / STREAK / FXLOOKS part 3, city win, veil).
+  `?parryRiposte=old|planted`, `?parryGrow=0`, `?dbsfx=0` give the earlier behaviour back.
+
 ## ADR-210 — The perfect dodge's flurry: smear, floor sparks, aerial cuts and four looks behind `?dodgefx` (2026-11-25)
 
 - **Context:** the owner: the perfect dodge should not have "random like hops over the character and should be
@@ -6884,6 +6911,56 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   `?endslash=enemy`, `?endbeat=0`; combo A in the game (`DEFAULT_COMBO`; the headless sims keep production's
   defs, which their checks are written for; `?combo=0` plays production's).
 
+## ADR-245 — The living world's fast path: the same picture for less (`?lifeFast=`) (2026-11-26)
+
+- **Context:** the owner: "i feel like the ascii atmosphere effects is causing a lot of performance issues. is
+  there a way we can improve the performance while still making it look as good and alive?" (target: 60 fps
+  on every device; their iPhone and their integrated-graphics laptop are GPU-bound). Measured on origin/main
+  in fights on five levels (RTX 4090 / i9, the machine shared): the living world's own letters are nearly free
+  on the GPU (about 0.02 - 0.04 ms of the effects pass at the phone's size; hiding them all moved the frame
+  within the noise). What did cost: the dragon-printed ground's step flash walked 12 prints with a `cos` and a
+  `sin` each on EVERY pixel while any print lived, and the grass wake walked its chunk circles on every pixel
+  (together 9 - 21 % of the ground pass at 4K); and every batch re-uploaded its whole instance arrays each
+  frame (62 KB to draw 77 mist letters; 115 - 231 KB a frame in all), with empty batches still drawn. The
+  life update itself is 0.06 - 0.34 ms of CPU at 1x (1 - 3 ms at a 4 - 6x throttle), spread thinly over litter,
+  creatures, weather and wind.
+- **Decision:** a fast path, on by default, `?lifeFast=0` today's paths: the batches send only the first n
+  instances they draw and an empty one leaves the frame (`life/ship.js`); the step flash and the wake return at
+  once outside one circle round all of their prints / chunks, and skip a print out of a foot's reach before
+  its trigonometry. BENCH (`?perf`) gains a living-world reading so the phone can report its share.
+- **Why this way:** each change leaves the picture identical (frozen frames: 0 of 2 073 600 pixels differ on
+  fox, grove, code and ash, 3 px at 1 level on cinderwood, the same as drawing twice; 8 s films drawn both ways
+  from one simulation: within the game's own draw-twice noise), so no look had to be chosen. In one page, fast
+  against today: the ground pass 0.83 - 0.89 of before with prints live; the effects pass's render CPU and
+  buffer uploads 0.7 - 0.97.
+- **Not taken:** tighter quads for the leaf lens (saved nothing measurable: that draw is overhead-bound, and it
+  moved ~1 000 pixels); thinning the letters on a struggling phone (they are almost free, so it would buy
+  nothing); moving the wisps' and mist's motion into the vertex shader (a large rewrite, not pixel-exact, for a
+  CPU share of 0.01 - 0.04 ms a layer).
+- **Consequences / open:** the wind in the trees' vertex shaders (889k vertices on cinderwood) could not be
+  measured cleanly on the shared GPU; the lamps keep the fire field running on fox and grove (the look); none of
+  it is measured on a phone: the owner's BENCH "living world" line will say.
+## ADR-246 — The flash chain: three flash counters in a row, he strikes back after each (2026-11-26)
+- **Context:** research into the combat of three sword games (Sekiro; Phantom Blade Zero; Onimusha: Way of the
+  Sword) found that this game already has most of their core (posture and deathblows, the mikiri, blade locks, the
+  flash counter, blue / red / black tells). One thing it lacked was the counter-kill CHAIN: a re-timed counter
+  after each counter, a beat-by-beat exchange that escalates. Of five proposals the owner chose it first, and picked:
+  he strikes back after each counter; 3 links with rising damage; the same window every link; the
+  choose-where-to-cut finisher later. They asked to see today's flash counter and the new one side by side on film.
+- **Decision:** built behind a switch and filmed on all eight duelists, today's flash counter beside the chain;
+  the owner picked "strikes back", so the chain is the game's default (`?counter=0` / the Lab's `counter` row:
+  old gives the single counter; the headless sims keep the single counter their checks are written for, duel
+  FLASHCHAIN plays the chain). A flash counter before the last
+  link throws the duelist back (`clash`) and queues his counter move (the riposte the engine already throws out of a
+  guard), tagged with the link (`act.flashLink`); a flash counter of that move is the next link. The last link is
+  today's flash counter ending (reel, cinematic, crit window). Numbers in `DEFENSE.counterChain`: 70 / 85 / 100
+  damage, 45 / 55 / 70 posture, rising freeze, shake, punch; the steel's ring rises in pitch per link.
+- **Why the strike-back is the counter move:** every duelist already has one per phase, built and tuned, and every
+  one opens on a melee blow a cut can meet (checked for all eight; Tian Lei's form-3 bolt is the one exception, where
+  the chain simply stops). No new boss animation was needed for the prototype.
+- **Consequences:** a single flash counter under the chain pays less at once than today (no reel, no crit window)
+  and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
+  `link`, `links`, `last`.
 ## ADR-250 — Bai Wuji round 3: the glide (his melee motion, the owner's pick of three takes), the barrier opens easier, cuts x2.5 through it; his mercy counted in real time (2026-11-27)
 
 - **Context:** the owner after playing the shipped fight (ADR-241 - 243): "the fight is pretty hard right now

@@ -22,21 +22,29 @@ export const DP_STEP_U = {
   // life, hot time, flicker, on; uDpStepF: the foot's half-length, half-width (m), cascade (s heel to toe), 0
   uDpStepK: { value: new THREE.Vector4(0.7, 0.09, 0.07, 0) },
   uDpStepF: { value: new THREE.Vector4(0.17, 0.075, 0.08, 0) },
+  // (the living world's fast path, `?lifeFast=`) a circle round every print written: x, z, radius, w 1 = a
+  // cell outside it flashes in no print (dpStep returns at once); w 0: no circle, every print is walked
+  uDpStepB: { value: new THREE.Vector4(0, 0, 0, 0) },
   uDpCode: { value: gis(DP_CODE) },
 };
 
 export const DRAGON_STEP_GLSL = /* glsl */ `
 uniform vec4 uDpSteps[${DP_STEPS}];
-uniform vec4 uDpStepK, uDpStepF;
+uniform vec4 uDpStepK, uDpStepF, uDpStepB;
 uniform float uDpCode[${DP_CODE.length}];
 float dpCodeAt(int i) { float r = uDpCode[0]; for (int k = 0; k < ${DP_CODE.length}; k++) if (k == i) r = uDpCode[k]; return r; }
 vec3 dpStep(vec2 xz, float h) {
   if (uDpStepK.w < 0.5) return vec3(0.0);
+  // (the fast path: outside the circle round every print no print reaches it: the loop would find nothing)
+  if (uDpStepB.w > 0.5 && distance(xz, uDpStepB.xy) > uDpStepB.z) return vec3(0.0);
   float best = 0.0, hot = 0.0, roll = 0.0;
+  // (the fast path: a print whose centre is farther than the foot's longer half is not reached either)
+  float rr = uDpStepB.w > 0.5 ? max(uDpStepF.x, uDpStepF.y) + 0.02 : 1e9;
   for (int i = 0; i < ${DP_STEPS}; i++) {
     vec4 S = uDpSteps[i];
     if (S.z < 0.0 || S.z > uDpStepK.x + uDpStepF.z) continue;
     vec2 d = xz - S.xy;
+    if (dot(d, d) > rr * rr) continue;
     float ca = cos(S.w), sa = sin(S.w);
     float al = d.x * ca + d.y * sa, ac = -d.x * sa + d.y * ca;
     float e = (al * al) / (uDpStepF.x * uDpStepF.x) + (ac * ac) / (uDpStepF.y * uDpStepF.y);

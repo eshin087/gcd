@@ -34,6 +34,51 @@ is slow on a pure defender (his blow lands in the opened guard ~1 in 10). Should
 
 ---
 
+## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
+
+**Owner:** asked for research into the combat of three sword games and five additions; picked the counter-kill
+chain first ("Issen chain first"), then: he strikes back after each counter, 3 links rising, the same window every
+link, the choose-where-to-cut finisher later, and "show me current and ... he strikes back ... video comparison".
+
+**What.** `combat/flashChain.js` (the switch), `DEFENSE.counterChain` (the numbers), `Duelist.onCounter` (the link
+from the act he is throwing; before the last link a `clash` throw-back and his counter move queued with the link),
+`DuelBrain._foot` (the queued move carries `act.flashLink`), the hero's `_trade` (each link's freeze / shake /
+punch; the crit window on the last link only; `player:counter` gains `link / links / last`), the call-outs
+("FLASH COUNTER ×2", "THREE FLASHES"), the ring rising per link (audio), the Lab's `counter` row. Test: duel
+FLASHCHAIN (off: he reels; on: links 1-3 with their damage, the strike-back's first blow 0.75 s after the counter,
+the crit window only on the last, a new chain starting at 1).
+
+**Film.** Every duelist, today beside the chain, at the game camera with a close crop (a bot pressing for the flash
+counter; all eight chained three links: 70 / 85 / 100). The owner picked "strikes back": the chain is the game's
+default (`?counter=0` for the single counter); the headless sims keep the single counter unless a scenario sets it.
+
+**Next.** The owner's playtest of the chain (and on the iPhone); then the "Break" finisher (choose where to cut
+a broken boss).
+Not measured: how much the chain shortens fights for a human (the strategy bots do not flash-counter).
+## 2026-11-26 — The living world's fast path: the same picture for less (ADR-245; Opus agent; `world/life-perf`)
+
+**Owner:** "i feel like the ascii atmosphere effects is causing a lot of performance issues. is there a way we
+can improve the performance while still making it look as good and alive?"
+
+- **Measured first** (five levels, fights, GPU at 4K and the phone's size, CPU at 1x / 4x / 6x throttle): the
+  air's letters themselves are nearly free on the GPU; the cost was the ground's step flash and the grass
+  wake looping on every pixel (9 - 21 % of the ground pass at 4K), whole-array uploads every frame (115 - 231 KB)
+  and empty batches still drawn; the life update 0.06 - 0.34 ms of CPU at 1x.
+- **Changed** (`?lifeFast=0` = before): only the drawn letters are uploaded, empty batches leave the frame
+  (`life/ship.js`); the step flash and the wake return at once outside their reach; BENCH reads the living
+  world's share.
+- **Result** (one page, fast vs before): the ground pass 0.83 - 0.89; the effects pass's render CPU and uploads
+  0.7 - 0.97; the picture identical (pixel counts and side-by-side films per level).
+
+**Verified.** `life.mjs . all` (new `fast`: same letters, ranges, bounds, off-is-free), `world.mjs . all`
+(the allocation `budget` check failed once under machine load, passed alone on the branch and on main),
+`world.mjs . perfreadout`, the glyph check; the seeded wyrm fight's trace byte-identical.
+
+**Open.** Not measured on a phone (the owner's BENCH "living world" line); the trees' wind vertex cost on a
+quiet GPU; the wisps' and mist's motion on the GPU if the phone's CPU turns out to be the limit.
+
+---
+
 ## 2026-11-26 — The animation guide (`docs/ANIMATION.md`; branch `docs/animation-guide`)
 
 **Owner:** "can you research online and find the material that will be helpful for future agents to follow
@@ -393,6 +438,43 @@ the fight's busiest moments (the flurry on a staggered boss, the fox's twin fall
 script. **What:** BENCH (`perf.bench()`, a button): each step's share of the frame, the still map redrawn, the
 frame at ~0.7x pixels. Test: world `perfreadout`. **Next:** the owner's BENCH from a busy moment on fox and grove;
 then the step it names, cut at AUTO's floor, shown as options; AUTO's step hitch (the letter atlases rebuilt).
+
+## 2026-11-26 — The perfect parry's own streak: the deathblow (ADR-211; branch `claude/parry-riposte`, PR #145)
+
+**Owner:** "have perfect parry have its own streak animation/effect instead of using the perfect dodge one", with a
+reference clip of a sword-deflect chain; after the planted riposte: "riposte x3 / x7 ... doesn't seem as rewarding
+as the perfect dodge streak ... i also want the character to have to parry multiple sequences to get the reward".
+Picks (asked): posture break as the trigger, recoil + your own cut per string, a deathblow, separate counts; the
+chain grows "gently"; then "Yes, make it default".
+
+**Reference study.** Frames of the owner's clip at 30 fps through a headless Edge (CDP), a timing card of one
+deflect: an orange bloom at the contact 0.03 - 0.07 s, sparks spread and fall 0.2 - 0.3 s, stragglers to 0.5 s;
+contacts 0.30 - 0.35 s apart in a chain; the defender stays planted; the last deflect bigger, then the posture
+breaks. Our translation is smaller and calmer.
+
+**What.** `player/riposteCut.js` (`?parryRiposte=deathblow|planted|old`, default deathblow), `player/deathblow.js`
+(the finisher), `DEFENSE.riposteCut` / `DEFENSE.deathblow` (rules.js), `player.parryRun`, `combat/parrySparks.js`
+`?parryGrow=a|0` (default a: more sparks per tier, embers from tier 2 on the wind, a fire-field heat flash),
+flow.js skips the grade dip / flash / cold cast for a planted answer, the HUD's DEATHBLOW banner, the Lab's streak
+row (`riposte`, `parryGrow`), TRAINING: Deathblow x3 / x7 and the counter cut after a parried string. Built by
+three Sonnet subagents in worktrees (riposte, sparks, deathblow), merged and wired by the lead. Tests: duel
+`riposteplanted`, `parrygrow`, `deathblow`.
+
+**Verification.** Filmed at the game camera (headless Edge, `__tick`, ffmpeg; full frame + 3x inset): planted at
+streak 1 / 7, the deathblow at 3 and 7 (160 / 240 damage), the hero within 0.01 m of where he parried. The
+deathblow's thrust was a fully charged one and printed a large white blot at the tip: now uncharged (the tip's own
+small streak stays, as the shipped thrust has it).
+
+**Later rounds (same day).** The two-beat deathblow was turned down; the owner asked for "# of streak death
+blows" with a special effect per hit. Built by Sonnet subagents, filmed each round: N planted blows (13 moves) on a
+posture break or a blue-blow parry, a hit-pause per blow (~3 s for 7), the blade's real path into one straight cut
+on the body, blood (spray, wound, pools), four hit looks (`?dbfx`; Shatter Web picked), four sounds on an audition
+page (https://claude.ai/artifact/AiJ7MzqvymQrvzLZryLEfH; Flesh picked), a matrix look (`?dbmatrix`, skipped:
+off). The hero's own blade line is hidden during a combo (the owner: "huge slashes ... distracting"). The
+deathblow's fire-field heat was budgeted after it blew the phase-3 cap (4959 blobs).
+
+**Open.** The wyrm keeps today's flurry riposte. Played on the iPhone. `?dbmatrix` and the other looks / sounds
+can go if they stay unused.
 
 ## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
 

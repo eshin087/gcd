@@ -129,6 +129,7 @@ The riskier the answer, the more it pays. From safest to riskiest:
 | Perfect dodge | red, black | the flurry (the plunge on the wyrm): as many blows as the streak counts, the crit window |
 | Perfect parry (≤ 0.20 s; ADR-227) | white, heavy | posture × 1.5, the counter cut; a blade lock on a `lock` blow; a bullet returned |
 | Flash counter (attack ≤ ~0.14 s before his blow) | a blade's white or heavy blow | 70 damage and 60 posture at once, he reels, the crit window; too late and his blow lands |
+| The flash chain (ADR-246; the default, `?counter=0` for the single counter above) | the same | links 1 and 2: 70 / 85 damage, 45 / 55 posture, he is thrown back and strikes back at once; link 3: 100 and 70, he reels, the crit window |
 | Held guard (ADR-144) | the Sheathed's draw | no health; the whole guard meter, the guard knocked open 0.8 s, thrown back; he re-sheathes unpunished |
 | Parry (ADR-144) | the Sheathed's draw | as any blue flare blow (the counter), and he is caught with the blade out for 1.5 s |
 | Nothing (ADR-144) | the Sheathed's draw | death (`TUNING.draw.lethal`; off: 110) |
@@ -484,6 +485,19 @@ An EXECUTION call-out shows it. A plunge that lands during a transition roar (or
 deals its damage; a dying wyrm can't be plunged. Numbers: `DEFENSE.plunge` (`rules.js`),
 `TUNING.plunged` (dragon).
 
+## The deathblow (2026-11-26, ADR-211)
+Against a duelist (`?parryRiposte=deathblow`, the default; `planted` / `old` the earlier answers; the wyrm keeps the flurry):
+- Parries fill his **posture** (26, 48 for a blue blow, a perfect parry x1.5) and bank perfect parries in
+  `player.parryRun` (spent by a combo; back to 0 when he is hurt or the posture has drained), **not** the dodge streak.
+- A string's **last blow** parried: he recoils and the counter-cut window opens (0.9 s). Nothing is automatic.
+- A parry that **breaks** his posture, or **any parry of a blue blow**: the **DEATHBLOW**, N = parryRun (1..7) blows
+  where the hero stands (0.6 m at most): his own cuts, a new order each time, the finisher a big one. Every contact
+  holds for a beat (0.16 - 0.2 s, the finisher 0.38 s; ~3 s for seven) under the cold cast; 22 + 2N a blow, 40 + 15N
+  the finisher, final; he cannot be hurt; after a break he stays broken.
+- Each blow: a straight cut on his body that crosses the last and shatters on the finisher (`?dbfx=b`), blood (a
+  spray, a wound, pools on the floor), the Flesh sound (`?dbsfx=a`).
+- A chain of perfect parries grows (`?parryGrow=a`): more sparks a tier, embers, a short heat flash.
+
 ## The streak and the flurry (2026-11-14, ADR-091)
 Owner: "more different perfect dodge animations instead of the same one ... if the player keeps doing
 more successful perfect dodges in a streak, make the attack also hit the # of attacks the player is
@@ -492,7 +506,8 @@ on a streak ... epic anime". Numbers: `DEFENSE.flurry` (`rules.js`), the arts in
 
 **The streak** counts perfect defences in a row (`player.streak`, the STREAK row of pips under the
 HP bar): a perfect dodge, a **parry or deflect** of a blow of the body or the blade (not a deflected
-bullet), a **trade clash** and a mikiri each count one (ADR-094; until then only perfect dodges). It
+bullet), a **trade clash** and a mikiri each count one (ADR-094; until then only perfect dodges; since ADR-211 a parry of
+a duelist's blow counts in `player.parryRun` instead, see "The deathblow" above). It
 ends when a blow **hurts** him (a plain hit, a guard break, death). A blocked blow, a plain dodge, a
 burn's ticks and time leave it alone (`keepStreak: 0`; a number there would let it run out).
 
@@ -1360,6 +1375,21 @@ Sekiro / Phantom Blade Zero beats, each read from his data (`moves.js` beat flag
     (2.2 s) opens, a gold burst, a 0.16 s freeze, "FLASH COUNTER" (`player:counter`). The swing
     itself lands nothing more. Only in the half the hero's press decides (his blow arriving in the
     cut); a cut that connects before his blow is the plain clash.
+  - **The flash chain** (ADR-246; the default in the game since the owner picked it from films of every
+    duelist, `?counter=0` / the Lab's `counter` row: old gives the single counter; the headless sims keep
+    the single counter unless a scenario sets the chain; `DEFENSE.counterChain`, `combat/flashChain.js`). Flash counters in a row on one
+    duelist are LINKS of a chain of 3. Links 1 and 2 deal 70 / 85 (final) and 45 / 55 posture with a
+    rising freeze (0.16 / 0.19 s) and shake; he is thrown back 0.6 m (the short `clash` reaction) and
+    **strikes back at once** with his counter move (`kit.counterMove`: the riposte he throws out of a
+    guard), its first blow landing ~0.75 s after the counter (no sooner than a trade's 0.6 s re-arm);
+    no crit window. A flash counter of any blow of that strike-back is the next link. Link 3 deals 100
+    and 70 posture, freezes 0.24 s and ends as the flash counter does today: he reels, the cinematic,
+    the crit window, "THREE FLASHES". The window is the same for every link (the owner's pick). Missing
+    a link costs nothing more: the strike-back is an ordinary blow, answered as any, and the next flash
+    counter starts a new chain. The steel rings higher each link. A strike-back that is a ki bolt (Tian
+    Lei's `riposteBolt`, form 3) cannot be met by a cut: the chain stops there. Every duelist plays it
+    (Bai Wuji's barrier opens on each link); the wyrm has no flash counter. Checked by `npm test`: duel
+    FLASHCHAIN.
 - **Mikiri (perilous thrust)** — a red thrust marked `mikiri` (Piercing Ash; the last hit of Hundred
   Petals) flashes `combat:flash` with `perilous: true`. A roll **into** it (the roll's direction
   against his facing, dot ≥ 0.55) whose impact comes within 0.3 s of the roll's start steps on the

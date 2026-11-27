@@ -15,6 +15,10 @@ import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { Flurry } from './flurry.js';
+import { riposteMode, startRiposteCut, riposteTakeHit, riposteCutLanded, riposteContact } from './riposteCut.js';
+import { newDeathblowState, armDeathblow, tickDeathblow, deathblowTakeHit, deathblowLanded } from './deathblow.js';
+import { deathblowFxUpdate, deathblowFxClear } from '../../combat/deathblowFx.js';
+import { deathblowMatrixUpdate, deathblowMatrixClear } from '../../combat/deathblowMatrix.js';
 import { SwordMystic } from './swordMystic.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
@@ -245,6 +249,8 @@ export class Player {
     // since the last one (DEFENSE.flurry.keepStreak)
     this.streak = 0;
     this.streakT = 0;
+    this.parryRun = 0; // ?parryRiposte=deathblow: the perfect parries of blows since the foe's posture was last empty
+    this.db = newDeathblowState(); // the deathblow's own state (deathblow.js)
     // the guard meter (combat/rules.js GUARD, ADR-095): a blocked blow costs guard, not HP; it
     // refills by itself once guardWait (s) has run out. staggerLen: how long this stagger lasts
     this.maxGuard = GUARD.max;
@@ -546,6 +552,7 @@ export class Player {
         return RESULT.BLOCKED;
       }
       this._streakEnd();
+      this.parryRun = 0;
       this._guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc);
       return RESULT.HIT;
     }
@@ -559,6 +566,7 @@ export class Player {
     const guarded = (chip && this.chipGuard > 0) || stunned;
     if (chip) this.chipGuard = TUNE.chipGuard;
     this._streakEnd(); // hurt: the streak of perfect dodges is over
+    this.parryRun = 0; // (and the perfect parries toward a deathblow)
     if (!chip) this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
@@ -732,6 +740,11 @@ export class Player {
     this.pl.phase = PL.VANISH;
     this.streak = 0;
     this.streakT = 0;
+    this.parryRun = 0;
+    this.db.phase = '';
+    this.db.att = null;
+    deathblowFxClear?.(this.game);
+    deathblowMatrixClear?.(this.game);
     this.guard = this.maxGuard;
     this.guardWait = 0;
     this.riposte.att = null;
@@ -1294,6 +1307,9 @@ export class Player {
         nz = -dz / l;
       }
     }
+    // ?parryRiposte=deathblow, against a duelist: the parry builds posture, not the dodge streak (deathblow.js)
+    const dbFoe = !light && riposteMode() === 'deathblow' && hit?.attacker ? hit.attacker : null;
+    const db = !!dbFoe && this.flurry.reach(dbFoe, true) === 'ground';
     const D = this.deflect;
     this.rmb.chain = true; // the next RMB press may parry again without the anti-mash re-arm
     D.n = this.time - D.t <= TUNE.deflectChainGap ? Math.min(99, D.n + 1) : 1;
@@ -1320,7 +1336,7 @@ export class Player {
     // today | sharp | cinema); `PM.T` null = today's numbers below. Nothing of the rules moves
     // (a parry moment ends his string: it counts as its last blow for cinema's full beat)
     const PM = perfect && !light ? this.fx.perfectMoment?.('parry', last || moment, fin(this.streak) + 1) : null, PT = PM?.T ?? null;
-    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met, feel: PM });
+    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met, feel: PM, last: !!last, streak: db ? this.parryRun + (perfect ? 1 : 0) : light ? undefined : fin(this.streak) + 1 });
     if (moment) this.fx.flareParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (ret) this.fx.perfectParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (light) {
@@ -1343,12 +1359,18 @@ export class Player {
     this._guardGain((light ? GUARD.parryLight : GUARD.parry[tell] ?? GUARD.parry.normal) + (perfect ? GUARD.perfect : 0));
     // a perfect parry of a blow (not a bullet) readies the counter cut (DEFENSE.perfectParry)
     if (perfect && !light) this.quickUntil = this.time + DEFENSE.perfectParry.cutWindow;
+    // (deathblow mode: a parried last blow recoils him and opens the counter cut's window, perfect or not)
+    if (db && last) this.quickUntil = this.time + DEFENSE.perfectParry.cutWindow;
     if (!light) {
       // a blade met counts in the streak; meeting a string's LAST blow (or a single one) answers
       // with the riposte once this parry's freeze is over (update)
-      this._streakUp();
+      if (db) {
+        if (perfect) this.parryRun = Math.min(99, this.parryRun + 1);
+      } else this._streakUp();
       const att = hit?.attacker ?? null, R = this.riposte;
-      R.att = (last || moment) && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
+      // (the deathblow: a flare moment is a blue parry, and the combo answers it: no counter cut of its own)
+      R.att = !db && (last || moment) && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
+      if (db && !this.debug.noRiposte) armDeathblow(this, att, attack, tell, tell === TELL.BLUE);
       R.counter = moment;
       R.t = 0;
       R.attack = attack;
@@ -1363,6 +1385,8 @@ export class Player {
    *  still free and the foe in its reach; dropped by a blade lock, a hurt, or half a second. */
   _tickRiposte(dt) {
     const R = this.riposte, g = this.game;
+    if (this.db.phase && tickDeathblow(this, dt)) return;
+    if (this.parryRun > 0 && !(g.dragon?.posture > 0) && !g.dragon?.broken && this.db.phase !== 'combo') this.parryRun = 0; // his posture is back to empty
     if (!R.att) return;
     R.t += dt > 0 ? fin(g.realDt, dt) : 0;
     if (!this.alive || R.t > 0.5 || !RIPOSTE_FROM.has(this.state)) {
@@ -1378,6 +1402,8 @@ export class Player {
     const T = this.flurry._v, p = this.position;
     const tp = kind === 'air' ? (this._plungePoint(att, T) ? T : null) : att.position;
     if (!tp || !(Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange[kind])) return;
+    // (?parryRiposte=planted: against a duelist he stays where he parried and cuts once: riposteCut.js)
+    if (kind === 'ground' && (riposteMode() === 'planted' || riposteMode() === 'deathblow') && startRiposteCut(this, att, this.streak, R.attack, R.counter)) return;
     this.flurry.start(att, kind === 'air', this.streak, R.attack, R.tell, { riposte: true, counter: R.counter });
   }
 
@@ -1629,14 +1655,26 @@ export class Player {
       // swing itself lands nothing more; he reels and the crit window opens on him
       a.hit = true;
       let dealt = 0;
+      // (the flash chain, ?counter=chain: the attacker writes the link it was into `link` / `links`)
+      const ko = { point: { x: cv.x, y: Math.max(0.75, cv.y), z: cv.z }, dir: { x: -nx, z: -nz }, attack: o.attack ?? null, ...(drawK ? { damage: a.def.damage, posture: a.def.counterPosture } : null) };
       try {
-        dealt = fin(att.onCounter({ point: { x: cv.x, y: Math.max(0.75, cv.y), z: cv.z }, dir: { x: -nx, z: -nz }, attack: o.attack ?? null, ...(drawK ? { damage: a.def.damage, posture: a.def.counterPosture } : null) }), 0);
+        dealt = fin(att.onCounter(ko), 0);
       } catch (err) {
         console.error('[player] attacker.onCounter failed', err);
       }
-      if (!drawK) this.critTimer = Math.max(fin(this.critTimer), DEFENSE.ghostep.critWindow);
+      const link = fin(ko.link, 0) | 0, links = fin(ko.links, 0) | 0, CH = DEFENSE.counterChain;
+      if (link > 0 && links > 0) {
+        // each link its own weight (the freeze above was the plain counter's: a link only adds to it)
+        const i = Math.min(link, CH.stop.length) - 1;
+        this._hitstop(CH.stop[i], 0.02);
+        g.shake?.(Math.max(0, CH.shake[i] - K.shake));
+        g.punch?.(CH.punch[i]);
+      }
+      // the crit window: the plain counter's, or the chain's last link (before it he strikes back at once)
+      const last = !links || link >= links;
+      if (!drawK && last) this.critTimer = Math.max(fin(this.critTimer), DEFENSE.ghostep.critWindow);
       this.bladeFlare = Math.max(this.bladeFlare, TUNE.bladeFlare.hit[1]);
-      this._emit('player:counter', { attack: o.attack ?? null, damage: dealt, draw: drawK });
+      this._emit('player:counter', { attack: o.attack ?? null, damage: dealt, draw: drawK, link, links, last });
     } else if (!crush) this._bounce(att, TUNE.tradePush);
     return { heavy, crush, counter };
   }
@@ -3012,6 +3050,7 @@ export class Player {
     this.slowmoPending = 0;
     this.blockStunT = 0;
     this._streakEnd();
+    this.parryRun = 0;
     this._setLock(false);
     // killed on the ground (falling or lying in the knockdown): he dies where he lies
     const down = this.state === 'knockdown' && this.stateT < TUNE.knockdownDur - TUNE.getUpIframes + 0.1;
@@ -3574,7 +3613,10 @@ export class Player {
     const spheres = dr.hurtSpheres;
     if (!Array.isArray(spheres) || !spheres.length) return;
     const h = this._hit;
-    if (!this.sweep.test(spheres, h, fin(a.def.up, REACH.up))) return;
+    if (!this.sweep.test(spheres, h, fin(a.def.up, REACH.up))) {
+      if (!a.rip) return;
+      riposteContact(dr, h); // the planted riposte lands whatever the sweep found (its one blow)
+    }
     this._applyHit(a, h);
   }
 
@@ -3591,7 +3633,7 @@ export class Player {
     const d = a.def, heavy = !!d.heavy;
     const part = typeof h.sphere.part === 'string' ? h.sphere.part : 'body';
     const crit = this.critTimer > 0 || !!a.crit;
-    const damage = a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
+    const damage = a.rip ? a.rip.damage : a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
     const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) }; // the facing: the shove
     const C = !viaShards && this._contactPoint(dr, d.kind, this._cut) ? this._cut : null;
     const point = C ? { x: C.x, y: C.y, z: C.z } : { x: h.x, y: h.y, z: h.z };
@@ -3600,7 +3642,7 @@ export class Player {
     let dealt = damage;
     try {
       // (`reel` 2: a blow that throws a duelist out of what he is doing, the Rising Crescent)
-      const r = dr.takeHit({ damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true, ...(d.reel ? { reel: d.reel } : null) });
+      const r = dr.takeHit(a.rip ? (a.rip.db ? deathblowTakeHit : riposteTakeHit)(this, point, { cut }) : { damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true, ...(d.reel ? { reel: d.reel } : null) });
       if (Number.isFinite(r)) dealt = r;
     } catch (err) {
       console.error('[player] dragon.takeHit failed', err);
@@ -3640,7 +3682,7 @@ export class Player {
     if (km > 0 && C) this.game.kick?.(C.cx, C.cy, C.cz, km);
     if (!viaShards) this.fx.contact(point, d.contact ?? 'light', C, crit || dr.broken === true, k);
     if (C) this._edgeFlash(C, heavy, crit, d.glint === 'ridge');
-    if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);
+    if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);    if (a.rip) (a.rip.db ? deathblowLanded : riposteCutLanded)(this, dealt);
   }
 
   /** The unit world travel of the blade at contact C (into `out`, reused), or null without one. */
@@ -3757,6 +3799,8 @@ export class Player {
 
   _updateFx(dt) {
     const p = this.position;
+    deathblowFxUpdate?.(this.game, fin(this.game.realDt, dt));
+    deathblowMatrixUpdate?.(this.game, fin(this.game.realDt, dt));
     if (this.state === 'heal') {
       const t = this.stateT;
       this.fx.healTick(dt, p.x, p.z, smoothstep(0.27, 0.5, t) * (1 - smoothstep(0.7, 0.84, t)));

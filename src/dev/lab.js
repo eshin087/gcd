@@ -15,7 +15,11 @@ import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
-import { PARRY_FX, parryFxMode, setParryFx } from '../combat/parrySparks.js';
+import { DB_FX, getDbFx, setDbFx } from '../combat/deathblowFx.js';
+import { DB_MATRIX, getDbMatrix, setDbMatrix } from '../combat/deathblowMatrix.js';
+import { DB_SFX, getDbSfx, setDbSfx } from '../audio/deathblowSfx.js';
+import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
+import { RIPOSTE_CUT, riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../audio/samples.js';
@@ -26,6 +30,7 @@ import { SLASH_IDS, slashMode, setSlash } from '../entities/player/slashFx.js';
 import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
 import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combos.js';
+import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.js';
 import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
@@ -1325,6 +1330,35 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.parryFxBtn.title = "the perfect parry's spit of sparks (?parryFx=): a (the default) a few fast orange sparks off the crossed steel, 0 the parry as before";
+    this.ui.parryGrowBtn = button(stkGrid, `parryGrow ${parryGrowMode()}`, () => {
+      setParryGrow(parryGrowMode() === 'a' ? '0' : 'a');
+      this._syncCutBtns();
+    });
+    this.ui.parryGrowBtn.title = "a parry chain grows (?parryGrow=): a = more sparks each streak tier, embers that linger, a short heat flash at the blades; 0 = as before";
+    this.ui.riposteBtn = button(stkGrid, `riposte ${riposteMode()}`, () => {
+      const M = RIPOSTE_CUT.opts;
+      setRiposteMode(M[(M.indexOf(riposteMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.riposteBtn.title = "the answer to a parried last blow against a duelist (?parryRiposte=): old (the default) the flurry's flash cuts, planted: he stays where he parried and cuts once, the foe reels; deathblow: parries build posture (not the dodge streak), a parry that breaks him or meets a blue blow is answered by a planted combo of as many blows as perfect parries behind it. Read as the riposte starts";
+    this.ui.dbfxBtn = button(stkGrid, `dbfx ${getDbFx()}`, () => {
+      const M = DB_FX.opts;
+      setDbFx(M[(M.indexOf(getDbFx()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbfxBtn.title = "the deathblow's hit effect (?dbfx=): a Steel Bloom (orange heat bloom, sparks, embers), b Shatter Web (long cut-lines through him that snap on the finisher), c Storm Crack (lightning crawling over him, a bolt on the finisher), d Gold Crescent (gold arcs along each swing)";
+    this.ui.dbmatrixBtn = button(stkGrid, `dbmatrix ${getDbMatrix()}`, () => {
+      const M = DB_MATRIX.opts;
+      setDbMatrix(M[(M.indexOf(getDbMatrix()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbmatrixBtn.title = "the deathblow's code (?dbmatrix=): rain = columns of tiny green letters falling round the fight (they freeze in every hit-pause, burst on the finisher) with a light green cast; world = the whole frame goes green-on-black code view with blinking letters and a scan line; 0 = the cold cast only. Read as the combo starts";
+    this.ui.dbsfxBtn = button(stkGrid, `dbsfx ${getDbSfx()}`, () => {
+      const M = DB_SFX.opts;
+      setDbSfx(M[(M.indexOf(getDbSfx()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbsfxBtn.title = "the deathblow's sound (?dbsfx=): 0 the dodge flurry's sounds, a Flesh (wet tear per blow, deep impact), b Steel (metal strike and ring, a huge clang), c Cinematic (muffled thump, reverse swell, deep boom)";
     this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
       setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
       this._syncCutBtns();
@@ -1448,6 +1482,7 @@ export class Lab {
     for (const [lbl, ids, set, key, tip, name] of [
       ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: line = the instant straight slash, arc = the curved crescent as before (?slash=arc)", (m) => m],
       ['combo', COMBO_IDS, setCombo, 'comboBtns', 'four light combos for the ending slash: prod = as it ships, a Iai, b Tempest, c Mountain, d Dancer (each with its feel and its free hand) (?combo=)', (m) => (m === '0' ? 'prod' : `${m} ${COMBOS[m].name}`)],
+      ['counter', COUNTER_IDS, setCounterMode, 'counterBtns', 'the flash counter: chain (the default) = he strikes back after each one, three in a row and he reels; old = it ends his string and he reels at once (?counter=0)', (m) => (m === '0' ? 'old' : m)],
       ['endslash', PLACE_IDS, setPlace, 'placeBtns', "where the ending slash is drawn: target = ahead of him where the foe stands, body = across him, enemy = across what it hit, blade = along the blade's path (?endslash=)", (m) => m],
       ['endbeat', BEAT_IDS, setBeat, 'beatBtns', 'when the ending slash comes: beat = a short pause after the swing, 0 = as it ends (?endbeat=)', (m) => m],
       ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
@@ -1580,10 +1615,16 @@ export class Lab {
     for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
     for (const { m, el: b } of this.ui.feelBtns ?? []) setClass(b, 'on', feelMode() === m);
     for (const { m, el: b } of this.ui.comboBtns ?? []) setClass(b, 'on', comboMode() === m);
+    for (const { m, el: b } of this.ui.counterBtns ?? []) setClass(b, 'on', counterMode() === m);
     for (const { m, el: b } of this.ui.placeBtns ?? []) setClass(b, 'on', placeMode() === m);
     for (const { m, el: b } of this.ui.beatBtns ?? []) setClass(b, 'on', beatMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
+    if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;
+    if (this.ui.riposteBtn) this.ui.riposteBtn.textContent = `riposte ${riposteMode()}`;
+    if (this.ui.dbfxBtn) this.ui.dbfxBtn.textContent = `dbfx ${getDbFx()}`;
+    if (this.ui.dbmatrixBtn) this.ui.dbmatrixBtn.textContent = `dbmatrix ${getDbMatrix()}`;
+    if (this.ui.dbsfxBtn) this.ui.dbsfxBtn.textContent = `dbsfx ${getDbSfx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;
