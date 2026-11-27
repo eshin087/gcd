@@ -6309,6 +6309,189 @@ async function scenarioCombos() {
   return last;
 }
 
+// `node tests/integration/integ.mjs . handaudit` (opt-in): combo A's free hand frame by frame from the fight hold
+// (GCD_HAND_PLAN: presses s apart, default the five hits in rhythm then a rest and two more): the free wrist in
+// the chest's frame (its distance from the torso's axis in plan, its height from the shoulder), which of the hand's
+// meshes shows (fist on the grip, open, sword fingers), p[sd], the grip's weight, the attack; its step a frame
+// against his root (`step`, as scenario offhand counts it) and his place (`wstep`), his facing and the chest's
+// (GCD_HAND_OFF a free-hand look, GCD_HAND_VAR a forced variant).
+async function scenarioHandAudit() {
+  out('\n== HANDAUDIT (opt-in: combo A\'s free hand through the combo) ==');
+  const CO = await imp('src/entities/player/combos.js');
+  const { P } = await imp('src/entities/player/anim.js');
+  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const OHm = await imp('src/entities/player/offHand.js');
+  const c0 = CO.comboMode(), o0 = OHm.offHandMode();
+  CO.setCombo(process.env.GCD_HAND_COMBO || 'a');
+  if (process.env.GCD_HAND_OFF) OHm.setOffHand(process.env.GCD_HAND_OFF);
+  const G = build();
+  try {
+    fightSetup(G);
+    const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim;
+    p.debug.god = true;
+    p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    aimAt(G);
+    for (let i = 0; i < 60; i++) G.tick(DT);
+    if (process.env.GCD_HAND_VAR) A.forceVariant = Number(process.env.GCD_HAND_VAR);
+    const plan = (process.env.GCD_HAND_PLAN || '0,0.35,0.7,1.08,1.43,2.6,2.95').split(',').map(Number);
+    const W = new THREE.Vector3(), inv = new THREE.Matrix4(), Wr = new THREE.Vector3(), Wp = new THREE.Vector3(), invR = new THREE.Matrix4(), Ww = new THREE.Vector3(), Wwp = new THREE.Vector3();
+    const rows = [];
+    for (let i = 0, N = Math.round((plan.at(-1) + 1.6) / DT); i < N; i++) {
+      if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
+      G.tick(DT);
+      inv.copy(r.chest.matrixWorld).invert();
+      W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
+      invR.copy(r.root.matrixWorld).invert();
+      Wr.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(invR).multiplyScalar(1 / (p.drawScale || 1));
+      const stp = i ? Wr.distanceTo(Wp) : 0;
+      Wp.copy(Wr);
+      const cm = r.chest.matrixWorld.elements, cyaw = (Math.atan2(cm[8], cm[10]) * 180) / Math.PI;
+      Ww.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).sub(p.position);
+      const wst = i ? Ww.distanceTo(Wwp) : 0;
+      Wwp.copy(Ww);
+      const H = r.offHand;
+      const mesh = H?.grip?.visible ? 'FIST' : H?.fingers?.visible ? 'fingers' : H?.open?.visible ? 'open' : '-';
+      rows.push(`${String(i).padStart(3)} ${(p.state === 'attack' ? `${p.atk.def.combo}:${p.atk.def.name}` : p.state).padEnd(22)} rad ${Math.hypot(W.x, W.z).toFixed(2)} x ${W.x.toFixed(2)} y ${(W.y - HD.shoulder[1]).toFixed(2)} z ${W.z.toFixed(2)} sd ${A.cur[P.sd].toFixed(2)} two ${A.cur[P.twoHand].toFixed(2)} step ${(stp * 100).toFixed(1)} wstep ${(wst * 100).toFixed(1)} yaw ${((p.yaw * 180) / Math.PI).toFixed(0)} chestYaw ${cyaw.toFixed(0)} ${mesh}`);
+    }
+    for (const l of rows) out('   ' + l);
+  } finally {
+    CO.setCombo(c0);
+    OHm.setOffHand(o0);
+  }
+  return G;
+}
+
+// SLICE (ADR-247; the owner, 2026-11-26: "make sure the slice effect is exactly matching the swords attack swing
+// ... like a cool matrix ascii of his sword cutting the matrix/universe", ~0.2 s): under the default look every
+// swing prints its slice (slashFx.js SLICE): digits on the path the blade's point swept (taken against his body,
+// each within a lattice cell and a frame's step of that path; a heavy's inner seam on its own share of the blade),
+// facing four ways, the light combo and a heavy, both colours, both timings (traced: laid over the swing's frames;
+// end: all on one frame); no ending line, no crescent; gone within ~0.2 s; a landed blow kicks the camera ON the
+// contact's frame and sprays its sparks; nothing NaN.
+async function scenarioSlice() {
+  out('\n== scenario SLICE (a seam of digits on the blade\'s own path) ==');
+  const SX = await imp('src/entities/player/slashFx.js');
+  const { DIM: MD } = await imp('src/entities/player/model.js');
+  const m0 = [SX.slashMode(), SX.sliceMode(), SX.sliceWhenMode()];
+  let last = null;
+  const run1 = (yaw, plan, when, col, boss) => {
+    SX.setSlash('slice');
+    SX.setSlice(col);
+    SX.setSliceWhen(when);
+    const G = (last = build());
+    fightSetup(G);
+    settle(G);
+    const { game, input } = G, d = game.dragon, p = game.player;
+    p.debug.god = true;
+    const fx = Math.sin(yaw), fz = Math.cos(yaw);
+    if (boss) {
+      const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * Math.sin(d.yaw) + (h.z - d.position.z) * Math.cos(d.yaw) > (a.x - d.position.x) * Math.sin(d.yaw) + (a.z - d.position.z) * Math.cos(d.yaw) ? h : a));
+      p.debug.teleport(c.x - fx * (c.r + 2), c.z - fz * (c.r + 2));
+    } else p.debug.teleport(d.position.x + 40, d.position.z + 40);
+    const aim = () => game.mouseGround.set(p.position.x + fx * 6, 0, p.position.z + fz * 6);
+    p.yaw = yaw;
+    aim();
+    for (let i = 0; i < 20; i++) G.tick(DT);
+    // the blade's points, against his body, frame by frame, per attack (the drawn point, and a heavy's inner share)
+    const paths = new Map(), digits = [];
+    let frame = 0, hitF = -1, kickF = -1, trails = 0;
+    const tr = p.fx.trail.bind(p.fx);
+    p.fx.trail = (...a) => { if (p.state === 'attack' || p.state === 'heavy') trails++; return tr(...a); };
+    p.slashFx.onSlice = (x, y, z, w, row) => digits.push({ x: x - p.position.x, y, z: z - p.position.z, w, row, f: frame, atk: p.atk });
+    const w0 = G.watch;
+    G.watch = (nn) => { if (nn === 'player:hitDragon' && hitF < 0) hitF = frame; };
+    const k0 = p.slashFx.kicks, b0 = p.slashFx.bursts, np0 = p.slashFx.lines;
+    for (let i = 0, N = Math.round(2.6 / DT); i < N; i++) {
+      frame = i;
+      for (const [at, b] of plan) if (i === Math.round(at / DT)) { aim(); if (b === 'L') input.click(0); else p._buffer('heavy'); }
+      const kb = p.slashFx.kicks;
+      G.tick(DT);
+      if (kickF < 0 && p.slashFx.kicks > kb) kickF = i;
+      const at = p.atk, e = p.rig?.sword?.matrixWorld?.elements;
+      if (at?.def && e && (p.state === 'attack' || p.state === 'heavy')) {
+        if (!paths.has(at)) paths.set(at, { name: at.def.name, heavy: !!at.def.heavy, pts: [] });
+        const pts = paths.get(at).pts, rows = SX.SLICE.rows[at.def.heavy ? 1 : 0];
+        const row = rows.map((f) => {
+          const z = MD.bladeBase + (MD.drawnTip - MD.bladeBase) * f;
+          return [e[8] * z + e[12] - p.position.x, e[9] * z + e[13], e[10] * z + e[14] - p.position.z];
+        });
+        pts.push(row);
+      }
+    }
+    G.watch = w0;
+    // each digit's distance from its own attack's path (its seam's share of the blade), against his body
+    const segD = (q, a, b) => {
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], l2 = ux * ux + uy * uy + uz * uz;
+      const t = l2 > 1e-9 ? Math.max(0, Math.min(1, ((q[0] - a[0]) * ux + (q[1] - a[1]) * uy + (q[2] - a[2]) * uz) / l2)) : 0;
+      return Math.hypot(q[0] - a[0] - ux * t, q[1] - a[1] - uy * t, q[2] - a[2] - uz * t);
+    };
+    let worst = 0, bad = 0;
+    const per = new Map();
+    for (const g of digits) {
+      if (!Number.isFinite(g.x + g.y + g.z)) bad++;
+      const P = paths.get(g.atk)?.pts;
+      if (!P || P.length < 2) continue;
+      let dm = Infinity;
+      for (let i = 1; i < P.length; i++) dm = Math.min(dm, segD([g.x, g.y, g.z], P[i - 1][g.row] ?? P[i - 1][0], P[i][g.row] ?? P[i][0]));
+      worst = Math.max(worst, dm);
+      const o = per.get(g.atk) ?? { n: 0, frames: new Set(), name: paths.get(g.atk).name };
+      o.n++;
+      o.frames.add(g.f);
+      per.set(g.atk, o);
+    }
+    return { digits, per, worst, bad, trails, kicks: p.slashFx.kicks - k0, bursts: p.slashFx.bursts - b0, marks: p.slashFx.lines - np0, pend: p.slashFx.np, hitF, kickF, sc: p.drawScale || 1, attacks: paths.size };
+  };
+  try {
+    const C5 = [[0, 'L'], [0.42, 'L'], [0.84, 'L'], [1.26, 'L'], [1.68, 'L']];
+    const tol = (r) => SX.SLICE.cell * r.sc * 0.75 + 0.1;
+    // facing four ways: the light combo and a lone heavy, traced, steel
+    {
+      const bad = [], sum = [];
+      for (const yaw of [Math.PI, Math.PI / 2, 0, -Math.PI / 2]) {
+        for (const plan of [C5, [[0, 'H']]]) {
+          const r = run1(yaw, plan, 'trace', 'steel', false);
+          const tag = `yaw ${(yaw * 57.3).toFixed(0)} ${plan.length > 1 ? 'combo' : 'heavy'}`;
+          const thin = [...r.per.values()].filter((o) => o.n < 6);
+          if (r.bad || r.worst > tol(r)) bad.push(`${tag}: a digit ${r.worst.toFixed(2)} m off the blade's path${r.bad ? `, ${r.bad} NaN` : ''}`);
+          if (r.per.size < (plan.length > 1 ? 5 : 1) || thin.length) bad.push(`${tag}: ${r.per.size} of ${r.attacks} swings sliced (${thin.map((o) => `${o.name} ${o.n}`).join(', ')})`);
+          if (r.trails || r.pend) bad.push(`${tag}: ${r.trails} crescent calls, ${r.pend} ending-line pieces`);
+          if ([...r.per.values()].some((o) => o.frames.size < 2)) bad.push(`${tag}: a traced slice laid on one frame`);
+          sum.push(`${tag} ${r.digits.length}`);
+        }
+      }
+      assert(!bad.length, `facing four ways every swing's slice lies on the blade's own path (within ${(SX.SLICE.cell * 0.75 + 0.1).toFixed(2)} m), traced over its frames, no line or crescent (${bad.slice(0, 5).join('; ') || sum.join(', ')})`);
+    }
+    // both colours, both timings, from the side: the end timing lays each swing's whole cut on one frame
+    {
+      const bad = [], sum = [];
+      for (const col of SX.SLICE_IDS) {
+        for (const when of SX.SLICE_WHEN_IDS) {
+          const r = run1(-Math.PI / 2, C5, when, col, false);
+          const tag = `${col}/${when}`;
+          if (r.bad || r.worst > tol(r)) bad.push(`${tag}: ${r.worst.toFixed(2)} m off`);
+          if (r.per.size < 5) bad.push(`${tag}: ${r.per.size} swings sliced`);
+          const one = [...r.per.values()].every((o) => o.frames.size === 1);
+          if (when === 'end' ? !one : one) bad.push(`${tag}: laid on ${[...r.per.values()].map((o) => o.frames.size).join('/')} frames`);
+          sum.push(`${tag} ${r.digits.length} digits, ${r.marks} marks`);
+        }
+      }
+      assert(!bad.length, `both colours and both timings slice every swing on its path, traced over its frames or all at its end (${bad.join('; ') || sum.join('; ')})`);
+    }
+    assert(SX.SLICE.life.every((l) => l <= 0.25) && SX.SLICE.life[0] * SX.SLICE.dripLife <= 0.3, `the slice is gone in ~0.2 s (${SX.SLICE.life.join(' / ')} s, a drip ×${SX.SLICE.dripLife})`);
+    // a landed blow: the camera kicked on the contact's frame, sparks sprayed there
+    {
+      const r = run1(0, [[0, 'L']], 'trace', 'steel', true);
+      assert(r.hitF >= 0 && r.kickF === r.hitF && r.bursts >= 1, `a landed blow kicks the camera on the contact's frame (hit ${r.hitF}, kick ${r.kickF}) and sprays its sparks (${r.bursts})`);
+    }
+  } finally {
+    SX.setSlash(m0[0]);
+    SX.setSlice(m0[1]);
+    SX.setSliceWhen(m0[2]);
+  }
+  return last;
+}
+
 // SLASHFEEL (ADR-240, the impact pass; the owner, 2026-11-26: "the heavy attack slash needs to show up in front of
 // the player, not behind them as the player moves forward"): every ending slash lies in front of him along his
 // facing (no point of it nearer than END.front, a little slack), facing any of four ways; a whiff's line (the lone
@@ -6318,6 +6501,8 @@ async function scenarioCombos() {
 async function scenarioSlashFeel() {
   out('\n== scenario SLASHFEEL (the ending slash in front of him, carried on a whiff; the impact, the smear) ==');
   const SX = await imp('src/entities/player/slashFx.js');
+  const slash0 = SX.slashMode();
+  SX.setSlash('line');
   let last = null;
   const run1 = (yaw, plan, boss) => {
     const G = (last = build());
@@ -6370,6 +6555,7 @@ async function scenarioSlashFeel() {
     const h = r.ev.find((e) => e.hit);
     assert(r.bursts >= 1 && h && Number.isFinite(h.x + h.y + h.z) && r.rows.some((l) => l.hit && l.carry === 0), `a landed blow's slash bursts sparks (${r.bursts}), stays on what it hit, and is announced (player:slash hit: ${!!h})`);
   }
+  SX.setSlash(slash0);
   return last;
 }
 
@@ -6495,6 +6681,46 @@ async function scenarioOffHand() {
       if (mode === '0') assert(sdIn === 0 && sdSlam === 0 && !nan, `offhand 0 (production) never hangs the free hand (sd ${sdIn}; its free wrist at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4)`);
       else assert(!nan && sdIn > 0.95 && sdSlam < 0.05 && twoSlam > 0.9 && far <= 0.6 && step <= 0.7 * prodStep && sdAfter < 0.02,
         `offhand ${mode}: at its rest through hits 1-4 (sd ${sdIn.toFixed(2)}), the slam two-handed (sd ${sdSlam.toFixed(2)}, two ${twoSlam.toFixed(2)}), the wrist at most ${far.toFixed(2)} m from its shoulder, at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4 (production ${(prodStep * 100).toFixed(1)}), home after (sd ${sdAfter.toFixed(2)})${nan ? ', NaN' : ''}`);
+    }
+    // combo A's own hand behind his back (ADR-247; the owner: "its yellow fist randomly during the light attack
+    // combo", "on the 5th attack the left hand angle motion and animation looks unnatural"): while it hangs (sd 1)
+    // through hits 1-4 the free wrist stays out of his coat (≥ 0.18 m from the spine between hip and chest; it came
+    // within 0.07), and hit 5 takes it to the grip round his side, no frame stepping more than 22 cm (it snapped 34)
+    {
+      const CO = await imp('src/entities/player/combos.js');
+      const c0 = CO.comboMode();
+      CO.setCombo('a');
+      OH.setOffHand('auto');
+      try {
+        const G = (last = build());
+        fightSetup(G);
+        const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim;
+        p.debug.god = true;
+        p.debug.teleport(d.position.x + 14, d.position.z + 14);
+        p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+        aimAt(G);
+        for (let i = 0; i < 60; i++) G.tick(DT);
+        const W = new THREE.Vector3(), Wp = new THREE.Vector3(), Wr = new THREE.Vector3(), inv = new THREE.Matrix4(), invR = new THREE.Matrix4();
+        let near = Infinity, reach = 0, have = false, grip = false;
+        const plan = [0, 0.35, 0.7, 1.08, 1.43];
+        for (let i = 0, N = Math.round(2.6 / DT); i < N; i++) {
+          if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
+          G.tick(DT);
+          inv.copy(r.chest.matrixWorld).invert();
+          W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
+          invR.copy(r.root.matrixWorld).invert();
+          Wr.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(invR).multiplyScalar(1 / (p.drawScale || 1));
+          const combo = p.state === 'attack' ? p.atk?.def?.combo : 0, sd = A.cur[P.sd], y = W.y - HD.shoulder[1];
+          if (combo >= 1 && combo <= 4 && sd >= 0.99 && y > -0.75 && y < 0.15) near = Math.min(near, Math.hypot(W.x, W.z));
+          if (combo === 5 && !grip && have) reach = Math.max(reach, Wr.distanceTo(Wp));
+          if (combo === 5 && sd < 0.01) grip = true;
+          Wp.copy(Wr);
+          have = true;
+        }
+        assert(near >= 0.18 && grip && reach <= 0.22, `combo A's hand behind his back: out of his coat through hits 1-4 (its nearest ${near.toFixed(2)} m to his spine), hit 5 takes it to the grip (${grip}) round his side, at most ${(reach * 100).toFixed(1)} cm a frame`);
+      } finally {
+        CO.setCombo(c0);
+      }
     }
   } finally {
     OH.setOffHand(off0);
@@ -15281,6 +15507,8 @@ const SCENARIOS = {
   herolife: pinAdr186(scenarioHeroLife),
   instantslash: scenarioInstantSlash,
   slashfeel: scenarioSlashFeel,
+  slice: scenarioSlice,
+  handaudit: scenarioHandAudit,
   combos: scenarioCombos,
   feel: scenarioFeel,
   offhand: scenarioOffHand,
@@ -15311,7 +15539,7 @@ const SCENARIOS = {
   probe: scenarioProbe,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'handaudit']); // run only when named
 // GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }
