@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-26',
+        title: 'The clash dance, to try',
+        notes: [
+          'Add ?clash=dance to the address to try it against the human bosses: parries in a row inside one of his strings break his posture faster, and the clash of steel rings a little higher with each one.',
+          'His posture also recovers more slowly the more you have cut his health, so a near break stays near.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'The perfect parry earns its own reward: the deathblow',
         notes: [
           'Parrying the human bosses now builds toward a reward of its own: every parry fills his gold posture bar, and every perfect parry is banked.',

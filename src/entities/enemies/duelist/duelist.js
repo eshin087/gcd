@@ -14,6 +14,7 @@ import { counterChainOn } from '../../../combat/flashChain.js';
 import { impactK } from '../../../combat/impact.js';
 import { calmBossFlash } from '../../../combat/impactCalm.js';
 import { HitReact } from './react.js';
+import { clashNext, clashMult, clashRegenK } from '../../../combat/clashDance.js';
 
 // A duelist: a human boss on the hero's skeleton and animator (the Ash Disciple; the Starless Lord).
 // It fills a level's boss slot (game.dragon === game.boss) and offers the Dragon contract's surface
@@ -125,6 +126,8 @@ export class Duelist {
     this.shudderK = 1;
     this._tipOk = false;
     this._lastParry = -9;
+    // the clash dance's run (combat/clashDance.js; ADR-247): { act, n, t (the hero's clock), hurt (his hurtN) }
+    this._clash = null;
     this._lastHurtPt = new THREE.Vector3();
 
     // the animator's view of him (anim.js HeroAnimator reads these)
@@ -463,7 +466,7 @@ export class Duelist {
     // (no burst of his own: the hero's parry draws the one clash, on the crossing of the two blades)
     this.flash = Math.max(this.flash, 0.5);
     this.jolt = Math.max(this.jolt, tell === TELL.BLUE ? 0.75 : 0.55); // the turned blow jars him
-    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1));
+    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1) * this._clashMult());
     if (this.mode !== 'act' || !a) return; // the parry broke his posture (broken) or the move is gone
     if (a) a.parried = (a.parried ?? 0) + 1;
     // the blade lock: a PERFECT parry of a blow marked `lock` crosses the blades
@@ -742,6 +745,7 @@ export class Duelist {
     this.maxPosture = perPhase(this.T.posture.max, 1);
     this.posture = 0;
     this.postureTimer = 0;
+    this._clash = null;
     this.broken = false;
     this._streakSet(0);
     this.flash = 0;
@@ -793,11 +797,30 @@ export class Duelist {
     this.emit('dragon:posture', { posture: p, max: this.maxPosture });
   }
 
+  /**
+   * The clash dance (combat/clashDance.js; ADR-247): the run this parry would make now (0: the dance is
+   * off). The hero reads it as he parries (player.js _parry: player:parry's `clash`, the ring), before
+   * onParried counts it.
+   */
+  clashPeek() {
+    const p = this.game.player;
+    return clashNext(this._clash, this.brain.act, fin(p?.time), p?.hurtN ?? 0);
+  }
+
+  /** A parry of his body or blade: count it in the run, the posture multiplier it earns (1: off). */
+  _clashMult() {
+    const n = this.clashPeek();
+    if (n <= 0) return 1;
+    const p = this.game.player;
+    this._clash = { act: this.brain.act, n, t: fin(p?.time), hurt: p?.hurtN ?? 0 };
+    return clashMult(n);
+  }
+
   _updatePosture(dt) {
     this.postureTimer += dt;
     if (this.broken || this.posture <= 0) return;
     if (this.postureTimer > this.T.posture.regenDelay) {
-      this.posture = Math.max(0, this.posture - this.T.posture.regenRate * dt);
+      this.posture = Math.max(0, this.posture - this.T.posture.regenRate * clashRegenK(clamp(this.hp / Math.max(1, this.maxHp), 0, 1)) * dt);
       this.emitPosture();
     }
   }

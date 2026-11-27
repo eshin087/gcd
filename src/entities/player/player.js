@@ -215,6 +215,9 @@ export class Player {
     this.critTimer = 0;
 
     this.time = 0;
+    // blows that landed on him (a hit, a guard broken; not a contact stream's chip): the clash dance's run
+    // starts over when it moves (combat/clashDance.js; ADR-247)
+    this.hurtN = 0;
     this.control = false;
     this.intent = { x: 0, z: 0, len: 0, sprint: false };
     this.buf = { action: null, t: 0 };
@@ -568,6 +571,7 @@ export class Player {
     this._streakEnd(); // hurt: the streak of perfect dodges is over
     this.parryRun = 0; // (and the perfect parries toward a deathblow)
     if (!chip) this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
+    if (!chip) this.hurtN++;
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
     this._crashArm(hit, attacker, kb);
@@ -1377,8 +1381,10 @@ export class Player {
       R.tell = tell;
     }
     // (`feel` / `beat`: the perfect parry's look, PERFECT_FEEL's mode and cinema's 'full' | 'short'; the
-    // screen reads them: flow.js)
-    this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last, flare: moment, feel: PM?.mode ?? 'today', beat: PM?.beat ?? '' });
+    // screen reads them: flow.js). `clash`: the clash dance's run this parry makes on a duelist (his
+    // clashPeek, before his onParried counts it; 0: off, or no blade / body of a duelist's: audio.js rings it)
+    const clash = !light && typeof hit?.attacker?.clashPeek === 'function' ? hit.attacker.clashPeek() | 0 : 0;
+    this._emit('player:parry', { tell, attack, chain: D.n, clash, light, perfect: !!perfect, last, flare: moment, feel: PM?.mode ?? 'today', beat: PM?.beat ?? '' });
   }
 
   /** The riposte a parried last blow asked for: starts as the parry's freeze ends, if the hero is
@@ -1774,6 +1780,7 @@ export class Player {
   _guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc) {
     const g = this.game;
     this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
+    this.hurtN++;
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
     this.flash = 1;

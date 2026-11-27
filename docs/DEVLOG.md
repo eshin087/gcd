@@ -5,6 +5,38 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
+
+**Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its
+own session; then, on how it fits the deathblow (PR 145): "help me understand what the clash dance is", and after
+the explanation, "Yes, build it" (on its own, a small rise in the ring, the recovery steps for every duelist).
+
+**What changed** (all behind `?clash=dance`, the Lab's `clash` row; off by default):
+- `combat/clashDance.js` (the switch, `clashNext`, `clashMult`, `clashRing`, `clashRegenK`) and
+  `DEFENSE.clashDance` (rules.js: `mult`, `gap`, `ring`, `regenByHp`).
+- `duelist.js`: the run on `_clash {act, n, t, hurt}`, `clashPeek()` and `_clashMult()`; `onParried` (and
+  Halcyon's crash) multiply the parry's posture; `_updatePosture` x the HP step. The Lord, Tian Lei and Xin Yi
+  swap their `regenByHp` curve for the steps.
+- `player.js`: `hurtN` (blows that landed or broke the guard; not a stream's chip) and `player:parry {clash}`
+  (read from the duelist's `clashPeek` as he parries). `audio.js` `_parry`: the recorded clang x `clashRing(run)`.
+- Tests: duel `clashdance` (the table, the ring, off = today's posture, the x1 / x1.25 / x1.5 ladder, the three
+  resets, the recovery steps), lord `clashdance` (the steps replace his curve, never faster).
+
+**Decisions:** the run lives on his move beside the deflect chain's count and never reads the deathblow's
+`parryRun`. The first try kept the Lord family's x1.5 full-bar rate under the steps; that made them recover faster
+than today at 50 - 70 % HP, so the steps replace the curve outright (ADR-247).
+
+**Film** (a plain-parry bot, all-white strings so a parried blue blow's deathblow does not decide it, red blows
+rolled; the same strings both ways, game camera, close crop, a posture readout burnt in): Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The first takes went through a stopped take's leftover in a second tab (two films interleaved); re-shot clean.
+
+**Verification:** duel `clashdance`, lord `clashdance`, changelogcheck, glyphcheck; full `npm test` before the PR;
+`npm run build`.
+
+**Open / next:** the owner's pick from the film (the default stays off until then) and the ring by ear in the
+preview (the film has no sound). With the deathblow merged, a dance-made break may come with fewer perfect parries
+banked, so the deathblow can be shorter. Next in P4: the Break finisher, cuts that split the letters, one answer per
+unblockable, a sub-weapon.
+
 ## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
 
 **Owner:** asked for research into the combat of three sword games and five additions; picked the counter-kill
