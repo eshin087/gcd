@@ -24,7 +24,7 @@
 //   pole, ld, ln  the elbow's way, the fingers, the palm (body axes turned with the chest); lw their weight
 //   hs     the hand's shape (0 open, 1 sword fingers); `keep` (quiet) how far toward the clip's own hand
 
-import { feelLook } from './feel.js';
+import { feelHand } from './feel.js';
 
 const COMMON = { easeIn: 0.16, ease: 0.3, easeBack: 0.1, linger: 0.35, drop: 12, vIn: 3.3, trail: 0.012, trailMax: 0.1, thighR: 0.095 };
 export const OFFHAND = {
@@ -48,7 +48,7 @@ let offNow = 'auto';
 export const offHandMode = () => offNow;
 /** The look's data, or null for production's. */
 export const offHandLook = () => {
-  const m = offNow === 'auto' ? feelLook()?.hand ?? '0' : offNow;
+  const m = offNow === 'auto' ? feelHand() ?? '0' : offNow;
   return m === '0' ? null : OFFHAND[m] ?? null;
 };
 /** Pick the look (live from the next swing); false for an unknown id. */

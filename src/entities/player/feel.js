@@ -40,6 +40,13 @@ let feelNow = '0';
 export const feelMode = () => feelNow;
 /** Its data, or null for production's. */
 export const feelLook = () => (feelNow === '0' ? null : FEELS[feelNow]);
+let handOver = null;
+/** The free hand 'auto' wears (offHand.js): a combo's own (combos.js, setFeelHand), else the feel's, else null. */
+export const feelHand = () => handOver ?? feelLook()?.hand ?? null;
+/** A combo's hand over its feel's (null: the feel's). */
+export function setFeelHand(h) {
+  handOver = typeof h === 'string' ? h : null;
+}
 /** Pick it (live from the next swing); false for an unknown id. */
 export function setFeel(m) {
   const id = String(m);

@@ -10,6 +10,7 @@ import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BREATH, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
 import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { SlashFx, slashMode } from './slashFx.js';
+import './combos.js'; // (`?combo=`: four light combos for the ending slash, worn on LIGHT at load)
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';

@@ -40,6 +40,42 @@ export function setSlash(m) {
   if (q) setSlash(q);
 }
 
+/** THE ENDING SLASH (the owner, 2026-11-26: "I didn't mean the instant slash is showing the sword swing, it should
+ *  show at the end like an ending slash feel"; shown all three places and both timings to pick from). Where the
+ *  line is drawn once the swing has ended, at the cut's own angle:
+ *    target  through the space ahead of him where the foe stands (END.ahead m out, at the cut's height)
+ *    body    across him, centred on his chest
+ *    enemy   across what it hit, centred on the contact; a whiff: a shorter line at the target place
+ *    blade   along the blade's own path (the first instant slash: the chord of the swing)
+ *  and when: '0' as the swing ends, 'beat' END.beat s later (the 'already cut' beat, the pose held). */
+export const PLACE_IDS = ['target', 'body', 'enemy', 'blade'];
+export const BEAT_IDS = ['beat', '0'];
+let placeNow = 'target', beatNow = 'beat';
+export const placeMode = () => placeNow;
+export const beatMode = () => beatNow;
+export function setPlace(m) {
+  if (!PLACE_IDS.includes(m)) return false;
+  placeNow = m;
+  return true;
+}
+export function setBeat(m) {
+  const id = String(m);
+  if (!BEAT_IDS.includes(id)) return false;
+  beatNow = id;
+  return true;
+}
+{
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+  if (q?.get('endslash')) setPlace(q.get('endslash'));
+  if (q?.get('endbeat')) setBeat(q.get('endbeat'));
+}
+/** The ending slash's numbers: `ahead` (m, × his scale) the target place in front of him, `y` the height
+ *  range of its middle (m), `len` [light, heavy] its length (m), `thrust` a thrust's, `miss` × the length of
+ *  an enemy-placed whiff, `beat` (s) the pause before it in 'beat', `star` (rad) how far a turn's three cuts
+ *  are fanned round their middle. */
+export const END = { ahead: 1.9, y: [0.55, 1.7], len: [3.6, 5.6], thrust: 2.4, miss: 0.6, beat: 0.12, star: 0 };
+const NP = 8; // ending slashes waiting for their beat
+
 /** The line's looks: strokes, their size at the middle (m), life (s) at the ends … the middle, the
  *  four-frame flash, the hairline that outlasts it, the colours (the arc's: white-hot → its core → the
  *  colour it cools to); `ext` the share of the recorded stretch it is carried on past each end, `min` the
@@ -90,6 +126,18 @@ export class SlashFx {
     this.peak = 0; // the fastest frame's step, and its index
     this.pi = -1;
     this.lastT = -1;
+    this.pend = new Float32Array(NP * 10); // ax ay az bx by bz, the time it is drawn at, thrust, kick, look
+    this.np = 0;
+    this.hitRec = null; // the attack that landed, and where (the enemy place)
+    this.hit = [0, 0, 0];
+    player.game?.events?.on?.('player:hitDragon', (e) => {
+      const at = this.p.atk, q = e?.point;
+      if (!at || !q || !Number.isFinite(q.x + q.y + q.z) || this.hitRec === at) return;
+      this.hitRec = at;
+      this.hit[0] = q.x;
+      this.hit[1] = q.y;
+      this.hit[2] = q.z;
+    });
     this.lines = 0; // drawn so far (tests)
     this.last = new Float32Array(8); // the last line drawn: its ends, heavy, the kind (tests)
     this.kicks = 0;
@@ -119,6 +167,7 @@ export class SlashFx {
 
   /** Per frame, after the pose and the sweep (player.js _combat). */
   update() {
+    if (this.np) this._flush();
     const P = this.p, at = P.atk, d = at?.def;
     if (slashNow !== 'line' || !(P.hp > 0) || !d || (P.state !== 'attack' && P.state !== 'heavy') || at.pending) {
       this.rec = null;
@@ -199,7 +248,7 @@ export class SlashFx {
       else s0 = Math.max(s0, sT);
     } else if (y0 < SLASH.floor) return;
     if (!(s1 - s0 > 0.2)) return;
-    this._draw(x0 + dx * s0, y0 + dy * s0, z0 + dz * s0, x0 + dx * s1, y0 + dy * s1, z0 + dz * s1, false, kick);
+    this._end(x0 + dx * s0, y0 + dy * s0, z0 + dz * s0, x0 + dx * s1, y0 + dy * s1, z0 + dz * s1, false, kick);
   }
 
   /** A thrust: a short streak straight on off the point, along the blade. */
@@ -210,7 +259,91 @@ export class SlashFx {
     dx /= l;
     dy /= l;
     dz /= l;
-    this._draw(T[0], T[1], T[2], T[0] + dx * len, T[1] + dy * len, T[2] + dz * len, true, true);
+    this._end(T[0], T[1], T[2], T[0] + dx * len, T[1] + dy * len, T[2] + dz * len, true, true);
+  }
+
+  /** The ending slash: the cut's line (a → b) moved to its place (placeNow) at the cut's angle, kept off the
+   *  floor, drawn now or after the beat (beatNow). */
+  _end(ax, ay, az, bx, by, bz, thrust, kick) {
+    if (placeNow !== 'blade') {
+      let dx = bx - ax, dy = by - ay, dz = bz - az;
+      const l = Math.hypot(dx, dy, dz);
+      if (!(l > 1e-4)) return;
+      dx /= l;
+      dy /= l;
+      dz /= l;
+      const P = this.p, sc = P.drawScale || 1, E = END;
+      let cx, cy, cz, L = (thrust ? E.thrust : E.len[this.look]) * sc;
+      const ch = P.rig?.chest?.matrixWorld?.elements;
+      if (placeNow === 'body' && ch) {
+        cx = ch[12];
+        cy = ch[13];
+        cz = ch[14];
+      } else if (placeNow === 'enemy' && this.hitRec === this.rec) {
+        cx = this.hit[0];
+        cy = this.hit[1];
+        cz = this.hit[2];
+      } else {
+        const y = P.yaw ?? 0;
+        cx = P.position.x + Math.sin(y) * E.ahead * sc;
+        cz = P.position.z + Math.cos(y) * E.ahead * sc;
+        cy = Math.min(E.y[1] * sc, Math.max(E.y[0] * sc, (ay + by) / 2));
+        if (placeNow === 'enemy') L *= E.miss;
+      }
+      if (!Number.isFinite(cx + cy + cz)) return;
+      // (a thrust's streak runs on from just behind the place; a cut is centred on it)
+      const f0 = thrust ? -0.3 : -0.5, f1 = thrust ? 0.7 : 0.5;
+      let s0 = f0 * L, s1 = f1 * L;
+      if (Math.abs(dy) > 1e-6) {
+        const sF = (SLASH.floor - cy) / dy;
+        if (dy < 0) s1 = Math.min(s1, sF);
+        else s0 = Math.max(s0, sF);
+      } else if (cy < SLASH.floor) return;
+      if (!(s1 - s0 > 0.2)) return;
+      ax = cx + dx * s0;
+      ay = cy + dy * s0;
+      az = cz + dz * s0;
+      bx = cx + dx * s1;
+      by = cy + dy * s1;
+      bz = cz + dz * s1;
+    }
+    const at = beatNow === 'beat' ? (this.game?.time ?? 0) + END.beat : -1;
+    if (at < 0 || !Number.isFinite(at)) {
+      this._draw(ax, ay, az, bx, by, bz, thrust, kick);
+      return;
+    }
+    if (this.np >= NP) return;
+    const o = this.np++ * 10, Q = this.pend;
+    Q[o] = ax;
+    Q[o + 1] = ay;
+    Q[o + 2] = az;
+    Q[o + 3] = bx;
+    Q[o + 4] = by;
+    Q[o + 5] = bz;
+    Q[o + 6] = at;
+    Q[o + 7] = thrust ? 1 : 0;
+    Q[o + 8] = kick ? 1 : 0;
+    Q[o + 9] = this.look;
+  }
+
+  /** The ending slashes whose beat is up (dropped if he has died since). */
+  _flush() {
+    const Q = this.pend, now = this.game?.time ?? 0, alive = this.p.hp > 0;
+    for (let i = 0; i < this.np; ) {
+      const o = i * 10;
+      if (alive && now < Q[o + 6]) {
+        i++;
+        continue;
+      }
+      if (alive) {
+        const look = this.look;
+        this.look = Q[o + 9];
+        this._draw(Q[o], Q[o + 1], Q[o + 2], Q[o + 3], Q[o + 4], Q[o + 5], Q[o + 7] > 0, Q[o + 8] > 0);
+        this.look = look;
+      }
+      const l = --this.np * 10;
+      for (let k = 0; k < 10; k++) Q[o + k] = Q[l + k];
+    }
   }
 
   _draw(ax, ay, az, bx, by, bz, thrust, kick) {
