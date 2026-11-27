@@ -342,7 +342,7 @@ export const DEFENSE = Object.freeze({
     active: 0.05, recover: 0.2, finActive: 0.1, finRecover: 0.3, gap: 0,
     stop: Object.freeze([0.045, 0.07]), finStop: 0.14, jolt: 0.9,
     step: 0.6, stepMid: 0.3, minGap: 1.0,
-    slow: Object.freeze({ slowmo: 0.3, dur: 0.25, zoom: 0, weight: 0.3 }),
+    slow: Object.freeze({ slowmo: 1, dur: 0.4, zoom: -4, weight: 0.55 }), // the camera's lean for the combo (+ dur s after it); slowmo 1: no slow motion
     wMid: 0.4, wLast: 1.35, flash: 0.8, iframePad: 0.05,
   }),
 });
