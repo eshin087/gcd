@@ -5,6 +5,7 @@ import { CONFIG } from '../../core/config.js';
 import { meadowHeight } from '../grass.js';
 import { LITTER } from './litterTuning.js';
 import { LetterBatch } from './letterBatch.js';
+import { ship } from './ship.js';
 import { lifeSay } from '../../audio/lifeSfx.js';
 import { LIFE_SFX_TUNE as SAY } from '../../audio/lifeSfxTuning.js';
 
@@ -927,11 +928,13 @@ export class Litter {
       }
     }
     LP?.end();
+    // (the fast path, ship.js: only the leaves printed go to the GPU; LeafPrint marks nothing while empty)
+    if (LP) ship(LP.mesh, LP.n, LP.iA, LP.iB, LP.iC, LP.iD, false);
     LB?.end();
     if (!pool) return;
     pool.count = n;
     pool.geometry.instanceCount = n;
-    pool.iPos.needsUpdate = pool.iData.needsUpdate = pool.iColor.needsUpdate = true;
+    ship(pool.mesh, n, pool.iPos, pool.iData, pool.iColor);
   }
 
   /** Look c: a lying piece as a sketch in the living world's tiny letters (upright, one 5 x 8 px cell

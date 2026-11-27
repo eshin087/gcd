@@ -20,6 +20,8 @@
 //
 // No allocation per frame: typed rings, one per part.
 
+import { DP_STEP_U } from '../render/dragonStep.js';
+
 /** The parts a frame is cut into (main.js `safe` names and its own blocks); anything else is `other`. */
 export const PERF_PARTS = ['flow', 'player', 'dragon', 'world', 'fx', 'camera', 'uniforms', 'hud', 'audio', 'render', 'touch', 'gamepad', 'lab', 'view', 'autoQuality', 'other'];
 const INDEX = new Map(PERF_PARTS.map((p, i) => [p, i]));
@@ -179,6 +181,15 @@ export class PerfReadout {
         }
       }
       out.steps['rest (final, matrices)'] = +Math.max(0, base - Object.values(out.steps).reduce((x, y) => x + y, 0) + (out.steps['shadows, redrawn'] ?? 0)).toFixed(1);
+      // the living world, all of it at once (it lies inside the steps above, so it is not one of them)
+      const back = this._lifeOut();
+      if (back) {
+        try {
+          out.life = +Math.max(0, base - time()).toFixed(1);
+        } finally {
+          back();
+        }
+      }
       // ~half the pixels: the render size down a step, then back as it was
       const W = P.width, H = P.height, dpr = r.getPixelRatio?.() || 1;
       if (W > 0 && H > 0 && typeof P.setSize === 'function') {
@@ -199,6 +210,41 @@ export class PerfReadout {
     this.benches.push(out);
     if (this.benches.length > 6) this.benches.shift();
     return out;
+  }
+
+  /**
+   * BENCH's living-world reading: its letter batches (every mesh ship.js marked `lifeBatch`) out of the
+   * frame, the trees' and grass's wind off (uWind 0: the old sway), the step flash and the hero's wake in the
+   * ground off. Returns the function that puts it all back; null when there is no living world. (The lamps'
+   * flames are heat in the fire field already burning: they stay.)
+   */
+  _lifeOut() {
+    const g = this.game, U = g?.U, life = g?.world?.life;
+    if (!life?.enabled || !U) return null;
+    const hid = [];
+    for (const root of [g.fxScene, g.scene]) {
+      root?.traverse?.((o) => {
+        if (o.userData?.lifeBatch === true && o.visible) hid.push(o);
+      });
+    }
+    const v4 = (u) => (u?.value?.isVector4 ? u.value : null);
+    const wind = v4(U.uWind), bend = v4(U.uBend), all = v4(U.uTrailAll), stepK = DP_STEP_U.uDpStepK?.value;
+    const boxes = Array.isArray(U.uTrailBox?.value) ? U.uTrailBox.value : [];
+    const keep = { wind: wind?.clone(), bend: bend?.clone(), all: all?.clone(), stepW: stepK?.w ?? 0, boxes: boxes.map((b) => b.z) };
+    for (const o of hid) o.visible = false;
+    wind?.set(0, 0, 0, 0);
+    if (bend) bend.x = 0;
+    for (const b of boxes) b.z = 0;
+    all?.set(0, 0, 0, 1);
+    if (stepK) stepK.w = 0;
+    return () => {
+      for (const o of hid) o.visible = true;
+      if (keep.wind) wind.copy(keep.wind);
+      if (keep.bend) bend.copy(keep.bend);
+      if (keep.all) all.copy(keep.all);
+      boxes.forEach((b, i) => (b.z = keep.boxes[i]));
+      if (stepK) stepK.w = keep.stepW;
+    };
   }
 
   /** Forget what was recorded (the RESET button; a new fight). */
@@ -283,6 +329,7 @@ export class PerfReadout {
     for (const B of this.benches) {
       L.push(`bench at ${B.t}s (${B.canvas}, ${B.state}, hero ${B.hero} / boss ${B.boss}): a whole frame ${B.frame} ms (GPU + its submit), each step's share:`);
       for (const [k, v] of Object.entries(B.steps).sort((a, b) => b[1] - a[1])) L.push(`  ${k.padEnd(18)} ${f1(v).padStart(5)} ms`);
+      if (B.life != null) L.push(`  the living world (its letters, the wind in the trees and grass, the wake and the step flash in the ground; inside the steps above) ${f1(B.life)} ms`);
       if (B.half) L.push(`  the frame at ${B.half.canvas}: ${B.half.frame} ms (a pixel-count step: ${B.half.share})`);
     }
     return L.join('\n');

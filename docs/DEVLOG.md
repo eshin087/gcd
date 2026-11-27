@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The living world's fast path: the same picture for less (ADR-245; Opus agent; `world/life-perf`)
+
+**Owner:** "i feel like the ascii atmosphere effects is causing a lot of performance issues. is there a way we
+can improve the performance while still making it look as good and alive?"
+
+- **Measured first** (five levels, fights, GPU at 4K and the phone's size, CPU at 1x / 4x / 6x throttle): the
+  air's letters themselves are nearly free on the GPU; the cost was the ground's step flash and the grass
+  wake looping on every pixel (9 - 21 % of the ground pass at 4K), whole-array uploads every frame (115 - 231 KB)
+  and empty batches still drawn; the life update 0.06 - 0.34 ms of CPU at 1x.
+- **Changed** (`?lifeFast=0` = before): only the drawn letters are uploaded, empty batches leave the frame
+  (`life/ship.js`); the step flash and the wake return at once outside their reach; BENCH reads the living
+  world's share.
+- **Result** (one page, fast vs before): the ground pass 0.83 - 0.89; the effects pass's render CPU and uploads
+  0.7 - 0.97; the picture identical (pixel counts and side-by-side films per level).
+
+**Verified.** `life.mjs . all` (new `fast`: same letters, ranges, bounds, off-is-free), `world.mjs . all`
+(the allocation `budget` check failed once under machine load, passed alone on the branch and on main),
+`world.mjs . perfreadout`, the glyph check; the seeded wyrm fight's trace byte-identical.
+
+**Open.** Not measured on a phone (the owner's BENCH "living world" line); the trees' wind vertex cost on a
+quiet GPU; the wisps' and mist's motion on the GPU if the phone's CPU turns out to be the limit.
+
+---
+
 ## 2026-11-26 — The animation guide (`docs/ANIMATION.md`; branch `docs/animation-guide`)
 
 **Owner:** "can you research online and find the material that will be helpful for future agents to follow
