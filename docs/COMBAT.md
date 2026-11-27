@@ -2690,6 +2690,27 @@ the blow is aimed down at the hero (his fists met the air over the hero's head a
 his legs a flier's (trailing behind him, never a planted stance in the air), his arm opening at the end;
 Tian Lei's held windups for his blue and red blows; the snap blows Flick and Tap (below). Timings unchanged.
 
+**His limbs and his pace, to choose (2026-11-27, ADR-254; not the default yet).** `?halMotion=b` is `a` with a
+flier's limbs, poses only (every timing as `a`; city.mjs `limbs`; `halcyon/limbs.js`). Measured at each blow's
+contact in his upright frame (city.mjs `audit`, `GCD_AUDIT_IMPACT=1`; the drawn body is sheared toward the
+camera, so world points read a straight punch 20 - 40° off). Under `a`: straight blows 35 - 66° across the line
+from the shoulder to the hero's chest (the floor fighter's sideways lines), elbows 148 - 161°; knees folded at
+67 - 135° (kneeling on air); the round kick at 105° and the side kick at 130°, the other leg folded at ~92°; the
+pass pitched 54°, knees 54°, its fist at 2.56 m (over the hero's head). Under `b`: every straight blow within 9°
+of the line, the elbow 161 - 171°; both knees 141 - 156° at every punch (the legs long, trailing, the toes
+pointed; a hip sunk low takes its leg further back, since the animator keeps a foot over his root's floor); a
+kick's knee 173°, the other leg hanging at 154°; the pass level (77°) with the fist at 1.55 m, through the hero's
+chest (`motion.b.passY`). His hover hangs the legs the same way. Hooks and uppercuts keep their bend. A longer
+limb snaps harder at the contact (the largest frame jolt, mm/f²: Faster Than Sound's kick 282 → 424, the riposte's
+palm 174 → 236, Meet and Greet orbited 330 → 369); the other moves' are as `a`'s or lower (Flick 109 → 88).
+`?halPace=a` is COMBAT rule 10's floor (`halcyon/pace.js`, Tian Lei's ADR-248 rule): a move's first real blow
+>= 0.7 s x the phase's windupScale, later blows >= 0.45 s apart, the cue 0.35 s before; the time is a held cock
+(the realiser's `hold`); the snap blows and the transitions keep theirs (city.mjs `readable`). '0', his shipped
+pace (a first blow from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s), stays the default until the owner
+picks. Two effect options, gameplay untouched: `?halEyes=a|b` (his beams: a heat vision, b a crimson pulse;
+`fxEyes.js`) and `?halShock=a|b` (Applause's ring and Meteor's landing: a a thunderclap ring, b a dome of
+pressure; `fxShock.js`).
+
 **The crash.** A parry of a flying blow (a Fly-By pass, Blink of an Eye's flying cross) or a perfect dodge
 of a red flying blow (Through the Tower, See the World, the last pass of phase 3) throws him off his line
 (0.45 rad away from the hero) into the first standing cover on it within 12 m: he slides in 0.25 s, breaks

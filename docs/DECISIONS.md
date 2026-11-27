@@ -6995,3 +6995,55 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The ring is not on the film (no sound): it is the owner's to judge by ear in
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
+
+## ADR-254 — Halcyon audited: a flier's limbs, the readable pace, two looks for his eyes and his shockwaves (`?halMotion=b`, `?halPace=a`, `?halEyes`, `?halShock`) (2026-11-27)
+
+- **Context:** the boss motion audit (the owner: "weird looking arm angles ... kicks aren't straight during the
+  attack and still bended"; every attack readable; special effects to the Fox's and Bai Wuji's bar, 2 - 3 looks to
+  pick from). Halcyon is a flier on Tian Lei's builders (ADR-160, ADR-225's `a`: a flier's legs, the blow aimed down,
+  the held windups, the snap blows). Measured on the rig at each blow's contact (city.mjs `audit`, now with
+  `GCD_AUDIT_IMPACT=1`): his straight blows ran 35 - 66° across the line to the hero (the builders' sideways lines,
+  made for a fighter on the floor beside him, not one hovering over him); his legs sat folded under him (knees 67 -
+  135°: a man kneeling on air); the round kick landed at 105°, the side kick at 130°, the other leg folded at ~92°;
+  the pass flew pitched 54° with the knees at 54° and the fist at 2.56 m, over the hero's head. His pace is Tian
+  Lei's (first blows from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s), under COMBAT rule 10.
+- **Decision:** four switches, none the default until the owner picks from film:
+  1. `?halMotion=b` (`halcyon/limbs.js`, through `motion.js` halKeys, his realiser's `keysOf`): `a`'s keys, then a
+     straight blow's hand 1.08 x the arm on the line from its shoulder to the hero's upper chest (his model space at
+     the dip, `motion.b.aim`), the keys after it moved with it; a kick's foot 1.05 x the leg along its own line;
+     hooks and uppercuts their bend; THE FLIER'S LEGS on every key (each foot 0.9 - 0.985 x the leg from its hip,
+     trailing back from straight down by a set angle plus the body's pitch, one a little more bent than the other,
+     the knees forward, the toes pointed), the same hung under his hover (`poses.js` hoverLegs); a kick's other leg
+     hangs long; his own beats (the eyes, the car, the clap ...) the same legs; THE PASS level (`FLY_B`: the body at 1.35 rad, the lead fist straight out, the legs long behind) and
+     his root through it at `motion.b.passY` 0.3 m (`flight.js` go), so the fist meets the hero's chest. His
+     animator opened (`armSoft` [0.96, 0.998], `legSoft` [0.95, 0.998]) and Xin Yi's `kickStretch` set only
+     through a kick (halcyon.js brainFrame: a flier's trailing feet are off the floor too, and it locked them).
+  2. `?halPace=a` (`halcyon/pace.js`): rule 10's floor as Tian Lei's ADR-248 (`ascPace`), his own copy: a move's
+     first real blow >= 0.7 s x windupScale, later blows >= 0.45 s apart, the cue 0.35 s before; the time is a
+     held cock (the realiser's `hold`); the snap blows and the transitions keep theirs.
+  3. `?halEyes=a|b` (`halcyon/fxEyes.js`, HalFx.beam / beamSplash / eyes): a heat vision (two white-hot threads
+     out of his eyes meeting into one hard line, a flickering crimson sheath, tiny faint letters shimmering up off
+     it, the floor molten where it lands, sparks spat back, smoke; red motes drawn into his eyes through the
+     windup); b the crimson pulse (a thicker body, rings racing down it, a scorch ring opening on the beat at its
+     foot, ash; a ring tightening round his eyes). '0' Tian Lei's beam in his crimson.
+  4. `?halShock=a|b` (`halcyon/fxShock.js`, HalFx.shockwave, Applause and Meteor's landing): a a thunderclap (a
+     crisp ring of air racing out at chest / knee height, a fainter twin on the floor, dust shoved ahead); b a dome
+     of pressure (rings at five heights, the air in it shimmering, grit lifted; the landing's lower and wider). '0'
+     the engine's dust front.
+- **Why this way:** his blows are Tian Lei's builders, and Tian Lei's own straight-limb pass (PR 174,
+  `ascMotion=b`) is not merged and sits behind that boss's realiser; Halcyon is fixed in `halcyon/` only, his
+  numbers in his tuning. The audit measures in his UPRIGHT frame: the duelist draws the body sheared toward the
+  camera (`duelist.js` lean), and world points read a straight punch 20 - 40° off the hero (a measuring error,
+  not his arm). The legs could not simply hang: the animator keeps a foot over the root's floor (`anim.js`
+  FOOT_FLOOR, the hero's code), and he hovers 0.2 - 0.5 m up, so a hip sunk low takes its leg further back instead
+  of shorter. Effects are heat in the fire field and one-cell glyph particles (STYLE.md), jitter from the looks'
+  stream; nothing of a beam's or a blow's gameplay moves.
+- **Not taken:** changing `anim.js` (the hero session's) to let a flier's feet below his root; raising his body
+  and lowering his root (it moves gameplay heights the flight tests hold); a pace change without the owner's pick.
+- **Consequences / open:** under `b` every straight blow lands within 9° of the line (elbow 161 - 171°), the knees
+  141 - 156° at every punch, a kick 173° with the other leg at 154°, the pass level (77°) with the fist at 1.55 m;
+  a longer limb snaps harder at the contact (the largest frame jolt: Faster Than Sound's kick 282 → 424 mm/f², the
+  riposte's palm 174 → 236). His own beats (the eyes, the car, the clap, the grab, the statue's arm, the falling
+  sky) keep their arms and take the flier's legs (Applause's knees 77 / 114° → 144 / 154°); the transitions' kneel
+  and the meteor's landing stay on the floor, and its tuck is a deliberate ball. Tests: city `limbs`, `readable`,
+  `audit` (`GCD_AUDIT_IMPACT=1`).
