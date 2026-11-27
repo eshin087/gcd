@@ -55,6 +55,11 @@ export function makeFormKeys(F, G) {
       const deep = k.rF === F.PERIL_LUNGE.rF;
       o = { ...o, bY: Math.min(k.bY ?? -0.3, deep ? -0.4 : -0.34), rH: reachLine(k.sw[0], k.sw[1], u < 1.3 ? 0.6 : 0.62), rP: [-0.75, -0.25, -0.3], ...lungeFeet(Math.min(bZ, 0.24), deep ? 0.48 : 0.44, deep ? 0.8 : 0.74), lH: [0.24, 0.08, -0.3], lP: [0.7, -0.2, -0.6] };
     }
+    // ... and a recovery that holds the lunge holds the form's (The Walking Staff's: the old one on two locked knees)
+    if (!b && !isEnd(k) && (k.rF === F.LUNGE_FEET.rF || k.rF === F.PERIL_LUNGE.rF)) {
+      const deep = k.rF === F.PERIL_LUNGE.rF;
+      o = { ...o, ...lungeFeet(Math.min(k.bZ ?? 0, 0.24), deep ? 0.48 : 0.44, deep ? 0.8 : 0.74) };
+    }
     // the two-handed overhead: raised over his sword shoulder and brought down ACROSS him (a diagonal)
     if ((k.two ?? 0) > 0.95 && Array.isArray(k.sw)) {
       if (u < 1 - 1e-6 && k.sw[1] > 1.3) o = { ...o, ...G.RAISED2 };
