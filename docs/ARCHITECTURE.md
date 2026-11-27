@@ -1214,7 +1214,10 @@ inside the active window (scenario `feel`).
 `_flush` draws what is due each frame. The direction (every place but `blade`): the blade's point `END.at` along
 it, projected by the camera each buffered frame, its steps weighted by the point's speed² (`_swing`), laid in the
 screen's plane (`_screen`); the line is queued in `END.reveal` pieces `END.step` apart from the swing's start
-side. The swing's end waits out a landed blow's bite (`SWING.bite`). Defaults: `enemy`, `0`. While a free-hand
+side. The swing's end waits out a landed blow's bite (`SWING.bite`). Defaults: `enemy`, `0`. The impact pass (ADR-244): `END.front` (no part of a line nearer than that ahead of him), `END.carry` (a
+whiff's strokes move at his ground speed, slowing), `IMPACT` (on a landed blow: `game.kick` along the slash, a shake,
+`_burst`: glyph sparks along it and steel heat in the fire field), `SMEAR` (`_smear`: steel heat over the blade's sweep
+in fast frames), and `player:slash` for the audio (`slashRing`). While a free-hand
 look holds the hand (`P.sd`), the free wrist is `BLADE_PTS[13]` in the coat's sheet test (`_bladePts`). **The light combos** (ADR-240, `combos.js` `COMBOS`, `setCombo` /
 `comboMode`, `?combo=`, the Lab's `combo` row): `setCombo` writes a combo's `anim`, `variants`, timings and a
 finisher's `kind` / `heavy` / `contact` onto `LIGHT` (production's kept in `BASE` and restored by '0'), and sets
@@ -6319,6 +6322,7 @@ it, or drains `records.recent()` at boot; neither changes what is stored.
 Player → hud/audio/fx/flow:
 - `player:attack {kind:'light'|'heavy'|'slam'|'cleave'|'thrust', combo, charge, name}` (swing starts; combo 1–5 = the chain hit, slam = hit 5, the sprint slash and the roll cut report 1; heavy = a heavy branch, combo 0–4 = the light it followed (ADR-115; the Earthbreaker after the fourth is kind slam); cleave = the charge's release, thrust = the execution against a duelist; name = the attack's data name, combat.js),
   `player:charge {t}` (charge start; t = seconds to full charge), `player:slam {x, z}` (the slam meets the ground: shard burst),
+  `player:slash {heavy, hit, thrust, x, y, z}` (an attack's ending slash appears, slashFx.js: heavy look, on a landed blow, a thrust's streak; x/y/z its middle; audio rings it),
   `player:hitDragon {damage, part, point, heavy, crit, kind, guarded, combo, weight, shards}` (heavy = slam / cleave / thrust / plunge; kind 'plunge' = the
   head-stab, crit on an execution; guarded = a duelist's guard turned it: damage 0; point = where the cut is drawn
   (on a duelist: after his shove, where he is drawn in the held frame);

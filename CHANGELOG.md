@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty pieces of work since 0.4.0:
+One hundred and twenty-one pieces of work since 0.4.0:
+- **Harder-hitting swings, and slashes that stay in front of you** (2026-11-26, ADR-244). *Changed:* a heavy's
+  slash no longer appears behind you as you dash: no part of any ending slash is drawn behind you, and a slash
+  that cuts only air moves on with you. Landed blows hit harder: a longer freeze, the screen thrown along the slash,
+  a spray of sparks along the cut and a bright scar where it bit, and a crisp ring of steel with every slash
+  (heavier for heavies). The blade smears for a frame or two at the fastest part of every swing. The light combo
+  steps in further, holds each finishing pose while its slash flashes, then rises. Checked facing all four ways
+  and on the phone camera, upright and sideways.
 - **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
   perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
   curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round

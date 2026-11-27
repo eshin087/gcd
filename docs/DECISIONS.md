@@ -6883,3 +6883,28 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   and heavy branch: each line's on-screen direction now has its blade's. (3) The baseline is the default:
   `?endslash=enemy`, `?endbeat=0`; combo A in the game (`DEFAULT_COMBO`; the headless sims keep production's
   defs, which their checks are written for; `?combo=0` plays production's).
+
+## ADR-244 — The impact pass: every ending slash in front of him, carried on a whiff; harder hits; checked facing every way (2026-11-26)
+
+- **Context:** after combo A with the ending slash shipped (ADR-240, PR #167), the owner: "help me make the attack
+  animation look better in terms of animation and impact/feel. the heavy attack slash needs to show up in front of
+  the player, not behind them as the player moves forward. make sure the instant slashes and all attack animations
+  looks good in every angle and camera perspective"; asked, they chose all four impact pieces (hit-stop + kick, a
+  contact burst, a blade smear, a slash sound), a polish of combo A's moves, the heavy's slash ahead of him and
+  carried with his dash, and films facing every way and on the phone camera.
+- **Found:** the camera never turns (cameraRig.js: it looks north, 58° down), so "every angle" is the hero facing
+  each way; every film before had him facing north. Facing north, the lone heavy (Piercing Gale) drew its line
+  mid-dash at a fixed spot and dashed past it; a heavy's 6 m line centred on its contact ran back over him.
+- **Decision:** (1) `slashFx.js` `END.front`: the line's middle at least that far ahead of him along his facing, and
+  the end that runs back cut off there; `END.carry`: a whiff's line (nothing hit) moves on at his ground speed,
+  slowing at that rate (a landed blow's stays on what it hit). (2) `IMPACT`: on a landed blow, as its slash appears,
+  the camera thrown along the slash and shaken, glyph sparks thrown along the cut and a steel-heat scar down it
+  (the fire field, STYLE.md). (3) `SMEAR`: in a swing's fast frames the space the blade swept since the last frame
+  is printed as steel heat in the fire field (a blade's trail is heat, not glyph sprites). (4) `player:slash
+  {heavy, hit, thrust, x, y, z}` → audio `slashRing` (a synth 'shing', heavier for heavies). (5) Combo A: its own
+  hit-stop, shake, zoom punch, kick and step in (`combos.js` per hit `feel`) and the `iai` feel (feel.js: the coil
+  held, a crisp cut, the finish held while its slash flashes); production's chain is untouched (`?combo=0`).
+- **Consequences:** a landed light freezes 0.075-0.09 s (production 0.055-0.07), the finisher 0.15 (0.12): combo A
+  plays a little slower under hits. The sound is a synth recipe (the owner picks sounds by ear: a recorded one can
+  replace it). Scenario `slashfeel` (four facings: no line behind him, a whiff carried, a landed blow's burst and
+  event, the smear).

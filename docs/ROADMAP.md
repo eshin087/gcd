@@ -222,6 +222,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       6 rides on the seeds
 - [ ] The real renderer lays ~30 % more floor marks than headless
 
+## M1.95 — The impact pass (2026-11-26, `claude/hero-attack-feel`, ADR-244)
+- [x] Every ending slash in front of him, a whiff's carried with his dash; checked facing all four ways (scenario `slashfeel`)
+- [x] Harder hits: hit-stop, kick, shake, sparks along the cut, a steel scar, the slash's ring; the blade's smear
+- [x] Combo A: a longer step in, the finish held while its slash flashes (`iai` feel)
+- [ ] The owner's verdict; a recorded slash sound if they want one
+
 ## M1.94 — Instant slashes, the left hand to pick (2026-11-26, `claude/hero-instant-slash`, ADR-240)
 - [x] PRs #118 and #166 closed on the owner's call: production's combo stays
 - [x] Every attack and the flurry's finishers: one straight slash line instead of the crescent (`slashFx.js`, `?slash=arc` the crescent)

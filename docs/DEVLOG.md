@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The impact pass: slashes in front of him, harder hits, every angle (ADR-244; branch `claude/hero-attack-feel`, held)
+
+**Owner:** "help me make the attack animation look better in terms of animation and impact/feel. the heavy attack
+slash needs to show up in front of the player, not behind them as the player moves forward. make sure the instant
+slashes and all attack animations looks good in every angle and camera perspective". Asked: all four impact pieces
+(hit-stop + kick, contact burst, blade smear, slash sound), polish combo A's moves, a heavy's slash ahead and carried
+with his dash, films facing every way and on the phone camera.
+
+**Found:** the lone heavy's dash drew its line mid-dash at a fixed spot and ran past it (filmed facing north); a
+heavy's 6 m line centred on the contact ran back over and behind him. The camera never turns (it looks north), so
+"every angle" is the hero facing each way: every earlier film had him facing north.
+
+**What changed:** `slashFx.js`: no part of a line nearer than `END.front` ahead of him (the middle pushed forward, the
+back end cut); a whiff's line carried at his ground speed (`END.carry`); on a landed blow `IMPACT` (a kick along the
+slash, a shake, glyph sparks along the cut and a steel-heat scar); `SMEAR` (steel heat over the blade's sweep in its
+fast frames); `player:slash` → audio `slashRing`. Combo A: its own hit-stop, shake, punch, kick and a longer step in
+(`combos.js` `feel`), and the `iai` feel (the finish held while the slash flashes). Scenario `slashfeel`.
+
+**Verification:** `slashfeel` (four facings, a dash's whiff, a landed blow), `instantslash`, `combos`, `feel`,
+`offhand`, `herohand`; before / after films facing north, east, south and west, the heavies, and the phone camera
+landscape and portrait.
+
+**Open / next:** the owner's verdict; the sound is a synth recipe (a recorded one to pick by ear if wanted).
+
 ## 2026-11-26 — Instant slashes on every attack, and four left-hand looks to pick from (ADR-240; branch `claude/hero-instant-slash`, held)
 
 **Owner:** "lets just do this. use the current production auto attack combo and remove the curvy slashes with the
