@@ -80,6 +80,7 @@ const TASKS = [
   ['lord fxlooks', [LORD, '.', 'fxlooks'], { GCD_FX: FX_TERRAIN.map((k) => `!${k}`).join(',') }, 80],
   ['city win', [CITY, '.', 'win'], {}, 69],
   ['dbfx', ['tests/integration/dbfx.mjs', '.', 'all'], {}, 8],
+  ['dbmatrix', ['tests/integration/dbmatrix.mjs', '.'], {}, 4],
   ['dbsfx', ['tests/integration/dbsfx.mjs', '.'], {}, 3],
   ['veil', [VEIL, '.', 'all'], { GCD_SKIP: VEIL_OWN.join(',') }, 45],
   ['veil pace', [VEIL, '.', 'pace'], {}, 90],
