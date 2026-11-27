@@ -13,8 +13,10 @@ One hundred and twenty-nine pieces of work since 0.4.0:
   digits laid along the exact path the blade's point swept (`?slicewhen=trace` as the blade passes, `end` all at once
   as the swing ends); `?slash=line` the straight ending line in strokes as before; `?slash=arc` the crescent (the
   Lab's `slash`, `slice` and `slicewhen` rows). *Fixed:* the free hand behind his back no longer passes through his
-  body (the yellow fist that flashed through his coat in the light combo); on the finisher it travels round his side
-  to the grip.
+  body (the yellow fist that flashed through his coat in the light combo): it rests on the small of his back with the
+  elbow bent, and comes and goes round his left hip; on the finisher it travels round his side to the grip. *Added, to
+  compare:* `?offhand=belt` (the free hand on his belt at the front of the left hip) and `?offhand=guard` (the sword
+  fingers raised before his chest), beside `?offhand=side` (the Lab's `offhand` row).
 - **Harder-hitting swings, and slashes that stay in front of you** (2026-11-26, ADR-244). *Changed:* a heavy's
   slash no longer appears behind you as you dash: no part of any ending slash is drawn behind you, and a slash
   that cuts only air moves on with you. Landed blows hit harder: a longer freeze, the screen thrown along the slash,

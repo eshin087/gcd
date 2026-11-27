@@ -5,6 +5,36 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The free hand behind his back, mended: a bent elbow, round his left (ADR-258; branch `claude/hero-attack-feel`, held)
+
+**Owner:** "The new free hand looks worse and unnatural. You need to make sure it doesn't look that bad and off. The hand
+looks twisted and broken. Please fix this and show me close up and in game camera clips to see the newest version".
+
+**Found** (`handaudit` now prints the elbow's bend, the wrist's bend and twist): round 2's back rest (0.32 m behind the
+shoulder) sat at 0.54 m from it, the arm's reach is 0.55: the arm hung nearly straight (elbow 21-38° held; round 1:
+50-60°) with the wrist cocked 30-50°. Both ways went through his middle: out of the two-handed hold on hit 1 and in to
+the grip on hit 5 (0.11-0.13 m from his spine), because where a way starts and the hand's speed limit (`vIn`) were kept
+in the world's axes while combo A's windup turned his chest ~150° under them.
+
+**What changed:** `offHand.js` back: `hang` [-0.18, -0.3, -0.16] (the hand on the small of his back, elbow ~90°), `body`
+0.15; `anim.js`: for a look with a keep-out, the hand's offset from its rest turned with the chest (`S.r` in the chest's
+yaw), where the way began kept in the chest's frame (`S.cl`), and `_sideArc` (`SIDE_ARC`): both ways round his axis on
+his left, never past his right side. The side and quiet looks are untouched (no keep-out).
+
+**Verification:** `offhand` (now also: the elbow bent ≥ 50° through hits 1-4 (71), hit 5 never nearer than 0.12 m (0.14);
+fails on round 1's hand), `slice`, `instantslash`; `handaudit` before / after; films: the version the owner saw next to
+the mended one, close (behind, behind-left, left) and at the game camera (facing north, east, west).
+
+**Then, the owner:** "No the left hand is completely messed up and the left hand is showing behind the player. It needs to
+be in front of the player to look anatomically correct ... Make sure the left hand is placed correctly in front/near the
+front side of the player". Asked, they want three placings filmed to pick from: two new looks, `?offhand=belt` (the hand
+resting on his belt at the front of the left hip, elbow ~105° out to his left, the fingers along the forearm's line and
+down the belt, wrist 11° on average) and `?offhand=guard` (the sword fingers raised before his chest, left of his
+middle, elbow ~119° down at his side, wrist 18°; anchored half to the hips and half to the chest so the windup's ~170°
+chest whip does not fling it), beside `side` (loose at his side). `handaudit` now also prints the forearm's line in the
+chest's frame and the hand's clearance from the sword arm and hilt (≥ 0.2 m through hits 1-4 for all three). The
+default (combo A's `auto` = the back) stays until the owner picks.
+
 ## 2026-11-27 — The digit slash in steel is the default (ADR-258; branch `claude/hero-attack-feel`, held)
 
 **Owner:** "I still want to see the slash with this new thin line of small digits effects as well. Show me a video
@@ -20,7 +50,7 @@ with it; the Lab's `slash` row). The slice (`?slash=slice`, `?slice=green`, `?sl
 `instantslash`, `slashfeel`, duel `cutfx`, then the full `npm test`. Film: all seven looks side by side (combo A facing
 north, east, south and west, the lone heavy facing north and east, the phone landscape and portrait).
 
-**Open / next:** the owner's go-ahead to merge PR 170 (held).
+**Open / next:** the owner's pick of the free hand's place (side, belt or guard), then the go-ahead to merge PR 170 (held).
 
 ## 2026-11-26 — The slice: digits along the blade's own path; the free hand kept out of his body (ADR-258; branch `claude/hero-attack-feel`, held)
 

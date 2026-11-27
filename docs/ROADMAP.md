@@ -234,6 +234,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Both colours (steel, green) and both timings (trace, end) to pick from
 - [x] The ending slash in the same digits (`?slash=dline`)
 - [x] The owner's pick: the digit slash in steel is the default (2026-11-27)
+- [x] The free hand mended (2026-11-27): the elbow bent on the small of his back, its ways round his left
+- [x] Two front places for the free hand to compare (`?offhand=belt|guard`, with `side`)
+- [ ] The owner's pick of the free hand's place
 
 ## M1.95 — The impact pass (2026-11-26, `claude/hero-attack-feel`, ADR-244)
 - [x] Every ending slash in front of him, a whiff's carried with his dash; checked facing all four ways (scenario `slashfeel`)

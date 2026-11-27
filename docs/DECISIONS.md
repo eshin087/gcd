@@ -7182,6 +7182,23 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the fire field: the green the owner asked to see is not one of the field's palettes (its void slot is borrowed per
   level), and both colours are drawn the same way so the choice is colour alone. `player:slash` (the ring) comes as
   the swing ends in both timings. Scenario `slice`; `slashfeel` runs under `?slash=line`.
+- **The free hand, again (2026-11-27):** the owner: "The new free hand looks worse and unnatural ... The hand looks
+  twisted and broken". Measured (`handaudit` now prints the elbow's bend and the wrist's bend and twist): the back
+  rest 0.32 m behind the shoulder was 0.54 m from it, nearly the arm's reach (0.55), so the arm hung almost straight
+  (the elbow 21-38° through hits 1-4; round 1's 50-60°) with the wrist cocked 30-50°; and both ways (out of the
+  two-handed hold, in to the grip on hit 5) went through his middle (0.11 - 0.13 m from his spine), the start of the
+  way and the hand's speed limit held in the world's axes while combo A's windup spun his chest ~150° under them.
+  Now: the rest is the hand on the small of his back (`hang` [-0.18, -0.3, -0.16], the elbow ~90°, `body` 0.15: the
+  coat's back is 0.11 from the spine), the hand's offset from its rest is carried turned with the chest, and with a
+  keep-out the ways to and from the side are taken round his axis on his left (`_sideArc`: the angle, the distance
+  and the height each eased, never past his right side, bowed out mid-way). Through hits 1-4 the elbow stays at
+  71-118°, the wrist 20° on average; hit 5 goes behind him, round his left hip and up to the hilt, never nearer
+  than 0.14 m, at most 17 cm a frame. `offhand` checks all three; it fails on round 1's hand and on the straight arm.
+- **In front, not behind (2026-11-27):** the owner, of that: "the left hand is showing behind the player. It needs to be
+  in front of the player to look anatomically correct". Two looks to pick from with `side` (filmed side by side):
+  `belt` (on his belt at the front of the left hip, elbow ~105°) and `guard` (the sword fingers raised before his chest,
+  left of his middle, elbow ~119°, its anchor half on the hips so the windup's chest whip does not fling it). Their
+  fingers follow the forearm's line (the wrist 11° / 18° on average). The default waits for the owner's pick.
 - **The owner's pick (2026-11-27):** from the films of all seven looks side by side (combo A facing four ways, the
   lone heavy, the phone both ways), the digit slash in steel (`?slash=dline`, `?slice=steel`) is the default. The
   slice (both colours, both timings), the stroke line and the crescent stay behind `?slash=` and `?slice=` (the Lab's
