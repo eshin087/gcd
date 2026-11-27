@@ -18,6 +18,16 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap',
+        notes: [
+          'Halcyon fights like a flier now: his punches go straight at you with the arm long, his kicks land straight, his legs trail long behind him instead of folding under him, and Fly-By comes through your chest instead of over your head.',
+          'His eye beams are heat vision: two threads meeting in one hard crimson line, a shimmer rising off it, the ground molten and spitting sparks where it lands.',
+          'His clap and his meteor landing send a ring of air racing out across the plaza, shoving the dust ahead of it.',
+          'Being tried out: add ?halPace=a to the address for a slower, easier-to-read pace.',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [

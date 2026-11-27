@@ -5,6 +5,38 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — Halcyon's motion audit: a flier's limbs, the readable pace, eye-beam and shockwave looks (ADR-254; branch `claude/halcyon-motion-7d73eb`)
+
+**Owner (through the audit's lead session):** every boss audited with docs/ANIMATION.md; "weird looking arm angles
+... kicks aren't straight"; every attack readable; special effects to the Fox's and Bai Wuji's bar with 2 - 3 looks
+to pick; a draft PR and films each.
+
+**Measured** (city `audit`, `GCD_AUDIT_IMPACT=1`: the striking arm's reach and its line to the hero, both knees,
+the feet's trail, the body line, the fist's height, in his UPRIGHT frame: the drawn body is sheared toward the
+camera, duelist.js lean, which read a straight punch 20 - 40° off in world points): see ADR-254 and COMBAT.md
+"Halcyon" for the before / after numbers.
+
+**What changed** (all behind switches; the defaults are today's): `halcyon/limbs.js` (`?halMotion=b`: the
+straight blows on the line, the kicks long, the flier's legs on every key of his blows and his own beats, a level
+pass `FLY_B` / `LAUNCH_B`), `motion.js` (halKeys routes `b`; `halLimbsOn`), `poses.js` (hoverLegs), `flight.js`
+(the pass's root at `motion.b.passY` under `b`), `halcyon.js` (the animator's armSoft / legSoft, kickStretch only
+in a kick; the clap / landing ask HalFx.shockwave first), `pace.js` + `moves.js` (`?halPace=a`: a held cock through
+the realiser's `hold`, the cue 0.35 s), `fxEyes.js` / `fxShock.js` + `fx.js` (`?halEyes=a|b`, `?halShock=a|b`),
+`tuning.js` (`motion.b`, `pace`), the Lab's LOOKS rows. Tests: city `limbs`, `readable`; `audit` prints the
+contact anatomy.
+
+**Decisions:** fixed in `halcyon/` only (Tian Lei's PR 174 keeps its own pass behind his realiser); the legs trail
+further back rather than shorter where the hip is low (the animator keeps a foot over his root's floor, anim.js,
+the hero session's); `kickStretch` only through a kick (it locked his trailing legs straight).
+
+**The owner's picks** (from the films, 2026-11-27): `halMotion` b, his fast pace kept (`halPace` 0), `halEyes` a
+(heat vision), `halShock` a (the thunderclap): in PICKED, the Lab rows out of `awaiting`. The first cut of both
+effect options printed a white core the whole time (they read as white beams, his crimson lost): redrawn as crimson
+strokes, white only at the first peak, before the films were sent.
+
+**Open:** the kick and the palm snap harder at the contact (largest frame jolt 282 → 424, 174 → 236 mm/f²); the
+lead foot's step lives in the hero's animator (anim.js) and was left alone.
+
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
 **Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its
