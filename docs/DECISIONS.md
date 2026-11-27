@@ -6996,6 +6996,73 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
 
+## ADR-253 — Xin Yi's limbs on the line, his guns on the line of fire; two redrawn shots and bolts to pick (`?oneMoves=b`, `?oneGunFx=`, `?oneBoltFx=`) (2026-11-27)
+
+- **Context:** the boss motion audit (the owner: weird arm angles, unrealistic attacks, "kicks aren't straight during
+  the attack and still bended"; every attack readable; special effects to pick in the style of the fox and Bai
+  Wuji). Xin Yi's rebuild (ADR-221, `?oneMoves=a`, the default) already carried the animator kit the other bosses now
+  copy. Measured on `a` (woke.mjs AUDIT, the new GUNS and PROBE scenarios, the hero still in front of him; films at the
+  game camera and close from the side):
+  1. Straight punches landed 22 - 25 degrees off the line from the shoulder to the hero, the fist 0.17 m across his
+     centre line; the back-fist 63 degrees off, 0.6 m to the side and 0.6 m short; the palm 0.33 m short.
+  2. Kicks reached straight for two or three frames and folded at once. On Sky Turns' first tornado (phase 1) the leg
+     was already folding on the frame the hit-stop froze (118 degrees at the knee); the butterfly 131, the flash kick
+     in phase 3 120; a spin kick's leg went from straight to 91 degrees two frames after its contact.
+  3. The elbow struck 0.73 m short of the hero, the spin back kick 0.46, the flying knee 0.44, the hook 0.37: the
+     zone hit from where the limb never reached (his stand-off is the zone's, brain._ideal).
+  4. The low sweep's foot was 94 degrees round from the hero and 1 m short at its impact, the knee at 106 - 134 and
+     flailing 46 - 163 through the turn. Two causes: its foot keys were a third of a turn apart, so the foot cut
+     across the circle to half its reach between them; and the foot, keyed on the floor, was the feet planner's
+     (anim.js _feetClip holds a foot within 3.5 cm of the floor until its key is 14 cm away), a tenth of a second late.
+  5. The mirrored palm (deja vu in phase 3) struck with the left hand while its glint, trail and the parry's contact
+     stayed on the right, hanging at the hip (41 degrees at the elbow).
+  6. The guns: the right gun's barrel runs along the knuckles of the fist joint, and in every aim they faced
+     sideways: it pointed 55 - 113 degrees off the line its shots flew (Two Thunders' side-on aim 144), the left 24 -
+     36, the other hand's 55 - 90 off the hero; each shot left 0.2 - 0.3 m below the drawn gun (the shots' height is
+     held to 0.9 - 1.4 m; in Iron in the Air 0.7 - 0.9 m below it); Turning Wheel's shots were drawn along the floor
+     with nothing at the guns; nothing moved when he fired.
+  7. The palm bolts (the Source) drew as a ball of soft glowing heat a third of a metre wide with a white heart: a
+     glow, where STYLE.md asks for letters.
+- **Decision:** a third option of his moves, `?oneMoves=b` = `a` and two passes, the timings identical to `a` (no
+  windup, cue or impact moves); `a` stays the default until the owner picks.
+  - `limbs.js` (on each beat's keys, before the held tell's re-timing): a straight blow's hand put on the line from its
+    shoulder to his centre line 0.95 m ahead, 1.12 x the arm out (the double palms 0.1 m either side; the
+    point-blank shot's arm aimed 2.4 m out); a kick's contact pose repeated 0.35 of the follow-through later (the leg
+    held long, then drawn back) with the striking foot carried out to the contact's length through it; the sweep
+    turned so its leg crosses the hero's line at the impact, its turn keyed every 0.5 rad, its foot skimming 6 cm
+    off the floor from the tuck on (out of the planner), the planted foot near his pivot, the knee pole up and out;
+    a short blow's zone fitted to its drawn reach (`motion.fit`, measured: he steps in until the limb meets the hero,
+    and the hit reaches no further than the limb); the mirrored palm's part the left fist; Iron Rain's aim reached
+    by 0.6 of its windup and held (its first slugs leave a flight early).
+  - `gunAim.js` (drawn only, after the animator; no gameplay point moves): each gun turned in its hand so its barrel
+    runs down its forearm, onto the hero's chest when the forearm is within 0.8 rad of it; a shot kicks its arm (the
+    upper arm raised 0.15 rad round the shoulder, the gun climbing 0.3 rad and pulled back 5 cm, halflife 0.05 s;
+    worked in his root's own space, as his drawn matrices carry the camera lean's shear), the right gun's joint
+    turned with the arm (it is posed in the body's space); `muzzlePoint` gives the drawn muzzle. iron.js fires from
+    it on `b`, the shot falling along its way from the muzzle to chest height (the blasts' `yTo`; its flight and hit
+    flat, as before); Turning Wheel flashes at both muzzles.
+  - Two effect switches for the owner's pick (default '0', as shipped; `fxIron.js`): `?oneGunFx=a` the tracer (a hot
+    cone and side vents at the muzzle, a spent casing kicked out; a thin line of strokes behind each slug and small
+    rings of stilled air where it passed) or `b` the script (binary digits fanned from the muzzle; each slug leaving
+    a curtain of tiny falling digits); `?oneBoltFx=a` the seed (a hot core in three thin turning rings of digits) or
+    `b` the fold (a core of four hot cells like a falling column, rings of stilled air across its way).
+- **Consequences:** on `b` (woke AUDIT / LINE, the hero still): straight blows 1 - 7 degrees off the line, elbows
+  164 - 169, every one meeting the hero (-0.08 to 0.0 m); every kick 173 at contact and held (Sky Turns' first tornado
+  170 for six frames); the elbow, spin kick and knee within 0.06 m of the hero; the sweep 14 degrees off and touching
+  him at its impact, its knee 121 there and 160 - 170 through the turn; the mirrored palm on the left hand; every gun
+  shot from the drawn muzzle (at most 0.28 m from the fist) with its barrel at most 14 degrees off its line, elbows
+  164 - 170 through the kick. The jolt total rises 5 % (1.04 M -> 1.10 M mm/f2; the worst 993 -> 871), sliding feet
+  107 -> 102 m. The short blows' zones are smaller (the elbow's line 2.2 -> 1.1 m, the spin kick's 2.5 -> 1.76): a
+  hero who backs off out of his step-in is no longer hit from where the limb never reached. Not done: the hooks
+  still meet the hero from the side (0.17 m off), the drop heel lands 0.68 m short (its ring is the blow), the
+  sweep's knee at the very contact (121), Iron Rain's two arms are mirror twins between shots. Shared code
+  untouched (no `duelist/*`, `player/*`, `ascendant/*` change).
+- **The owner's answer (2026-11-27, from the films):** the motion `b` as his default, the shots `b` (the script) and the
+  bolts `a` (the seed): `oneMoves: 'b'`, `oneGunFx: 'b'`, `oneBoltFx: 'a'` in PICKED (`?oneMoves=a` the rebuild before
+  this pass, `?oneGunFx=0` / `?oneBoltFx=0` the shots and bolts as before, the other option behind its switch).
+  With `b` the default, the pace meter's phase-3 longest gap was re-pinned 3.9 -> 4.7 s: seed 4242 now rolls Pushing
+  Hands then Unwriting (its bricks held before the first is thrown), 4.52 s; on five fresh seeds `b`'s worst phase-3
+  gap is 2.91 s (`a`'s 2.67), and `a` itself fails the phase-2 cap on one of them (4.02 s).
 ## ADR-252 — Lu Wusheng audited: the draw's hands and lunge, thrusts in line, a diagonal overhead, the readable pace, three looks for the draw (`?sheathForm=` `?sheathPace=` `?drawFx=`) (2026-11-27)
 
 - **Context:** the owner asked for every boss's motion to be audited against `docs/ANIMATION.md` and the Sekiro /

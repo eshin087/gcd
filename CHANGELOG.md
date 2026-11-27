@@ -4,11 +4,19 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-eight pieces of work since 0.4.0:
+One hundred and twenty-nine pieces of work since 0.4.0:
 - **The Cinder Wyrm raises its head naturally to rain fire** (2026-11-27, ADR-258). *Fixed:* rearing up to roar
   the meteors into the sky, the wyrm's head no longer tips back past upright and rolls over on its neck: the neck
   rises up and forward over its forelegs and the head points up at the sky. `?wyrmHead=0` (the Lab's LOOKS row) as
   before. *Added:* integ `wyrmhead` (opt-in): every fire move's head angle.
+- **Xin Yi's limbs on the line** (2026-11-27, ADR-253). *Changed (the owner's picks, the default):* his punches land straight down the line to you with the arm long, his kicks stay
+  straight through the hit instead of folding as it lands, his elbow, knee and spin kick reach you instead of
+  striking short, the low sweep passes through you, and his guns point down the line of fire, each shot leaving
+  the muzzle with a kick of the arm (`?oneMoves=a`: as before). Every timing is as before. His gun shots now leave a
+  curtain of falling code (`?oneGunFx=b`; `a` a tracer, `0` as before) and his palm bolts in the Source are a hot core
+  in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
+One hundred and twenty-six pieces of work since 0.4.0:
+One hundred and twenty-seven pieces of work since 0.4.0:
 - **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
   level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
   the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the
