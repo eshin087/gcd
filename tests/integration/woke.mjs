@@ -2241,7 +2241,17 @@ function auditMoves(list, orbits = [false, true], TOP = 0) {
           const arm = part === 'fistL' ? ['shL', 'elbowL', 'fistL'] : ['shR', 'elbowR', 'fistR'];
           const leg = part === 'footL' || part === 'kneeL' ? ['hipL', 'kneeL', 'footL'] : ['hipR', 'kneeR', 'footR'];
           const kick = /^(foot|knee)/.test(part);
-          contact.push({ i: b.index ?? A.beats.indexOf(b), gap: Math.max(flat, up), flat, y: tp.y, zone: b.def.zone.kind, part,
+          // (the line, ADR-253: the limb's root → its end against the root → the hero's centre, flat, in
+          // degrees; and how far the end sits off his own line to the hero, m)
+          const lr = part === 'feet' ? null : upright(d, kick ? s.W[leg[0]] : s.W[arm[0]]), le = upright(d, kick ? s.W[leg[2]] : s.W[arm[2]]);
+          let off = null, lat = null;
+          if (lr) {
+            const a1 = Math.atan2(le.x - lr.x, le.z - lr.z), a2 = Math.atan2(pp.x - lr.x, pp.z - lr.z);
+            off = Math.round(Math.abs(wrapA(a1 - a2)) * DEG);
+            const hx = pp.x - d.position.x, hz = pp.z - d.position.z, hl = Math.hypot(hx, hz) || 1;
+            lat = +(((le.x - d.position.x) * hz - (le.z - d.position.z) * hx) / hl).toFixed(2);
+          }
+          contact.push({ i: b.index ?? A.beats.indexOf(b), gap: Math.max(flat, up), flat, y: tp.y, zone: b.def.zone.kind, part, off, lat, blow: b.def.blow ?? '',
             sep: +Math.hypot(pp.x - d.position.x, pp.z - d.position.z).toFixed(2),
             elbow: kick || part === 'feet' ? null : Math.round(ang3(s.B[arm[0]], s.B[arm[1]], s.B[arm[2]])),
             knee: kick ? Math.round(ang3(s.B[leg[0]], s.B[leg[1]], s.B[leg[2]])) : null });
@@ -2417,6 +2427,212 @@ async function scenarioAudit() {
         if (seen.size >= Number(process.env.GCD_FIGHT_TOP ?? 12)) break;
       }
     }
+  }
+}
+
+/**
+ * GUNS (opt-in, ADR-253): every gun move of phase 2 once, the hero still in front of him (and, with
+ * GCD_GUN_ORBIT=1, circling him): at every shot that leaves a gun (fx.throwShot) and every muzzle flash
+ * that is not a shot's (the point-blank shot, Turning Wheel's), the firing gun's barrel against the line of
+ * fire (flat degrees; its elevation), the firing arm's line (shoulder → fist against the line of fire), its
+ * elbow, the muzzle as drawn against where the shot leaves, and the other hand (its barrel off the hero,
+ * its elbow). `rows` for the PR's table (GCD_AUDIT_JSON writes them).
+ */
+function gunAudit(list = ['twoThunders', 'ironRain', 'ironLeap', 'closeIron', 'turningWheel', 'answer2'], orbit = false) {
+  const rows = [];
+  const V = () => new THREE.Vector3();
+  for (const name of list) {
+    const G = build(SEED);
+    const def = MOVES[name], band = def.band ?? [0, 4];
+    const dist = Math.min(7, Math.max(1.6, (band[0] + Math.min(band[1], 8)) / 2));
+    duel(G, { dist, form: 2 });
+    const { game } = G;
+    const d = game.dragon, p = game.player;
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    settle(G, 2);
+    d.position.set(0, 0, 0);
+    d.yaw = Math.PI / 2;
+    p.debug.teleport(dist, 0);
+    game.mouseGround.set(0, 0, 0);
+    run(G, 0.7);
+    const shots = [];
+    const sample = (kind, ox, oy, oz, dx, dz, left) => {
+      const R = d.rig;
+      R.root.updateMatrixWorld(true);
+      const sh = upright(d, R.arms[left ? 'L' : 'R'].upper.getWorldPosition(V()));
+      const fist = upright(d, (left ? (R.arms.L.wrist ?? R.arms.L.fore) : R.sword).getWorldPosition(V()));
+      const el = R.arms[left ? 'L' : 'R'].fore.getWorldPosition(V());
+      // (a gun's barrel as drawn: its body's centre to its muzzle's, the meshes' own; gear.js buildGuns)
+      const GM = R.root.userData.dress?.guns ?? [];
+      const ctr = (m) => { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); return m.geometry.boundingBox.getCenter(V()).applyMatrix4(m.matrixWorld); };
+      const barrel = (L) => { const bd = GM[L ? 2 : 0], mz = GM[L ? 3 : 1]; return bd && mz ? ctr(mz).sub(ctr(bd)).normalize() : V(0, 0, 1); };
+      const az = (v) => Math.atan2(v.x, v.z), fire = Math.atan2(dx, dz);
+      const b = barrel(left), o = barrel(!left);
+      const angB = Math.abs(wrapA(az(b) - fire)) * DEG, elevB = Math.asin(Math.max(-1, Math.min(1, b.y))) * DEG;
+      const arm = Math.abs(wrapA(Math.atan2(fist.x - sh.x, fist.z - sh.z) - fire)) * DEG;
+      const elbow = ang3(R.arms[left ? 'L' : 'R'].upper.getWorldPosition(V()), el, (left ? (R.arms.L.wrist ?? R.arms.L.fore) : R.sword).getWorldPosition(V()));
+      const toHero = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z);
+      const offB = Math.abs(wrapA(az(o) - toHero)) * DEG;
+      const ob = R.arms[left ? 'R' : 'L'];
+      const offElbow = ang3(ob.upper.getWorldPosition(V()), ob.fore.getWorldPosition(V()), (left ? R.sword : (R.arms.L.wrist ?? R.arms.L.fore)).getWorldPosition(V()));
+      const facing = Math.abs(wrapA(d.yaw - toHero)) * DEG;
+      // (the muzzle as drawn: the gun mesh's bright cell, world; the shot leaves from (ox, oy, oz))
+      const gm = (R.root.userData.dress?.guns ?? []).filter((m) => m.parent === (left ? (R.arms.L.wrist ?? R.arms.L.fore) : R.sword));
+      let mzl = null;
+      for (const m of gm) { m.geometry.computeBoundingBox(); const c = m.geometry.boundingBox.getCenter(V()); if (m.geometry.boundingBox.max.x - m.geometry.boundingBox.min.x < 0.04 && m.geometry.boundingBox.max.y - m.geometry.boundingBox.min.y < 0.04) mzl = c.applyMatrix4(m.matrixWorld); }
+      const fw = (left ? (R.arms.L.wrist ?? R.arms.L.fore) : R.sword).getWorldPosition(V());
+      const mb = mzl ? Math.round(Math.abs(wrapA(Math.atan2(mzl.x - fw.x, mzl.z - fw.z) - fire)) * DEG) : null;
+      shots.push({ kind, hand: left ? 'L' : 'R', t: +(d.brain.act?.t ?? -1).toFixed(2), barrel: Math.round(angB), elev: Math.round(elevB), arm: Math.round(arm), elbow: Math.round(elbow),
+        off: Math.round(offB), offElbow: Math.round(offElbow), facing: Math.round(facing), y: +oy.toFixed(2), fistY: +fw.y.toFixed(2), muzzleGap: +Math.hypot(fw.x - ox, fw.z - oz).toFixed(2), mb });
+    };
+    const ts = d.fx.throwShot?.bind(d.fx), mz = d.fx.muzzle?.bind(d.fx);
+    let inShot = false;
+    d.fx.throwShot = (o) => { inShot = true; sample(o.heavy ?? o.returnable ? 'heavy' : 'slug', o.x, o.y, o.z, o.dx, o.dz, d.iron.hand === 0); return ts(o); };
+    d.fx.muzzle = (x, y, z, dx, dz, ...rest) => { if (!inShot) sample('flash', x, y, z, dx, dz, false); inShot = false; return mz(x, y, z, dx, dz, ...rest); };
+    if (!d.debug.trigger(name)) { rows.push({ name, fail: 'trigger' }); continue; }
+    const A = d.brain.act;
+    for (let i = 0; i < 900; i++) {
+      if (orbit) {
+        const th = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (3.5 / dist) * DT;
+        p.debug.teleport(d.position.x + Math.sin(th) * dist, d.position.z + Math.cos(th) * dist);
+      }
+      p.hp = p.maxHp;
+      if (d.brain.act !== A) break;
+      G.tick(DT);
+    }
+    rows.push({ name, shots });
+  }
+  return rows;
+}
+/**
+ * LINE (ADR-253, `?oneMoves=b`; `a` stays the default): the limbs on the line and the guns on the line of fire.
+ * The timings equal `a`'s; at contact the straight blows within 10 degrees of the hero on his line, the arm
+ * long, reaching him (they were 22 - 63 degrees off, the back-fist 0.6 m short); every kick straight at the
+ * contact and still straight two frames on (Sky Turns' first tornado folded to 118 on its hit-stop frame); the
+ * short blows reach (the elbow was 0.73 m short, the spin back kick 0.46, the flying knee 0.44); the sweep's
+ * foot crosses the hero at its impact (94 degrees round and 1 m short) and its leg stays long through the
+ * turn; the mirrored palm strikes with the hand that is drawn; every gun shot leaves the drawn muzzle with
+ * the barrel on its line (55 - 113 degrees off); on `a` the guns are left as built.
+ */
+async function scenarioLine() {
+  out('\n== scenario LINE (?oneMoves=b: straight blows on the line, kicks held straight, short blows that reach, the sweep, the guns) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  try {
+    // the timings: b plays every move as a does
+    const diff = [];
+    let same = 0;
+    for (const name of MOVE_NAMES) {
+      for (const f of phasesOf(name)) {
+        LS.setLook('oneMoves', 'a');
+        const A0 = realise(name, f, () => 0.5);
+        LS.setLook('oneMoves', 'b');
+        const A1 = realise(name, f, () => 0.5);
+        const t0 = A0.beats.map((b) => b.impact.toFixed(3)).join(), t1 = A1.beats.map((b) => b.impact.toFixed(3)).join();
+        if (t0 === t1 && A0.end === A1.end) same++;
+        else diff.push(`${name} P${f}`);
+      }
+    }
+    assert(!diff.length && same > 60, `b keeps every move's timing (impacts and end, ${same} realisations)${diff.length ? ' ' + diff.slice(0, 6).join(', ') : ''}`);
+    // the rig at each blow's contact (the audit's, the hero still in front of him)
+    LS.setLook('oneMoves', 'b');
+    const { rows } = auditMoves([{ name: 'lesson', ph: 1 }, { name: 'skyTurns', ph: 1 }, { name: 'craneWater', ph: 1 }, { name: 'moonOver', ph: 3 }, { name: 'lowWind', ph: 1 }, { name: 'closeIron', ph: 2 }, { name: 'stormStep', ph: 1 }, { name: 'lessonM', ph: 3 }], [false]);
+    const C = rows.flatMap((r) => (r.contact ?? []).map((c) => ({ ...c, name: r.name })));
+    const straight = C.filter((c) => ['cross', 'backfist', 'palm'].includes(c.blow) && c.zone !== 'line' || (c.blow === 'palm'));
+    const offS = straight.filter((c) => !(c.off <= 10 && c.elbow >= 160 && c.flat <= 0.12 && c.flat >= -0.16));
+    assert(straight.length >= 8 && !offS.length, `straight blows on the line: ${straight.length} at most ${Math.max(...straight.map((c) => c.off))} deg off, elbows >= ${Math.min(...straight.map((c) => c.elbow))}, gaps ${Math.min(...straight.map((c) => c.flat)).toFixed(2)} - ${Math.max(...straight.map((c) => c.flat)).toFixed(2)} m${offS.length ? ' OFF: ' + offS.map((c) => `${c.name}:${c.blow} ${c.off}deg e${c.elbow} g${c.flat.toFixed(2)}`).join(', ') : ''}`);
+    const kicks = C.filter((c) => c.knee != null && /^foot/.test(c.part) && c.blow !== 'sweep' && c.blow !== 'dropHeel');
+    assert(kicks.length >= 8 && kicks.every((c) => c.knee >= 165), `every kick lands straight: knees ${Math.min(...kicks.map((c) => c.knee))} - ${Math.max(...kicks.map((c) => c.knee))} deg at contact (${kicks.length} kicks; Sky Turns' first tornado was 118, the butterfly 131)`);
+    const short = C.filter((c) => /^(elbow|knee)/.test(c.part) || c.blow === 'spinBack');
+    assert(short.length >= 4 && short.every((c) => c.flat <= 0.15), `the short blows reach him: ${short.map((c) => `${c.blow || c.part} ${c.flat.toFixed(2)}`).join(', ')} m (the elbow was 0.73 short, the spin kick 0.46, the knee 0.44)`);
+    const sw = C.find((c) => c.blow === 'sweep');
+    assert(sw && sw.off <= 25 && Math.abs(sw.flat) <= 0.25 && sw.knee >= 120, `the sweep crosses him at its impact: ${sw?.off} deg off, ${sw?.flat.toFixed(2)} m, the knee ${sw?.knee} (was 94 deg round, 1 m short, 106 - 134)`);
+    const mp = C.filter((c) => c.name === 'lessonM' && c.blow === 'palm');
+    assert(mp.length === 1 && mp[0].part === 'fistL' && mp[0].elbow >= 160 && mp[0].flat <= 0.15, `the mirrored palm strikes with the left hand it is drawn on (${mp[0]?.part} e${mp[0]?.elbow} g${mp[0]?.flat.toFixed(2)}; it glinted on the right hand at the hip, 0.85 m short)`);
+    // a kick held: two frames after Sky Turns' first contact the leg is still straight (it folded at once)
+    {
+      const G = build();
+      const d = G.game.dragon, p = G.game.player;
+      duel(G, { dist: 2.4 });
+      p.debug.god = true;
+      d.debug.trigger('skyTurns');
+      const A = d.brain.act, b0 = A.beats[0], V = () => new THREE.Vector3();
+      const knees = [];
+      run(G, 1.2, () => {
+        if (d.brain.act !== A || A.t < b0.impact || knees.length >= 6) return;
+        const leg = d.rig.legs.R;
+        const a = leg.thigh.getWorldPosition(V()), k = leg.shin.getWorldPosition(V()), f = leg.foot.getWorldPosition(V());
+        knees.push(Math.acos(Math.max(-1, Math.min(1, a.sub(k).normalize().dot(f.sub(k).normalize())))) * DEG);
+      });
+      assert(knees.length >= 6 && knees.slice(0, 6).every((k) => k >= 160), `Sky Turns' first tornado held straight through its contact: ${knees.slice(0, 6).map((k) => k.toFixed(0)).join(' ')} deg the first six frames (it folded to 118 on the second)`);
+    }
+    // the guns: every shot from the drawn muzzle, its barrel on the line of fire
+    const gun = gunAudit(['twoThunders', 'ironRain', 'closeIron', 'turningWheel']).flatMap((r) => r.shots ?? []).filter((s) => s.kind !== 'flash' || s.muzzleGap < 0.5);
+    const firing = gun.filter((s) => !(s.barrel <= 20 && s.muzzleGap <= 0.32 && s.elbow >= 150));
+    assert(gun.length >= 14 && !firing.length, `every shot leaves the drawn muzzle with the barrel on its line: ${gun.length} shots, barrels at most ${Math.max(...gun.map((s) => s.barrel))} deg off, at most ${Math.max(...gun.map((s) => s.muzzleGap)).toFixed(2)} m from the fist, elbows >= ${Math.min(...gun.map((s) => s.elbow))}${firing.length ? ' OFF: ' + firing.map((s) => `${s.kind}${s.hand} ${s.barrel}deg ${s.muzzleGap}m e${s.elbow}`).join(', ') : ''}`);
+    // on a: the guns as built, the shots as they were
+    LS.setLook('oneMoves', 'a');
+    {
+      const G = build();
+      const d = G.game.dragon;
+      duel(G, { dist: 6, form: 2 });
+      d.debug.trigger('twoThunders');
+      run(G, 1.2);
+      const Gm = d.rig.root.userData.dress?.guns ?? [];
+      assert(Gm.length >= 4 && Gm.every((m) => m.position.lengthSq() < 1e-9 || !d.gunAim?.touched) && !d.gunAim?.on(), 'on a the guns stay as built (no turn, no kick)');
+    }
+  } catch (e) {
+    assert(false, `LINE: ${e.stack}`);
+  }
+  LS.setLook('oneMoves', null);
+}
+
+/** PROBE (opt-in, ADR-253): one move (GCD_PROBE=name:phase), frame by frame round each blow's impact: u, the
+ *  striking limb's elbow / knee, its gap to the hero and its line. For finding where a limb folds. */
+async function scenarioProbe() {
+  const [name, phs = '1'] = (process.env.GCD_PROBE ?? 'skyTurns:1').split(':');
+  const ph = Number(phs);
+  out(`\n== scenario PROBE (${name} in phase ${ph}) ==`);
+  const def = MOVES[name], G = build(SEED);
+  const band = def.band ?? [0, 4], dist = Math.min(7, Math.max(1.6, (band[0] + Math.min(band[1], 8)) / 2));
+  duel(G, { dist, form: ph });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  p.debug.noRiposte = true;
+  settle(G, 2);
+  d.position.set(0, 0, 0);
+  d.yaw = Math.PI / 2;
+  p.debug.teleport(dist, 0);
+  run(G, 0.7);
+  if (process.env.GCD_GEAR === '2') d.debug.setGear(2, true);
+  d.debug.trigger(name);
+  const A = d.brain.act;
+  for (let i = 0; i < 600 && d.brain.act === A; i++) {
+    p.hp = p.maxHp;
+    const s = rigSample(d);
+    const b = A.beats.find((x) => !x.feint && Math.abs(A.t - x.impact) <= 0.2);
+    if (b) {
+      const part = b.def.part ?? 'fistR';
+      const kick = /^(foot|knee)/.test(part), L = part === 'footL' || part === 'kneeL' || part === 'fistL';
+      const j = kick ? [L ? 'hipL' : 'hipR', L ? 'kneeL' : 'kneeR', L ? 'footL' : 'footR'] : [L ? 'shL' : 'shR', L ? 'elbowL' : 'elbowR', L ? 'fistL' : 'fistR'];
+      const tp = upright(d, d._tip);
+      const reachL = s.B[j[0]].distanceTo(s.B[j[2]]) / (kick ? 0.9 : 0.62);
+      out(`   b${b.index ?? A.beats.indexOf(b)} ${b.def.blow ?? part} t${(A.t - b.impact).toFixed(3)} ${kick ? 'knee' : 'elbow'} ${ang3(s.B[j[0]], s.B[j[1]], s.B[j[2]]).toFixed(0)}° root-end ${reachL.toFixed(2)} hip ${s.B[j[0]].toArray().map((v) => v.toFixed(2)).join(',')} tip y ${tp.y.toFixed(2)} gap ${(Math.hypot(tp.x - p.position.x, tp.z - p.position.z) - 0.45).toFixed(2)} root y ${d.position.y.toFixed(2)} foot ${s.B[j[2]].toArray().map((v) => v.toFixed(2)).join(',')}`);
+    }
+    G.tick(DT);
+  }
+}
+async function scenarioGuns() {
+  out('\n== scenario GUNS (opt-in: each gun move once; at each shot the firing barrel vs the line of fire, the arm, the other hand) ==');
+  for (const orbit of process.env.GCD_GUN_ORBIT === '1' ? [false, true] : [false]) {
+    const rows = gunAudit(undefined, orbit);
+    for (const r of rows) {
+      out(`   ${r.name}${orbit ? ' (orbit)' : ''}: ${r.fail ?? ''}`);
+      for (const s of r.shots ?? []) out(`      ${s.kind.padEnd(5)} ${s.hand} t${s.t}  barrel ${String(s.barrel).padStart(3)}° off the line (elev ${s.elev}°) · arm ${String(s.arm).padStart(3)}° · elbow ${s.elbow}° · facing ${s.facing}° · fist→muzzle mesh ${s.mb}° · leaves ${s.muzzleGap} m from the drawn fist, y ${s.y} (fist ${s.fistY}) · other hand: barrel ${s.off}° off him, elbow ${s.offElbow}°`);
+    }
+    const J = process.env.GCD_AUDIT_JSON;
+    if (J) fs.writeFileSync(J.replace(/\.json$/, `-guns${orbit ? '-orbit' : ''}.json`), JSON.stringify(rows, null, 1));
   }
 }
 
@@ -2726,6 +2942,9 @@ const S = {
   gear: scenarioGear,
   timing: scenarioTiming,
   audit: scenarioAudit,
+  guns: scenarioGuns,
+  probe: scenarioProbe,
+  line: scenarioLine,
   motionfix: scenarioMotionFix,
   pursuit: scenarioPursuit,
   smoke: scenarioSmoke,
@@ -2734,7 +2953,7 @@ const S = {
   herolike: scenarioHeroLike,
   scenes: scenarioScenes,
 };
-const OPT_IN = new Set(['smoke', 'cost', 'strategy', 'audit']);
+const OPT_IN = new Set(['smoke', 'cost', 'strategy', 'audit', 'guns', 'probe']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
 if (process.env.GCD_LOOKS) {
   const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');

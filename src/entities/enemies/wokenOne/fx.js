@@ -1,6 +1,7 @@
 import { AscFx, ASC_WORLD } from '../ascendant/fx.js';
 import { K_VOID, K_SMOKE, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 import { FIRE_PALETTES } from '../../../render/firePalettes.js';
+import { drawGunMuzzle, drawGunSlug } from './fxIron.js';
 
 // Xin Yi's effects (ADR-156): Tian Lei's effects class (AscFx: LordFx's pool of thrown things grown to
 // 24, blasts that cover stops, the perfect parry's return, the craters, the stance's glow) with the
@@ -305,6 +306,12 @@ export class WokenFx extends AscFx {
   }
 
   // ---------------------------------------------------------------- the shots
+  /** A muzzle flash: his guns' (phase 2) redrawn under `?oneGunFx=a|b` (ADR-253, fxIron.js), else AscFx's. */
+  muzzle(x, y, z, dx, dz, k = 1, form = 1) {
+    if (this.d?.phase === 2 && drawGunMuzzle(this, x, y, z, dx, dz, k)) return;
+    return super.muzzle(x, y, z, dx, dz, k, form);
+  }
+
   /** His blasts' drawing (AscFx's _flyBlast calls it every frame of a blast's flight). */
   _drawBlast(s, hang) {
     if (s.lantern) return super._drawBlast(s, hang);
@@ -317,6 +324,7 @@ export class WokenFx extends AscFx {
    *  back by a perfect parry) hotter still, ringed close, its trail pointing at the hero. ~8 - 20 blobs
    *  a frame, ~40 alive per shot. */
   _drawSlug(s) {
+    if (drawGunSlug(this, s)) return; // (?oneGunFx=a|b, ADR-253: fxIron.js)
     const heavy = !!s.heavy, ret = !!s.returned, dx = s.dx, dz = s.dz;
     if (!Number.isFinite(s.x + s.y + s.z + dx + dz)) return;
     const flown = ret ? s.age * s.speed * 1.25 : s.path;
