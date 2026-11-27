@@ -6904,7 +6904,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   {heavy, hit, thrust, x, y, z}` → audio `slashRing` (a synth 'shing', heavier for heavies). (5) Combo A: its own
   hit-stop, shake, zoom punch, kick and step in (`combos.js` per hit `feel`) and the `iai` feel (feel.js: the coil
   held, a crisp cut, the finish held while its slash flashes); production's chain is untouched (`?combo=0`).
-- **Consequences:** a landed light freezes 0.075-0.09 s (production 0.055-0.07), the finisher 0.15 (0.12): combo A
-  plays a little slower under hits. The sound is a synth recipe (the owner picks sounds by ear: a recorded one can
+- **Consequences:** a landed light freezes 0.065-0.07 s, the thrust 0.08 (production 0.055-0.07), the finisher 0.15 (0.12),
+  inside docs/ANIMATION.md's tiers: combo A plays a little slower under hits. The smear is on the strike only. The sound is a synth recipe (the owner picks sounds by ear: a recorded one can
   replace it). Scenario `slashfeel` (four facings: no line behind him, a whiff carried, a landed blow's burst and
   event, the smear).
