@@ -16,7 +16,6 @@
 import { clamp, lerp } from '../../core/math.js';
 import { mulberry32 } from '../../core/rng.js';
 import { DEFENSE } from '../../combat/rules.js';
-import { CONFIG } from '../../core/config.js';
 import { streakTier } from '../../combat/streak.js';
 import { deathblowHit } from '../../combat/deathblowFx.js';
 import { LIGHT, HEAVY, THRUST, ROLL_ATK, CHARGE, HIT_FEEL, chargeStats } from './combat.js';
@@ -308,8 +307,7 @@ function startCombo(P, att) {
   P.parryRun = 0; // spent
   // the camera leans in on him for the whole combo, as the dodge's flurry does (no slow motion: the owner
   // asked for a faster combo; the zoom in metres at the desktop distance, scaled for the phone's camera)
-  const zk = g.cameraRig?.defaultDistance > 0 ? g.cameraRig.defaultDistance / CONFIG.camera.distance : 1;
-  g.flow?.cinematic?.({ x: tp.x, z: tp.z, slowmo: D.slow.slowmo, dur: deathblowDuration(S.n) + D.slow.dur, zoom: D.slow.zoom * zk, weight: D.slow.weight, ease: [0.12, 0.3], kind: 'deathblow' });
+  g.flow?.cinematic?.({ x: tp.x, z: tp.z, slowmo: D.slow.slowmo, dur: deathblowDuration(S.n) + D.slow.dur, zoom: D.slow.zoom, weight: D.slow.weight, ease: [0.12, 0.3], kind: 'deathblow' });
   AT[0] = deathblowWind(0, S.n);
   AT[1] = AT[0] + D.active + D.gap;
   P._emit('player:flurry', {
