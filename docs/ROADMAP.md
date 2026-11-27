@@ -297,6 +297,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] BENCH in `?perf`: each pipeline step's GPU cost on the device (ADR-215)
 - [x] The owner's BENCH from a busy moment on fox and grove; the step it names cut at AUTO's floor (options shown first): the world pass; the lite world, the owner's pick C (ADR-216)
 - [ ] BENCH on the iPhone with the lite world on: fox and grove
+- [x] AUTO BENCH: the readout benches by itself in a fight, the owner only taps REPORT (ADR-261)
 - [ ] AUTO's own step hitch on the phone (17 - 32 ms: the letter atlases rebuilt)
 - [ ] A starting step per level for a heavy level (so AUTO does not find it by a slow stretch)
 

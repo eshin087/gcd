@@ -5,6 +5,15 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — AUTO BENCH: `?perf` benches by itself in a fight (ADR-261; branch `perf/auto-bench`)
+
+**Owner:** "Is there no way we can capture the benchmarks without me having to press it at the laggy moment?"
+**What:** `dev/perfReadout.js` `AUTO_BENCH` / `_autoBench`: in a fight, a bench 8 s in and on slow bursts (4 at
+most, 10 s apart); the frame after a bench is skipped; each bench records why, AUTO's step, the lite world; the
+line shows `bench n/4`; `?perf=manual` turns it off. Test: world `perfreadout`. **Checked:** a 25 s wyrm fight
+at the phone's size benched itself 8.9 s in (the desktop GPU never had a slow burst). **Next:** the owner's
+REPORT from Cinderwood on the iPhone.
+
 ## 2026-11-27 — The Starless Lord's form, a readable pace, looks for two specials (ADR-251; branch `claude/lord-motion`)
 
 **Owner:** the motion audit of every boss (weird arm angles and sword positions, unrealistic attacks, readable

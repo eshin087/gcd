@@ -4,7 +4,10 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty pieces of work since 0.4.0:
+One hundred and thirty-one pieces of work since 0.4.0:
+- **The performance readout measures by itself** (2026-11-27, ADR-261). *Changed:* with `?perf`, BENCH now runs on its own
+  during a fight (once early, then at the slow moments, four times at most); play, then tap REPORT. `?perf=manual`
+  keeps it to the button.
 - **The Starless Lord fights with better form** (2026-11-27, ADR-251). *Changed (the owner's picks from the films;
   `?lordForm=0` / `?lordPace=0` / `?boltFx=0` / `?igniteFx=0` as before):* in all four forms his thrusts land on a
   long arm with the point on its line, out of a real lunge (front knee bent, back leg long; before, both knees

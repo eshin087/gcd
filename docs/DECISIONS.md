@@ -7287,3 +7287,14 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   cataclysm's wheel) also measures past vertical in a banked body; not changed here (the owner named the head
   raised to shoot fire).
 
+## ADR-261 — AUTO BENCH: the readout benches by itself in a fight (2026-11-27)
+
+- **Context:** the owner asked not to have to tap BENCH at the laggy moment: "make it so i can just press a
+  button or it captures the required data moment i load the link and press it to give the results".
+- **Decision:** with `?perf`, BENCH runs by itself in a fight: once 8 s in (a typical frame), then on each
+  slow burst (6 of the last 30 frames over 20 ms: the heavy moment, measured as it is on screen), 10 s apart,
+  4 in all, each a lighter bench (~1 - 2 s of hold on a phone). The owner loads the link, plays, and taps
+  REPORT. `?perf=manual` leaves it to the button. Each bench says why it ran, AUTO's step and the lite world.
+- **Consequences:** the game holds still for a moment up to 4 times in a fight with `?perf` (only then); the
+  frame after a bench is left out of the frame statistics. Not tried on the phone yet.
+
