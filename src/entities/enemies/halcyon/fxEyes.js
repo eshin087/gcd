@@ -62,21 +62,26 @@ export function eyeBeam(fx, look, ax, ay, az, bx, by, bz, w, k, dt) {
   const life = fx._frame();
   if (look === 'b') return pulse(fx, s, ax, ay, az, bx, by, bz, ux, uy, uz, L, w, k, dt, life);
   // ---- a: heat vision
+  // (crimson strokes, the void slot: his glare palette; white only at the core through the first peak, k 1)
+  const C = fx._across(dx, dy, dz), cx = C.x, cy = C.y, cz = C.z;
   // the two threads: one out of each eye, meeting `meet` m out
   const meet = Math.min(1.1, L * 0.3), mx = ax + ux * meet, my = ay + uy * meet, mz = az + uz * meet;
   for (const side of [-1, 1]) {
     const ex = ax + s.rx * 0.05 * side, ez = az + s.rz * 0.05 * side;
-    fx._ink(ex, ay, ez, mx, my, mz, 0, 1.0 + 0.2 * k, 0, 1.15 + 0.15 * k, 0, K_STEEL);
+    fx._ink(ex, ay, ez, mx, my, mz, 0, 1.05, 0, 1.0, 0, K_VOID);
   }
-  // one hard line on from there; a white-hot core prints white digits (heat over 1.2)
-  fx._ink(mx, my, mz, bx, by, bz, 0, 1.12 + 0.25 * k, 0, 1.05 + 0.2 * k, 1, K_STEEL);
-  // the crimson sheath: small cool blobs along it, flickering
+  // one hard line on from there, two fainter strokes either side of it (the sheath), flickering
+  const fl = 0.85 + 0.15 * Math.sin(s.t * 47) * Math.sin(s.t * 13);
+  fx._ink(mx, my, mz, bx, by, bz, 0, 1.08 * fl, 0, 0.95 * fl, 1, K_VOID);
+  if (k > 0.9) fx._ink(mx, my, mz, bx, by, bz, 0, 1.0, 0, 0.8, 1, K_STEEL);
+  const off = 0.11 * w;
+  for (const side of [-1, 1]) fx._ink(mx + cx * off * side, my + cy * off * side, mz + cz * off * side, bx + cx * off * side * 1.4, by + cy * off * side * 1.4, bz + cz * off * side * 1.4, 0, 0.55 * fl, 0, 0.45 * fl, 0, K_VOID);
+  // a soft crimson glow along it
   if (life > 0) {
-    const n = Math.min(60, Math.ceil(L / 0.3));
+    const n = Math.min(60, Math.ceil(L / 0.35));
     for (let i = 0; i <= n; i++) {
       const t = i / n, j = fx.lr();
-      const r = (0.06 + 0.05 * j) * w;
-      fx._blob(ax + dx * t + (fx.lr() - 0.5) * r, ay + dy * t + (fx.lr() - 0.5) * r, az + dz * t + (fx.lr() - 0.5) * r, 0, 0, 0, life, 0.22 * w, 0.22 * w, (0.32 + 0.25 * j) * (0.6 + 0.4 * k), 0, K_VOID);
+      fx._blob(ax + dx * t, ay + dy * t, az + dz * t, 0, 0, 0, life, 0.42 * w, 0.42 * w, (0.24 + 0.14 * j) * (0.6 + 0.4 * k), 0, K_VOID);
     }
   }
   // the shimmer: tiny faint letters rising off the line (one letter cell, many, faint)
@@ -98,27 +103,23 @@ export function eyeBeam(fx, look, ax, ay, az, bx, by, bz, w, k, dt) {
 /** b: the crimson pulse (see the header). */
 function pulse(fx, s, ax, ay, az, bx, by, bz, ux, uy, uz, L, w, k, dt, life) {
   const dx = bx - ax, dy = by - ay, dz = bz - az;
-  fx._ink(ax, ay, az, bx, by, bz, 0, 1.15 + 0.25 * k, 0, 1.05 + 0.2 * k, 0, K_STEEL);
-  if (!(life > 0)) return;
-  // the body: two soft lines of crimson either side of the core (on the camera's plane)
-  const Ax = fx._axes();
-  // (the beam's own sideways in the picture: across its line as drawn, in the camera's plane)
-  const br = ux * Ax.rx + uy * Ax.ry + uz * Ax.rz, bu = ux * Ax.ux + uy * Ax.uy + uz * Ax.uz;
-  const px = -bu * Ax.rx + br * Ax.ux, py = -bu * Ax.ry + br * Ax.uy, pz = -bu * Ax.rz + br * Ax.uz;
-  const pl = Math.hypot(px, py, pz) || 1, sx = (px / pl) * 0.16 * w, sy = (py / pl) * 0.16 * w, sz = (pz / pl) * 0.16 * w;
-  const n = Math.min(70, Math.ceil(L / 0.32));
-  for (let i = 0; i <= n; i++) {
-    const t = i / n, x = ax + dx * t, y = ay + dy * t, z = az + dz * t, h = (0.38 + 0.18 * fx.lr()) * (0.6 + 0.4 * k);
-    fx._blob(x + sx, y + sy, z + sz, 0, 0, 0, life, 0.26 * w, 0.26 * w, h, 0, K_VOID);
-    fx._blob(x - sx, y - sy, z - sz, 0, 0, 0, life, 0.26 * w, 0.26 * w, h, 0, K_VOID);
+  // the core: a crimson stroke (white through the first peak), and the body: three crimson strokes
+  // either side across its width, brighter at the centre
+  const C = fx._across(dx, dy, dz), cx = C.x, cy = C.y, cz = C.z;
+  fx._ink(ax, ay, az, bx, by, bz, 0, 1.1, 0, 1.0, 0, k > 0.9 ? K_STEEL : K_VOID);
+  for (let j = 1; j <= 3; j++) {
+    const o = 0.075 * j * w, h = (0.95 - 0.2 * j) * (0.7 + 0.3 * k);
+    for (const side of [-1, 1]) fx._ink(ax + cx * o * side * 0.5, ay + cy * o * side * 0.5, az + cz * o * side * 0.5, bx + cx * o * side, by + cy * o * side, bz + cz * o * side, 0, h, 0, h * 0.85, 0, K_VOID);
   }
+  if (!(life > 0)) return;
+  const Ax = fx._axes();
   // the rings racing down it: 14 m/s, 2.2 m apart, each a small circle of crimson round the line
   const sp = 14, gap = 2.2, ph = (s.t * sp) % gap;
   for (let d0 = ph; d0 < L; d0 += gap) {
-    const t = d0 / L, cx = ax + dx * t, cy = ay + dy * t, cz = az + dz * t, R = (0.22 + 0.1 * Math.min(1, d0 / 4)) * w;
+    const t = d0 / L, cx = ax + dx * t, cy = ay + dy * t, cz = az + dz * t, R = (0.3 + 0.14 * Math.min(1, d0 / 4)) * w;
     for (let j = 0; j < 10; j++) {
       const a = (j / 10) * TAU, ca = Math.cos(a) * R, sa = Math.sin(a) * R;
-      fx._blob(cx + Ax.rx * ca + Ax.ux * sa, cy + Ax.ry * ca + Ax.uy * sa, cz + Ax.rz * ca + Ax.uz * sa, 0, 0, 0, life, 0.14, 0.14, 0.75 * k + 0.2, 0, K_VOID);
+      fx._blob(cx + Ax.rx * ca + Ax.ux * sa, cy + Ax.ry * ca + Ax.uy * sa, cz + Ax.rz * ca + Ax.uz * sa, 0, 0, 0, life, 0.16, 0.16, 0.7 * k + 0.35, 0, K_VOID);
     }
   }
   foot(fx, s, bx, by, bz, ux, uz, k, dt, life, 'b');

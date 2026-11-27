@@ -52,7 +52,7 @@ export function shockwave(fx, x, z, r, y, land = false) {
   fx._blob(x, y, z, 0, 0, 0, 0.12, 0.5, 0.9, 1.3, 0, K_STEEL);
   fx._light?.({ x, y: y + 0.4, z, color: L_WHITE, intensity: 3, radius: r * 0.9, life: 0.14, fade: 0.12 });
   // what is thrown: dust and litter shoved out along the floor (a); grit lifted round the rim (b)
-  const n = look === 'a' ? 60 : 46;
+  const n = look === 'a' ? 40 : 34;
   for (let i = 0; i < n; i++) {
     const a = fx.lr() * TAU, sp = look === 'a' ? fx.lrand(r * 1.6, r * 3) : fx.lrand(r * 0.9, r * 1.6);
     const o = fx._rec(x + Math.cos(a) * 0.5, 0.15, z + Math.sin(a) * 0.5, fx.lrand(0.35, 0.7), 0.1, 0.06, ".,'`", DUST, DUST_END);
@@ -61,7 +61,7 @@ export function shockwave(fx, x, z, r, y, land = false) {
     o.vy = look === 'a' ? fx.lrand(0.3, 1.4) : fx.lrand(1.5, 3.5);
     o.drag = look === 'a' ? 3.2 : 2.4;
     o.gravity = look === 'a' ? -4 : -2.5;
-    o.alpha = 0.8;
+    o.alpha = 0.6;
     fx._spawn(A, o);
   }
   if (land) {
@@ -97,12 +97,17 @@ export function shockUpdate(fx, dt) {
     // (the front eases out: fast from the blow, slowing at its reach)
     const e = 1 - (1 - u) * (1 - u), R = 0.4 + (f.r - 0.4) * e, fade = 1 - u * u;
     if (f.look === 'a') {
-      // the ring of air: crisp steel strokes round it, a fainter twin on the floor under it
-      const n = Math.min(72, Math.ceil((TAU * R) / 0.3));
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * TAU, c = Math.cos(a), s = Math.sin(a);
-        fx._blob(f.x + c * R, f.y + (fx.lr() - 0.5) * 0.08, f.z + s * R, 0, 0, 0, life, 0.2, 0.2, 0.95 * fade, 0, K_STEEL);
-        if (i % 2 === 0) fx._blob(f.x + c * R * 0.94, 0.12, f.z + s * R * 0.94, 0, 0, 0, life, 0.3, 0.3, 0.4 * fade, 0, K_SMOKE);
+      // the ring of air: a crisp stroke of steel round it (on the letter grid), a fainter twin on the floor
+      // under it, a soft band of crimson just inside it
+      const n = 40;
+      let px = f.x + R, pz = f.z, qx = f.x + R * 0.94, qz = f.z;
+      for (let i = 1; i <= n; i++) {
+        const a = (i / n) * TAU, c = Math.cos(a), s = Math.sin(a), x = f.x + c * R, z = f.z + s * R;
+        fx._ink(px, f.y, pz, x, f.y, z, 0, 1.05 * fade, 0, 1.05 * fade, 1, K_STEEL);
+        const x2 = f.x + c * R * 0.94, z2 = f.z + s * R * 0.94;
+        if (i % 2 === 0) fx._ink(qx, 0.12, qz, x2, 0.12, z2, 0, 0.5 * fade, 0, 0.5 * fade, 1, K_STEEL);
+        if (i % 2 === 0) fx._blob(f.x + c * R * 0.88, f.y, f.z + s * R * 0.88, 0, 0, 0, life, 0.4, 0.4, 0.35 * fade, 0, K_VOID);
+        px = x; pz = z; qx = x2; qz = z2;
       }
     } else {
       // the dome: rings at five heights, narrowing to its top (a hemisphere R across, 0.7 R high: a
@@ -113,7 +118,10 @@ export function shockUpdate(fx, dt) {
         const n = Math.max(8, Math.min(28, Math.ceil((TAU * rr) / 0.45)));
         for (let i = 0; i < n; i++) {
           const a = (i / n) * TAU + j * 0.3;
-          fx._blob(f.x + Math.cos(a) * rr, yy, f.z + Math.sin(a) * rr, 0, 0, 0, life, 0.2, 0.2, (j === 0 ? 0.8 : 0.5) * fade, 0, j === 0 ? K_STEEL : K_VOID);
+          if (j === 0) {
+            const a2 = ((i + 1) / n) * TAU + j * 0.3;
+            fx._ink(f.x + Math.cos(a) * rr, yy, f.z + Math.sin(a) * rr, f.x + Math.cos(a2) * rr, yy, f.z + Math.sin(a2) * rr, 0, 0.95 * fade, 0, 0.95 * fade, 1, K_STEEL);
+          } else fx._blob(f.x + Math.cos(a) * rr, yy, f.z + Math.sin(a) * rr, 0, 0, 0, life, 0.3, 0.3, (0.75 - 0.08 * j) * fade, 0, K_VOID);
         }
       }
       // the air inside shimmering: tiny faint letters
