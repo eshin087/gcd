@@ -369,8 +369,16 @@ streak 1 / 7, the deathblow at 3 and 7 (160 / 240 damage), the hero within 0.01 
 deathblow's thrust was a fully charged one and printed a large white blot at the tip: now uncharged (the tip's own
 small streak stays, as the shipped thrust has it).
 
-**Open.** The wyrm keeps today's flurry riposte (its posture break has the plunge execution). The posture break's
-warm haze is the shipped one: ask if it should calm down. Played on the iPhone.
+**Later rounds (same day).** The two-beat deathblow was turned down; the owner asked for "# of streak death
+blows" with a special effect per hit. Built by Sonnet subagents, filmed each round: N planted blows (13 moves) on a
+posture break or a blue-blow parry, a hit-pause per blow (~3 s for 7), the blade's real path into one straight cut
+on the body, blood (spray, wound, pools), four hit looks (`?dbfx`; Shatter Web picked), four sounds on an audition
+page (https://claude.ai/artifact/AiJ7MzqvymQrvzLZryLEfH; Flesh picked), a matrix look (`?dbmatrix`, skipped:
+off). The hero's own blade line is hidden during a combo (the owner: "huge slashes ... distracting"). The
+deathblow's fire-field heat was budgeted after it blew the phase-3 cap (4959 blobs).
+
+**Open.** The wyrm keeps today's flurry riposte. Played on the iPhone. `?dbmatrix` and the other looks / sounds
+can go if they stay unused.
 
 ## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
 

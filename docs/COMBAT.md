@@ -485,18 +485,17 @@ deals its damage; a dying wyrm can't be plunged. Numbers: `DEFENSE.plunge` (`rul
 `TUNING.plunged` (dragon).
 
 ## The deathblow (2026-11-26, ADR-211)
-Against a duelist (`?parryRiposte=deathblow`, the default; `planted` / `old` the earlier answers):
-- Parries fill his **posture** (26, 48 for a blue blow, a perfect parry x1.5) and count in `player.parryRun`
-  (perfect parries; back to 0 when he is hurt, when the posture has drained to 0, after a deathblow), **not** in
-  the dodge streak.
-- A string's **last blow** parried: he recoils and the counter-cut window opens (0.9 s: a light started in it
-  winds up twice as fast and crits). Nothing is automatic. The blue flare's counter is one planted cut.
-- The parry that **breaks** his posture: the **DEATHBLOW** once the parry's freeze ends. A beat of slow motion
-  (0.35 s real), a heavy cut (40 %), an uncharged thrust through him (60 %), at most 0.6 m from where he parried,
-  unhurtable; 100 + 20 per perfect parry in the run (7 at most: 240), final; he stays broken (the break's window).
-- A chain of perfect parries grows (`?parryGrow=a`): +3 sparks a streak tier (read on `parryRun + 1`), longer
-  lives, embers from tier 2 that fall and drift on the wind, a 0.08 s orange heat flash of 2 - 5 letter cells.
-- The wyrm keeps the flurry riposte.
+Against a duelist (`?parryRiposte=deathblow`, the default; `planted` / `old` the earlier answers; the wyrm keeps the flurry):
+- Parries fill his **posture** (26, 48 for a blue blow, a perfect parry x1.5) and bank perfect parries in
+  `player.parryRun` (spent by a combo; back to 0 when he is hurt or the posture has drained), **not** the dodge streak.
+- A string's **last blow** parried: he recoils and the counter-cut window opens (0.9 s). Nothing is automatic.
+- A parry that **breaks** his posture, or **any parry of a blue blow**: the **DEATHBLOW**, N = parryRun (1..7) blows
+  where the hero stands (0.6 m at most): his own cuts, a new order each time, the finisher a big one. Every contact
+  holds for a beat (0.16 - 0.2 s, the finisher 0.38 s; ~3 s for seven) under the cold cast; 22 + 2N a blow, 40 + 15N
+  the finisher, final; he cannot be hurt; after a break he stays broken.
+- Each blow: a straight cut on his body that crosses the last and shatters on the finisher (`?dbfx=b`), blood (a
+  spray, a wound, pools on the floor), the Flesh sound (`?dbsfx=a`).
+- A chain of perfect parries grows (`?parryGrow=a`): more sparks a tier, embers, a short heat flash.
 
 ## The streak and the flurry (2026-11-14, ADR-091)
 Owner: "more different perfect dodge animations instead of the same one ... if the player keeps doing

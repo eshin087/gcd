@@ -6,14 +6,17 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 ## [Unreleased]
 One hundred and twenty-one pieces of work since 0.4.0:
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
-  longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar (blue
-  blows most, a perfect parry x1.5) and no longer count in the dodge streak; a string's last blow parried makes him
-  recoil and opens a short window for your own counter cut. The parry that BREAKS his posture is answered by the
-  DEATHBLOW: a beat of slow motion, then a heavy cut and a thrust through him where the hero stands, 100 damage +
-  20 for each perfect parry that built it (up to 240), and he stays broken. *Added:* a chain of perfect parries
-  grows, after the owner's reference footage: more sparks each tier, embers that fall and drift on the wind, a
-  short orange heat flash at the blades. Switches: `?parryRiposte=deathblow|planted|old`, `?parryGrow=a|0`; the
-  Lab's streak row; TRAINING: Deathblow x3 / x7.
+  longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
+  bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and
+  opens a short window for your own counter cut. When a parry breaks his posture, or you parry a blue warning blow,
+  the hero answers with N DEATHBLOWS where he stands (N = the perfect parries banked, 1 to 7): a combo of his own
+  cuts in a new order every time, each freezing for a beat at the contact with the blade in him, under the dodge
+  flurry's cold cast and a camera lean; ~3 s for seven. *Added:* every deathblow leaves a straight cut on his body
+  that crosses the last and shatters on the finisher (Shatter Web), blood (a spray, a wound along the cut, pools on
+  the floor until the fight resets), and its own sound, a blade through flesh; a chain of perfect parries throws
+  more sparks and embers. Switches: `?dbfx=a|b|c|d`, `?dbsfx=0|a|b|c|d`, `?blood=0`, `?dbmatrix=rain|world`
+  (off by default), `?parryRiposte=deathblow|planted|old`, `?parryGrow=a|0`; Lab streak row; TRAINING: Deathblow
+  x3 / x7, Deathblow on a blue blow.
 - **Instant slashes, and a quieter left hand to choose** (2026-11-26, ADR-240). *Changed:* every sword attack, the
   perfect-dodge flurry's finishers included, leaves one straight slash line where the blade passed instead of the
   curved crescent: thin, sharp at both ends, white-hot in the middle; a turning cut leaves three straight cuts round

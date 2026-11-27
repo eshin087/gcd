@@ -21,10 +21,10 @@ export const RELEASES = [
         date: '2026-11-26',
         title: 'The perfect parry earns its own reward: the deathblow',
         notes: [
-          'Parrying the human bosses now builds toward a reward of its own: every parry fills his gold posture bar, blue blows and perfect parries most.',
-          'Parry the last blow of a string and he recoils: strike back in that moment with your own counter cut.',
-          'Break his posture with a parry and the hero answers with a DEATHBLOW where he stands: a heavy cut and a thrust, stronger for every perfect parry that led to it.',
-          'A chain of perfect parries throws more sparks and falling embers with every link. Parries no longer count toward the perfect-dodge streak.',
+          'Parrying the human bosses now builds toward a reward of its own: every parry fills his gold posture bar, and every perfect parry is banked.',
+          'Break his posture with a parry, or parry one of his blue warning blows, and the hero answers with a DEATHBLOW for every perfect parry banked: up to seven blows where he stands, each a different cut, each freezing for a beat in him.',
+          'Every deathblow leaves a cut across him that shatters on the last, sprays blood that pools on the floor, and sounds like a blade through flesh.',
+          'Parry the last blow of a string and he recoils: strike back in that moment with your own counter cut. Parries no longer count toward the perfect-dodge streak.',
         ],
       },
       {
