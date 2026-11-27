@@ -7060,3 +7060,91 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **The owner's answer (2026-11-27, from the films):** the motion `b` as his default, the shots `b` (the script) and the
   bolts `a` (the seed): `oneMoves: 'b'`, `oneGunFx: 'b'`, `oneBoltFx: 'a'` in PICKED (`?oneMoves=a` the rebuild before
   this pass, `?oneGunFx=0` / `?oneBoltFx=0` the shots and bolts as before, the other option behind its switch).
+## ADR-254 — Halcyon audited: a flier's limbs, the readable pace, two looks for his eyes and his shockwaves (`?halMotion=b`, `?halPace=a`, `?halEyes`, `?halShock`) (2026-11-27)
+
+- **Context:** the boss motion audit (the owner: "weird looking arm angles ... kicks aren't straight during the
+  attack and still bended"; every attack readable; special effects to the Fox's and Bai Wuji's bar, 2 - 3 looks to
+  pick from). Halcyon is a flier on Tian Lei's builders (ADR-160, ADR-225's `a`: a flier's legs, the blow aimed down,
+  the held windups, the snap blows). Measured on the rig at each blow's contact (city.mjs `audit`, now with
+  `GCD_AUDIT_IMPACT=1`): his straight blows ran 35 - 66° across the line to the hero (the builders' sideways lines,
+  made for a fighter on the floor beside him, not one hovering over him); his legs sat folded under him (knees 67 -
+  135°: a man kneeling on air); the round kick landed at 105°, the side kick at 130°, the other leg folded at ~92°;
+  the pass flew pitched 54° with the knees at 54° and the fist at 2.56 m, over the hero's head. His pace is Tian
+  Lei's (first blows from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s), under COMBAT rule 10.
+- **Decision:** four switches, filmed, then the owner's picks (2026-11-27) made the defaults: `halMotion` b, `halPace` 0 (his fast pace kept), `halEyes` a, `halShock` a (lookSwitch.js PICKED):
+  1. `?halMotion=b` (`halcyon/limbs.js`, through `motion.js` halKeys, his realiser's `keysOf`): `a`'s keys, then a
+     straight blow's hand 1.08 x the arm on the line from its shoulder to the hero's upper chest (his model space at
+     the dip, `motion.b.aim`), the keys after it moved with it; a kick's foot 1.05 x the leg along its own line;
+     hooks and uppercuts their bend; THE FLIER'S LEGS on every key (each foot 0.9 - 0.985 x the leg from its hip,
+     trailing back from straight down by a set angle plus the body's pitch, one a little more bent than the other,
+     the knees forward, the toes pointed), the same hung under his hover (`poses.js` hoverLegs); a kick's other leg
+     hangs long; his own beats (the eyes, the car, the clap ...) the same legs; THE PASS level (`FLY_B`: the body at 1.35 rad, the lead fist straight out, the legs long behind) and
+     his root through it at `motion.b.passY` 0.3 m (`flight.js` go), so the fist meets the hero's chest. His
+     animator opened (`armSoft` [0.96, 0.998], `legSoft` [0.95, 0.998]) and Xin Yi's `kickStretch` set only
+     through a kick (halcyon.js brainFrame: a flier's trailing feet are off the floor too, and it locked them).
+  2. `?halPace=a` (`halcyon/pace.js`): rule 10's floor as Tian Lei's ADR-248 (`ascPace`), his own copy: a move's
+     first real blow >= 0.7 s x windupScale, later blows >= 0.45 s apart, the cue 0.35 s before; the time is a
+     held cock (the realiser's `hold`); the snap blows and the transitions keep theirs.
+  3. `?halEyes=a|b` (`halcyon/fxEyes.js`, HalFx.beam / beamSplash / eyes): a heat vision (two white-hot threads
+     out of his eyes meeting into one hard line, a flickering crimson sheath, tiny faint letters shimmering up off
+     it, the floor molten where it lands, sparks spat back, smoke; red motes drawn into his eyes through the
+     windup); b the crimson pulse (a thicker body, rings racing down it, a scorch ring opening on the beat at its
+     foot, ash; a ring tightening round his eyes). '0' Tian Lei's beam in his crimson.
+  4. `?halShock=a|b` (`halcyon/fxShock.js`, HalFx.shockwave, Applause and Meteor's landing): a a thunderclap (a
+     crisp ring of air racing out at chest / knee height, a fainter twin on the floor, dust shoved ahead); b a dome
+     of pressure (rings at five heights, the air in it shimmering, grit lifted; the landing's lower and wider). '0'
+     the engine's dust front.
+- **Why this way:** his blows are Tian Lei's builders, and Tian Lei's own straight-limb pass (PR 174,
+  `ascMotion=b`) is not merged and sits behind that boss's realiser; Halcyon is fixed in `halcyon/` only, his
+  numbers in his tuning. The audit measures in his UPRIGHT frame: the duelist draws the body sheared toward the
+  camera (`duelist.js` lean), and world points read a straight punch 20 - 40° off the hero (a measuring error,
+  not his arm). The legs could not simply hang: the animator keeps a foot over the root's floor (`anim.js`
+  FOOT_FLOOR, the hero's code), and he hovers 0.2 - 0.5 m up, so a hip sunk low takes its leg further back instead
+  of shorter. Effects are heat in the fire field and one-cell glyph particles (STYLE.md), jitter from the looks'
+  stream; nothing of a beam's or a blow's gameplay moves.
+- **Not taken:** changing `anim.js` (the hero session's) to let a flier's feet below his root; raising his body
+  and lowering his root (it moves gameplay heights the flight tests hold); a pace change without the owner's pick.
+- **Consequences / open:** the owner kept his Phantom Blade Zero-fast openers under COMBAT rule 10 (as Tian Lei's and the Fox's); `?halPace=a` stays behind its switch. Under `b` every straight blow lands within 9° of the line (elbow 161 - 171°), the knees
+  141 - 156° at every punch, a kick 173° with the other leg at 154°, the pass level (77°) with the fist at 1.55 m;
+  a longer limb snaps harder at the contact (the largest frame jolt: Faster Than Sound's kick 282 → 424 mm/f², the
+  riposte's palm 174 → 236). His own beats (the eyes, the car, the clap, the grab, the statue's arm, the falling
+  sky) keep their arms and take the flier's legs (Applause's knees 77 / 114° → 144 / 154°); the transitions' kneel
+  and the meteor's landing stay on the floor, and its tuck is a deliberate ball. Tests: city `limbs`, `readable`,
+  `audit` (`GCD_AUDIT_IMPACT=1`).
+## ADR-257 — The Cinder Wyrm's bites: the body surges first, the head snaps onto the beat (`?wyrmStrike=`) (2026-11-27)
+
+- **Context:** the owner asked for a motion audit of every boss and the hero with the animation guide
+  (`docs/ANIMATION.md`): weird limb angles, unrealistic attacks, everything readable. The wyrm already had its
+  held blue / red windups and its quick blow (ADR-223, picked). This pass measured what the wyrm's blows do at
+  their contact (`tests/integration/wyrmAnatomy.mjs`, integ `wyrmanatomy`, opt-in): per blow the striking part's
+  gap to the hero at the announced impact, a foreleg's elbow and reach, a bite's neck, the order its chain reaches
+  top speed (hips, chest, neck base, head; shoulder, elbow, wrist, paw; wing root to tip), the tail's tip against
+  its middle, the planted feet's skating and the worst one-frame change of speed (hit-stop frames left out).
+  Found:
+  - **Every bite moved hips, chest, neck and head on the same frame** (lags 0 - 17 ms: the front of the wyrm one
+    block), its jaws 0.8 - 3.1 m short of the hero's chest when the flash's impact came, closest only 0.07 - 0.27 s
+    later (the head's exponential chase is fastest on its first frame and slowest as it arrives).
+  - The forelegs rake at full reach (elbow 177°: the paw's path lies beyond the leg's reach). The strike at
+    extension is right, but the leg stays a locked rod through the whole sweep.
+  - The wing blows flap as one rigid wing about its root.
+  - Planted feet skate 0.4 - 1.0 m through some strings (the gait's re-step under a turning, lunging body).
+  - The tail blows already overlap: the tip trails the tail's middle by 44 - 123° through the turn and runs past
+    it as the body stops (a softer tip was tried and changed nothing a film could show: dropped).
+- **Decision** (behind `?wyrmStrike=0|a`, `dragon/strike.js`, `tuningMotion.js` `WYRM_STRIKE.bite`; `a` the default,
+  the owner's pick from the before / after films, 2026-11-27; '0' as shipped; the Lab's LOOKS row `wyrmStrike`), for every bite (the bite, a string's
+  bite, the lunge bite, the rear bite): over the windup's last 0.1 s the chest drops and pitches into the strike off
+  the locked hind feet, a little past the strike's own body, and the whole body surges 0.4 model units toward the
+  hero (not when it is already within 4 units: a lunge reads from the high camera where a neck reaching at the
+  lens does not), while the head HANGS where it was (its goal frozen in the world: the neck compresses under it).
+  The snap then runs the head from there to the bite's goal on a fast-in path (0.35 linear + 0.65 quadratic) that
+  arrives ON the impact, and the body settles back over 0.12 s. It replaces `strikeLead` (the shown head easing in
+  over the last three frames) while on. The hit spheres, the goals, the windups, the cue and the impacts are the
+  same code; the surge brings the jaws 0.75 m nearer.
+- **Not taken (yet):** the forelegs' rod-straight sweep (bringing the sweep's end within reach would bend the elbow
+  but move the paw's hit spheres: the AI's ranges are sim-measured coverage); the wing blows' fingers trailing the
+  arm (the wing's hit spheres ride the finger tips); the feet's skating (the gait's re-step). Listed in the ROADMAP.
+- **Consequences:** measured with `a` (wyrmanatomy), every bite: the body (hips, chest) reaches top speed 50 - 117 ms
+  before the head (was 0 - 17 ms); the jaws' gap at the impact 0.17 - 2.07 m (was 0.79 - 3.10; the single bite 1.77
+  -> 0.99, the claw combo's lunge bite 3.10 -> 2.07, the Hesitant Maw's rear bite 2.33 -> 1.16, the sky hammer's
+  bite 1.38 -> 0.45). The bite's hit sphere (1.05 x SCALE) still meets the hero a frame before the drawn jaws touch.
+  At the game camera the change reads mostly as the surge; the head's hang and snap show best from the side.

@@ -83,6 +83,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['foxQuick', ['0', 'a'], '0', 'a', false, ['fox'], 'Fox Snap and Fox Knee: quick white blows from his guard (a: in his moves)'],
   ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
   ['wyrmQuick', ['0', 'a'], '0', 'a', false, ['cinderwood'], 'Snap swipe: a quick white paw from its stance (a: in its moves)'],
+  ['wyrmStrike', ['0', 'a'], '0', 'a', false, ['cinderwood'], "the wyrm's strikes (ADR-257): a in every bite its body surges first and the head snaps onto the beat (the owner's pick); 0 as shipped"],
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)
   ['halLook', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'Halcyon\'s body: a blue suit and red cape, b the idol, c tomorrow\'s tyrant (a reload)'],
   ['halCape', ['0', '1', '2', '3'], '3', '3', true, ['city'], 'his cape and colours at game size: 0 as first built, 1 brighter, 2 + a wide flared cape, 3 + its billow and a long trail (a reload)'],
@@ -104,7 +105,10 @@ export const LOOK_SWITCHES = Object.freeze([
   ['wjCity', ['a', 'b', 'c'], 'a', 'a', true, ['veil'], 'the crossing: a ash moon (cold moonlit ash-grey), b last lamps (sodium amber, dead screens), c black wet (wet black asphalt, pale bars) (a reload)'],
   ['wjVoid', ['a', 'b', 'c'], 'b', 'b', true, ['veil'], 'the void: a drifts (star clumps only), b the ring (a great pale ring on the floor round the fight), c the fall (stars falling as streaks, a line of light where the floor ends) (a reload)'],
 
-  ['halMotion', ['0', 'a'], '0', 'a', false, ['city'], 'Halcyon\'s motion (ADR-225): a a flier\'s legs in his blows, each blow aimed down at the hero (he dips into it), his arms open at the end, the held windups, his snap blows (Flick, Tap; the default); 0 as before (live, from his next move)'],
+  ['halMotion', ['0', 'a', 'b'], '0', 'a', false, ['city'], 'Halcyon\'s motion: b (ADR-254, the default) a plus straight punches on the line to the hero, straight kicks, long trailing legs, a level fly-by at chest height; a (ADR-225) a flier\'s legs in his blows, each blow aimed down at the hero (he dips into it), his arms open at the end, the held windups, his snap blows (Flick, Tap); 0 as before (live, from his next move)'],
+  ['halEyes', ['0', 'a', 'b'], '0', 'a', false, ['city'], 'Halcyon\'s eye beams (ADR-254): a heat vision (the default), twin threads meeting in one hard crimson line, a shimmer rising, a molten spot spitting sparks; b the crimson pulse, rings racing down it, a scorch ring on the beat; 0 Tian Lei\'s beam in crimson (live)'],
+  ['halShock', ['0', 'a', 'b'], '0', 'a', false, ['city'], 'Halcyon\'s shockwaves, Applause and Meteor (ADR-254): a a thunderclap ring of air, dust shoved ahead of it (the default); b a dome of pressure swelling out, grit lifted; 0 the dust front (live)'],
+  ['halPace', ['0', 'a'], '0', 'a', false, ['city'], 'Halcyon\'s pace (ADR-254): 0 the pace he shipped with (the default, the owner\'s pick); a COMBAT rule 10\'s floor, a first blow >= 0.7 s, blows >= 0.45 s apart, the cue 0.35 s before (a held cock) (live)'],
   // --- every human boss (ADR-194)
   ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city', 'veil'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],
   // --- drawn in the hero's style (ADR-220): per boss, 0 as he shipped, a shaded as the hero is, b outlined as the

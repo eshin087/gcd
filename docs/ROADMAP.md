@@ -1221,6 +1221,15 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       redrawn shots and bolts (`?oneGunFx`, `?oneBoltFx`); the `line` test; films sent
   - [x] The owner's picks from the films: motion `b`, the shots `b` (the script), the bolts `a` (the seed), the default
   - [ ] The hooks meeting the hero from the side, the sweep's knee at its very contact, Iron Rain's twin arms
+- [x] The Cinder Wyrm (ADR-257): the anatomy audit at each blow's contact (`wyrmanatomy`), every bite led by the
+      body and snapped onto the beat, behind `?wyrmStrike=a`
+  - [x] The owner's pick from the films (2026-11-27): `a`, the default
+  - [ ] Next: the forelegs straight through the whole rake, the wing blows flapping as one rigid wing, the feet
+        skating up to ~1 m in some strings
+- [x] Halcyon (ADR-254): measured at every blow's contact in his upright frame (city `audit`, `GCD_AUDIT_IMPACT=1`);
+      straight punches on the line to the hero, straight kicks, a flier's long legs, a level pass (`?halMotion=b`),
+      rule 10's pace (`?halPace=a`), two looks each for his eye beams and his shockwaves; draft PR, films sent
+  - [x] The owner's picks made the default (2026-11-27: `halMotion` b, his fast pace kept, `halEyes` a, `halShock` a)
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and
