@@ -1214,7 +1214,7 @@ each pose) and the hand's elbow, fingers, palm and shape where the look gives th
 (in `apply`, after the free hand's target) moves the free wrist's target onto the look's rest with a damped
 pendulum on it, `_sideLinger` keeps it there a moment after the attack. It runs after the two-handed grip's
 blend (a two-handed blow takes the hand from where the side left it), and a look with `body` > 0 (the back look) keeps
-the wrist that far from the torso's axis between hip and chest (`SIDE_KEEP`, eased with the hand; ADR-247). '0' leaves production's free hand; 'auto' (the default) wears the feel's own.
+the wrist that far from the torso's axis between hip and chest (`SIDE_KEEP`, eased with the hand; ADR-252). '0' leaves production's free hand; 'auto' (the default) wears the feel's own.
 **The swings' feel** (ADR-240, `player/feel.js`: `FEELS`, `setFeel` / `feelMode` / `feelLook`, `warpPhase`; `?feel=`, the
 Lab's `feel` row): `swingPose` plays the clip at `warpPhase(swingPhase(t))` (each phase's 0..1 through the feel's curve,
 the phases' ends kept), the hips' and chest's lead × `lead`, and scales the keyed `by`, `hip`, `sy`, `sx` by `gain`
@@ -1229,7 +1229,7 @@ screen's plane (`_screen`); the line is queued in `END.reveal` pieces `END.step`
 side. The swing's end waits out a landed blow's bite (`SWING.bite`). Defaults: `enemy`, `0`. The impact pass (ADR-244): `END.front` (no part of a line nearer than that ahead of him), `END.carry` (a
 whiff's strokes move at his ground speed, slowing), `IMPACT` (on a landed blow: `game.kick` along the slash, a shake,
 `_burst`: glyph sparks along it and steel heat in the fire field), `SMEAR` (`_smear`: steel heat over the blade's sweep
-in fast frames), and `player:slash` for the audio (`slashRing`). **The slice** (ADR-247, the default `slash`
+in fast frames), and `player:slash` for the audio (`slashRing`). **The slice** (ADR-252, the default `slash`
 look; `SLICE`, `SLICE_COL`, `setSlice` / `sliceMode` (`?slice=steel|green`), `setSliceWhen` / `sliceWhenMode`
 (`?slicewhen=trace|end`), the Lab's `slice` / `slicewhen` rows): each buffered frame keeps the blade's base, the point's
 speed and his place; `_sliceSeg(i0, i1)` prints the point's path between two frames (the blade turned round its base,
@@ -1237,7 +1237,7 @@ both against his body now) through `_sliceCell` (snapped to a screen-plane latti
 per swing: `cells`); traced each frame from `SLICE.from` × the windup, or all at once in `_sliceEnd` as the swing ends
 (which also calls `onLine` with the path's ends and emits `player:slash`); `_sliceHit` (from the `player:hitDragon`
 handler, the contact's own frame; not on a guarded strike) kicks and shakes along the blade's way and sprays `_burst(…, SLICE.burst)`. Tests:
-`onSlice(x, y, z, w, row)`, `seamN`, `drips`. While a free-hand
+`onSlice(x, y, z, w, row)`, `seamN`, `drips`. `?slash=dline`: the ending line (`_end`, its place and reveal) printed by `_draw` as `_sliceCell` digits along it (its carry, sharp at both ends) instead of strokes. While a free-hand
 look holds the hand (`P.sd`), the free wrist is `BLADE_PTS[13]` in the coat's sheet test (`_bladePts`). **The light combos** (ADR-240, `combos.js` `COMBOS`, `setCombo` /
 `comboMode`, `?combo=`, the Lab's `combo` row): `setCombo` writes a combo's `anim`, `variants`, timings and a
 finisher's `kind` / `heavy` / `contact` onto `LIGHT` (production's kept in `BASE` and restored by '0'), and sets

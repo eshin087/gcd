@@ -271,7 +271,7 @@ changes colour. One idea at a time, shown big.
   only, gated by blade speed, with the impact at the contact point along the cut. The hero's swings end in
   the owner's SLICE: a thin seam of fine digits printed exactly on the path the blade's point swept, bright
   where it was fast, gone in ~0.2 s, with a smear on the strike only and the impact on the contact's own frame
-  (`slashFx.js`, ADR-247; `?slash=line` the ending line of ADR-240 / ADR-244, `?slash=arc` the old curved arc)
+  (`slashFx.js`, ADR-252; `?slash=line` the ending line of ADR-240 / ADR-244, `?slash=arc` the old curved arc)
   **(ours)**.
 - **One smear frame is usually enough**, on the strike only, never on the anticipation or recovery
   (Slynyrd 9).
@@ -400,7 +400,7 @@ responsiveness into the physics first, with poses on top.
 - [ ] No twirls or flourishes the owner didn't ask for.
 - [ ] Cuts are diagonals at the game camera, not upright bars.
 - [ ] The pace sits between 0.25 s (too fast) and 0.42 s (too slow) per light hit, unless the owner moved it.
-- [ ] The slice lies on the blade's own path from every side and is gone in ~0.2 s (ADR-247); effects stay
+- [ ] The slice lies on the blade's own path from every side and is gone in ~0.2 s (ADR-252); effects stay
       at the blade; the background never changes colour.
 - [ ] Defensive play is never punished by the animation (a guard that drops, a dodge that can't be
       cancelled).

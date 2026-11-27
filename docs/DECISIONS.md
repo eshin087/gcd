@@ -6987,7 +6987,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
   `link`, `links`, `last`.
 
-## ADR-247 — The slice: a seam of digits on the blade's own path, ~0.2 s; the free hand kept out of his body (2026-11-26)
+## ADR-252 — The slice: a seam of digits on the blade's own path, ~0.2 s; the free hand kept out of his body (2026-11-26)
 
 - **Context:** after the impact pass (ADR-244) the owner: the left arm "clipping sometimes as i see its yellow fist
   randomly during the light attack combo", hit 5's hand "unnatural"; "the slash effect is very distracting and seems
@@ -7011,7 +7011,9 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   travel through the swing taken off) and carried at his ground speed. `?slice=steel|green`, `?slicewhen=trace|end`
   (defaults steel, trace, until the owner picks). The landed blow's kick and shake move to the contact's own frame
   (the hit test runs after the slice's update: done in the `player:hitDragon` handler; none on a guarded strike), with IMPACT × 0.45 sparks
-  there and no scar line. `?slash=line` keeps the ending line (ADR-240, ADR-244), `?slash=arc` the crescent.
+  there and no scar line. `?slash=line` keeps the ending line (ADR-240, ADR-244), `?slash=arc` the crescent;
+  `?slash=dline` (the owner, 2026-11-27: "I still want to see the slash with this new thin line of small digits")
+  prints that ending line in the slice's digits and colours.
 - **Consequences:** the slice's digits are glyph particles (one letter cell, the afterimage's cell size), not heat in
   the fire field: the green the owner asked to see is not one of the field's palettes (its void slot is borrowed per
   level), and both colours are drawn the same way so the choice is colour alone. `player:slash` (the ring) comes as

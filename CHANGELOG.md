@@ -5,14 +5,14 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and twenty-five pieces of work since 0.4.0:
-- **A slice of digits along the blade, and a left hand that stays out of his body** (2026-11-26, ADR-247). *Changed:* every
+- **A slice of digits along the blade, and a left hand that stays out of his body** (2026-11-26, ADR-252). *Changed:* every
   sword attack's slash is now a thin seam of fine digits printed exactly along the path the blade's point swept,
   as if the sword cut the world's code open: bright where the blade was fastest, a few digits dripping out of
   the cut, all gone in about 0.2 s. It follows the swing from every side and on the phone camera, and moves on
   with you through a dash. A landed blow throws the camera along the blade's way on the frame it connects, with a
   small spray of sparks there. To compare: `?slice=steel` (white-blue, the default) or `green`, and
   `?slicewhen=trace` (laid as the blade passes, the default) or `end` (the whole cut at once as the swing ends);
-  `?slash=line` brings back the straight ending line, `?slash=arc` the crescent (the Lab's `slash`, `slice` and
+  `?slash=dline` draws the straight ending slash in the same thin digits, `?slash=line` brings back the straight ending line, `?slash=arc` the crescent (the Lab's `slash`, `slice` and
   `slicewhen` rows). *Fixed:* the free hand behind his back no longer passes through his body (the yellow
   fist that flashed through his coat in the light combo); on the finisher it travels round his side to the grip.
 - **Harder-hitting swings, and slashes that stay in front of you** (2026-11-26, ADR-244). *Changed:* a heavy's

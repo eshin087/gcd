@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-26 — The slice: digits along the blade's own path; the free hand kept out of his body (ADR-247; branch `claude/hero-attack-feel`, held)
+## 2026-11-26 — The slice: digits along the blade's own path; the free hand kept out of his body (ADR-252; branch `claude/hero-attack-feel`, held)
 
 **Owner:** "seems like the left arm is clipping sometimes as i see its yellow fist randomly during the light attack
 combo. also on the 5th attack the left hand angle motion and animation looks unnatural ... the slash effect is very
@@ -32,7 +32,8 @@ default `slash` look): the drawn point's path, each frame's blade turned onto th
 seam of digits on a screen-plane lattice (one digit a cell), weighted by the point's speed, one in five dripping, 0.2 s
 (0.24 heavy; a heavy's second seam inside), laid against his body and carried at his ground speed; `?slice=steel|
 green`, `?slicewhen=trace|end`; the impact (kick, shake, a smaller spray) on the contact's own frame. `?slash=line` the
-ending line, `?slash=arc` the crescent. Lab rows `slice`, `slicewhen`. Scenario `slice`.
+ending line, `?slash=arc` the crescent, `?slash=dline` the ending line in the slice's digits (asked for on 2026-11-27).
+Lab rows `slice`, `slicewhen`. Scenario `slice`.
 
 **Verification:** `offhand` (new: combo A's hand ≥ 0.18 m from his spine through hits 1-4, nearest 0.21 (it was
 0.07); hit 5 at most 22 cm a frame to the grip, 17.2 (it snapped 34.1); fails on the code before), `slice` (four facings, both colours, both timings: every digit within 0.2 m of the blade's own path,
