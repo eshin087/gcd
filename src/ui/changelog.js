@@ -26,6 +26,12 @@ export const RELEASES = [
           'Every deathblow leaves a cut across him that shatters on the last, sprays blood that pools on the floor, and sounds like a blade through flesh.',
           'Parry the last blow of a string and he recoils: strike back in that moment with your own counter cut. Parries no longer count toward the perfect-dodge streak.',
         ],
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'The flash chain: counter him three times in a row',
+        notes: ['A flash counter (attack just before his blow lands) no longer ends his combo. He is knocked back and strikes back at once; counter that too, and once more. The third counter in a row hits hardest and leaves him reeling. Add ?counter=0 for the old single counter.'],
       },
       {
         date: '2026-11-26',

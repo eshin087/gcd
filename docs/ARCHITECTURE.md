@@ -797,6 +797,10 @@ onTrade(att, { tell, attack, last }): { heavy, crush } | null
                                        // onCounter({ point, dir, attack }) -> damage dealt: no bounce, the attacker deals
                                        // itself counter.damage (final) + counter.posture and reels, 'player:counter',
                                        // the crit window opens. Returns { heavy, crush, counter }.
+                                       // The flash chain (the default; ?counter=0 off; combat/flashChain.js, ADR-246): onCounter
+                                       // writes the link into its argument (o.link / o.links); before the last link
+                                       // the attacker strikes back (Duelist: brain.counter.pending + .link, the
+                                       // counter move's act carries act.flashLink) and no crit window opens.
 onGuarded({ deflect, heavy, attacker })
                                        // a duelist's guard met the hero's strike (he calls it from takeHit). A plain
                                        // ward: the chain goes on. deflect: the blade is thrown back, state 'bounce'
@@ -6366,8 +6370,10 @@ Player → hud/audio/fx/flow:
   the ground is under the foot); sfx plays that ground's sound by it), `player:lockOn {on}`,
   `player:lock {phase}` (the blade lock with a duelist: phase start / push / won / lost),
   `player:mikiri {attack}` (a roll into a perilous thrust stepped on the blade),
-  `player:counter {attack, damage, draw}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
-  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER"; draw = One Breath's draw counter, ADR-146),
+  `player:counter {attack, damage, draw, link, links, last}` (the flash counter, ADR-102: a trade clash in the instant the hero's cut became
+  a cut; it went through the blow and through the attacker; HUD "FLASH COUNTER"; draw = One Breath's draw counter, ADR-146;
+  link / links: the flash chain's link and length (the game's default; 0 / 0 under `?counter=0`), last = no strike-back follows
+  (the crit window opened), ADR-246; HUD "FLASH COUNTER ×2", "THREE FLASHES" on the last),
   `player:draw {phase}` (One Breath, ADR-146: phase stance = the draw stance taken, cut = released),
   `player:flareCounter {attack, damage, strikes}` (the counter, ADR-118: a blue flare blow was parried and the hero
   answered by himself; fired as its last cut, the counter blow, lands: damage = that blow's, strikes = the

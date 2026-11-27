@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-two pieces of work since 0.4.0:
+One hundred and twenty-three pieces of work since 0.4.0:
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
   longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
   bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and
@@ -17,6 +17,12 @@ One hundred and twenty-two pieces of work since 0.4.0:
   more sparks and embers. Switches: `?dbfx=a|b|c|d`, `?dbsfx=0|a|b|c|d`, `?blood=0`, `?dbmatrix=rain|world`
   (off by default), `?parryRiposte=deathblow|planted|old`, `?parryGrow=a|0`; Lab streak row; TRAINING: Deathblow
   x3 / x7, Deathblow on a blue blow.
+- **The flash chain: counter him three times in a row** (2026-11-26, ADR-246). *Changed (the owner's pick from films of every duelist):* a flash
+  counter no longer ends his string at once: he is thrown back and strikes back straight
+  away, and a flash counter of that blow is the next link. Three in a row (70, 85, then 100 damage, each freeze
+  and ring a little bigger) and he reels with the crit window open, as a single flash counter does today. Every
+  duelist; the timing window is the same for every link. `?counter=0` (the Lab's `counter` row: old) gives the
+  flash counter as it was.
 - **The living world draws for less** (2026-11-26, ADR-245). *Changed:* the atmosphere looks exactly the same but costs
   less: its letters hand the graphics card only what is drawn, empty layers are skipped, and the ground's
   footprint flash and the grass's wake stop working on pixels they cannot reach (the ground pass about 11 - 17 %

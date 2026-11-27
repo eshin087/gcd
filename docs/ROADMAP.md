@@ -1231,6 +1231,20 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       destruction must hold 60 fps on the S1 target devices
 - [ ] Options rendered per level for the owner before anything is built
 
+### P4 — Combat additions from research into three sword games (2026-11-26)
+Research into Sekiro, Phantom Blade Zero and Onimusha: Way of the Sword found most of their core already here;
+five additions proposed to the owner, who picked the order:
+- [x] The flash chain: three flash counters in a row, he strikes back after each (ADR-246): the default, picked by
+      the owner from films of every duelist (`?counter=0` for the single counter)
+- [ ] The owner's playtest of the flash chain (and on the iPhone)
+- [ ] The Break finisher: on a posture-broken boss, choose where to cut (head for damage, legs for guard back)
+- [ ] Cuts that split the letters: hits spray the boss's own letters along the blade, a killing cut splits him
+      along the swing (looks to pick on film first)
+- [ ] The clash dance: parries in a row inside one string pay more posture each, the ring rises; his posture
+      recovers slower as his health falls
+- [ ] One answer per unblockable: jump a sweep (and kick off his head), grabs dodge-only, thrusts keep the mikiri
+- [ ] A sub-weapon and a swap strike (boss rewards: a few uses per fight; the swap strikes and refills the guard)
+
 ## Ship — Steam (Windows / Mac) and the app stores (iOS / Android) (planned 2026-11-25)
 The owner's goal: sell gcd on Steam and in the App Store / Google Play. The game stays a web game
 (Three.js, WebGL2) and ships inside a wrapper; no engine rewrite. Order: performance first (it shapes

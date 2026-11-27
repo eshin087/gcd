@@ -30,6 +30,7 @@ import { SLASH_IDS, slashMode, setSlash } from '../entities/player/slashFx.js';
 import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
 import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combos.js';
+import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.js';
 import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
@@ -1481,6 +1482,7 @@ export class Lab {
     for (const [lbl, ids, set, key, tip, name] of [
       ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: line = the instant straight slash, arc = the curved crescent as before (?slash=arc)", (m) => m],
       ['combo', COMBO_IDS, setCombo, 'comboBtns', 'four light combos for the ending slash: prod = as it ships, a Iai, b Tempest, c Mountain, d Dancer (each with its feel and its free hand) (?combo=)', (m) => (m === '0' ? 'prod' : `${m} ${COMBOS[m].name}`)],
+      ['counter', COUNTER_IDS, setCounterMode, 'counterBtns', 'the flash counter: chain (the default) = he strikes back after each one, three in a row and he reels; old = it ends his string and he reels at once (?counter=0)', (m) => (m === '0' ? 'old' : m)],
       ['endslash', PLACE_IDS, setPlace, 'placeBtns', "where the ending slash is drawn: target = ahead of him where the foe stands, body = across him, enemy = across what it hit, blade = along the blade's path (?endslash=)", (m) => m],
       ['endbeat', BEAT_IDS, setBeat, 'beatBtns', 'when the ending slash comes: beat = a short pause after the swing, 0 = as it ends (?endbeat=)', (m) => m],
       ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
@@ -1613,6 +1615,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
     for (const { m, el: b } of this.ui.feelBtns ?? []) setClass(b, 'on', feelMode() === m);
     for (const { m, el: b } of this.ui.comboBtns ?? []) setClass(b, 'on', comboMode() === m);
+    for (const { m, el: b } of this.ui.counterBtns ?? []) setClass(b, 'on', counterMode() === m);
     for (const { m, el: b } of this.ui.placeBtns ?? []) setClass(b, 'on', placeMode() === m);
     for (const { m, el: b } of this.ui.beatBtns ?? []) setClass(b, 'on', beatMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;

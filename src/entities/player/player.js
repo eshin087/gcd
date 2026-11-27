@@ -1655,14 +1655,26 @@ export class Player {
       // swing itself lands nothing more; he reels and the crit window opens on him
       a.hit = true;
       let dealt = 0;
+      // (the flash chain, ?counter=chain: the attacker writes the link it was into `link` / `links`)
+      const ko = { point: { x: cv.x, y: Math.max(0.75, cv.y), z: cv.z }, dir: { x: -nx, z: -nz }, attack: o.attack ?? null, ...(drawK ? { damage: a.def.damage, posture: a.def.counterPosture } : null) };
       try {
-        dealt = fin(att.onCounter({ point: { x: cv.x, y: Math.max(0.75, cv.y), z: cv.z }, dir: { x: -nx, z: -nz }, attack: o.attack ?? null, ...(drawK ? { damage: a.def.damage, posture: a.def.counterPosture } : null) }), 0);
+        dealt = fin(att.onCounter(ko), 0);
       } catch (err) {
         console.error('[player] attacker.onCounter failed', err);
       }
-      if (!drawK) this.critTimer = Math.max(fin(this.critTimer), DEFENSE.ghostep.critWindow);
+      const link = fin(ko.link, 0) | 0, links = fin(ko.links, 0) | 0, CH = DEFENSE.counterChain;
+      if (link > 0 && links > 0) {
+        // each link its own weight (the freeze above was the plain counter's: a link only adds to it)
+        const i = Math.min(link, CH.stop.length) - 1;
+        this._hitstop(CH.stop[i], 0.02);
+        g.shake?.(Math.max(0, CH.shake[i] - K.shake));
+        g.punch?.(CH.punch[i]);
+      }
+      // the crit window: the plain counter's, or the chain's last link (before it he strikes back at once)
+      const last = !links || link >= links;
+      if (!drawK && last) this.critTimer = Math.max(fin(this.critTimer), DEFENSE.ghostep.critWindow);
       this.bladeFlare = Math.max(this.bladeFlare, TUNE.bladeFlare.hit[1]);
-      this._emit('player:counter', { attack: o.attack ?? null, damage: dealt, draw: drawK });
+      this._emit('player:counter', { attack: o.attack ?? null, damage: dealt, draw: drawK, link, links, last });
     } else if (!crush) this._bounce(att, TUNE.tradePush);
     return { heavy, crush, counter };
   }

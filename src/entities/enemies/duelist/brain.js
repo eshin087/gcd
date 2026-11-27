@@ -241,7 +241,7 @@ export class DuelBrain {
     this.strafeDir = 1;
     this.strafeT = 2;
     this.raiseT = 0;
-    this.counter = { n: 0, t: -9, pending: false };
+    this.counter = { n: 0, t: -9, pending: false, link: 0 };
     this.struck = { n: 0, t: -9 };
     this.backCool = 0;
     this.sideCool = 0;
@@ -950,6 +950,7 @@ export class DuelBrain {
     d.state = 'staggered';
     this.modeT = 0;
     this.counter.pending = false;
+    this.counter.link = 0;
     this._play(this.C.broken, 0.1);
   }
 
@@ -1010,7 +1011,11 @@ export class DuelBrain {
     }
     if (this.counter.pending) {
       this.counter.pending = false;
-      this.startAct(this.K.counterMove?.(d.phase) ?? 'riposte');
+      const link = this.counter.link | 0;
+      this.counter.link = 0;
+      // (a strike-back of the flash chain, combat/flashChain.js: the act carries its link, so a flash
+      // counter of one of its blows is the next)
+      if (this.startAct(this.K.counterMove?.(d.phase) ?? 'riposte') && link && this.act) this.act.flashLink = link;
       return;
     }
     // a heavy blow levelled at him: sometimes he steps out of it
