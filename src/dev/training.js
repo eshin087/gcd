@@ -439,6 +439,7 @@ export class Training {
   /** Stop the situation running (inputs released; it stays selected for a replay). */
   stop(changed = true) {
     this._release();
+    this._restoreRiposte();
     this.ph = 'idle';
     if (changed) this._changed();
   }
@@ -508,6 +509,7 @@ export class Training {
     } catch (err) {
       console.error('[training] situation failed', s?.id, err);
       this._release();
+      this._restoreRiposte();
       this.ph = 'done';
       this.lastResult = { id: s?.id, ok: false, missing: ['(error)'], secs: this.t };
       this._changed();
@@ -517,6 +519,14 @@ export class Training {
   _phase(ph) {
     this.ph = ph;
     this.t = 0;
+    if (ph === 'done') this._restoreRiposte();
+  }
+
+  /** A situation's own riposte mode (`s.riposte`) ends with it: the mode before it comes back. */
+  _restoreRiposte() {
+    if (this._riposteSaved == null) return;
+    setRiposteMode(this._riposteSaved);
+    this._riposteSaved = null;
   }
 
   _changed() {
@@ -552,10 +562,7 @@ export class Training {
     if (s.riposte) {
       if (this._riposteSaved == null) this._riposteSaved = riposteMode();
       setRiposteMode(s.riposte);
-    } else if (this._riposteSaved != null) {
-      setRiposteMode(this._riposteSaved);
-      this._riposteSaved = null;
-    }
+    } else this._restoreRiposte();
     if (p) {
       p.parryRun = 0;
       if (p.db) p.db.phase = '';
