@@ -10,6 +10,7 @@ import { perPhase } from './realise.js';
 import { DuelBrain } from './brain.js';
 import { DuelFx } from './fx.js';
 import { closestOnSegments } from '../../../combat/clashFx.js';
+import { counterChainOn } from '../../../combat/flashChain.js';
 import { impactK } from '../../../combat/impact.js';
 import { calmBossFlash } from '../../../combat/impactCalm.js';
 import { HitReact } from './react.js';
@@ -553,10 +554,26 @@ export class Duelist {
     this._lastParry = this.time; // (hitPlayer's onClashed for this same blow: already answered)
     const K = DEFENSE.counter;
     this.jolt = Math.max(this.jolt, 1);
+    // the flash chain (?counter=chain, combat/flashChain.js): the link is one more than the link of the
+    // strike-back he is throwing (brain.act.flashLink), else the first. One Breath's draw counter
+    // (o.damage set) is never a link
+    const CH = DEFENSE.counterChain, chain = counterChainOn() && o.damage == null;
+    const link = chain ? Math.min(CH.links, (this.brain.act?.flashLink ?? 0) + 1) : 0, i = link - 1;
+    o.link = link;
+    o.links = chain ? CH.links : 0;
     // (o.damage / o.posture: a counter of its own, the hero's One Breath: ADR-146)
-    const dealt = this.takeHit({ damage: fin(o.damage, K.damage), part: 'body', point: o.point, dir: o.dir, heavy: true, crit: true, exact: true, posture: fin(o.posture, K.posture), flash: 1, reel: 1 });
+    const dmg = chain ? CH.damage[i] : fin(o.damage, K.damage), post = chain ? CH.posture[i] : fin(o.posture, K.posture);
+    const dealt = this.takeHit({ damage: dmg, part: 'body', point: o.point, dir: o.dir, heavy: true, crit: true, exact: true, posture: post, flash: 1, reel: 1 });
     if (this.mode === 'dying' || this.mode === 'dead' || this.broken) return fin(dealt);
     this.emit('dragon:stagger');
+    if (chain && link < CH.links) {
+      // not the last link: thrown back a step, and he strikes back at once (brain._foot: the counter
+      // move, tagged with this link so a flash counter of it is the next)
+      if (this.brain.startReact(CH.react) && this.brain.react) this.brain.react.travel = -CH.push;
+      this.brain.counter.pending = true;
+      this.brain.counter.link = link;
+      return fin(dealt);
+    }
     this._cinematic('counter');
     this.brain.startReact('reeling');
     return fin(dealt);
@@ -586,6 +603,7 @@ export class Duelist {
     this.game.shake?.(0.25);
     this.brain.startReact('clash');
     this.brain.counter.pending = true;
+    this.brain.counter.link = 0;
   }
 
   /** A mikiri (player.js _mikiri): the hero stepped on his perilous thrust. Pinned, he stumbles. */

@@ -296,6 +296,17 @@ export const DEFENSE = Object.freeze({
   // once, he reels (attacker.onCounter: his string is over), the crit window opens. `stop` / `shake`
   // / `punch`: the freeze, the camera
   counter: { window: 0.03, damage: 70, posture: 60, stop: 0.16, shake: 0.55, punch: 3.8 },
+  // --- the flash chain (`?counter=chain`, combat/flashChain.js; ADR-245): `links` flash counters in a
+  // row on one duelist, each link's `damage` (final) / `posture` / `stop` / `shake` / `punch` by link.
+  // Before the last he is thrown back (`react`, `push` m) and strikes back at once with his counter move;
+  // the last is the flash counter's own ending (he reels, the cinematic, the crit window). Same window
+  // (counter.window) for every link: the owner's pick
+  counterChain: {
+    links: 3, damage: [70, 85, 100], posture: [45, 55, 70],
+    // (a link's freeze and shake never fall below the plain counter's: they are added on top of it)
+    stop: [0.16, 0.19, 0.24], shake: [0.55, 0.68, 0.85], punch: [3.8, 4.2, 4.8],
+    react: 'clash', push: 0.6,
+  },
   // --- a PERFECT parry of a blow of the body or the blade (ADR-102; a bullet's is the return): its
   // posture damage x POSTURE.perfect, and the counter cut: the first light started within
   // `cutWindow` s winds up `cutSpeed` x as fast and crits
