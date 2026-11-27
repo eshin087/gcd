@@ -77,6 +77,9 @@ export const LOOK_SWITCHES = Object.freeze([
   // --- the motion pass (ADR-223; live; the owner picked a for all, 2026-11-26): held blue / red windups, the quick blows
   ['sheathMotion', ['0', 'a', 'b'], '0', 'a', false, ['grove'], "Lu Wusheng's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk; b held only"],
   ['sheathQuick', ['0', 'a'], '0', 'a', false, ['grove'], 'Before the Word: a quick white pommel snap from his carry (a: in his moves)'],
+  // --- Lu Wusheng's audit (ADR-252; awaiting: the owner picks from the films)
+  ['sheathForm', ['0', 'a'], '0', 'a', false, ['grove'], 'Lu Wusheng\'s form: 0 as shipped; a the fist on the hilt, the scabbard pulled back as he draws, a real lunge at the cut\'s end, thrusts on a long arm in line, the overhead on a diagonal, the sweep turning on his feet, the free hand half the travel (live, from his next move)', 'awaiting'],
+  ['sheathPace', ['0', 'a'], '0', 'a', false, ['grove'], 'Lu Wusheng\'s pace: 0 as shipped; a COMBAT rule 10\'s floor: a move\'s first blow >= 0.7 s, blows >= 0.45 s apart, the cue 0.35 s before, the time a held cock; the draws as before (live, from his next move)', 'awaiting'],
   ['foxMotion', ['0', 'a', 'b'], '0', 'a', false, ['fox'], "Wen Yao's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk, the feet no longer jump; b held only"],
   ['foxQuick', ['0', 'a'], '0', 'a', false, ['fox'], 'Fox Snap and Fox Knee: quick white blows from his guard (a: in his moves)'],
   ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
