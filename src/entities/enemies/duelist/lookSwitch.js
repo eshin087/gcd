@@ -88,6 +88,7 @@ export const PICKED = Object.freeze({
   drawFx: '0', // the draw's one white line kept (a the drawn breath, b hanging leaves, c the late sound)
   foxQuick: 'a', // Fox Snap, Fox Knee
   wyrmQuick: 'a', // Snap swipe
+  wyrmHead: 'a', // the meteors' roar: the head up and forward, never tipped back past upright (the owner asked, 2026-11-27; ADR-258)
   wyrmStrike: 'a', // the wyrm's bites: the body surges first, the head snaps onto the beat (the owner's pick, 2026-11-27, from the films; ADR-257)
   // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
   ashHero: 'c', // Shen Hui: the hero's shading and his outline (a the shading, b the outline)

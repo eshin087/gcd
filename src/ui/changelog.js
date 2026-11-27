@@ -19,6 +19,13 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: 'The Cinder Wyrm raises its head naturally to rain fire',
+        notes: [
+          'When the wyrm rears up to roar its meteors into the sky, its head now rises up and forward instead of twisting back over its own neck.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'Lu Wusheng draws like a swordsman',
         notes: [
           'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',

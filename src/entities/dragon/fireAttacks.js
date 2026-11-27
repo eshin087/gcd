@@ -1,3 +1,4 @@
+import { lookOf } from '../enemies/duelist/lookSwitch.js';
 import * as THREE from 'three';
 import { TUNING, SCALE } from './tuning.js';
 import { clamp, lerp, smoothstep, easeOutCubic, easeInCubic, easeInOutSine, angleDiff } from '../../core/math.js';
@@ -5,6 +6,12 @@ import { beat, roarFx, roarPose, GROUND_BLOW, NOVA_BLOW } from './attacks.js';
 import { FLIGHT, TRAILS } from './tuningFire.js';
 import { CRACK_ON, WALL_SOURCE } from './fireTrails.js';
 import { APOC_LOOK, skyBolt, skyPillar, skyThroat } from './skyFx.js';
+
+// The meteors' roar with the head held naturally (ADR-258; `?wyrmHead=a`, the default; '0' as before: the
+// neck swung back past upright, the head behind the neck's base, the snout 15° past vertical toward the tail
+// and the head rolled over on its snout). Root frame, model units: the reared head's spot and its look point.
+const HEAD_UP = Object.freeze({ y: 7.6, z: 2.3, lookY: 40, lookZ: 3.5 });
+const headUp = () => (lookOf('wyrmHead', '0') === '0' ? null : HEAD_UP);
 
 // Fire / flight attacks and spells (contract 3; numbers in tuningFire.js = TUNING.attacks.*). Same
 // shape as attacks.js (phases / beats / zone / weight / start / enter / update / hit / end, driven by
@@ -1309,10 +1316,18 @@ const meteorRain = {
     pose.bodyRate = 3 + 2 * up;
     pose.stanceH = 0.25;
     pose.restep = 1;
-    const arc = Math.sin(Math.PI * up); // the neck swings back past upright as it rises
-    pose.head = d.rootPt(pose.headTarget, 0, 3.0 + 4.9 * up + 0.6 * arc, 4.6 - 3.7 * up - 0.9 * arc);
+    const H = headUp();
+    if (H) {
+      // (ADR-258) the neck rises up and FORWARD over the forelegs, the head ahead of the neck's base,
+      // the roar aimed at the sky in front of it (~70° up): the head never tips back past upright
+      pose.head = d.rootPt(pose.headTarget, 0, 3.0 + (H.y - 3.0) * up, 4.6 - (4.6 - H.z) * up);
+    } else {
+      const arc = Math.sin(Math.PI * up); // the neck swings back past upright as it rises
+      pose.head = d.rootPt(pose.headTarget, 0, 3.0 + 4.9 * up + 0.6 * arc, 4.6 - 3.7 * up - 0.9 * arc);
+    }
     pose.headRate = k < men ? 7 : 3.5;
     if (k < men) pose.look.copy(d.sense.chest);
+    else if (H) d.rootPt(pose.look, 0, H.lookY, 5 + (H.lookZ - 5) * up);
     else d.rootPt(pose.look, 0, 40, 5 - 4 * up);
     pose.lookRate = 5;
     // the wings unfurl from the mantle to their full span and tremble
@@ -1350,9 +1365,15 @@ const meteorRain = {
       pose.bodyRate = 16;
       pose.stanceH = 0.25;
       pose.restep = 1;
-      pose.head = d.rootPt(pose.headTarget, 0, 7.9 - 0.6 * kk, 0.9 + 0.5 * kk);
+      const H = headUp();
+      if (H) {
+        pose.head = d.rootPt(pose.headTarget, 0, H.y - 0.6 * kk, H.z + 0.5 * kk);
+        d.rootPt(pose.look, 0, H.lookY, H.lookZ);
+      } else {
+        pose.head = d.rootPt(pose.headTarget, 0, 7.9 - 0.6 * kk, 0.9 + 0.5 * kk);
+        d.rootPt(pose.look, 0, 40, 1);
+      }
       pose.headRate = 9;
-      d.rootPt(pose.look, 0, 40, 1);
       pose.lookRate = 8;
       pose.spread[0] = pose.spread[1] = 1;
       pose.spreadRate = 14;
