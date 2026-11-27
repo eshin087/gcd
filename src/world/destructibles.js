@@ -3012,7 +3012,8 @@ export class Destructibles {
       }
     } else if (!b.quiet) {
       const p = g.player;
-      if (p?.takeHit && p.alive !== false && g.state === 'boss' && segDist(p.position.x, p.position.z, ax, az, ex, ez, s) <= pad + (p.radius ?? 0.45)) {
+      // (a piece never falls on a hero who is down: the standing rule "no blow on a downed hero")
+      if (p?.takeHit && p.alive !== false && p.state !== 'knockdown' && g.state === 'boss' && segDist(p.position.x, p.position.z, ax, az, ex, ez, s) <= pad + (p.radius ?? 0.45)) {
         const h = this._heroHit;
         h.damage = T.damage * w;
         h.knockback = T.knock;

@@ -3,7 +3,7 @@
 // src/main.js for `?level=veil`, on the level's real set (world/veiledCrossing.js: its breakables, its
 // scenes, its ambience). A bot drives the input. The harness is city.mjs's (its build, bots, helpers).
 // usage: node veil.mjs <repoRoot> [scenario]   (env: GCD_SEED=n reseeds the AI)
-//   scenario: levels | data | barrier | weight | crash | pull | domain | phases | fight | pace | events | all
+//   scenario: levels | data | barrier | weight | crash | pull | domain | phases | fight | pace | events | opened | all
 //   (later agents add theirs at their marked place in `S`, one entry per line)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -409,6 +409,32 @@ function swing(G, dist = 1.6) {
   run(G, 0.9, () => game.mouseGround.set(d.position.x, 0, d.position.z));
   G.watch = w0;
   return { dealt: hp0 - d.hp, stops, state: p.state };
+}
+
+// ================================================================== scenario: opened (the tuning pass, round 3)
+// (the owner: "the barrier opens easier": two ordinary parries crack it open, it stays open longer, and the
+// hero's cuts hit harder while it is open: wjBarrier.openDamage on every cut that is not exact)
+async function scenarioOpened() {
+  out('\n== scenario OPENED (open, his cuts deal wjBarrier.openDamage x; exact hits as they are; up, nothing) ==');
+  const B = TUNING.wjBarrier, k = B.openDamage;
+  const G = build();
+  const d = G.game.dragon;
+  duel(G, { dist: 2 });
+  // (the same cut, straight to takeHit, in a reaction that does not guard: open, then up)
+  const cut = () => { d.brain.startReact('stagger'); const h0 = d.hp; d.takeHit({ damage: 100, part: 'body' }); run(G, 0.05); return h0 - d.hp; };
+  const exact = () => { const h0 = d.hp; d.takeHit({ damage: 100, part: 'body', exact: true }); run(G, 0.05); return h0 - d.hp; };
+  d.barrier.open('debug', 30);
+  const open = cut(), openExact = exact();
+  d.barrier.close();
+  const upExact = exact();
+  d._wjSurprised = true;
+  d.barrier.open('debug', 30);
+  const again = cut();
+  out(`   a 100 cut on the body: open ${open} (then ${again}), exact open ${openExact} / up ${upExact}; openDamage ${k}`);
+  assert(Number.isFinite(k) && k > 1, `openDamage is set above 1 (${k})`);
+  assert(Math.abs(open - Math.round(100 * TUNING.parts.body * k)) <= 1 && Math.abs(again - open) <= 1, `open, a cut deals x${k} (${open}, ${again})`);
+  assert(openExact === upExact && openExact === 100, `an exact hit deals the same open or up (${openExact} / ${upExact})`);
+  assert(B.cracks === 2, `two ordinary parries crack it open (cracks ${B.cracks})`);
 }
 
 // ================================================================== scenario: levels
@@ -1277,6 +1303,8 @@ const S = {
   floor: scenarioFloor, // (the tuning pass)
   bonfire: scenarioBonfire, // (the tuning pass, round 2)
   patience: scenarioPatience, // (the tuning pass, round 2)
+  // tune3: scenarios
+  opened: scenarioOpened, // (the tuning pass, round 3)
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)
@@ -2716,6 +2744,12 @@ async function scenarioSpellFight() {
   const { STREAK_FX } = await imp('src/combat/streak.js');
   const chain0 = STREAK_FX.chain;
   STREAK_FX.chain = false;
+  // (the spells' share is sampled over a fight as long as before round 3's numbers: the god-mode fencer
+  // parries every blow perfectly, so his barrier is always open, and at hp 20000 x openDamage the fight
+  // lasts 118 s, too few picks to measure a mix by)
+  const hp0 = TUNING.hp, od0 = TUNING.wjBarrier.openDamage;
+  TUNING.hp = 26000;
+  TUNING.wjBarrier.openDamage = 1;
   try {
     const G = build(Number(process.env.GCD_SEED ?? 4242), true);
     const { game } = G;
@@ -2741,6 +2775,8 @@ async function scenarioSpellFight() {
     assert(G.payload.size === 0, `no NaN in any event (${[...G.payload].join(', ')})`);
   } finally {
     STREAK_FX.chain = chain0;
+    TUNING.hp = hp0;
+    TUNING.wjBarrier.openDamage = od0;
   }
 }
 

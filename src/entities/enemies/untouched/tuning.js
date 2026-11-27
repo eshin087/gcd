@@ -15,10 +15,11 @@ import { TUNING_TERRAIN } from './tuningTerrain.js';
 
 export const TUNING = {
   name: 'BAI WUJI, THE UNTOUCHED',
-  // the bar (the tuning pass, tests/integration/bench.mjs, god mode off, six seeds): 26000 puts the perfect
-  // answerer's fight at 234 - 245 s (20000: 176 - 186 s) and the fencing bot that answers 90 % of his cues
-  // at 2 wins in 6, in 260 - 272 s (20000 with the rest as before: 3 in 6, 184 - 209 s)
-  hp: 26000,
+  // the bar. Round 3 (the owner after playing: "takes forever to do damage to him"; their answer, "the
+  // barrier opens easier", hp back near 20000; a good player wins in about three minutes): 26000 -> 20000
+  // with wjBarrier's cracks 2, longer openings and openDamage (bench.mjs, six seeds, the table in ADR-243's
+  // round 3). Round 2: 26000 put the perfect answerer at 234 - 245 s and the fencing bot at 2 wins in 6.
+  hp: 20000,
   // one bar, three phases: 66 % THE BLINDFOLD COMES OFF, 30 % THE MEASURELESS
   phaseAt: [1, 0.66, 0.3],
   radius: 0.45,
@@ -106,9 +107,16 @@ export const TUNING = {
   wjBarrier: {
     // the shell: this much off his body's hurt spheres (a hand's width): the blade stops there
     shell: 0.14,
-    open: [4.0, 3.2, 2.6], // s open after a perfect parry / a perfect dodge of any blow of his
-    cracks: 4, // ordinary parries that open it (0: off; the tuning pass: 3 before, the fencing bot opened it mostly by cracks)
-    openCracked: [2.4, 2.0, 1.6], // s open by cracks
+    // (round 3: 4.0 / 3.2 / 2.6 before; the good bot's openings are mostly perfects and cracks: longer than
+    // this measured no faster, 7 / 6 / 5 s with 6 / 5 / 4 by cracks: 201 - 217 s)
+    open: [6, 5, 4.2], // s open after a perfect parry / a perfect dodge of any blow of his
+    cracks: 2, // ordinary parries that open it (0: off; the owner, round 3: two; 4 before, 3 at first)
+    openCracked: [5, 4.2, 3.4], // s open by cracks (2.4 / 2.0 / 1.6 before)
+    // x the damage of every cut of the hero's that is not exact while it is open (barrier.scaled; round 3:
+    // the owner's "the hero's cuts hit harder while it is open"; no new mark: the open ring and the damage
+    // numbers read it). 1.3: the good bot 241 - 249 s; 1.6: 195 - 240 s; 2: 179 - 211 s; 2.2: the pick
+    // (the motion pass's faster blows to come: about 15 % slack on the good bot's time)
+    openDamage: 2.2,
     crackFade: 9, // s without a new crack: the cracks are gone
     // the stop on the hero's side: he is thrown back off the shell by this much (player.onGuarded push)
     push: 0.9,
