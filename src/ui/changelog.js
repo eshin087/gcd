@@ -19,11 +19,12 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
-        title: 'Halcyon audited: a flier\'s limbs, a readable pace, two looks for his eyes and his shockwaves',
+        title: 'Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap',
         notes: [
-          'Being tried out: add ?halMotion=b to the address and Halcyon fights like a flier: his punches go straight at you with the arm long, his kicks land straight, his legs trail long behind him instead of folding under him, and Fly-By comes through your chest instead of over your head.',
-          'Add ?halPace=a for a slower, easier-to-read pace: every first blow winds up at least 0.7 s and his blows come at least 0.45 s apart.',
-          'Two new looks for his eye beams (?halEyes=a or b) and for his clap and meteor landing (?halShock=a or b).',
+          'Halcyon fights like a flier now: his punches go straight at you with the arm long, his kicks land straight, his legs trail long behind him instead of folding under him, and Fly-By comes through your chest instead of over your head.',
+          'His eye beams are heat vision: two threads meeting in one hard crimson line, a shimmer rising off it, the ground molten and spitting sparks where it lands.',
+          'His clap and his meteor landing send a ring of air racing out across the plaza, shoving the dust ahead of it.',
+          'Being tried out: add ?halPace=a to the address for a slower, easier-to-read pace.',
         ],
       },
       {
