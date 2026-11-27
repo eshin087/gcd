@@ -204,6 +204,9 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
   `[Unreleased]` to a version heading in the changelog (and the LATEST release in `changelog.js` to
   that version), tag `vX.Y.Z`.
 
+## Vercel preview builds (cost control)
+* Vercel only builds a branch preview when the branch name or the latest commit message contains "motion", "anim", "playtest", or "[preview]". Pushes to main always deploy. All other branch pushes are skipped on purpose to keep Vercel usage under the $20 monthly credit.
+
 ## Layout
 ```
 src/core       config, input, camera rig, math, rng, events
