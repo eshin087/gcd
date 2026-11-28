@@ -117,7 +117,8 @@ Heaven-Splitting Fall b the split; all three the default now (PICKED). The owner
 natural in his body: ADR-226's held red coil covered his whole flight (a ground crouch 3.6 m up, the blade trailing
 behind, whipped over in 0.3 s). The form gives it its own keys, a jump: load, drive, tuck with the blade raised
 through the lock, legs reaching down, landing into the cut; filmed before / now side-on (a camera that follows his
-height) and at the game camera.
+height) and at the game camera. Then the arms (the owner: "awkward and stiff"): one rising arc up his right side,
+the blade still cocking back behind his head through the lock instead of frozen, the hands leading into the cut.
 
 **Open.** His pace unchanged (the owner chose it fast). Feet still slide 0.15 - 0.5 m over a long string where the
 close-in carries his root under a planted foot.
