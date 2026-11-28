@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-28 — Varr Nihil after the reference pack (ADR-276; `enemies/varr-reference-v04`)
+## 2026-11-28 — Varr Nihil after the reference pack (ADR-276; `enemies/varr-ref-anim`)
 
 **Goal:** the owner's reference pack for Varr Nihil (`docs/art/character-packs-v04/varr-nihil`, kept out of the repo:
 CLAUDE-HANDOFF.md, COVERAGE.md, inventory.json, fifteen sheets; pages 13 - 15 correct the earlier ones) turned into

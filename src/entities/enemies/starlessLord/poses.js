@@ -89,7 +89,7 @@ export const GUARDS_REF = Object.freeze([
   grounded(GUARDS[0], { lH: [0.2, -0.34, 0.16], lP: [0.8, -0.5, -0.2] }),
   grounded(GUARDS[1]),
   grounded(GUARDS[2]),
-  grounded(GUARDS[3], { rH: [0.12, -0.27, 0.27], sw: [0.0, 1.52] }),
+  grounded(GUARDS[3], { rH: [0.13, -0.24, 0.28], sw: [0.0, 1.46] }),
 ]);
 export const FORM_POSES_REF = GUARDS_REF.map(poseSet);
 

@@ -1493,13 +1493,14 @@ function refKey(u, k, b, name) {
   }
   if (name === 'vigilFall' && hit && Array.isArray(k.sw) && u > 1.3) {
     // 13 H2: the strike carried down to the floor, the weight forward, low
-    o.sw = [k.sw[0], -1.05];
-    o.bY = Math.min(o.bY ?? -0.3, -0.46);
-    o.pitch = Math.max(o.pitch ?? 0, 0.3);
+    // (the body goes down to the floor with it, not the wrist: the blade's own path is kept, so the sword
+    // stays in line with the forearm)
+    o.bY = Math.min(o.bY ?? -0.3, -0.48);
   }
   if (name === 'starfall' && hit) {
     // 13 H3: he lands with the staff upright before him, its lower end driven into the floor
-    Object.assign(o, { two: 1, sw: [0.0, -1.38], rH: [0.1, -0.08, 0.36], rP: [-0.8, -0.2, -0.1], bY: -0.44, pitch: 0.24, hdX: 0.1 });
+    // (pointed a little ahead of his feet: a blade aimed down through the legs is swung out of them by the animator)
+    Object.assign(o, { two: 1, sw: [0.0, -1.12], rH: [0.1, -0.04, 0.46], rP: [-0.8, -0.2, -0.1], bY: -0.42, pitch: 0.22, hdX: 0.1 });
   }
   return o;
 }
