@@ -78,12 +78,25 @@ const MID = [
   mid('relic', [0, 0, 0.2, 0.2]),
   mid('longWalk', [0.3, 0.15, 0, 0]),
 ];
+/** (the tuning pass) A hero a string's last blow slid 3 - 6 m off (a block's push, a knockback) is followed
+ *  by the next string on the run: planned while he still slides (`any`: near or mid), checked at its cut against
+ *  where he has come to rest not by the target's band (`band: false`) but by its first blow's reach
+ *  (pressure.pursue: the step-in, the dash): a string that cannot get there is passed over. Without these,
+ *  phase 1 never linked (0 links a minute against the guarding bot: saint.mjs tunePace). */
+const FOLLOW = [
+  any('genuflect', [0.5, 0.25, 0.15, 0.1], { band: false }),
+  any('benediction', [0.5, 0.25, 0.15, 0.1], { band: false }),
+  any('interdict', [0, 0.35, 0.25, 0.2], { band: false }),
+  any('lauds', [0, 0, 0.3, 0.25], { band: false }),
+  any('thurible', [0, 0, 0.25, 0.25], { band: false }),
+];
 const without = (list, name) => list.filter((L) => L.to !== name);
 /** The usual tail after a blow of move `name` (never into itself). */
 const after = (name, pre = []) => [...pre, ...without(PURSUE, name), ...without(CLOSE, name), ...without(MID, name)];
 /** ... after a blow that throws him: only what reaches where he will have come to rest (a near / mid link
- *  planned while he slides would fail at its cut, and it would have taken the place of the flow's roll). */
-const thrown = (name, pre = []) => [...pre, ...without(THROWN, name), ...without(PURSUE, name), guarding('castOut', [0, 0.3, 0.25, 0.25])].filter((L) => L.to !== name);
+ *  planned while he slides would fail at its cut, and it would have taken the place of the flow's roll),
+ *  and the strings that follow him on the run (FOLLOW: checked by their reach, not their band). */
+const thrown = (name, pre = []) => [...pre, ...without(THROWN, name), ...without(PURSUE, name), guarding('castOut', [0, 0.3, 0.25, 0.25]), ...without(FOLLOW, name)].filter((L) => L.to !== name);
 
 const TABLE = {
   // ================================================================ the melee agent's moves
@@ -91,7 +104,11 @@ const TABLE = {
   genuflect: thrown('genuflect'),
   // (a whiffed grab: no link, he stands open for the whole recovery; caught and thrown: the lift's links)
   layHands: [],
-  layHandsLift: [...THROWN, far('longWalk', [0.6, 0.3, 0.1, 0]), far('votiveFist', [0, 0.45, 0.35, 0.3]), far('vigil', [0, 0.2, 0.2, 0.2]), far('crucible', [0, 0, 0.25, 0.2]), far('kyrie', [0, 0, 0, 0.25])],
+  // (the tuning pass: the throw knocks the hero down, so out of it only what takes long enough to come that he
+  // is up and has read it, from the recovery's end: the walk, the eye laser, the ladle, the barrage. The fast
+  // closers (the punch, the dive, the passes) came down on a hero still getting up: a grab, a throw into a
+  // pool and the dive were 54 + 2 x 14 on one mortal bot in 2.4 s)
+  layHandsLift: [far('longWalk', [0.6, 0.3, 0.15, 0], { cut: 1 }), far('vigil', [0, 0.3, 0.25, 0.2], { cut: 1 }), far('crucible', [0, 0, 0.25, 0.2], { cut: 1 }), far('kyrie', [0, 0, 0, 0.25], { cut: 1 })],
   longWalk: thrown('longWalk'),
   interdict: thrown('interdict'),
   castOut: [...THROWN, far('votiveFist', [0, 0.5, 0.45, 0.4]), far('longWalk', [0, 0.3, 0.15, 0.1]), far('absolution', [0, 0.2, 0.2, 0.15]), far('choir', [0, 0, 0.25, 0.2]), far('descent', [0, 0, 0.25, 0.25])],

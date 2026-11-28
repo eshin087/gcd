@@ -9,6 +9,8 @@
 // TUNING.flashLead (0.35) s before each impact; hits of one move are >= TUNING.minHitGap (0.45) s apart
 // (saint.mjs DATA). Nothing of his that signals an attack is cyan or blue (blue means parry; the owner's
 // v04 pack): the sight lines are pale white with a red cross, the marks red, the beams his white-hot palette.
+// (the tuning pass: the bands of the swarm, the pass, the barrage, the full burst and the gun open from 3 m (2.8
+// the swarm; were 3.5 - 5): against a hero who fights close, the barrage, the swarm and the pass were never picked)
 export const TUNING_ARSENAL = {
   // ---- the beams' shared rules (absolution, revelation's twin and core beams, the cuts of vigil and the
   // pass): the hero is hit ONCE per beam (red: unblockable, unparryable; a roll through it, its i-frames,
@@ -31,7 +33,7 @@ export const TUNING_ARSENAL = {
   vigil: {
     windup: 1.3, cock: 0.8, fix: 0.6, half: 3.6, lead: 0.25, speed: 10, hitR: 0.55, damage: 22, knockback: 4,
     y: 0.25, power: 1.4, airPower: 1.0, markPower: 1.3, scarW: 0.55,
-    weight: [0, 1.1, 0.9, 0.8], cooldown: [99, 8, 7, 7], band: [2.4, 22], recovery: 0.8,
+    weight: [0, 0.9, 0.8, 0.6], cooldown: [99, 8, 7, 7], band: [2.4, 22], recovery: 0.8,
   },
 
   // ---- ABSOLUTION, the palm cannon (P2+, red, held `lit` s): the right palm's iris opens and charges
@@ -44,7 +46,7 @@ export const TUNING_ARSENAL = {
   absolution: {
     windup: 1.5, cock: 0.82, fix: 0.72, lit: 1.2, len: 18, w: 1.3, arc: 34, walk: 1.3, damage: 28, knockback: 5,
     sweep: 1.5, trench: 1.0, trenchR: 0.75, step: 1.3, ignite: 0.8, markPower: 1.5, markEvery: 0.3, dim: 0.6,
-    weight: [0, 1.0, 0.85, 0.8], cooldown: [99, 10, 9, 9], band: [3, 24], recovery: 1.0,
+    weight: [0, 0.8, 0.7, 0.55], cooldown: [99, 10, 9, 9], band: [3, 24], recovery: 1.0,
   },
 
   // ---- TRIPTYCH, the forearm gun (P3+, three blue bolts): `first` s of windup for the first (the
@@ -57,7 +59,7 @@ export const TUNING_ARSENAL = {
   triptych: {
     first: 1.1, gap: 0.5, cock: 0.8, speed: 30, minT: 0.16, maxT: 0.3, lead: 0.2, hitR: 0.8, damage: 14, knockback: 2.2, posture: 18,
     back: { speed: 30, damage: 70, posture: 110 }, carry: 7, power: 1.2,
-    weight: [0, 0, 1.1, 0.95], cooldown: [99, 99, 6.5, 6], band: [3.5, 20], recovery: 0.75,
+    weight: [0, 0, 1.1, 0.95], cooldown: [99, 99, 6.5, 6], band: [3, 20], recovery: 0.75,
   },
 
   // ---- CHOIR, the missile swarm (P3+, red marks): the shoulder petals open through the windup
@@ -72,7 +74,7 @@ export const TUNING_ARSENAL = {
   choir: {
     windup: 1.1, cock: 0.75, n: [0, 0, 9, 11], ring: [2.3, 5.4], T0: 1.5, spread: 0.12, apex: [5, 7.5], r: 1.3,
     track: { n: 3, gap: 0.5, after: 0.3, stop: 0.75, speed: 5.5 }, damage: 12, knockback: 3, cutR: 0.8, craterR: 1.6, power: 1.5,
-    weight: [0, 0, 1.0, 0.9], cooldown: [99, 99, 11, 10], band: [4, 30], recovery: 0.9,
+    weight: [0, 0, 1.1, 1.1], cooldown: [99, 99, 11, 10], band: [2.8, 30], recovery: 0.9,
   },
 
   // ---- PASSING BELL, the strafing pass (P3+, red line): up on the back thrusters to `h` m by `rise` of
@@ -85,7 +87,7 @@ export const TUNING_ARSENAL = {
   passingBell: {
     windup: 1.35, cock: 0.8, rise: 0.4, h: 3.4, fix: 0.62, foot: 1.6, speed: 17, beyond: 14, lit: 1.0, hitR: 0.65, damage: 24, knockback: 5,
     y: 0.25, power: 1.5, airPower: 1.0, markPower: 1.5, scarW: 0.75,
-    weight: [0, 0, 0.9, 0.8], cooldown: [99, 99, 10, 10], band: [4, 26], recovery: 0.9,
+    weight: [0, 0, 0.9, 0.8], cooldown: [99, 99, 10, 10], band: [3, 26], recovery: 0.9,
   },
 
   // ---- KYRIE, the artillery (P4): the mortar tubes on his back rise through the windup (d.fsTubeK).
@@ -103,7 +105,7 @@ export const TUNING_ARSENAL = {
     windup: 1.2, cock: 0.75, rows: 4, per: 5, r: 1.25, lane: 2.2, step: 2.7, along: [-2, -1, 0, 1], T: 1.5, rowGap: 0.85,
     damage: 16, knockback: 4, power: 2.2, worldR: 1.9,
     great: { windup: 0.9, T: 1.7, r: 3.0, damage: 28, knockback: 7, power: 3.4, worldR: 3.6 },
-    weight: [0, 0, 0, 1.0], cooldown: [99, 99, 99, 15], band: [5, 30], recovery: 1.0,
+    weight: [0, 0, 0, 1.2], cooldown: [99, 99, 99, 15], band: [3, 30], recovery: 1.0,
   },
 
   // ---- VERDICT, the sky lance (P4): his right hand raised to the sky; a reticle follows the hero
@@ -130,6 +132,6 @@ export const TUNING_ARSENAL = {
     twin: { lit: 0.75, ang: 0.3, len: 20, w: 1.0, damage: 20, knockback: 4, sweep: 1.4 },
     core: { windup: 0.75, cock: 0.8, lit: 2.0, len: 22, w: 3.2, arc: 60, damage: 38, knockback: 7, sweep: 2.4 },
     trench: 1.6, trenchR: 1.4, step: 1.4, ignite: 1.1, markPower: 2.2, markEvery: 0.25,
-    weight: [0, 0, 0, 0.8], cooldown: [99, 99, 99, 16], band: [4, 30], recovery: 1.2,
+    weight: [0, 0, 0, 0.8], cooldown: [99, 99, 99, 16], band: [3, 30], recovery: 1.2,
   },
 };

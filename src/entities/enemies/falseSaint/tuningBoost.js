@@ -13,8 +13,12 @@ export const TUNING_BOOST = {
   // B4) held `brake` s. `every` s between dashes (the hero can still walk away). `hover`: his height in
   // footwork from phase 3 (stiff, on the thrusters; 0 = on the floor). The dash deals nothing. In a molten
   // pool he jets (from phase 2; walks in phase 1) out of it to `poolOut` m past its rim.
+  // (the tuning pass: `pick` [P1..P4], the share of the picks made with the hero past `at` that wait for the
+  // step first (saint.js FsBrain._stepFirst; one roll per `pickEvery` s): in phase 4 his ranged moves took
+  // every pick at range and he never stepped. Then at 6.5 / 6 / 5.5 m, every 3.4 / 2.7 / 2.1 s: more often
+  // with each phase now)
   step: {
-    on: true, from: 2, at: [99, 6.5, 6, 5.5], every: [99, 3.4, 2.7, 2.1], speed: [22, 22, 25, 29], stop: 2.4, max: 10, pre: [0.12, 0.12, 0.1, 0.09],
+    on: true, from: 2, at: [99, 6, 5.5, 5], every: [99, 3.0, 2.3, 1.7], pick: [0, 0.3, 0.45, 0.6], pickEvery: 0.6, speed: [22, 22, 25, 29], stop: 2.4, max: 10, pre: [0.12, 0.12, 0.1, 0.09],
     zig: 3, zigAng: 0.62, zigShare: 0.45, decel: 60, brake: [0.3, 0.3, 0.26, 0.22], hover: [0, 0, 0.2, 0.24], hoverEase: 7, scorch: 0.35, poolOut: 1.2,
   },
   // ---- THE BRAKE (every booster move's stop: the jet step, the punch's carry and its parried skid, the
@@ -32,15 +36,19 @@ export const TUNING_BOOST = {
   votive: {
     windup: 0.95, cock: 0.62, jetFrom: 0.1, dashFrom: 0.86, reach: 10, stop: 1.3, damage: 30, knockback: 6.5, blockPush: 4.5,
     y: 1.25, w: 0.9, power: 2.4, carry: 3.4, carrySpeed: 26, crater: 1.6, craterPower: 2.2, wave: 4.5, waveK: 0.75, parryPosture: 90, overshoot: 1.5,
-    weight: [0, 1.5, 1.25, 1.1], cooldown: [9, 5.2, 4.4, 3.8], band: [2.2, 11], recovery: 0.95,
+    weight: [0, 1.3, 1.15, 1.0], cooldown: [9, 5.2, 4.4, 3.8], band: [2.2, 11], recovery: 0.95,
   },
 
   // ---- ROSARY, the plated arm's rapid flurry (his flurry from P2; DEFENSE.foeStreak launches it): `first`
   // the jet-lit coil, then the pistons in groups of three (`beat`: short, short, long: the stutter), the
   // `chance` beats drawn (7 - 10 blows in all), the last a blue parry moment. Every blow chips what stands
   // `side` m beside the hero (`chip` power).
+  // (the tuning pass: `guardCost` / `lastGuardCost`, what a blocked piston / the blocked last blow costs the
+  // hero's guard meter (100; GUARD.cost would be 16 a piston, 52 the last): a guard held through the whole
+  // flurry holds it now, as a held guard holds every duelist's flurry (training foeBlock). Measured before: the
+  // guarding bot took 630 of its P2 damage from Rosary, its guard broken at the 7th piston)
   rosary: {
-    first: 0.72, beat: [0.41, 0.41, 0.55], last: 0.56, active: 0.05, damage: 10, knockback: 0.9, lastDamage: 22, lastKnockback: 5.5,
+    first: 0.72, beat: [0.41, 0.41, 0.55], last: 0.56, active: 0.05, damage: 10, knockback: 0.9, lastDamage: 22, lastKnockback: 5.5, guardCost: 6, lastGuardCost: 34,
     middle: 8, chance: [3, 5, 7], p: 0.5, reach: 1.95, side: 1.35, chip: 0.7, close: 1.0, recovery: 0.85,
   },
 
@@ -49,7 +57,7 @@ export const TUNING_BOOST = {
   // lands knee-first: a ring of `r` m, a crater, the plates thrown (`power` over `r + 0.8`).
   descent: {
     windup: 1.55, cock: 0.86, rise: 0.3, lock: 0.74, fall: 0.84, h: 7.5, short: 1.2, r: 2.8, damage: 34, knockback: 6, power: 3.4, mark: 3.0,
-    weight: [0, 0, 1.1, 1.0], cooldown: 9, band: [3, 14], recovery: 1.05,
+    weight: [0, 0, 1.0, 0.8], cooldown: 9, band: [3, 14], recovery: 1.05,
   },
 
   // ---- THE JET STRINGS (P3+): Censer Wheel (the booster punch, a jet-spun back elbow, a rising jet kick:
@@ -58,8 +66,8 @@ export const TUNING_BOOST = {
     elbow: 0.46, elbowFirst: 0.75, elbowDamage: 16, elbowKnockback: 2.2, elbowReach: 1.8,
     kick: 0.52, kickDamage: 24, kickKnockback: 5, kickReach: 2.15, kickLift: 0.85,
     airPunch: 0.8, airReach: 7,
-    wheel: { weight: [0, 0, 1.2, 1.1], cooldown: 7, band: [3, 10], recovery: 0.85 },
-    thurible: { weight: [0, 0, 1.0, 1.0], cooldown: 7, band: [0, 3.4], recovery: 0.85 },
+    wheel: { weight: [0, 0, 1.3, 1.3], cooldown: 7, band: [3, 10], recovery: 0.85 },
+    thurible: { weight: [0, 0, 1.3, 1.3], cooldown: 7, band: [0, 3.4], recovery: 0.85 },
   },
 
   // ---- VESPERS, OVERCLOCK (P4): `passes` jet-streak passes through the hero from the sides `turns` (rad
@@ -70,7 +78,7 @@ export const TUNING_BOOST = {
     passes: 4, turns: [0, 2.05, -2.05, 1.0], set: 0.32, windup: 0.62, active: 0.18, launch: 6.2, speed: 44, over: 3.2, track: 0.62, y: 1.15, w: 0.8,
     damage: 20, knockback: 3.5, r: 1.35, power: 1.6,
     lastSet: 0.42, lastWindup: 0.66, lastDive: 0.24, high: 6, lastLaunch: 4.5, lastDamage: 30, lastKnockback: 6, lastR: 2.4, lastPower: 3.0,
-    weight: [0, 0, 0, 1.3], cooldown: 14, band: [0, 12], recovery: 1.2,
+    weight: [0, 0, 0, 1.6], cooldown: 14, band: [0, 12], recovery: 1.2,
   },
 
   // ---- LAST RITE (P4, once, under `below` of his bar): he stops, the core whines through a long red windup

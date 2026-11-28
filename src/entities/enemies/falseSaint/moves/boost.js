@@ -84,7 +84,7 @@ export function moves(X) {
   const piston = (i, windup) => {
     const hit = RO_HIT[i % 3];
     return {
-      tell: N, windup, fixed: true, cock: 0.55, active: RS.active, damage: RS.damage, knockback: RS.knockback,
+      tell: N, windup, fixed: true, cock: 0.55, active: RS.active, damage: RS.damage, knockback: RS.knockback, guardCost: RS.guardCost,
       zone: { kind: 'sector', r: RS.reach, ang: 0.6 }, part: 'fistR', close: RS.close, track: 0.7,
       fsJet: { part: 'elbowR', pulse: true },
       keys: [[0.55, RO_COIL], [1.0, { ...hit, e: 'i' }], [1.6, { ...mid(hit, RO_COIL, 0.3), e: 'o' }], [2.0, mid(hit, RO_COIL, 0.45)]],
@@ -97,7 +97,7 @@ export function moves(X) {
     rosaryBeats.push(b);
   }
   rosaryBeats.push({
-    tell: B, windup: RS.last, fixed: true, cock: 0.62, active: 0.1, damage: RS.lastDamage, knockback: RS.lastKnockback, flare: true, blockPush: 3.6,
+    tell: B, windup: RS.last, fixed: true, cock: 0.62, active: 0.1, damage: RS.lastDamage, knockback: RS.lastKnockback, flare: true, blockPush: 3.6, guardCost: RS.lastGuardCost,
     zone: { kind: 'line', r: 2.2, w: 0.9 }, part: 'fistR', close: 1.6, track: 0.75,
     fsJet: { part: 'elbowR', from: 0.15 },
     keys: [[0.62, RO_WIND], [1.0, { ...RO_LAST, e: 'i' }], [1.6, { ...RO_LAST, e: 'o' }], [2.0, RO_LAST]],

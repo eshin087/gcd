@@ -67,8 +67,10 @@ const ROLES = {
   // Bai Wuji (the Veiled Crossing): no blade lock, no perilous thrust (core's working set; the melee agent
   // brings the roles up to date with his moves)
   veil: { single: 'palm', string: 'threeCount', long: 'tooSlow', red: 'longStep' },
-  // the False Saint (the Last Foundry): core's working set (wave 0); the moves agents bring it up to date
-  foundry: { single: 'rebuke', string: 'benediction', long: 'litany' },
+  // the False Saint (the Last Foundry; the tuning pass): his phase-1 moves (a role's move is not put in its
+  // phase): the counter's elbow (blue), Benediction, his flurry; red Laying On of Hands (the grab: a hit is
+  // the catch, then the throw)
+  foundry: { single: 'rebuke', blue: 'rebuke', string: 'benediction', long: 'litany', red: 'layHands' },
 };
 
 export function bossKinds(game) {

@@ -33,8 +33,10 @@ export const TUNING = {
   minFirstWindup: 0.7,
   minHitGap: 0.45,
   // faster each phase; realise scales every unfixed windup, the minimums still hold (saint.mjs DATA)
-  windupScale: [1, 0.94, 0.88, 0.84],
-  recoveryScale: [0.8, 0.72, 0.66, 0.6],
+  // (the tuning pass: [1, 0.94, 0.88, 0.84] / [0.8, 0.72, 0.66, 0.6] before: the later phases faster, phase 1
+  // as it was (its punish windows); every floor still holds: 0.7 x 0.8 = 0.56 s, a follow-up >= 0.49 s apart)
+  windupScale: [1, 0.92, 0.86, 0.8],
+  recoveryScale: [0.8, 0.66, 0.58, 0.48],
   close: { first: 3.2, next: 1.6, speed: 15 },
   reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },
 
@@ -70,14 +72,14 @@ export const TUNING = {
   },
   idleGap: [[0.12, 0.34], [0.08, 0.24], [0.05, 0.16], [0.03, 0.1]],
   openingGap: [[0.14, 0.4], [0.1, 0.3], [0.08, 0.24], [0.06, 0.2]],
-  chain: [0.5, 0.62, 0.72, 0.8],
+  chain: [0.65, 0.72, 0.8, 0.85],
   pressure: {
     chainDepth: [3, 4, 5, 6],
-    chainRest: [[0.3, 0.55], [0.24, 0.44], [0.18, 0.36], [0.12, 0.28]],
+    chainRest: [[0.3, 0.55], [0.2, 0.4], [0.14, 0.3], [0.1, 0.22]],
     linkCut: 0.5, chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
     maxRun: [2, 3, 3, 3], overRun: 0.1, sameCat: 0.7,
-    floorAfter: [16, 14, 12, 10], floorBoost: 1.8, floorForce: 2,
+    floorAfter: [16, 12, 10, 8], floorBoost: 1.8, floorForce: 2,
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2, 3],
@@ -87,8 +89,12 @@ export const TUNING = {
     holdGap: 5,
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
     pursue: { margin: 0.5, after: 0.06, gap: 0.06, closeK: [1.0, 1.4, 1.6, 1.6], dashK: [1.0, 1.4, 1.5, 1.6], away: 1.2, leapLead: 0.35, blinkLead: 0.4, blinkKeep: 0.6, miss: 0, lead: 0.6, habit: 0.6, habitMax: 3, habitDecay: 0.1 },
-    // what tests/integration/saint.mjs PACE asserts: none yet (the tuning agent sets `meter` from the
-    // bots: { ramp, rampMean, minRate, maxGap })
+    // what tests/integration/saint.mjs tunePace asserts (the tuning pass, 2026-11-28; a god-mode guarding bot that
+    // roams 2.5 / 5 / 9 m, seeds 4242 / 7 / 99 x 60 s a phase): each phase busier than the one before in the
+    // seeds' mean (x rampMean), at least minRate cues a minute per seed, no gap between two cues over maxGap s,
+    // the jet step at least `steps` x as frequent as the phase before (P3, P4). Measured: 47.7 / 54.1 / 60.0 /
+    // 65.6 cues a minute (seeds 43.7 - 53.6, 51.3 - 57.7, 53.3 - 68.0, 56.0 - 71.1), gaps <= 6.4 / 4.5 / 4.8 / 5.9 s
+    meter: { rampMean: [1, 1.04, 1.04, 1.03], minRate: [40, 46, 48, 50], maxGap: [7.0, 5.2, 5.5, 6.5], steps: 0.9 },
   },
   punish: { weight: 4 },
   fullDeflect: { minHits: 5, posture: 70 },
