@@ -6,7 +6,7 @@ import {
   gridGeometry, shellGeometry, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, lerp, limb, gripFist, orient,
   orientTo, clumpGeometry, partGeometry,
 } from '../../player/heroGeo.js';
-import { oneLookNow, onePrintNow, oneBodyNow, dressOf, at } from './look.js';
+import { oneLookNow, onePrintNow, oneBodyNow, oneRefNow, dressOf, at } from './look.js';
 
 // Xin Yi's gear: the hero's skeleton (built by the same buildHero(U, loadout), driven by the same
 // animator) in the hero's ink-line art, bare-handed as Tian Lei (no weapon: the right fist hangs on the
@@ -27,6 +27,12 @@ import { oneLookNow, onePrintNow, oneBodyNow, dressOf, at } from './look.js';
 //              in the weapon slot (it is what he holds, and it hangs on the sword joint)
 // The options (`?oneLook=a|b|c`, look.js oneLookNow; read when his rig is built): a the Long Coat,
 // b the Cassock (narrow, closed, floor-length, it barely stirs), c the Grey Coat (a's cut; look.js colours).
+// After the reference pack (`?oneRef=a`, ADR-285, look.js oneRefNow; read when his rig is built), on the
+// figure of `?oneBody=`: the collar tall and split in front over a pale inner band, the coat's torso open in
+// every phase, the offset jade-grey seam down his left front (the torso's V edge and the front panel's
+// inner edge), jade cuffs, the glasses' jade temples, a grey streak swept back over his right temple, the
+// skirt to the floor with a wider hem, squarer guns (their muzzle cells where they were: the shots leave
+// from them). The jade-grey pieces are the `facing` / `piping` materials (parts 7 / 9, look.js inks them).
 // The quiet print (`?onePrint=a|b`, ADR-170, look.js onePrintNow; '0' the shapes he shipped with) draws the small
 // parts as the letters can hold them: the glasses one dark band across the eyes (no arms, no bridge;
 // the glint one small plain cell), the high collar one shape (its inside the coat's own cloth: no lining
@@ -61,7 +67,19 @@ function hairGeometry(DIM) {
     // crown raised and pushed back, the sides and the nape fuller, the hairline over the brow
     const crown = ellipsoidGeometry(0.1, 0.085, 0.112, { widthSegs: 16, heightSegs: 10 }).translate(sx, sy + 0.05, sz - 0.012);
     const back = ellipsoidGeometry(0.098, 0.104, 0.1, { widthSegs: 16, heightSegs: 10 }).translate(sx, sy + 0.006, sz - 0.03);
-    return { cap: sub(crown, 0), back: sub(back, 1) };
+    if (!oneRefNow()) return { cap: sub(crown, 0), back: sub(back, 1) };
+    // (ADR-285: a grey streak swept back from over his right temple: a band lying ON the crown, from the
+    // hairline over the top toward the back, a little to his right (-X))
+    const band = (flip) => gridGeometry(3, 10, (u, t, o) => {
+      const be = lerp(0.36, 0.62, u), ph = lerp(0.3, 2.1, t), k = 1.025;
+      o[0] = sx - Math.sin(be) * 0.1 * k;
+      o[1] = sy + 0.05 + Math.sin(ph) * Math.cos(be) * 0.085 * k;
+      o[2] = sz - 0.012 + Math.cos(ph) * Math.cos(be) * 0.112 * k;
+      o[3] = o[0];
+      o[4] = o[1];
+    }, flip);
+    const streak = mergeGeometries([band(false), band(true)]);
+    return { cap: sub(crown, 0), back: sub(back, 1), streak: sub(streak, 0) };
   }
   const back = ellipsoidGeometry(0.086, 0.098, 0.088, { widthSegs: 16, heightSegs: 10 }).translate(sx, sy + 0.012, sz - 0.026);
   return { cap: partGeometry('hair.cap'), back: sub(back, 1) };
@@ -113,9 +131,17 @@ function buildHead(ctx) {
   const H = hairGeometry(DIM);
   mesh(head, H.cap, M.hair);
   mesh(head, H.back, M.hair);
+  if (H.streak) mesh(head, H.streak, M.hairTip);
   const G = onePrintNow() === '0' ? glassesGeometry(DIM) : bandGlassesGeometry(DIM);
   mesh(head, G.band, M.eye);
   mesh(head, G.glint, M.flask);
+  if (oneRefNow()) {
+    // (ADR-285: the glasses' jade temples: a short bright bar back from each end of the band)
+    const [sx, sy, sz] = DIM.skull;
+    const tp = [];
+    for (const s of [-1, 1]) tp.push(boxGeometry(0.005, 0.007, 0.03, sx + s * 0.071, sy - 0.008, sz + 0.046, 0, s * 0.5, 0));
+    mesh(head, mergeGeometries(tp), M.flask);
+  }
   return {};
 }
 
@@ -197,6 +223,24 @@ function beltGeometry() {
   });
 }
 
+/** The offset seam (ADR-285, spine space): a narrow strip down his LEFT side of the open V, `off` m outside
+ *  its edge, on the coat's surface, from the collar line to the belt. */
+function seamGeometry(off = 0.016, w = 0.012) {
+  const R = shellOf(), n = R.length;
+  return sub(gridGeometry(1, 8, (u, t, o) => {
+    const f0 = t * (n - 2), k = Math.min(n - 3, Math.floor(f0)), f = f0 - k;
+    const A = R[k], B = R[k + 1];
+    const y = lerp(A.y, B.y, f), rx = lerp(A.rx, B.rx, f) + 0.016, rz = lerp(A.rz, B.rz, f) + 0.016, cz = lerp(A.cz ?? 0, B.cz ?? 0, f);
+    const g = lerp(V_GAP[k], V_GAP[k + 1], f) + off + u * w;
+    const a = Math.asin(Math.min(0.95, g / rx));
+    o[0] = Math.sin(a) * rx;
+    o[1] = ySp(y);
+    o[2] = Math.cos(a) * rz + cz + 0.002;
+    o[3] = o[0];
+    o[4] = o[1];
+  }), 1);
+}
+
 /** a / c: the coat's torso (closed in phase 1, open from phase 2: two shells, one shown), the shirt in
  *  the V, the high collar. */
 function chestCoat(ctx) {
@@ -204,14 +248,26 @@ function chestCoat(ctx) {
   const D = dressOf(ctx.root, oneLookNow());
   const closed = mesh(spine, foldLines(shellGeometry(rings(0.012), { sub: 3, cols: 28 }), coatSeams), M.coat);
   const open = mesh(spine, foldLines(shellGeometry(rings(0.012, V_GAP), { sub: 3, cols: 28 }), coatSeams), M.coat);
-  at(D, closed, 1, 1);
-  at(D, open, 2, 3);
+  // (ADR-285, `?oneRef`: one OPEN coat in every phase, the shirt showing in its V)
+  const ref = oneRefNow() && oneBodyNow() !== '0';
+  at(D, closed, ref ? 9 : 1, ref ? 9 : 1);
+  at(D, open, ref ? 1 : 2, 3);
   // the shirt in the V (always built: hidden behind the closed coat in phase 1)
   mesh(spine, shellGeometry(rings(0.002), { span: 0.5, cols: 8, sub: 2 }), M.shirt);
   // the redraws: a belt at the waist (the coat drawn in: the waist reads), the collar lower and open
   // wider (the head and the neck stand clear of it from above)
   if (oneBodyNow() !== '0') {
     mesh(spine, beltGeometry(), M.armor);
+    if (ref) {
+      // the tall split collar: up beside the jaw, open in front of the chin over the pale inner band
+      collarFaces(ctx, [1.615, 0.48, 0.024, 0.055]);
+      const band = collarGeometry(1.585, 0.3, 0.004, 0.03).scale(0.93, 1, 0.93);
+      mesh(chest, sub(band, 0), M.facing);
+      mesh(chest, sub(collarGeometry(1.585, 0.3, 0.004, 0.03, true).scale(0.93, 1, 0.93), 0), M.facing);
+      // the offset seam: down his left side of the V, a little off its edge, from the collar to the belt
+      mesh(spine, seamGeometry(), M.facing);
+      return { keep: [closed, open] };
+    }
     collarFaces(ctx, [1.585, 0.78, 0.012, 0.045]);
     return { keep: [closed, open] };
   }
@@ -283,6 +339,8 @@ function buildArms(ctx) {
       sub(limb({ length: -y1 - 0.03, r0: fa0 + 0.01, r1: fa1 + 0.014, radial: 12, rings: 3, bulge: 0.004 }).translate(0, -0.05, 0), 0),
       sub(limb({ length: 0.035, r0: fa1 + 0.018, r1: fa1 + 0.017, radial: 12, rings: 1, capSegs: 1 }).translate(0, y1 + 0.03, 0), 1),
     ]), M.coat);
+    // (ADR-285: a jade band round the cuff)
+    if (oneRefNow()) mesh(fore, sub(limb({ length: 0.016, r0: fa1 + 0.021, r1: fa1 + 0.021, radial: 12, rings: 1, capSegs: 1 }).translate(0, y1 + 0.012, 0), 0), M.facing);
   }
   // the right fist on the sword joint; the wrist under it
   const F = gripFist(HK);
@@ -352,13 +410,16 @@ const COAT_MAN = {
   ],
 };
 COAT_MAN.b = COAT_MAN.a;
+/** `?oneRef=a` (ADR-285): the reference's coat: b's five panels to the floor, the hem wider (the coat falls
+ *  in an A from the belt), the offset seam down the inner edge of his left front panel (`edge`: piping). */
+const COAT_REF = COAT_MAN.a.map((p) => ({ ...p, cone: 0.15, len: [0.47, p.tail ? 0.52 : 0.51], ...(p.front && p.az > 0 ? { edge: -1 } : {}) }));
 COAT_MAN.c = COAT_MAN.a.map((p) => ({ ...p, len: [0.42, p.tail ? 0.29 : 0.28] }));
 
 function buildCoat(ctx) {
   const look = oneLookNow(), body = oneBodyNow();
   const D = dressOf(ctx.root, look);
   // (fresh defs per rig: look.js writes their flare and stir, and turns the front panels)
-  const defs = (body !== '0' ? COAT_MAN[body] : look === 'b' ? COAT_B : COAT_A).map((p) => ({ ...p, strips: [], fork: [], flare: 0.06, breeze: 0, idleFlare: 0 }));
+  const defs = (body !== '0' ? (oneRefNow() && body !== 'c' ? COAT_REF : COAT_MAN[body]) : look === 'b' ? COAT_B : COAT_A).map((p) => ({ ...p, strips: [], fork: [], flare: 0.06, breeze: 0, idleFlare: 0 }));
   const { coat } = panelSkirt(ctx, defs, { seed: 900 });
   // a coat of heavy cloth: one or two soft folds down each panel instead of the skirt's pleats
   // (panelSkirt's fold field, redrawn: x across the panel = aGUV x, m)
@@ -385,7 +446,14 @@ function buildCoat(ctx) {
  *  points the way the knuckles do. */
 function gunGeometry(HK) {
   const zTop = 0.034 * HK + 0.03; // over the index finger's roll
-  const body = mergeGeometries([
+  // (ADR-285, `?oneRef`: the reference's compact squared pistol: a deeper slide, the grip near upright, a
+  // squared trigger guard; the muzzle cell where it was: the shots leave from its centre, gunAim.js)
+  const body = oneRefNow() ? mergeGeometries([
+    sub(boxGeometry(0.15, 0.03, 0.04, 0.035, 0, zTop + 0.002), 1),
+    boxGeometry(0.032, 0.026, 0.1, -0.014, 0, zTop - 0.05, 0, -0.08, 0),
+    boxGeometry(0.044, 0.01, 0.01, 0.03, 0, zTop - 0.032),
+    boxGeometry(0.01, 0.01, 0.026, 0.05, 0, zTop - 0.02),
+  ]) : mergeGeometries([
     sub(boxGeometry(0.15, 0.026, 0.032, 0.035, 0, zTop), 1), // the slide
     boxGeometry(0.028, 0.024, 0.1, -0.012, 0, zTop - 0.05, 0, -0.18, 0), // the grip, raked back (inside the fist)
     boxGeometry(0.04, 0.008, 0.008, 0.03, 0, zTop - 0.03), // the trigger guard's lower bar

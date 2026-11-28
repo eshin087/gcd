@@ -1,6 +1,7 @@
 import { DIM } from '../../player/model.js';
 import { createDuelPoses } from '../duelist/poses.js';
 import { FIST_UP, FIST_FLAT } from '../ascendant/poses.js';
+import { oneRefMoveNow } from './look.js';
 
 // Xin Yi's three guards, one per phase, and the pose functions built round each (duelist/poses.js: the
 // clip format, the gait). Bare-handed as Tian Lei (ascendant/poses.js): his hands are KEYED (rH / lH),
@@ -62,10 +63,36 @@ export const GEAR2_GUARD = Object.freeze({
   rF: [-0.2, ANK, -0.22], lF: [0.18, ANK, 0.26], rK: [-0.4, 0, 0.9], lK: [0.4, 0, 0.9], sw: [0.3, 0.6],
 });
 export const GEAR2_POSES = createDuelPoses(GEAR2_GUARD, { breath: { k: 1.0, period: 3.2 }, run: { hand: [-0.04, -0.3, 0.1], pole: [-0.8, -0.4, -0.4], blade: [0.2, 0.8], flat: [0, 0, 1] } });
-/** The pose set he moves with: `set` 4 = phase 1's gear 2 (wokenOne.js pilot.pset). */
-export const posesOf = (set) => (set === 4 ? GEAR2_POSES : phasePoses(set));
-/** The pose set of a phase (1-based, clamped). */
-export function phasePoses(ph) {
-  return PHASE_POSES[Math.min(PHASE_POSES.length, Math.max(1, ph | 0)) - 1];
+
+// ---------------------------------------------------------------- after the reference pack (ADR-285)
+// `?oneRefMove=a` (look.js oneRefMoveNow; '0' = as shipped): the guards of the pack's turnaround sheet
+// (docs/art/character-packs-v04/xin-yi T1), so every clip, move and step starts and ends in them:
+//   T1.9   phase 1, gear 1: tall, the right arm out before him at the chest's height, open (the offer), the
+//          left hand behind the small of his back
+//   T1.10  phase 1, gear 2: the lead (left) hand open forward and high, the rear (right) hand at the chest
+//   T1.11  phase 2: both guns held low at his sides, the arms near straight, the muzzles down
+//   T1.12  phase 3: upright, the open hands a little out from his sides and forward (the hover is the flight's)
+// Only the poses: the feet's spacing near today's (the planner keeps them planted), no root field.
+export const GUARDS_REF = Object.freeze([
+  Object.freeze({ ...GUARDS[0], bY: -0.03, yaw: -0.24, spX: -0.04, hdY: 0.22, rH: [-0.08, -0.08, 0.47], rP: [-0.9, -0.5, -0.1], sw: [0.3, 0.6] }),
+  Object.freeze({
+    ...GUARDS[1], bY: -0.06, yaw: -0.1, hdY: 0.1, rH: [-0.07, -0.45, 0.13], rP: [-0.8, -0.1, -0.6], lH: [0.07, -0.45, 0.13], lP: [0.8, -0.1, -0.6],
+    rF: [-0.17, ANK, -0.08], lF: [0.17, ANK, 0.1], rK: [-0.3, 0, 1], lK: [0.3, 0, 1], sw: [0.0, -0.9],
+  }),
+  Object.freeze({
+    ...GUARDS[2], bY: -0.01, pitch: -0.03, rH: [-0.15, -0.44, 0.13], rP: [-0.9, -0.1, -0.4], lH: [0.15, -0.44, 0.13], lP: [0.9, -0.1, -0.4], sw: [0.0, -1.0],
+  }),
+]);
+export const GEAR2_GUARD_REF = Object.freeze({ ...GEAR2_GUARD, bY: -0.07, yaw: -0.3, hdY: 0.28, rH: [0.12, 0.02, 0.16], lH: [0.04, 0.16, 0.5], lP: [0.8, -0.8, 0.0] });
+export const PHASE_POSES_REF = GUARDS_REF.map((G, i) => createDuelPoses(G, { breath: { k: 1.0, period: 3.6 }, run: RUN[i] }));
+export const GEAR2_POSES_REF = createDuelPoses(GEAR2_GUARD_REF, { breath: { k: 1.0, period: 3.2 }, run: { hand: [-0.04, -0.3, 0.1], pole: [-0.8, -0.4, -0.4], blade: [0.2, 0.8], flat: [0, 0, 1] } });
+
+/** The pose set he moves with: `set` 4 = phase 1's gear 2 (wokenOne.js pilot.pset); the reference's while
+ *  `?oneRefMove` is on. */
+export const posesOf = (set) => (set === 4 ? (oneRefMoveNow() ? GEAR2_POSES_REF : GEAR2_POSES) : phasePoses(set));
+/** The pose set of a phase (1-based, clamped; the reference's while `?oneRefMove` is on). */
+export function phasePoses(ph, ref = oneRefMoveNow()) {
+  const S = ref ? PHASE_POSES_REF : PHASE_POSES;
+  return S[Math.min(S.length, Math.max(1, ph | 0)) - 1];
 }
 export { FIST_UP, FIST_FLAT };

@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'Xin Yi after the reference pack, to try',
+        notes: [
+          'A new look for Xin Yi to try before it becomes his own: the long coat open in every phase down to the floor, a tall split collar, a jade-grey seam down his front and jade at his cuffs and glasses.',
+          'And a new way for him to stand and move: the right hand held out in his offer, the guns low at his sides, the open hands of the Source, blows that land into a lunge, bigger leans and recoils. His timing, damage and every effect are exactly as before.',
+          'Add oneRef=a and oneRefMove=a to the address to try them.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'Varr Nihil after the reference pack, to try',
         notes: [
           'A new look for Varr Nihil to try before it becomes his own: his hood, helm, armour and whole cape kept in every form, and every blade split into two red-white rails with a dark slit between them.',

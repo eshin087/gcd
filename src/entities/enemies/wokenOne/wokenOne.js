@@ -10,7 +10,7 @@ import { ONE_LOADOUT, ONE_FIST } from './gear.js';
 import { tintOne, dressOne, oneLettersOn, oneLetterBias, oneMovesNow } from './look.js';
 import { WokenFx } from './fx.js';
 import { posesOf } from './poses.js';
-import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_PHASE, CLIPS_GEAR2, TRANSITIONS, COUNTERS, STREAKS, REPLAY, INTRO_BECKON, realise } from './moves.js';
+import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_PHASE, clipsOf, TRANSITIONS, COUNTERS, STREAKS, REPLAY, INTRO_BECKON, realise } from './moves.js';
 import { TUNING, GEARED } from './tuning.js';
 import { LINKS } from './links.js';
 import { IronMoves } from './iron.js';
@@ -91,8 +91,7 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3();
  *  and deja vu's replay. */
 class WokenBrain extends DuelBrain {
   get C() {
-    if ((this.d.phase | 0) <= 1 && this.d.gear >= 2) return CLIPS_GEAR2;
-    return CLIPS_BY_PHASE[clamp(this.d.phase | 0, 1, CLIPS_BY_PHASE.length) - 1];
+    return clipsOf(clamp(this.d.phase | 0, 1, CLIPS_BY_PHASE.length), this.d.gear); // (ADR-285: the reference's while ?oneRefMove is on)
   }
   set C(v) {} // (the base constructor assigns the kit's set: his is per phase)
 

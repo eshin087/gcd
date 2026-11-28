@@ -1,9 +1,10 @@
 import { TELL } from '../../../combat/rules.js';
 import { makeRealise } from '../duelist/realise.js';
 import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
-import { PHASE_POSES, GEAR2_POSES, BEHIND } from './poses.js';
+import { PHASE_POSES, GEAR2_POSES, PHASE_POSES_REF, GEAR2_POSES_REF, BEHIND } from './poses.js';
 import { TUNING, GEARED } from './tuning.js';
-import { oneMovesNow } from './look.js';
+import { oneMovesNow, oneRefMoveNow } from './look.js';
+import { refKeysOf, refClipKey } from './refMoves.js';
 import * as SK from './strikes.js';
 import { limbsB, sweepOn } from './limbs.js';
 import { DIM } from '../../player/model.js';
@@ -693,12 +694,31 @@ export const CLIPS_BY_PHASE = PHASE_POSES.map((P) => {
   return out;
 });
 export const CLIP = CLIPS_BY_PHASE[0];
+/** ... in the reference's poses (ADR-285, `?oneRefMove=a`: refMoves.js refClipKey; phase 1's with the left
+ *  hand behind his back through every clip). */
+const compileRefClips = (P, oneHand) => {
+  const out = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k, P.compileClip(c.keys.map(([t, pose]) => ({ t, ...refClipKey(k, pose, oneHand) })), c.dur, { hold: !!c.hold })]));
+  for (const [k, c] of Object.entries(out)) c.name = k;
+  return out;
+};
+export const CLIPS_BY_PHASE_REF = PHASE_POSES_REF.map((P, i) => compileRefClips(P, i === 0));
 /** Gear 2's reaction clips (phase 1, both hands: GEAR2_POSES' guard). */
 export const CLIPS_GEAR2 = (() => {
   const out = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k, GEAR2_POSES.compileClip(c.keys.map(([t, pose]) => ({ t, ...pose })), c.dur, { hold: !!c.hold })]));
   for (const [k, c] of Object.entries(out)) c.name = k;
   return out;
 })();
+
+/** Gear 2's reaction clips in the reference's poses. */
+export const CLIPS_GEAR2_REF = compileRefClips(GEAR2_POSES_REF, false);
+/** The reaction clips he reacts with: phase `ph`'s (gear 2's in phase 1 at gear 2), the reference's while
+ *  `?oneRefMove` is on (wokenOne.js WokenBrain.C). */
+export function clipsOf(ph, gear = 1) {
+  const ref = oneRefMoveNow();
+  if ((ph | 0) <= 1 && gear >= 2) return ref ? CLIPS_GEAR2_REF : CLIPS_GEAR2;
+  const S = ref ? CLIPS_BY_PHASE_REF : CLIPS_BY_PHASE;
+  return S[Math.min(S.length, Math.max(1, ph | 0)) - 1];
+}
 
 const REALISERS = PHASE_POSES.map((P, i) => makeRealise({ TUNING, MOVES: i === 0 ? MOVES_P1 : MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
 /** Phase 1 in gear 2 (both hands, ADR-168): the moves two-handed, round gear 2's guard. */
@@ -709,6 +729,17 @@ const REALISE_G2_A = makeRealise({ TUNING, MOVES: MOVES_A, compileClip: (keys, d
 /** ... and `?oneMoves=b`'s (ADR-253). */
 const REALISERS_B = PHASE_POSES.map((P, i) => makeRealise({ TUNING, MOVES: i === 0 ? MOVES_P1_B : MOVES_B, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
 const REALISE_G2_B = makeRealise({ TUNING, MOVES: MOVES_B, compileClip: (keys, dur) => GEAR2_POSES.compileClip(keys, dur), completeBeat: GEAR2_POSES.completeBeat });
+
+/** ... and each of them in the reference's poses (ADR-285, `?oneRefMove=a`): the same MOVES tables, compiled
+ *  round the reference's guards, every beat's keys through refMoves.js (the same key times: the timing
+ *  is the shipped switches'). */
+const refRealise = (P, MV, oneHand) => makeRealise({
+  TUNING, MOVES: MV, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat,
+  keysOf: (b) => refKeysOf(b, b.keys, { oneHand }),
+});
+const REF_SETS = { '0': [MOVES_P1, MOVES], a: [MOVES_P1_A, MOVES_A], b: [MOVES_P1_B, MOVES_B] };
+const REALISERS_REF = Object.fromEntries(Object.entries(REF_SETS).map(([k, [M1, M]]) => [k, PHASE_POSES_REF.map((P, i) => refRealise(P, i === 0 ? M1 : M, i === 0))]));
+const REALISE_G2_REF = Object.fromEntries(Object.entries(REF_SETS).map(([k, [, M]]) => [k, refRealise(GEAR2_POSES_REF, M, false)]));
 
 /**
  * A move as it will play this time (duelist/realise.js), round the guard of the phase it is used in; a
@@ -734,8 +765,9 @@ export function realise(name, phase = 1, rnd = Math.random, opts = null) {
   // (phase 1 in gear 2, and gear 2's own opening: two-handed, round gear 2's guard)
   const g2 = ph === 1 && !def.transition && (GEARED.now >= 2 || def.twoHand);
   const mv = oneMovesNow();
-  const RS = mv === 'b' ? REALISERS_B : mv === 'a' ? REALISERS_A : REALISERS;
-  const G2 = mv === 'b' ? REALISE_G2_B : mv === 'a' ? REALISE_G2_A : REALISE_G2;
+  const ref = oneRefMoveNow();
+  const RS = ref ? REALISERS_REF[mv] : mv === 'b' ? REALISERS_B : mv === 'a' ? REALISERS_A : REALISERS;
+  const G2 = ref ? REALISE_G2_REF[mv] : mv === 'b' ? REALISE_G2_B : mv === 'a' ? REALISE_G2_A : REALISE_G2;
   const A = (g2 ? G2 : RS[Math.min(RS.length, Math.max(1, ph)) - 1])(name, phase, r, opts);
   if (A) {
     A.draws = draws;

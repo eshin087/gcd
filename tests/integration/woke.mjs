@@ -5,7 +5,7 @@
 // its scenes. A bot drives the input. The harness is fox.mjs's (its build, bots, helpers).
 // usage: node woke.mjs <repoRoot> [scenario]   (env: GCD_SEED=n reseeds the AI)
 //   scenario: levels | data | timing | scenes | cover | bend | stop | stance | flight | rising | dejavu |
-//             reward | flow | looks | herolike | flurry | nolock | wall | gear | training | pace | win | motionfix | pursuit | all
+//             reward | flow | looks | herolike | flurry | nolock | wall | gear | training | pace | win | motionfix | pursuit | oneref | all
 //             (opt-in: smoke, strategy, cost, audit)
 //   env GCD_LOOKS=oneMoves=a,oneBody=b sets look switches for the whole run (the audit of a redraw)
 import fs from 'node:fs';
@@ -1432,6 +1432,156 @@ async function scenarioRebuild() {
     }
   } catch (e) { assert(false, `the rebuilt moves: ${e.stack}`); }
   LS.setLook('oneMoves', null);
+}
+
+// ================================================================== scenario: oneref (ADR-285: the reference pack)
+/**
+ * ONEREF (ADR-285): Xin Yi after the reference pack behind `?oneRef=a` (the look) and `?oneRefMove=a` (the
+ * poses). The poses never move a time: every move, phase (and phase 1's gear 2), branch, hold draw, mirror
+ * and flurry count realises the same beats with the switch off and on, under each of `?oneMoves=0|a|b`. The
+ * same seeded fight in each phase lands the same blows at the same times, fires every effect of his at the
+ * same time (each fx call by name), every gun shot and palm bolt born at the same time, its speed and heading
+ * the same, its first point within a few cm (it leaves from the hand as drawn); the phase-1 gear-1 left hand
+ * behind his back through every key and clip. The look builds in every phase, nothing NaN.
+ */
+async function scenarioOneRef() {
+  out('\n== scenario ONEREF (ADR-285: ?oneRef / ?oneRefMove: the reference pack\'s look and poses, never a time or an effect) ==');
+  const LS = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const MM = await imp('src/entities/enemies/wokenOne/moves.js');
+  const PS = await imp('src/entities/enemies/wokenOne/poses.js');
+  const GR = await imp('src/entities/enemies/wokenOne/tuning.js');
+  const rnd = (s) => () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const key = (A) => JSON.stringify([A.end, A.recoveryStart, A.hits, A.beats.map((b) => [b.index, b.start, b.impact, b.end, b.W, b.H, b.A, b.S, b.F, b.close, b.flash, b.feint, b.last, b.def.windup, b.def.tell, b.def.damage, b.def.zone, b.def.dash, b.def.travel, b.def.lift])]);
+  let n = 0;
+  const diff = [];
+  for (const mv of ['0', 'a', 'b']) {
+    LS.setLook('oneMoves', mv);
+    for (const name of MOVE_NAMES) {
+      const def = MOVES[name];
+      for (const [ph, gear] of [[1, 1], [1, 2], [2, 1], [3, 1]]) {
+        if (def.transition && ph !== def.phase) continue;
+        for (let s = 1; s <= 4; s++) {
+          const opts = def.streak ? { count: 2 + s } : null;
+          GR.GEARED.now = gear;
+          LS.setLook('oneRefMove', '0');
+          const a = realise(name, ph, rnd(s * 7919), opts);
+          LS.setLook('oneRefMove', 'a');
+          const b = realise(name, ph, rnd(s * 7919), opts);
+          if (!a || !b) continue;
+          n++;
+          if (key(a) !== key(b) || JSON.stringify(a.draws) !== JSON.stringify(b.draws)) diff.push(`${name} p${ph}g${gear} ${mv} s${s}`);
+        }
+      }
+    }
+  }
+  GR.GEARED.now = 1;
+  LS.setLook('oneRefMove', null);
+  LS.setLook('oneMoves', null);
+  assert(!diff.length && n > 1500, `${n} realisations (every move, phase, gear, branch, hold draw, mirror and flurry count, under ?oneMoves=0, a and b) time every beat the same with ?oneRefMove on and off: the same windups, holds, impacts, flashes, active windows, zones, dashes and lifts (${diff.slice(0, 6).join(', ') || 'none differ'})`);
+  // phase 1, gear 1: the left hand behind his back in every key of every move and every clip
+  {
+    LS.setLook('oneRefMove', 'a');
+    GR.GEARED.now = 1;
+    const bad = [];
+    for (const name of MOVE_NAMES) {
+      const def = MOVES[name];
+      if (def.transition || def.twoHand || def.gear === 2 || !(Array.isArray(def.weight) ? def.weight[0] > 0 : def.phase === 1)) continue;
+      const A = realise(name, 1, rnd(5));
+      for (const k of A?.clip?.keys ?? []) if (k.lH && (Math.abs(k.lH[0] - PS.BEHIND.lH[0]) > 1e-6 || Math.abs(k.lH[2] - PS.BEHIND.lH[2]) > 1e-6)) { bad.push(name); break; }
+    }
+    const C1 = MM.clipsOf(1, 1);
+    for (const [k, c] of Object.entries(C1)) {
+      if (k === 'meditate' || k === 'intro') continue;
+      if ((c.keys ?? []).some((q) => q.lH && Math.abs(q.lH[2] - PS.BEHIND.lH[2]) > 1e-6)) bad.push(`clip ${k}`);
+    }
+    LS.setLook('oneRefMove', null);
+    assert(!bad.length, `?oneRefMove=a, phase 1 gear 1: the left hand behind his back in every key of every move and reaction clip (${bad.slice(0, 6).join(', ') || 'all'})`);
+  }
+  // the same seeded fight per phase: the same blows, the same effects at the same times
+  const fightOf = (on, ph, gear) => {
+    LS.setLook('oneRefMove', on ? 'a' : '0');
+    LS.setLook('oneRef', on ? 'a' : '0');
+    const G = build(SEED + 17 * ph + gear);
+    duel(G, { dist: 3.4, ai: true, form: ph });
+    const d = G.game.dragon;
+    if (ph === 1 && gear === 2) d.debug.setGear(2, true);
+    const fxCalls = [], births = [];
+    const seenShots = new Set();
+    const names = [];
+    for (let o = Object.getPrototypeOf(d.fx); o && o !== Object.prototype; o = Object.getPrototypeOf(o)) names.push(...Object.getOwnPropertyNames(o));
+    // (the calls INTO his effects from outside them: what fires an effect and when; the calls an effect
+    // makes inside itself, its particles, follow the limb it is drawn from)
+    let depth = 0;
+    for (const m of new Set(names)) {
+      if (m === 'constructor' || typeof d.fx[m] !== 'function' || /^(update|draw|reset|step|tick)/.test(m)) continue;
+      const f = d.fx[m].bind(d.fx);
+      d.fx[m] = (...a) => {
+        if (depth === 0 && !m.startsWith('_')) fxCalls.push(`${G.game.time.toFixed(3)} ${m}`);
+        depth++;
+        try { return f(...a); } finally { depth--; }
+      };
+    }
+    G.defend = makeDefender(G, { rng: mulberry32(SEED + ph) });
+    const h0 = G.hits.length;
+    run(G, 20, () => {
+      G.defend.act();
+      for (const s of d.fx.shots ?? []) {
+        if (!s.alive || seenShots.has(s)) continue;
+        seenShots.add(s);
+        births.push({ t: G.game.time, x: s.x, y: s.y, z: s.z, dx: s.dx, dz: s.dz, v: s.speed, iron: !!s.iron, heavy: !!s.heavy });
+      }
+    });
+    const nan = ![d.position.x, d.position.z, d._tip.x, d._tip.y, d._hand.x].every(Number.isFinite);
+    LS.setLook('oneRefMove', null);
+    LS.setLook('oneRef', null);
+    return { hits: G.hits.slice(h0).map((h) => `${h.t.toFixed(3)} ${h.attack} ${h.r} ${h.damage}`), fxCalls, births, nan };
+  };
+  const report = [];
+  for (const [ph, gear] of [[1, 1], [1, 2], [2, 1], [3, 1]]) {
+    const A = fightOf(false, ph, gear), B = fightOf(true, ph, gear);
+    const tag = `phase ${ph}${ph === 1 ? ` gear ${gear}` : ''}`;
+    const fd = A.hits.findIndex((h, i) => h !== B.hits[i]);
+    const xd = A.fxCalls.findIndex((c, i) => c !== B.fxCalls[i]);
+    let far = 0, dirOk = true, tOk = A.births.length === B.births.length;
+    for (let i = 0; tOk && i < A.births.length; i++) {
+      const a = A.births[i], b = B.births[i];
+      if (Math.abs(a.t - b.t) > 1e-6 || a.iron !== b.iron || a.heavy !== b.heavy || Math.abs((a.v ?? 0) - (b.v ?? 0)) > 1e-6) tOk = false;
+      far = Math.max(far, Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z));
+      const ha = Math.atan2(a.dx ?? 0, a.dz ?? 1), hb = Math.atan2(b.dx ?? 0, b.dz ?? 1);
+      if (Math.abs(Math.atan2(Math.sin(ha - hb), Math.cos(ha - hb))) > 0.06) dirOk = false;
+    }
+    report.push(`${tag}: ${A.births.length} shots/bolts, ${(far * 100).toFixed(1)} cm`);
+    assert(A.hits.length >= 3 && A.hits.length === B.hits.length && fd < 0 && !A.nan && !B.nan,
+      `${tag}: a seeded 20 s fight against the defender: ${A.hits.length} blows off, ${B.hits.length} on, the same times, moves, results and damage${fd >= 0 ? ` (first differs: ${A.hits[fd]} / ${B.hits[fd]})` : ''}; nothing NaN`);
+    assert(A.fxCalls.length === B.fxCalls.length && xd < 0,
+      `${tag}: every effect of his fires at the same time (${A.fxCalls.length} fx calls off, ${B.fxCalls.length} on${xd >= 0 ? `; first differs: ${A.fxCalls[xd]} / ${B.fxCalls[xd]}` : ''})`);
+    assert(tOk && dirOk && far <= 0.08,
+      `${tag}: ${A.births.length} shots / bolts born at the same times, kinds and speeds, the same heading (${dirOk}), the first point at most ${(far * 100).toFixed(1)} cm apart (<= 8: it leaves from the hand as drawn)`);
+  }
+  // the look: builds in every phase, the pieces it adds, nothing NaN
+  {
+    LS.setLook('oneRef', 'a');
+    LS.setLook('oneRefMove', 'a');
+    const G = build(SEED + 5);
+    duel(G, { dist: 4, ai: true, form: 1 });
+    const d = G.game.dragon;
+    const D = d.rig.root.userData.dress;
+    const seen = [];
+    for (const ph of [1, 2, 3]) {
+      d.debug.setPhase(ph);
+      run(G, 1.5);
+      seen.push([d.position.x, d.position.z, d._tip.x, d._hand.y].every(Number.isFinite));
+    }
+    d.debug.setPhase(1);
+    d.debug.setAI(false);
+    run(G, 2);
+    const low = Math.min(...d.rig.coat.map((C) => { C.segs[1].updateWorldMatrix(true, true); return new THREE.Box3().setFromObject(C.segs[1]).min.y; }));
+    LS.setLook('oneRef', null);
+    LS.setLook('oneRefMove', null);
+    assert(seen.every(Boolean) && D.ref === true && D.guns.length === 4 && low > 0.02 && low < 0.2,
+      `?oneRef=a builds and fights in phases 1 - 3 (nothing NaN); the reference's pieces on (${D.ref}); four gun pieces kept (${D.guns.length}); standing, the coat's hem ${low.toFixed(2)} m over the floor (0.02 - 0.2: to the floor, not through it)`);
+  }
+  assert(LS.PENDING.includes('oneRef') && LS.PENDING.includes('oneRefMove') && !('oneRef' in LS.PICKED) && !('oneRefMove' in LS.PICKED), 'both switches wait for the owner (PENDING, not PICKED): the default draws him as shipped');
 }
 
 // ================================================================== scenario: looks
@@ -2990,6 +3140,7 @@ const S = {
   smoke: scenarioSmoke,
   looks: scenarioLooks,
   rebuild: scenarioRebuild,
+  oneref: scenarioOneRef,
   herolike: scenarioHeroLike,
   scenes: scenarioScenes,
 };

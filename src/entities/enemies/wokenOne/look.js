@@ -80,6 +80,18 @@ export function oneMovesNow() {
   return o === 'a' || o === 'b' ? o : '0';
 }
 
+/** Xin Yi after the reference pack (docs/art/character-packs-v04/xin-yi, ADR-285): two switches, each '0'
+ *  (as shipped) until the owner picks (lookSwitch.js PENDING; the Lab's LOOKS rows):
+ *    ?oneRef=a      his look (read when his rig is built: gear.js, and the ink on every phase change): the tall
+ *                   split collar with its pale inner band, the coat open in every phase down to the floor with a
+ *                   wider hem, the offset jade-grey seam down his left front, jade cuffs, the glasses' jade
+ *                   temples, a grey streak swept back in his hair, squarer guns (the muzzles where they were)
+ *    ?oneRefMove=a  his motion (read live, as each move is realised and each frame's guard is posed:
+ *                   refMoves.js, poses.js): the poses only, never a time, a zone, a root curve or an effect
+ */
+export const oneRefNow = () => lookOf('oneRef', '0') !== '0';
+export const oneRefMoveNow = () => lookOf('oneRefMove', '0') !== '0';
+
 /** His letter cell's bias (kit.letterBias: steps along the hero's cells; pipeline.js
  *  _updateBossLetters applies it only where the hero's rule rests on its floor cell: a small screen). */
 export function oneLetterBias() {
@@ -88,7 +100,7 @@ export function oneLetterBias() {
 
 /** The dressing record on his rig (gear.js registers the switched pieces in it). */
 export function dressOf(root, look = 'a') {
-  return (root.userData.dress ??= { kind: 'one', look, print: onePrintNow(), body: oneBodyNow(), phase: 0, at: [], guns: [], fronts: [], panels: [], inked: false, reload: false });
+  return (root.userData.dress ??= { kind: 'one', look, print: onePrintNow(), body: oneBodyNow(), ref: oneRefNow(), phase: 0, at: [], guns: [], fronts: [], panels: [], inked: false, reload: false });
 }
 /** Show mesh `m` from phase `from` to phase `to` (hidden until then; phase 1 is the build's state). */
 export function at(D, m, from, to = 9) {
@@ -215,14 +227,20 @@ function bodyTable(look, phase) {
   };
 }
 
+/** The reference's jade-grey (ADR-285): parts 7 and 9 (no ink gain over 1.5: printed as his cloth is). */
+export const REF_JADE = Object.freeze({ ink: [0.62, 0.92, 0.8, 0.8], rim: [0.55, 0.85, 0.72, 0.9], fill: [1.2, 8, 0, 0.9] });
+
 /** The table his parts are written with (tests, the Lab). */
 export const oneInkTable = (look, phase, print, body) => inkTable(look, phase, print, body);
 
 /** Write his parts' ink into the shared per-part tables (the boss rigs' only: the player reads his own). */
-function writeInk(U, look, phase, print, body = '0') {
+function writeInk(U, look, phase, print, body = '0', ref = false) {
   const I = U?.uHeroPartInk?.value, R = U?.uHeroPartRim?.value, F = U?.uHeroPartFill?.value;
   if (!I || !R || !F) return false;
   const T = inkTable(look, phase, print, body);
+  // (ADR-285, `?oneRef`: the jade-grey pieces: the seam, the cuffs, the collar's inner band (7, `facing`)
+  // and the front panel's seam (9, `piping`): a jade line round a dim jade-grey fill, printed as his cloth)
+  if (ref) T[7] = T[9] = REF_JADE;
   for (const p in T) {
     const t = T[p];
     I[p]?.set(t.ink[0], t.ink[1], t.ink[2], t.ink[3]);
@@ -249,6 +267,12 @@ export function tintOne(M) {
     const c = M.coat?.uniforms?.uArtFill?.value;
     if (c) setFill(M.lining, c.r, c.g, c.b);
     for (const k of ['coat', 'lining']) if (M[k]?.uniforms?.uArtPart) M[k].uniforms.uArtPart.value = 10;
+  }
+  // (ADR-285, `?oneRef`: the jade-grey seam, cuffs and inner band; the grey streak in his hair)
+  if (oneRefNow()) {
+    setFill(M.facing, 0.16, 0.3, 0.24);
+    setFill(M.piping, 0.16, 0.3, 0.24);
+    setFill(M.hairTip, 0.3, 0.32, 0.33);
   }
   const quiet = onePrintNow() !== '0';
   // (the quiet print: the face and hands held down as Tian Lei's were, ADR-155: lit, they printed as a
@@ -346,7 +370,7 @@ export function dressOne(d, dt) {
   const D = d?.rig?.root?.userData?.dress;
   if (!D || D.kind !== 'one') return;
   const n = Math.min(3, Math.max(1, fin(d.dressPhase ?? d.phase, 1) | 0));
-  if (!D.inked || n !== D.phase) D.inked = writeInk(d.game?.U, D.look, n, D.print, D.body);
+  if (!D.inked || n !== D.phase) D.inked = writeInk(d.game?.U, D.look, n, D.print, D.body, !!D.ref);
   if (n !== D.phase) {
     D.phase = n;
     for (const e of D.at) e.m.visible = n >= e.from && n <= e.to;
