@@ -3596,7 +3596,31 @@ async function scenarioFlare() {
   assert(bare.rec.res === RESULT.HIT && bare.rec.hp0 - bare.rec.hpAtHit > 30, `unanswered it lands: ${(bare.rec.hp0 - bare.rec.hpAtHit).toFixed(0)} HP`);
   const roll = maw({ answer: 'dodge' });
   assert(roll.rec.res === RESULT.PERFECT && evn(roll.rec, 'player:perfectDodge') === 1 && (evn(roll.rec, 'player:flurry') === 1 || evn(roll.rec, 'player:plunge') >= 1), `a perfect dodge of it is answered as a red blow's is (${roll.rec.res}; flurry ${evn(roll.rec, 'player:flurry')})`);
-  // (let the answer play out)
+  // --- the blackout (?black=a, ADR-271): the picture drains over the charge's last 0.3 s, colour back
+  // after the strike; a stagger in the charge lets it go
+  run(G, 4, { passive: true });
+  const B = await imp('src/combat/blackout.js'), bo = game.blackout, O = TELL_STYLE.black.out;
+  B.setBlack('a');
+  const ks = [], up0 = bo.update.bind(bo);
+  bo.update = () => { up0(); ks.push([game.time, bo.k]); };
+  const lit = maw({ hold: true });
+  run(G, 1, { passive: true });
+  const kAt = (t) => ks.reduce((best, x) => (Math.abs(x[0] - t) < Math.abs(best[0] - t) ? x : best), [Infinity, 0])[1];
+  const fT = lit.rec.flashT;
+  assert(fT !== null && kAt(fT - O.a.over - 0.1) < 0.02 && kAt(fT) > 0.95 && kAt(fT + O.hold + O.snap + 3 * DT) === 0, `?black=a on Black maw: ${kAt(fT - O.a.over - 0.1).toFixed(2)} before the last ${O.a.over} s, ${kAt(fT).toFixed(2)} at the cue, ${kAt(fT + O.hold + O.snap + 3 * DT)} after the strike`);
+  B.setBlack('b');
+  settle(G);
+  place(G, 6);
+  run(G, 0.3, { passive: true });
+  ks.length = 0;
+  d.debug.trigger('blackMaw');
+  run(G, 1.0, { passive: true });
+  const kCut = bo.k;
+  d.debug.stagger();
+  run(G, O.drop + 0.15, { passive: true });
+  assert(kCut > 0.2 && bo.k === 0, `?black=b: staggered in the charge, the dark (${kCut.toFixed(2)}) is gone (${bo.k})`);
+  bo.update = up0;
+  B.setBlack('0');
   run(G, 4, { passive: true });
   return G;
 }

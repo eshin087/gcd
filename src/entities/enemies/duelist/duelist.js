@@ -4,6 +4,7 @@ import { clamp, wrapAngle } from '../../../core/math.js';
 import { markCaster } from '../../../render/pipeline.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { TELL, TELL_STYLE, RESULT, POSTURE, DEFENSE, tellDefaults, dodgeOnly } from '../../../combat/rules.js';
+import { blackBody } from '../../../combat/blackout.js';
 import { buildHero, setHeroGlyphScale, installLean, LEAN, HERO_SCALE, DIM } from '../../player/model.js';
 import { REACH } from '../../player/combat.js';
 import { HeroAnimator } from '../../player/anim.js';
@@ -1355,7 +1356,8 @@ export class Duelist {
       const dd = Math.hypot(cam.x - p.x, cam.y - p.y - 1.1, cam.z - p.z);
       if (Number.isFinite(dd)) setHeroGlyphScale(mats, dd);
     }
-    const w = clamp(this.warn, 0, 2);
+    // (the blackout, ?black=: a black blow no longer darkens his body; combat/blackout.js)
+    const w = clamp(this.warn, 0, 2) * (this.warnTell === TELL.BLACK ? blackBody() : 1);
     for (const m of mats) {
       const u = m.uniforms;
       if (!u) continue;

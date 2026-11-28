@@ -4912,6 +4912,117 @@ async function scenarioFxLooks() {
   return build();
 }
 
+// ================================================================== scenario: blackout (ADR-271)
+// ?black= (combat/blackout.js): a black blow's charge drains the picture, clears on every cancel; the
+// violet goes in it; today's look (0) is untouched. ?redTrail= (combat/redTrail.js): a red blow's cut is
+// red from its flare on, never before it, never on another blow.
+async function scenarioBlackout() {
+  out('\n== scenario BLACKOUT (a black blow darkens the picture, clears on every cancel; the red trail from the flare on) ==');
+  const { TELL_STYLE } = await imp('src/combat/rules.js');
+  const B = await imp('src/combat/blackout.js');
+  const RT = await imp('src/combat/redTrail.js');
+  const { K_FIRE } = await imp('src/entities/enemies/duelist/fx.js');
+  const G = build();
+  duel(G, { dist: 5 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, O = TELL_STYLE.black.out, bo = game.blackout;
+  run(G, 0.3);
+  assert(bo && typeof bo.beat === 'function' && B.getBlack() === B.BLACK_DEFAULT && B.BLACK_DEFAULT === '0' && RT.getRedTrail() === '0', 'game.blackout is up (ui/tells.js), and both switches default to today\'s look');
+  p.debug.god = true;
+  /** Black Tide from 5 m, the guard held; `cut(t)` may cancel it `t` s into the charge. */
+  const tide = (mode, cut = null) => {
+    B.setBlack(mode);
+    settle(G, 8);
+    home(G);
+    place(G, 5);
+    run(G, 0.3);
+    p.guard = p.maxGuard;
+    let t0 = null, flashT = null, dur = 0, cutT = null, edgeMax = 0;
+    const ks = [];
+    G.watch = (n, e) => {
+      if (n === 'combat:charge' && t0 === null) { t0 = game.time; dur = e.dur; }
+      if (n === 'combat:flash' && e?.tell === TELL.BLACK && flashT === null) flashT = game.time;
+    };
+    d.debug.trigger('blackTide');
+    run(G, 4.5, () => {
+      input.press(1);
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (cut && t0 !== null && cutT === null && game.time - t0 >= cut.at) { cutT = game.time; cut.fn(); }
+    }, () => {
+      ks.push([game.time, bo.k]);
+      edgeMax = Math.max(edgeMax, game.hud.tells.chargeAt >= 0 ? 1 : 0);
+      return (flashT !== null && game.time > flashT + 1) || (cutT !== null && game.time > cutT + 1);
+    });
+    G.watch = null;
+    input.up(1);
+    const kAt = (t) => ks.reduce((best, x) => (Math.abs(x[0] - t) < Math.abs(best[0] - t) ? x : best), [Infinity, 0])[1];
+    return { ks, t0, dur, flashT, cutT, kAt, edgeMax, kMax: Math.max(...ks.map((x) => x[1])) };
+  };
+  // --- today (0): nothing in the grade, the edges still dim, the violet charge drawn
+  const z = tide('0');
+  assert(z.flashT !== null && z.kMax === 0 && z.edgeMax === 1 && B.blackBody() === 1 && B.flareStyle(TELL.BLACK) === TELL_STYLE.black.flare, `?black=0: the grade untouched (max ${z.kMax}), the screen edges dim through the charge, the violet flare and body as before`);
+  // --- a: dark over the last `over` s before the cue, held to the strike, then back
+  const a = tide('a');
+  const V = O.a;
+  assert(a.flashT !== null && a.t0 !== null && a.dur > 1.2, `?black=a: Black Tide charged ${a.dur.toFixed(2)} s, cued`);
+  assert(a.kAt(a.flashT - V.over - 0.1) < 0.02 && a.kAt(a.flashT - V.over / 2) > 0.3 && a.kAt(a.flashT) > 0.95, `... dark only over the last ${V.over} s: ${a.kAt(a.flashT - V.over - 0.1).toFixed(2)} → ${a.kAt(a.flashT - V.over / 2).toFixed(2)} → ${a.kAt(a.flashT).toFixed(2)} at the cue`);
+  assert(a.kAt(a.flashT + O.hold - 2 * DT) > 0.95 && a.kAt(a.flashT + O.hold + O.snap + 3 * DT) === 0, `... held ${O.hold} s to the strike, colour back in ${O.snap} s (${a.kAt(a.flashT + O.hold - 2 * DT).toFixed(2)} → ${a.kAt(a.flashT + O.hold + O.snap + 3 * DT)})`);
+  assert(a.edgeMax === 0 && B.blackBody() === 0 && B.flareStyle(TELL.BLACK) === TELL_STYLE.black.pale.flare && !B.flareStyle(TELL.BLACK).tint && B.flareStyle(TELL.RED) === TELL_STYLE.red.flare, '... the violet goes: no dark screen edges, no darkened body, the black flare undyed; the red flare as it was');
+  // --- b: builds through the whole charge; c: darker (the uniforms a mock pipeline does not have)
+  const b = tide('b');
+  assert(b.kAt(b.t0 + b.dur * 0.5) > 0.3 && b.kAt(b.t0 + b.dur * 0.5) < 0.7 && b.kAt(b.flashT) > 0.95, `?black=b: half dark half way through the charge (${b.kAt(b.t0 + b.dur * 0.5).toFixed(2)}), all of it at the cue`);
+  assert(O.c.depth > O.a.depth && O.c.over === O.a.over && O.b.depth === O.a.depth, 'c is a deeper a, b a slower a: one dimension each');
+  // --- every cancel path lets go (mode b: dark from the start)
+  const cancels = [
+    ['a stagger', () => d.debug.stagger()],
+    ['a posture break', () => d.debug.postureBreak()],
+    ['a Lab interrupt (another move)', () => d.debug.trigger('plumThrust')],
+    ['a retry', () => { game.events.emit('game:retry', {}); d.debug.reset(); }],
+    ['his death', () => d.debug.kill()],
+  ];
+  for (const [what, fn] of cancels) {
+    const c = tide('b', { at: 0.9, fn });
+    const late = c.ks.filter((x) => x[0] > c.cutT + O.drop + 0.2 && x[0] < c.cutT + 1);
+    assert(c.cutT !== null && c.flashT === null && c.kAt(c.cutT - DT) > 0.2 && late.length > 5 && late.every((x) => x[1] === 0), `${what} at 0.9 s: the dark (${c.kAt(c.cutT - DT).toFixed(2)}) is gone within ${O.drop} s, no cue`);
+    if (what === 'his death' || what === 'a retry') {
+      d.debug.reset();
+      game.flow.debug.toState('boss');
+      d.debug.setAI(false);
+      run(G, 0.5);
+    }
+  }
+  // --- the red trail: the cut red from the flare on; nothing before it; not on another blow
+  const fx = d.fx, ink = fx._ink, sw = fx.sweep;
+  const trail = (mode, move) => {
+    RT.setRedTrail(mode);
+    settle(G, 8);
+    home(G);
+    place(G, 3);
+    run(G, 0.3);
+    let inSweep = false, firstRed = null, flashes = 0;
+    const reds = [];
+    fx.sweep = (...x) => { inSweep = true; try { return sw.apply(fx, x); } finally { inSweep = false; } };
+    fx._ink = (...x) => { if (inSweep && x[11] === K_FIRE) reds.push(game.time); return ink.apply(fx, x); };
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.tell === TELL.RED) { flashes++; if (firstRed === null) firstRed = game.time; } };
+    d.debug.trigger(move);
+    run(G, 4, () => game.mouseGround.set(d.position.x, 0, d.position.z), () => d.mode !== 'act' && game.time > (firstRed ?? Infinity) + 1.2);
+    G.watch = null;
+    fx.sweep = sw;
+    fx._ink = ink;
+    return { reds, firstRed, flashes };
+  };
+  const off = trail('0', 'twinEmbers');
+  const on = trail('a', 'twinEmbers');
+  assert(off.flashes === 2 && off.reds.length === 0, `?redTrail=0: Twin Embers (${off.flashes} red cues) leaves no red cut`);
+  assert(on.flashes === 2 && on.reds.length > 4 && on.reds.every((t) => t >= on.firstRed), `?redTrail=a: its cuts lay ${on.reds.length} red strokes, none before the first flare`);
+  const white = trail('a', 'plumThrust');
+  assert(white.flashes === 0 && white.reds.length === 0, `... and a parryable blow (Plum Thrust) none (${white.reds.length})`);
+  RT.setRedTrail('0');
+  B.setBlack('0');
+  p.debug.god = false;
+  return G;
+}
+
 async function scenarioFlare() {
   out('\n== scenario FLARE (the flare is the only sign; a parried blue flare is countered; the black charged blow) ==');
   const { GUARD, TELL_STYLE, isFlare, dodgeOnly, tellDefaults } = await imp('src/combat/rules.js');
@@ -5866,6 +5977,7 @@ const SCENARIOS = {
   riposteplanted: scenarioRipostePlanted,
   deathblow: scenarioDeathblow,
   flare: scenarioFlare,
+  blackout: scenarioBlackout,
   fxlooks: scenarioFxLooks,
   telemetry: scenarioTelemetry,
   heavy: scenarioHeavy,

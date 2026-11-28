@@ -6,6 +6,7 @@ import { batchRigid } from '../../render/rigidBatch.js';
 import { LET_GO, letGoRow, letGoUniforms } from '../../render/letGo.js';
 import { damp, lerp, clamp, turnToward, yawTo, angleDiff, wrapAngle } from '../../core/math.js';
 import { TELL, TELL_STYLE, RESULT, POSTURE, tellDefaults, dodgeOnly, isFlare } from '../../combat/rules.js';
+import { blackBody } from '../../combat/blackout.js';
 import { TUNING, SCALE } from './tuning.js';
 import { buildDrake, SHED } from './model.js';
 import { Rig, createPose, resetPose, NECK_MODE } from './rig/anim.js';
@@ -1340,7 +1341,7 @@ export class Dragon {
         if (b.flashed || !dodgeOnly(b.tell)) continue;
         const W = b.tell === TELL.BLACK ? WARN_BLACK : WARN;
         const k = clamp((a.T - b.at) / Math.max(0.05, b.impactIn - lead), 0, 1);
-        const v = (W.from + (W.to - W.from) * k) * (b.tell === TELL.BLACK ? BLACK_BODY : 1);
+        const v = (W.from + (W.to - W.from) * k) * (b.tell === TELL.BLACK ? BLACK_BODY * blackBody() : 1);
         if (v > w) {
           w = v;
           black = b.tell === TELL.BLACK;
@@ -1355,7 +1356,7 @@ export class Dragon {
         this._warnAction = null;
       } else {
         const f = 1 - age / W.decay;
-        const v = W.spike * f * f * (this._warnTell === TELL.BLACK ? BLACK_BODY : 1);
+        const v = W.spike * f * f * (this._warnTell === TELL.BLACK ? BLACK_BODY * blackBody() : 1);
         if (v > w) {
           w = v;
           black = this._warnTell === TELL.BLACK;

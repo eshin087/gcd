@@ -1,5 +1,6 @@
 import { TELL } from '../combat/rules.js';
 import { el, num } from './dom.js';
+import { Blackout, blackOn } from '../combat/blackout.js';
 
 // Screen-edge cues. The attack tells themselves live in the world (docs/COMBAT.md): a blow is read
 // from its windup and cued by a white glint, or by THE FLARE of a moment (ADR-118). The HUD adds no
@@ -10,6 +11,8 @@ import { el, num } from './dom.js';
 //         Nothing for an ordinary white glint.
 //   the charge   while a black blow charges ('combat:charge' { dur }) the edges darken slowly.
 //   cyan  the Ghostep pulse (driven by the HUD).
+// With the blackout on (?black=a|b|c, combat/blackout.js: the whole frame's grade, owned here as
+// `game.blackout` and stepped with the edges) a black blow darkens no edge: the picture does it.
 // The red flash runs on game time, so slow-mo and the Lab time scale stretch it with the attack.
 // A cancelled windup (stagger / posture break / death) or a reset drops it.
 
@@ -33,6 +36,9 @@ export class TellEdges {
     this.rx = NaN; // its world position (the striking part): weights the edges toward the attacker
     this.ry = NaN;
     this.rz = NaN;
+    // the blackout (combat/blackout.js): the whole picture's grade on a black blow, cleared with the edges
+    this.black = new Blackout(game);
+    game.blackout = this.black;
     const ev = game.events;
     ev?.on('combat:flash', (d) => this._onFlash(d));
     ev?.on('combat:charge', (d) => {
@@ -51,6 +57,7 @@ export class TellEdges {
   clear() {
     this.redAt = -1;
     this.chargeAt = -1;
+    this.black.clear();
   }
 
   _onFlash(d) {
@@ -58,6 +65,7 @@ export class TellEdges {
     // flashing the screen edge for each one made a meteor rain pulse the whole HUD
     if (!d || typeof d !== 'object' || d.hazard) return;
     if (d.tell !== TELL.RED && d.tell !== TELL.BLACK && !(d.tell === TELL.BLUE && d.flare)) return;
+    if (d.tell === TELL.BLACK && blackOn()) return (this.chargeAt = -1); // (the blackout is its cue)
     this.kind = d.tell;
     this.chargeAt = -1; // (a black blow's charge ends in its flare)
     this.redAt = num(this.game.time);
@@ -87,6 +95,7 @@ export class TellEdges {
       }
     }
     // a black blow charging: the edges darken toward its cue (dropped a moment after it should have come)
+    if (this.chargeAt >= 0 && blackOn()) this.chargeAt = -1;
     if (this.chargeAt >= 0 && !(red > 0) && g.state !== 'paused') {
       const age = num(g.time) - this.chargeAt;
       if (!(age >= 0) || age > this.chargeDur + 0.4) this.chargeAt = -1;
@@ -98,6 +107,7 @@ export class TellEdges {
       }
     }
     this.edges.update(realDt, red, sx, sy, W, H, this.kind);
+    this.black.update();
   }
 
   /** Cool cyan edge pulse for Ghostep (driven by the HUD). */
