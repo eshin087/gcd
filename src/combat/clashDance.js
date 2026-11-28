@@ -19,15 +19,18 @@
 //      Tian Lei, Xin Yi, from x1.5 on a full bar to x0.5 on an empty one) the steps replace that curve: never
 //      faster than today at any HP.
 //
-// Off (`?clash=0`, the default until the owner picks from film) every number is today's: the multiplier is 1,
-// the ring is the deflect chain's alone and the recovery is each boss's own.
+// The default in the game since the owner picked it from film (2026-11-27, "Make it default"). Off (`?clash=0`)
+// every number is as before: the multiplier is 1, the ring is the deflect chain's alone and the recovery is each
+// boss's own.
 
 import { DEFENSE } from './rules.js';
 
 const IDS = ['0', 'dance'];
 export const CLASH_IDS = IDS;
-export const DEFAULT_CLASH = '0';
-let mode = DEFAULT_CLASH;
+// the game's default: the dance (the owner's pick from the film, 2026-11-27). The headless sims keep today's numbers
+// unless a scenario sets it (their checks are written for them; duel / lord `clashdance` play it), as the flash chain
+export const DEFAULT_CLASH = 'dance';
+let mode = '0';
 
 /** '0' (today) or 'dance'. */
 export const clashMode = () => mode;
@@ -39,7 +42,7 @@ export function setClashMode(m) {
 }
 {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('clash') : null;
-  if (q && IDS.includes(q)) mode = q;
+  if (typeof location !== 'undefined') mode = q && IDS.includes(q) ? q : DEFAULT_CLASH;
 }
 
 const C = () => DEFENSE.clashDance;

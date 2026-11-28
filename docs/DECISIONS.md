@@ -7075,6 +7075,11 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The ring is not on the film (no sound): it is the owner's to judge by ear in
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
+- **Update (2026-11-27):** the owner watched the three films (Shen Hui, the Starless Lord, Xin Yi, today against
+  the dance) and said "Make it default". The game plays the dance with no switch (`DEFAULT_CLASH`); `?clash=0`
+  and the Lab's `clash` row `old` give the numbers before. As with the flash chain (ADR-246), the headless sims
+  keep it off unless a scenario sets it (their posture checks were written for the old numbers); duel and lord
+  `clashdance` play it. The ring is still the owner's to judge by ear.
 
 ## ADR-250 — Bai Wuji round 3: the glide (his melee motion, the owner's pick of three takes), the barrier opens easier, cuts x2.5 through it; his mercy counted in real time (2026-11-27)
 
