@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-four pieces of work since 0.4.0:
+One hundred and forty-five pieces of work since 0.4.0:
+- **Varr Nihil after the reference pack, to try** (2026-11-28, ADR-277). *Added (options, off by default: the owner
+  picks):* `?lordRef=a` draws Varr Nihil after the owner's reference pack (`docs/art/character-packs-v04/varr-nihil`):
+  his hood, closed helm, plate, war-skirt and the whole crimson-lined cape kept in all four forms (no form-by-form
+  wear), every blade split into two red-white rails with a dark slit between them (the one sword, the twin blades,
+  the staff's two ends, the cross sword and its side blades, the thrown blade too), a short cross-guard, a crimson
+  sash and clasp across his chest, the cape's sides standing off him so its lining frames him, cloth that lags and
+  overshoots further, a stronger crimson. `?lordRefMove=a` poses him after the strips: lower, wider guards (form 4
+  upright with the hands under the guard, form 3's hands wide on the staff), blows that load and sink into the
+  cut, the free fist out behind, Vigil's Fall to the floor, Starfall landing on the upright staff, bigger
+  reactions, a deeper glide; the same timing, zones, damage and travel (`lord.mjs . lordref` checks every move,
+  form and branch). The Lab's `lordRef` and `lordRefMove` rows.
 - **The Cinder Wyrm dies whole, every white spark shows, and its blue and red paws look apart** (2026-11-28, ADR-274). *Fixed:* the wyrm's
   death no longer breaks its neck: its head swings down on the neck (round the neck's base, always in its reach) and
   looks along it, so the neck falls as one curve; before, the throe flung the head 1.5 m up into a straight pole with

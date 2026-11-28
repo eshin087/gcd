@@ -8,6 +8,7 @@ import {
 import { toDragonLook } from '../ashDisciple/bodyArt.js';
 import { LORD_ART } from './bodyArt.js';
 import { lordLookNow, dressHood, dressPlate, dressCape } from './look.js';
+import { refLook, splitBlade, splitQuillons, crossGuard, sashGeometry, CAPE_REF } from './refLook.js';
 
 // The Starless Lord's outfit: gear items on the hero's skeleton, so he is built by the same
 // buildHero(U, loadout) and driven by the same animator. An armoured dark lord (the owner: black
@@ -69,6 +70,15 @@ export function saberParts() {
     ...[0, 1, 2, 3, 4].map((k) => band(-S.hiltB + 0.06 + k * 0.038, -S.hiltB + 0.06 + (k + 1) * 0.038 - 0.004, 0.0165, k & 1)),
   ]);
   const q = (s) => limbGeometry({ length: S.quillon, r0: S.r * 0.9, r1: S.r * 0.55, radial: 5, rings: 3 }).rotateY((s * Math.PI) / 2).translate(s * 0.02, 0, S.guard + 0.012);
+  if (refLook()) {
+    // (ADR-277, `?lordRef`: every blade two red-white rails with a dark slit between them (`core*`, drawn
+    // dark), a short cross-guard of dark metal on the hilt)
+    const A = splitBlade(1), Bk = splitBlade(-1), Q = splitQuillons(S.quillon, S.guard + 0.012);
+    return {
+      hilt: mergeGeometries([hilt, crossGuard(S.guard - 0.006)]), grip: mergeGeometries(grip), bladeA: A.rails, bladeB: Bk.rails, hiltB, quillons: Q.rails,
+      coreA: A.core, coreB: Bk.core, coreQ: Q.core,
+    };
+  }
   return { hilt, grip: mergeGeometries(grip), bladeA: blade(1), bladeB: blade(-1), hiltB, quillons: mergeGeometries([q(-1), q(1)]) };
 }
 
@@ -212,6 +222,13 @@ function buildPlate({ spine, chest, M, BODY, REST, mesh }) {
     const z = 0.146 + 0.02 + 0.006, y = ySp(1.412);
     mesh(spine, ring(0.031, 0.031, 0.005, 14).rotateX(Math.PI / 2).translate(0, y, z), M.flask);
     mesh(spine, sub(ring(0.02, 0.02, 0.007, 12).rotateX(Math.PI / 2).translate(0, y, z + 0.002), 1), M.armor);
+  }
+  // (ADR-277, `?lordRef`: the crimson sash from his left shoulder to the clasp on his right breast)
+  if (refLook()) {
+    const S = sashGeometry(CU, ySp);
+    mesh(spine, S.band, M.piping); // (front faces: `lining` draws only the inside of a sheet)
+    mesh(spine, S.rim, M.bevel);
+    mesh(spine, S.clasp, M.trim);
   }
   // the gorget round the throat (on the chest joint); the hood's drape lies over it behind
   mesh(chest, mergeGeometries([
@@ -427,7 +444,9 @@ const CAPE_LAG = 0.55, CAPE_MAX = 1.4;
 
 function buildCape({ chest, M, mesh, joint }) {
   const streamers = [];
-  LORD_CAPE.forEach((d, i) => {
+  const ref = refLook(), lag = ref ? CAPE_REF.lag : CAPE_LAG, max = ref ? CAPE_REF.max : CAPE_MAX;
+  LORD_CAPE.forEach((d0, i) => {
+    const d = ref ? CAPE_REF.sheet(d0, i) : d0;
     const base = joint(chest, ...d.at);
     base.rotation.y = d.ry; // local +Z = the sheet's outer face, +X = across it
     const [w0, w1, w2] = d.w, [L0, L1] = d.len;
@@ -450,7 +469,7 @@ function buildCape({ chest, M, mesh, joint }) {
     const g2 = foldLines(skirtSheet(L1, w1, w2, R1, 0.25, 0.03, d.seed + 7, fold, 0.62, 1), pleat(L0));
     mesh(s1, g2, M.hem);
     mesh(s1, g2, M.lining);
-    streamers.push({ segs: [s0, s1], len: d.len, out: d.out, lag: CAPE_LAG, max: CAPE_MAX, w: d.w, arm: 0 });
+    streamers.push({ segs: [s0, s1], len: d.len, out: d.out, lag, max, w: d.w, arm: 0 });
   });
   return { streamers };
 }
@@ -472,7 +491,16 @@ function buildSaber({ sword, M, mesh }) {
   b.scale.z = S.tipB - S.hiltB;
   const q = named('lordQuillons', G.quillons, M.flask, 0);
   hb.visible = b.visible = q.visible = false;
-  return { keep: [a, hb, b, q] };
+  const keep = [a, hb, b, q];
+  if (G.coreA) {
+    // the split blades' dark slits: lord.js _showForm keeps each with its blade (shown, scaled)
+    const ca = named('lordCoreA', G.coreA, M.armor, S.guard), cb = named('lordCoreB', G.coreB, M.armor, -S.hiltB), cq = named('lordCoreQ', G.coreQ, M.armor, 0);
+    ca.scale.z = a.scale.z;
+    cb.scale.z = b.scale.z;
+    cb.visible = cq.visible = false;
+    keep.push(ca, cb, cq);
+  }
+  return { keep };
 }
 
 /** The off-hand saber of form 2 (lord.js hangs it on a joint at the left wrist): hilt, blade, fist. */
@@ -495,7 +523,9 @@ export function buildOffSaber(M) {
   add(mergeGeometries([F.fingers, F.thumb, F.ridge]), M.armor);
   const blade = add(G.bladeA, M.flask, S.guard, 'lordBladeL');
   blade.scale.z = S.tip - S.guard;
-  return { root, blade };
+  const core = G.coreA ? add(G.coreA, M.armor, S.guard, 'lordCoreL') : null;
+  if (core) core.scale.z = blade.scale.z;
+  return { root, blade, core };
 }
 
 // ---------------------------------------------------------------- look options (the owner picks)
