@@ -118,7 +118,7 @@ export const PICKED = Object.freeze({
   wjMotion: 'b', // his melee motion: glide (the owner's pick of three takes, 2026-11-27; '0' = as first shipped)
   wjPolish: 'a', // his motion audit's fixes: kick returns, straight blows on the line (the owner's pick, 2026-11-27, ADR-255)
   wjCastHand: 'a', // phase 1's casting hand out of its pocket for the whole cast (the owner's pick, 2026-11-27, ADR-255; 0 / b the others)
-  wjStrike: 'a', // a cut on his barrier: the shell shows whole as his body's outline for the hit only (the owner's own description, 2026-11-28, ADR-266; 0 the ripple)
+  wjStrike: 'a', // a cut on his barrier: a faint patch of the shell where it landed (the owner's own description, 2026-11-28, ADR-266; 0 the ripple)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS

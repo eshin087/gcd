@@ -19,10 +19,11 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
-        title: "Bai Wuji's barrier shows his outline when your blade hits it, and he goes down quicker",
+        title: "Bai Wuji's barrier shows where your blade hits it, and he goes down quicker",
         notes: [
           "A cut that stops on Bai Wuji's barrier now still takes a little off his health, and he has less health to begin with: the fight is about a fifth shorter.",
-          'When your blade hits his barrier, it shows for that moment as a faint outline of his body, a hand away from him, and is gone again when the hit ends.',
+          'Every cut his barrier stops now shows it for a moment: a faint net of the invisible shield, right where your blade landed.',
+          'The ring on the floor that counted down his opened barrier is gone.',
         ],
       },
       {
