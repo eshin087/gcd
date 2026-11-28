@@ -6,8 +6,9 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 ## [Unreleased]
 One hundred and thirty-seven pieces of work since 0.4.0:
 - **The instant slash on your swing from every side, and your free hand at your hip** (2026-11-27, ADR-262, ADR-263, ADR-265). *Changed (the owner's call
-  after the films):* the light combo is production's again (its moves and timing; combo A stays behind `?combo=a`) and the
-  slash is production's straight instant slash, now laid on the swing itself (the straight line that best fits the path
+  after the films):* the light combo is the live one again (combo A as it ships, its moves and timing; the impact pass's
+  clock and hit numbers and the hits 4-5 options stay behind `?a45=`) and the slash is the live straight instant slash,
+  now laid on the swing itself (the straight line that best fits the path
   the sword's point swept, as the camera sees it), so it matches the sword from every side: facing the camera, side-on or
   away (before, it was drawn across what it hit and crossed the swing from the side and the front); no part of it behind
   you. Your free hand rests at the side-front of the left hip with the elbow out, so from behind the arm shows past the
@@ -15,8 +16,8 @@ One hundred and thirty-seven pieces of work since 0.4.0:
   of sparks. *Added, to compare (not the default):* `?slashtone=soft|faint|thin` (the slash dimmer and thinner without its
   white flash; fainter still without its hairline; one fine stroke); `?slash=dline` the slash printed in thin steel
   digits, `?slash=slice` the digits along the blade's exact path (`?slice=green`, `?slicewhen=end`,
-  `?sliceform=facet|jag`), `?slash=arc` the crescent; `?combo=a` with `?a45=a|b|c` (combo A's hits 4-5 without the
-  thrust); `?endslash=enemy` the slash across what it hit as before; `?offhand=guard|side|auto` (the Lab's `slash`,
+  `?sliceform=facet|jag`), `?slash=arc` the crescent; `?a45=a|b|c` (combo A's hits 4-5 without the thrust),
+  `?combo=0` the chain before combo A; `?endslash=enemy` the slash across what it hit as before; `?offhand=guard|side|auto` (the Lab's `slash`,
   `slashtone`, `slice`, `slicewhen`, `sliceform`, `combo`, `a45`, `endslash` and `offhand` rows). *Fixed:* the free hand
   no longer passes through his body.
 - **Harder-hitting swings, and slashes that stay in front of you** (2026-11-26, ADR-244). *Changed:* a heavy's

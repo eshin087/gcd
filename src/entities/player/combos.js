@@ -26,13 +26,14 @@ const F = (hitstop, shake, punch, kick, lunge) => ({ hitstop, shake, punch, kick
 const FIN = { kind: 'light', heavy: true, contact: 'sweep' }; // a finisher that is not the slam
 export const COMBOS = {
   a: {
-    name: 'Iai', feel: 'iai', hand: 'belt',
+    // (as it ships on main, the game's auto attack since PR 167: feel snap, production's impact numbers; the owner,
+    // 2026-11-27, ADR-265: "use the existing production auto attack combo and animation". The impact pass's own clock
+    // and hit numbers (feel `iai`, `F`) stay with the hits 4-5 options below)
+    name: 'Iai', feel: 'snap', hand: 'belt',
     hits: [
-      // (hit-stop by the tiers of docs/ANIMATION.md 5.4: the lights 0.065-0.07 s, the thrust a medium 0.08,
-      // the finisher a heavy 0.15)
-      hit('drawCut', 0.09, 0.1, 0.28, 0.28, { turn: 0.3 }, null, F(0.065, 0.16, 0.5, 0.14, 0.75)),
-      hit('flatBackhand', 0.09, 0.1, 0.28, 0.28, { turn: -0.4 }, null, F(0.065, 0.16, 0.5, 0.14, 0.75)),
-      hit('risingSlash', 0.1, 0.11, 0.28, 0.28, { hop: 0.12 }, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),
+      hit('drawCut', 0.09, 0.1, 0.28, 0.28, { turn: 0.3 }),
+      hit('flatBackhand', 0.09, 0.1, 0.28, 0.28, { turn: -0.4 }),
+      hit('risingSlash', 0.1, 0.11, 0.28, 0.28, { hop: 0.12 }),
       ...[0, 1], // hits 4 and 5: A45 below (`?a45=`)
     ],
   },
@@ -86,8 +87,8 @@ export const COMBOS = {
 const SMOOTH5 = ['smooth', 'early2', 'late18'];
 export const A45 = {
   '0': [
-    hit('risingThrust', 0.09, 0.09, 0.28, 0.28, null, null, F(0.08, 0.18, 0.7, 0.16, 1.0)),
-    hit('heavyCrush', 0.24, 0.13, 0.45, 0.3, null, FIN, F(0.15, 0.5, 1.8, 0.3, 0.9)),
+    hit('risingThrust', 0.09, 0.09, 0.28, 0.28),
+    hit('heavyCrush', 0.24, 0.13, 0.45, 0.3, null, FIN),
   ],
   a: [
     hit('fallingBackhand', 0.1, 0.11, 0.28, 0.28, null, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),
@@ -148,10 +149,10 @@ export function setCombo(m) {
   comboNow = id;
   return true;
 }
-// (in the game production's combo again (the owner, 2026-11-27, ADR-265: "use the existing production auto attack combo
-// and animation"; combo A had been the baseline since 2026-11-26), unless `?combo=` picks another; the headless sims
-// keep production's defs too)
-export const DEFAULT_COMBO = '0';
+// (in the game the owner's baseline, combo A as it ships on main (2026-11-26: "lets use this as the baseline"; 2026-11-27,
+// ADR-265: "use the existing production auto attack combo and animation"), unless `?combo=` picks another ('0' the
+// chain before it); the headless sims keep the chain's defs, which their checks are written for)
+export const DEFAULT_COMBO = 'a';
 setA45('0');
 {
   const a = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('a45') : null;

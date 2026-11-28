@@ -11,7 +11,8 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 attack combo and animation and instant slash effect but make sure the slashes look good in every angle and also give me
 variations of the slash effect being more subtle and not so bright".
 
-**Done:** in the game the light combo is production's again, the slash production's instant slash line in strokes laid
+**Done:** in the game the light combo is the live one again (combo A as it ships on main: feel snap, its own hits and
+timings; I first set the chain from before PR 167, `?combo=0`, and the owner caught it), the slash production's instant slash line in strokes laid
 on the swing's path (ADR-263's `path`: 0.04-0.17 m off the point's path on the screen facing four ways), and the free
 hand the belt with any combo (browser only; the sims keep `auto`). `?slashtone=soft|faint|thin` (the Lab's `slashtone`
 row): dimmer and thinner without the flash; fainter without the hairline or the smear; one fine stroke. Filmed the four

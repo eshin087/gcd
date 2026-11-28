@@ -103,7 +103,7 @@ export const RELEASES = [
         date: '2026-11-27',
         title: 'The instant slash on your swing from every side, and your free hand at your hip',
         notes: [
-          'The light combo is back to its first moves. Each swing\'s straight slash is now laid on the swing itself, so it follows your sword from every side: facing the camera, side-on or away.',
+          'The light combo plays as it did before this round. Each swing\'s straight slash is now laid on the swing itself, so it follows your sword from every side: facing the camera, side-on or away.',
           'Your free hand rests at the front of your left hip with the elbow out, where you can see it from behind, instead of being flung about. A landed blow throws the camera along the blade.',
         ],
       },

@@ -7786,8 +7786,10 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Context:** the owner, of ADR-263's films: "i dont like any of this. lets just incorporate the new left hand animation
   and use the existing production auto attack combo and animation and instant slash effect but make sure the slashes look
   good in every angle and also give me variations of the slash effect being more subtle and not so bright".
-- **Decision:** in the game the light combo is production's (`DEFAULT_COMBO` '0'; combo A and its hits 4-5 options stay
-  behind `?combo=a`, `?a45=`), the slash is production's instant slash line in strokes (`line`, ADR-240) laid on the
+- **Decision:** in the game the light combo is the live one, combo A exactly as it ships on main (feel `snap`, its five
+  hits and timings, production's hit numbers; at first this round set the chain before it, `?combo=0`, which the owner
+  caught: "im not seeing the same auto attack as the production combo"); the impact pass's feel `iai` and per-hit numbers
+  live only in the hits 4-5 options (`?a45=a|b|c`). The slash is production's instant slash line in strokes (`line`, ADR-240) laid on the
   swing's own path (`path`, ADR-263: matches the sword facing four ways, nothing behind him), and the free hand is the
   `belt` with any combo (`DEFAULT_OFFHAND`, browser only: the sims keep `auto`). The impact pass (ADR-244: the kick and
   sparks on a landed blow, the smear) stays. `?slashtone=` gives three subtler looks to pick from: `soft` (colours × 0.55,
@@ -7796,4 +7798,4 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   slice and its shapes stay behind `?slash=`.
 - **Consequences:** the default slash is a stroke line again (the `slice` scenario checks the default and each tone:
   every swing drawn, each subtler tone's brightest and largest stroke under full's, no flash). The sims are unchanged
-  (production's defs and `auto` hand).
+  (the chain's defs and `auto` hand).

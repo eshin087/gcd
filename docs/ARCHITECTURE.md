@@ -1255,7 +1255,7 @@ side. The swing's end waits out a landed blow's bite (`SWING.bite`). Defaults: `
 The slash's tone (ADR-265, `SLASH_TONE`, `setSlashTone` / `slashToneMode`, `?slashtone=full|soft|faint|thin`, the Lab's
 `slashtone` row): under `line`, `_draw` scales the strokes' colours (`TCOL`, built when the tone is picked), size, life and
 opacity, drops the flash pass and the hairline where the tone has none; `_burst` and `_smear` scale by its `burst` /
-`smear`. In the game the defaults are production's combo (`combos.js` `DEFAULT_COMBO` '0'), the `line` slash and the
+`smear`. In the game the defaults are combo A as it ships (`combos.js` `DEFAULT_COMBO` 'a', feel `snap`, `?a45=0`), the `line` slash and the
 `belt` free hand (`offHand.js` `DEFAULT_OFFHAND`, set only where there is a `location`: the sims keep `auto`). The impact pass (ADR-244): `END.front` (no part of a line nearer than that ahead of him), `END.carry` (a
 whiff's strokes move at his ground speed, slowing), `IMPACT` (on a landed blow: `game.kick` along the slash, a shake,
 `_burst`: glyph sparks along it and steel heat in the fire field), `SMEAR` (`_smear`: steel heat over the blade's sweep
