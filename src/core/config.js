@@ -131,11 +131,13 @@ export const CONFIG = {
       //   guardPortrait  held upright (no room beside the stick): `lift` px above the ring
       split: {
         tiles: {
-          attack: { x: 0, y: 0, w: 92, h: 84 },
-          heavy: { x: 0, y: 84, w: 92, h: 66 },
-          dodge: { x: 92, y: 0, w: 80, h: 84 },
+          // (ADR-274, the owner: a second guard under ATTACK; the left hand's GUARD stays)
+          block: { x: 0, y: 0, w: 92, h: 56 },
+          attack: { x: 0, y: 56, w: 92, h: 84 },
+          heavy: { x: 0, y: 140, w: 92, h: 66 },
+          dodge: { x: 92, y: 56, w: 80, h: 84 },
         },
-        flask: { x: 103, y: 96, w: 58, h: 42 },
+        flask: { x: 103, y: 152, w: 58, h: 42 },
         // (ADR-274, the owner: closer to the stick) its left edge just over the ring's glyphs
         guard: { gap: -6, y: 0, w: 84, h: 100 },
         guardPortrait: { lift: 4, w: 100, h: 70 },

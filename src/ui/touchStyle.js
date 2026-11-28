@@ -250,10 +250,16 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-block { padding-bottom: 5px; }
 /* PAD LAYOUT split (ADR-131): the guard is the left hand's, a button of its own beside the stick */
 .tc-guard { display: none; box-sizing: border-box; padding-bottom: 5px; }
-.tc-root.split .tc-guard { display: flex; }
-.tc-root.split .tc-block { display: none; }
-.tc-guard .g { font-size: calc(26px * var(--tc-k, 1)); }
-.tc-guard .t { font-size: calc(9px * var(--tc-k, 1)); line-height: 1.3; }
+.tc-root.lguard .tc-guard { display: flex; }
+.tc-guard .g { font-size: calc(22px * var(--tc-k, 1)); }
+.tc-guard .t { font-size: calc(8px * var(--tc-k, 1)); line-height: 1.3; }
+/* the left hand's GUARD is drawn like the pad's tiles (ADR-274): the same corner brackets, a fainter frame,
+   and a lower resting opacity, so it sits in the picture instead of over it */
+.tc-guard { opacity: 0.4; border-color: rgba(207, 214, 230, 0.07); }
+.tc-guard::before { inset: 3px; opacity: 0.6; }
+.tc-guard.on { opacity: 1; }
+.tc-guard.on::before { opacity: 1; }
+.tc-guard .s { display: none; }
 .tc-guard::after {
   content: '';
   position: absolute;
@@ -285,33 +291,29 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-padlock {
   position: absolute;
   box-sizing: border-box;
-  padding: 5px;
+  padding: 7px;
   margin: 0;
   color: rgba(207, 214, 230, 0.55);
-  background: rgba(6, 9, 14, 0.35);
-  border: 1px solid rgba(207, 214, 230, 0.16);
-  border-radius: 50%;
+  background: transparent;
+  border: 0;
   pointer-events: auto;
   touch-action: none;
   -webkit-appearance: none;
   appearance: none;
   outline: none;
-  opacity: 0.7;
+  opacity: 0.34;
   -webkit-tap-highlight-color: transparent;
-  transition: color 0.15s, border-color 0.15s, opacity 0.15s, background 0.15s;
+  transition: color 0.15s, opacity 0.15s, background 0.15s;
 }
 .tc-padlock svg { display: block; }
 .tc-root.editing .tc-padlock {
-  opacity: 1;
-  color: #ffe2cc;
-  background: rgba(255, 138, 61, 0.22);
-  border-color: rgba(255, 138, 61, 0.85);
-  box-shadow: 0 0 12px rgba(255, 138, 61, 0.45);
+  opacity: 0.9;
+  color: #ffd2a4;
 }
 .tc-root.off.peek .tc-padlock { opacity: 0; }
 /* GUARD's padlock (ADR-274): only with the guard on the left hand */
 .tc-guardlock { display: none; z-index: 2; }
-.tc-root.split .tc-guardlock { display: block; }
+.tc-root.lguard .tc-guardlock { display: block; }
 .tc-root.editing .tc-guard { border-style: dashed; border-color: rgba(255, 138, 61, 0.7); background: rgba(255, 138, 61, 0.06); }
 .tc-edit-hint {
   position: absolute;

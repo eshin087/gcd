@@ -72,13 +72,19 @@ function urlTouch() {
 
 /** ?pad=split|classic and ?hold=1|0: the pad switches for this page load (a link to try one). */
 function urlPad() {
-  const o = { layout: null, hold: null, swipe: null };
+  const o = { layout: null, hold: null, swipe: null, lguard: null, rguard: null };
   try {
     const s = globalThis.location?.search;
     if (typeof s !== 'string') return o;
     const q = new URLSearchParams(s);
     const l = (q.get('pad') || '').toLowerCase();
-    if (PAD_LAYOUT.includes(l)) o.layout = l;
+    if (PAD_LAYOUT.includes(l)) {
+      o.layout = l;
+      o.lguard = l === 'split'; // (?pad=split: the guard on the left, as in ADR-131)
+    }
+    const flag = (k) => (q.has(k) ? !['0', 'false', 'off'].includes((q.get(k) || '').toLowerCase()) : null);
+    if (flag('lguard') !== null) o.lguard = flag('lguard');
+    if (flag('rguard') !== null) o.rguard = flag('rguard');
     if (q.has('hold')) o.hold = !['0', 'false', 'off'].includes((q.get('hold') || '').toLowerCase());
     if (q.has('swipe')) o.swipe = !['0', 'false', 'off'].includes((q.get('swipe') || '').toLowerCase());
   } catch {
@@ -146,7 +152,9 @@ export class TouchControls {
     this.editing = false; // the padlock is open: a drag on the pad moves it
     this._drag = null; // { id, x, y, ox, oy } while a finger drags the pad
     this.fit = 1; // the touch layer's scale from the screen (CONFIG.touch.pad.fit)
-    this.layout = 'classic'; // PAD_LAYOUT: 'split' = the guard on the left hand
+    this.layout = 'classic'; // PAD_LAYOUT, the right cluster's arrangement: 'classic' BLOCK beside ATTACK, DODGE under; 'split' DODGE beside, BLOCK under
+    this.leftGuard = false; // the GUARD button beside the stick (ADR-274: its own switch)
+    this.rightGuard = true; // the BLOCK tile in the right cluster (never both off)
     this.holdAttack = false; // a held ATTACK keeps cutting
     this.swipeDodge = true; // SWIPE DODGE (on by default, the owner's pick): a flick on the bare right half dodges that way
     this.swipes = new Map(); // pointerId → { x, y, t, done } (bare-screen fingers on the right half)
@@ -156,6 +164,9 @@ export class TouchControls {
     this._loadPad();
     const asked = urlPad();
     if (asked.layout) this.layout = asked.layout;
+    if (asked.lguard !== null) this.leftGuard = asked.lguard;
+    if (asked.rguard !== null) this.rightGuard = asked.rguard;
+    if (!this.leftGuard && !this.rightGuard) this.rightGuard = true;
     if (asked.hold !== null) this.holdAttack = asked.hold;
     if (asked.swipe !== null) this.swipeDodge = asked.swipe;
     this._errors = 0;
@@ -346,21 +357,28 @@ export class TouchControls {
    *  ('swipe': off / on); kept. */
   cyclePad(what) {
     if (what === 'size') this.padSize = PAD_SIZE[(PAD_SIZE.indexOf(this.padSize) + 1) % PAD_SIZE.length];
-    else if (what === 'layout') {
+    else if (what === 'layout' || what === 'lguard' || what === 'rguard') {
       this._releaseControls(); // every button is somewhere else now: nothing stays held
-      this.layout = PAD_LAYOUT[(PAD_LAYOUT.indexOf(this.layout) + 1) % PAD_LAYOUT.length];
+      if (what === 'layout') this.layout = PAD_LAYOUT[(PAD_LAYOUT.indexOf(this.layout) + 1) % PAD_LAYOUT.length];
+      else if (what === 'lguard') {
+        this.leftGuard = !this.leftGuard;
+        if (!this.leftGuard) this.rightGuard = true; // (one guard stays)
+      } else {
+        this.rightGuard = !this.rightGuard;
+        if (!this.rightGuard) this.leftGuard = true;
+      }
     } else if (what === 'hold') this.holdAttack = !this.holdAttack;
     else if (what === 'swipe') this.swipeDodge = !this.swipeDodge;
     else this.padPos = PAD_POS[(PAD_POS.indexOf(this.padPos) + 1) % PAD_POS.length];
     this._savePad();
     this._padLayout();
     if (this.stick.id === null) this._restStick();
-    return what === 'size' ? this.padSize : what === 'layout' ? this.layout : what === 'hold' ? this.holdAttack : what === 'swipe' ? this.swipeDodge : this.padPos;
+    return what === 'size' ? this.padSize : what === 'layout' ? this.layout : what === 'lguard' ? this.leftGuard : what === 'rguard' ? this.rightGuard : what === 'hold' ? this.holdAttack : what === 'swipe' ? this.swipeDodge : this.padPos;
   }
 
   _savePad() {
     try {
-      const o = { pos: this.padPos, size: this.padSize, layout: this.layout, hold: this.holdAttack, sw: this.swipeDodge, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)], goff: [Math.round(this.guardOff.x), Math.round(this.guardOff.y)] };
+      const o = { pos: this.padPos, size: this.padSize, layout: this.layout, lg: this.leftGuard, rg: this.rightGuard, hold: this.holdAttack, sw: this.swipeDodge, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)], goff: [Math.round(this.guardOff.x), Math.round(this.guardOff.y)] };
       globalThis.localStorage?.setItem?.(PAD_KEY, JSON.stringify(o));
     } catch {
       /* private mode: the choice lasts for this page */
@@ -421,6 +439,10 @@ export class TouchControls {
       if (PAD_POS.includes(o?.pos)) this.padPos = o.pos;
       if (PAD_SIZE.includes(o?.size)) this.padSize = o.size;
       if (PAD_LAYOUT.includes(o?.layout)) this.layout = o.layout;
+      // (a pad saved before the guards had their own switches: 'split' was the guard on the left)
+      this.leftGuard = typeof o?.lg === 'boolean' ? o.lg : o?.layout === 'split';
+      if (typeof o?.rg === 'boolean') this.rightGuard = o.rg;
+      if (!this.leftGuard && !this.rightGuard) this.rightGuard = true;
       if (typeof o?.hold === 'boolean') this.holdAttack = o.hold;
       if (typeof o?.sw === 'boolean') this.swipeDodge = o.sw;
       if (Array.isArray(o?.goff)) {
@@ -473,11 +495,13 @@ export class TouchControls {
     const k = fin(P.size[this.padSize], 1) * fit;
     const places = (h > w && P.posPortrait) || P.pos;
     const pos = places[this.padPos] ?? places.mid;
-    const split = this.layout === 'split' && !!P.split;
+    const split = this.layout === 'split' && !!P.split; // (the arrangement)
+    const lguard = !!this.leftGuard && !!P.split; // (the GUARD beside the stick)
     const from = split ? P.split.tiles : P.tiles;
     const tiles = {};
     let W = 0, H = 0;
     for (const id in from) {
+      if (id === 'block' && !this.rightGuard) continue; // (no BLOCK tile: the player turned it off)
       const t = from[id];
       tiles[id] = [t.x * k, t.y * k, (t.x + t.w) * k, (t.y + t.h) * k];
       W = Math.max(W, tiles[id][2]);
@@ -496,9 +520,9 @@ export class TouchControls {
       this.padOff.y = (py - pos[1] * fit) / fit;
     }
     this.padGeo = { k, cx: w - px, cy: h - py, reach, stick: P.stick * k, tiles };
-    // split: GUARD beside the stick's ring (held upright: above it), on the cluster's bottom line
+    // the left GUARD beside the stick's ring (held upright: above it), on the cluster's bottom line
     let guard = null;
-    if (split) {
+    if (lguard) {
       const rest = this._stickRest(), up = h > w, g = (up && P.split.guardPortrait) || P.split.guard;
       const gw = g.w * k, gh = g.h * k;
       const left0 = up ? Math.max(8, rest.x - gw / 2) : rest.x + RING_R * fit + fin(g.gap, 14) * fit;
@@ -523,6 +547,7 @@ export class TouchControls {
     setVar(u.root, '--tc-k', k.toFixed(3));
     setVar(u.root, '--tc-f', fit.toFixed(3));
     u.root.classList.toggle('split', split);
+    u.root.classList.toggle('lguard', lguard);
     const gs = this.btn?.guard?.el.style;
     if (guard && gs) {
       gs.left = px2(guard.left);
@@ -547,6 +572,7 @@ export class TouchControls {
       s.width = px2(r[2] - r[0]);
       s.height = px2(r[3] - r[1]);
     }
+    if (this.btn?.block) this.btn.block.el.style.display = tiles.block ? '' : 'none'; // (RIGHT GUARD off: no BLOCK tile)
     const f = fl, fs = this.btn?.flask?.el.style;
     if (f && fs) {
       fs.right = px2(px + f.x * k);

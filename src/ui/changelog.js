@@ -22,7 +22,9 @@ export const RELEASES = [
         title: 'Swipe to dodge on touch',
         notes: [
           'Touch: flick your thumb on the right half of the screen and the hero dodges that way at once (SWIPE DODGE in the pause menu turns it off).',
-          'With PAD LAYOUT → GUARD ON LEFT, GUARD now sits right by the stick, and its own padlock lets you drag it where your left thumb wants it.',
+          'With LEFT GUARD on, GUARD sits right by the stick, and its own padlock lets you drag it where your left thumb wants it. A second GUARD sits under ATTACK for the right thumb.',
+          'The left GUARD and the padlocks are drawn fainter so the controls stay out of your way.',
+          'New in the pause menu on touch: LEFT GUARD and RIGHT GUARD switches (hide either one), and PAD LAYOUT picks whether BLOCK sits beside or under ATTACK.',
         ],
       },
       {

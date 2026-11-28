@@ -10099,8 +10099,10 @@ async function scenarioTouch() {
     {
       const guard = B('guard'), root = cls('tc-root');
       assert(!!guard && !guard.classList.contains('tc-tile') && t.layout === 'classic' && t.holdAttack === false && t.padPoint('guard') === null, 'the default: one thumb (no GUARD on the left), no held attack');
+      assert(t.cyclePad('lguard') === true && t.padPoint('guard') !== null, 'LEFT GUARD → on: a GUARD beside the stick (the arrangement unchanged)');
       const lay = t.cyclePad('layout'), Gd = t.padPoint('guard'), A2 = t.padPoint('attack'), D2 = t.padPoint('dodge');
-      assert(lay === 'split' && root.classList.contains('split') && !t.padGeo.tiles.block && !!D2 && t.padPoint('block') === null, 'PAD LAYOUT → split: the cluster keeps ATTACK / HEAVY / DODGE, no BLOCK tile');
+      const Bs = t.padPoint('block');
+      assert(lay === 'split' && root.classList.contains('split') && !!t.padGeo.tiles.block && !!D2 && !!Bs && near(Bs.x, A2.x, 1) && Bs.y > A2.y + 40, 'PAD LAYOUT → split: ATTACK / HEAVY / DODGE and a second guard (BLOCK) right under ATTACK');
       // (ADR-274: close by the ring, its left edge just over the ring's glyphs)
       const gEdge = Gd ? Gd.x - t.guardGeo.w / 2 : NaN, ringEdge = t.stick.ox + 62 * t.fit;
       assert(Gd && Gd.x < innerWidth * 0.4 && gEdge > ringEdge - 10 && gEdge <= ringEdge + 2 && near(A2.x, A.x, 1e-6), `GUARD stands right against the stick's ring (its left edge ${gEdge.toFixed(0)} px, the ring's ${ringEdge.toFixed(0)}), ATTACK where it was`);
@@ -10108,6 +10110,13 @@ async function scenarioTouch() {
       assert(!held('@block') && (held('@heavy') || held('@dodge')), 'a touch where BLOCK stood goes to the nearest tile left, never to a guard');
       P('pointerup', 50, Bk.x, Bk.y);
       frames(1.4);
+      // the second guard under ATTACK (ADR-274) guards like the left one, and the thumb slides to it from ATTACK
+      P('pointerdown', 56, A2.x, A2.y);
+      P('pointermove', 56, Bs.x, Bs.y);
+      assert(held('@block') && B('block').classList.contains('on') && !held('@attack'), 'the second GUARD under ATTACK: a slide from ATTACK raises the guard');
+      P('pointerup', 56, Bs.x, Bs.y);
+      assert(!held('@block'), 'lifted: the guard drops');
+      frames(1.2);
       // the right thumb is on ATTACK, the left one taps GUARD: both held, and the guard has the hero
       settle(G); place(G, 6);
       const s0 = c('player:attack');
@@ -10149,6 +10158,16 @@ async function scenarioTouch() {
         t.resetPadOffset();
         assert(near(t.padPoint('guard').x, g0.x, 1e-6), 'RESET puts GUARD back too');
         frames(0.5);
+      }
+      // each guard can be turned off (ADR-274); one always stays; the arrangement can be swapped back
+      {
+        assert(t.cyclePad('rguard') === false && !t.padGeo.tiles.block && t.padPoint('block') === null && B('block').style.display === 'none' && !!t.padPoint('guard'), 'RIGHT GUARD → off: no BLOCK tile in the cluster, the left GUARD stays');
+        assert(t.cyclePad('lguard') === false && t.rightGuard === true && !!t.padGeo.tiles.block && t.padPoint('guard') === null, 'LEFT GUARD → off while the right is off: the right comes back (one always stays)');
+        assert(t.cyclePad('layout') === 'classic' && t.padPoint('block').x < t.padPoint('attack').x - 40 && near(t.padPoint('block').y, t.padPoint('attack').y, 1), 'PAD LAYOUT → classic: BLOCK beside ATTACK again');
+        t.cyclePad('layout');
+        t.cyclePad('lguard');
+        assert(t.layout === 'split' && t.leftGuard && t.rightGuard, 'both guards and the split arrangement restored');
+        frames(0.3);
       }
       // ---- HOLD ATTACK: off, a held ATTACK is one cut; on, the thumb rests there and he keeps cutting
       settle(G); place(G, 6);
@@ -10196,6 +10215,7 @@ async function scenarioTouch() {
       frames(0.6);
       assert(c('player:attack') === n0 && !held('@attack'), 'ATTACK lifted: the string ends');
       t.cyclePad('hold');
+      t.cyclePad('lguard');
       assert(t.cyclePad('layout') === 'classic' && !root.classList.contains('split') && !!t.padGeo.tiles.block && t.padPoint('guard') === null && !t.holdAttack, 'cycled back: one thumb, no held attack');
     }
   }
