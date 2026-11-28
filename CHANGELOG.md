@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-one pieces of work since 0.4.0:
+One hundred and forty-two pieces of work since 0.4.0:
+- **Shen Hui without a pause (to try: ?pressure=nonstop)** (2026-11-27, ADR-273). *Added (an option, off by default until the owner picks from the films):*
+  `?pressure=nonstop` makes the Ash Disciple fight without a pause, after a Phantom Blade Zero film: his moves hand
+  on to each other sooner (at 0.3 of the recovery, not half way), the flow almost always on, a breather only after
+  8 / 9 / 10 moves and shorter, his long strings (4 - 10 blows, red and blue inside) picked over his lone blows, and
+  the chase back in likelier. Each blow is a little lighter (x1.0, not x1.15), so his damage a minute stays as today.
+  Every tell, windup and opening is kept (a parried string's recoil, a break, the execution), and the fairness
+  guard holds (0 clashing cues). Phase 1 against a steady guard: 77 → 94 blows a minute, his longest pause in
+  reach 2.5 → 1.5 s. The Lab's `pressure` row; `duel.mjs . nonstop` measures it (opt-in), `nonstopswitch` checks it.
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s

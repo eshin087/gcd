@@ -76,7 +76,7 @@ blade mows what it passes low through, every floor mark tears the grass out in i
 `?meteorSource=b|a|off`, `?wallSource=a|b|off`, `?crack=off`, `?fireTrail=off` (every fire trail as before). The living world (ADR-163): `?life=off|all|<pieces>` (a comma list of
 `wind, litter, steps, weather, creatures, air, arrival, answer`) and `?lifeK=0.25..2` its strength; ON by
 default (the owner's pick; `?life=off` turns it all off; Lab: WORLD → the 'life' rows and the layers' buttons).
-The attack sounds (cues only on blue / red blows, recorded where loaded; every boss's blade or fist
+Shen Hui's pace: `?pressure=nonstop` (his moves hand on sooner, the long strings first, the same damage a minute; ADR-273; today's fight the default until the owner picks; Lab: `pressure`). The attack sounds (cues only on blue / red blows, recorded where loaded; every boss's blade or fist
 through the air): `?sfx=old` plays the sounds before (a tick on every tell, all synth; Lab: the 'sfx' row).
 The duelists' look switches (`?kindle=`, `?qi=`, `?ashLook=`, `?lordLook=`, `?floor=` ...; ADR-122): no
 parameter draws the owner's picks, `?looks=old` the looks before that pass, one switch its option

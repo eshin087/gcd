@@ -1334,6 +1334,16 @@ five additions proposed to the owner, who picked the order:
 - [ ] One answer per unblockable: jump a sweep (and kick off his head), grabs dodge-only, thrusts keep the mikiri
 - [ ] A sub-weapon and a swap strike (boss rewards: a few uses per fight; the swap strikes and refills the guard)
 
+### P5 — Non-stop pressure, after the owner's Phantom Blade Zero film (2026-11-27)
+- [x] Measure the pace first: the non-stop meter (`duel.mjs . nonstop`: in a move, gaps in reach, runs, blades
+      meeting, the mix), today and non-stop (ADR-273)
+- [x] Shen Hui without a pause behind `?pressure=nonstop` (data only; the Lab's `pressure` row; today the default)
+- [x] Fair: the parry-only and dodge-only bots win as often (30 seeds), his damage a minute as today
+- [x] Films of phase 1, today and non-stop, at the game camera, beats labelled (the draft PR)
+- [ ] The owner's pick from the films, and their hands on it (and on the iPhone)
+- [ ] Phases 2 and 3 on film; a parrying player's film once the pick is made
+- [ ] The other sword bosses (the Starless Lord, Lu Wusheng, Xin Yi), each measured on its own meter first
+
 ## Ship — Steam (Windows / Mac) and the app stores (iOS / Android) (planned 2026-11-25)
 The owner's goal: sell gcd on Steam and in the App Store / Google Play. The game stays a web game
 (Three.js, WebGL2) and ships inside a wrapper; no engine rewrite. Order: performance first (it shapes

@@ -1426,6 +1426,98 @@ sprint and catch up ... instead of the player able to kite it out easily")
 - He sometimes backsteps (30 %) when the hero is closer than 1.1 m, and sidesteps a charge
   held against him (45 %, once per 3 s).
 
+### Non-stop (`?pressure=nonstop`, 2026-11-27, ADR-273; off by default until the owner picks from the films)
+The owner, after a Phantom Blade Zero boss film: "nonstop sword clashes and attacks from the boss". Read from the
+film: the boss is almost never idle for more than about a second, she throws strings of four to six blows with red
+and blue mixed in, and when a string ends she comes straight back in. Piloted on Shen Hui; one switch, `?pressure=`
+(`0` today, the default; `nonstop`), the Lab's `pressure` row, live. All of it is data, `TUNING.nonstop`
+(`ashDisciple/tuning.js`), applied by `ashDisciple/pressure.js`; the shared engine (`duelist/brain.js`,
+`director.js`) is untouched, so every other boss is the same either way.
+
+**What was measured first** (`duel.mjs . nonstop`, opt-in; a steady defender that holds the guard, rolls red and
+never cuts, the hero 2.5 - 9 m from him): he was already inside a move 94 / 97 / 99 % of the time and his footwork
+between moves never lasted over 0.75 s. Every gap of over a second between his blows with the hero in reach was a
+hand-off between two moves, never inside one: the next move started half way through the recovery (a link or the
+flow), or he went to footwork after the whole recovery (the breather every 4 / 5 / 7 moves, or a flow that found
+nothing). So the pass changes how his moves hand on, not the moves.
+
+**What it changes** (with it on):
+- **The hand-off:** a link and the flow start at 0.3 of the recovery (`linkCut` / `chainCut`, today 0.5); the flow
+  roll 0.95 / 0.96 / 0.97 (0.6 / 0.72 / 0.82); a breather only after 8 / 9 / 10 moves in a row (4 / 5 / 7), of
+  0.15 - 0.3 / 0.1 - 0.25 / 0.1 - 0.2 s; footwork between moves 0.04 - 0.12 / 0.03 - 0.1 / 0.03 - 0.08 s.
+- **The strings:** his AI's weight for the strings of 4 - 10 blows x1.6 - 1.8 in phase 1 (Rain of Ashes, Chasing
+  Rain, Parting Wind, Drifting Cloud; from phase 2 Thousand Needles, Hundred Petals, Cinder Cross), the lone blows
+  x0.4 - 0.6 (they stay: openers, a blue to parry, a red to roll), Swallow Flicks and Crane Spins x0.8; the
+  strings' bias 2.2 (1.5 / 1.6 / 1.7).
+- **The chase back in:** every combo link's chance x1.5 / 1.4 / 1.3, a far or away pursuit (the glide in, the
+  thrust, the dash) x1.8 / 1.6 / 1.5, never over 0.9.
+- **His damage a minute as today:** every blow x1.0 instead of x1.15 (`damageScale`): about as many more blows as
+  that takes off each (the owner's rule: harder is more pressure, not more damage).
+
+**What it keeps:** every tell, windup and floor (a move's first windup 0.42 s, a string's impacts 0.32 s apart, the
+glint 0.3 s before), the fairness guard (never two different answers within 0.3 s: 0 conflicts in 9 phase runs of
+120 s with it on), and every opening's length: the recoil after the last blow of a string is parried, a stagger, a
+reel, a posture break and the execution end in the old `openingGap` whatever the pace, and only a move that ended
+on its own hands on early. The breathing room is what the hero earns, not him standing about.
+
+**The clash dance stays as it is** (on in the game since the owner picked it, 2026-11-27): it already pays for
+parries in a row inside one of his strings, and longer strings give it more to pay; it is not part of this switch.
+The meter plays it on both ways, as the game does.
+
+**Measured** (`duel.mjs . nonstop`, seeds 4242 / 7 / 99, 90 s a phase; `guard`: the steady defender above;
+`fence`: a near-perfect fencer that parries every white and blue blow, rolls red and cuts into every opening; clash
+dance and flash chain on):
+
+His pace, against the steady guard (`guard`; "swings" counts an authored feint's swing too, as a watcher sees it;
+"in reach": the hero within 4 m at both blows; a run: his blows no more than 0.8 s apart):
+
+| phase | in a move % | median gap (s) | longest gap in reach (s) | gaps in reach over 1 s / over 1.25 s a minute | blows a minute | run of blows (mean / longest) | blows a move | white / blue / red / black % |
+|---|---|---|---|---|---|---|---|---|
+| P1 today | 94 | 0.62 | 2.49 | 7.1 / 4.7 | 77 | 3.0 / 10 | 2.7 | 63 / 22 / 14 / 1 |
+| P1 non-stop | 99 | 0.53 | **1.49** | 3.8 / 2.1 | **94** | 6.7 / 26 | 3.3 | 65 / 22 / 13 / 0 |
+| P2 today | 97 | 0.53 | 2.22 | 5.5 / 4.3 | 94 | 5.0 / 13 | 3.6 | 61 / 22 / 17 / 1 |
+| P2 non-stop | 99 | 0.52 | 1.87 | 4.1 / 1.9 | 101 | 9.8 / 37 | 3.4 | 59 / 23 / 17 / 0 |
+| P3 today | 99 | 0.49 | 1.84 | 2.9 / 1.9 | 102 | 6.4 / 19 | 4.4 | 65 / 18 / 17 / 0 |
+| P3 non-stop | 99 | 0.50 | 1.38 | 1.9 / 0.7 | 109 | 16.4 / 51 | 4.5 | 67 / 16 / 17 / 0 |
+
+Blades meeting, against the near-perfect fencer (`fence`; a minute; "his guard": the hero's cut met by his guard;
+breaks in 90 s):
+
+| phase | in a move % / reacting % | his blows a minute | blades meet a minute (parries + trade clashes + his guard) | breaks | white / blue / red / black % |
+|---|---|---|---|---|---|
+| P1 today | 27 / 67 | 35 | 54.3 (28.0 + 0.6 + 25.7) | 7.0 | 74 / 17 / 8 / 0 |
+| P1 non-stop | 30 / 65 | 38 | 57.1 (32.4 + 1.0 + 23.8) | 7.7 | 70 / 20 / 9 / 1 |
+| P2 today | 24 / 71 | 35 | 59.1 (27.7 + 1.0 + 30.4) | 6.3 | 66 / 19 / 15 / 0 |
+| P2 non-stop | 28 / 67 | 41 | 63.4 (35.7 + 1.3 + 26.4) | 7.3 | 76 / 15 / 10 / 0 |
+| P3 today | 27 / 68 | 40 | 61.1 (34.3 + 0.3 + 26.5) | 6.7 | 75 / 13 / 12 / 0 |
+| P3 non-stop | 30 / 66 | 43 | 63.9 (34.5 + 1.1 + 28.3) | 6.7 | 77 / 8 / 15 / 1 |
+
+Against the steady guard he is busier and his gaps shorter in every phase; against the near-perfect fencer he
+spends about two thirds of the fight reacting (his recoils, a posture break every 10 - 13 s and the execution, the
+deathblows the blue parries start) both ways: those are the hero's earned openings and the pass leaves them alone,
+so a parrying player sees longer strings between the same openings, not fewer openings.
+
+**Fair** (`duel.mjs . strategy`, the game's clash dance and flash chain, `GCD_PRESSURE=nonstop` against today):
+
+| bot | today | non-stop |
+|---|---|---|
+| parry-only, god mode (10 seeds) | won 10 / 10, 46 s | won 10 / 10, 43 s |
+| dodge-only, god mode (10 seeds) | won 10 / 10, 57 s | won 10 / 10, 51 s |
+| mixed, mortal at 85 % (10 seeds) | won 9 / 10, 40 s | won 10 / 10, 40 s |
+| parry-only, mortal at 85 % (30 seeds) | won 23 / 30, 49 s | won 23 / 30, 49 s |
+| dodge-only, mortal at 85 % (30 seeds) | won 12 / 30, 59 s | won 11 / 30, 58 s |
+
+Before the damage was evened out (x1.15 per blow with it on) the dodge-only bot at 85 % won 2 / 10 on the same 10
+seeds (4 / 10 today; the mixed one 9 / 10 both ways): the same miss rate on about a fifth more blows. In god mode the fencer takes 5 hits a minute in phase 2
+with it on (0.7 today): every one burning ground, which it never steps off (more burning strings lay more lines).
+
+**Films** (the same scripted player both ways: guard held through white and blue, red rolled, no cuts; the same
+seed; phase 1; the game camera, real speed, every beat labelled): his blows in the same 30 s 32 today, 42 non-stop.
+The two bodies stay apart as today (centre to centre: median 1.73 m today, 1.76 m non-stop; 5 % of frames under
+1.22 / 1.43 m; under 1 m 1.2 / 0.6 % of frames); each glint and block spark is gone within 0.1 - 0.2 s, beside the
+crossing, not over it. **Not filmed:** phases 2 and 3; a parrying player (the films with one were his posture break
+and the execution more than his pace). **Not measured:** a person's hands on it (the owner's playtest), the phone.
+
 ### The duel's moments (ADR-062)
 Sekiro / Phantom Blade Zero beats, each read from his data (`moves.js` beat flags, `tuning.js`):
 - **Full deflect** — parry every hit of a string of ≥ 5 (Rain of Ashes 7, Thousand Needles 5, and

@@ -5,6 +5,35 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — Shen Hui without a pause: the non-stop pass, behind a switch (ADR-273; `claude/enemies-ash-nonstop-pressure-a39acc`)
+
+**Owner:** a Phantom Blade Zero boss film: "nonstop sword clashes and attacks from the boss. with epic moments and
+combat feel". A non-stop pass approved, piloted on the Ash Disciple; the default stays today's fight until they pick.
+
+- **Measured first** (new opt-in `duel.mjs . nonstop`: in a move, footwork, reactions, gaps between his blows and
+  swings in reach, runs, blows a move, blades meeting, the mix; per switch value, bot and phase): against a steady
+  guard he was already inside a move 94 - 99 % of the time, footwork never over 0.75 s. Every gap over a second in
+  reach was a hand-off between two moves (linkCut 0.5 of the recovery, or footwork after the whole recovery). Against
+  a near-perfect fencer two thirds of the fight is his reactions (recoils, a break every 10 - 13 s, executions,
+  the deathblows its blue parries start): earned openings.
+- **Changed** (`?pressure=nonstop`, the Lab's `pressure` row; data only: `TUNING.nonstop` + `ashDisciple/pressure.js`
+  through his own `weigh` and `LINKS`; the shared engine untouched): links / flow at 0.3 of the recovery, flow ~0.95,
+  a breather after 8 / 9 / 10 moves and shorter, the 4 - 10 blow strings weighed up and the lone blows down, links
+  x1.3 - 1.5 and the pursuit back in x1.5 - 1.8, `damageScale` 1.0 (1.15) so his damage a minute stays as today.
+- **Results:** phase 1 against the guard: blows a minute 77 → 94, longest swing gap in reach 2.49 → 1.49 s, gaps over
+  1.25 s 4.7 → 2.1 a minute; P2 / P3 smaller moves the same way. 0 conflicts with it on (pace, 9 runs; its own meter
+  targets). Fair: 30 seeds at 85 %, parry-only 23 / 30 both, dodge-only 12 / 30 → 11 / 30; god mode both win, faster.
+  Films (phase 1, a guard-holding player, same seed, 30 s): 32 → 42 of his blows; spacing as today (median 1.73 /
+  1.76 m). Saved in the worktree's `films/nonstop/` (git-excluded).
+- **Clash dance:** not in the switch: it is already the game's default (the owner's pick that day) and pays for
+  parries inside a string; longer strings give it more.
+- **Lessons:** the fencer bot makes his posture break inside 10 s with the clash dance on, so films with it show the
+  break, not his pace; film pace with a guard-holding player. A guard press 0.25 s before the impact is a parry
+  (the window reaches that far): hold it 0.5 s before for a block. Python edits on Windows: `newline=''` or every
+  line turns CRLF.
+- **Next / open:** the owner's pick and playtest; phases 2 / 3 on film; then the other sword bosses, each on its own
+  meter (the Lord's called strikes and 0.4 s guard, Lu Wusheng's draw rhythm, Xin Yi's tricks).
+
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
 
 **Owner:** one tap on the path or BEGIN HERE must start; BOSS RUSH and BEGIN HERE looked bad, the menus should look

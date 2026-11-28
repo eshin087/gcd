@@ -7893,3 +7893,43 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   look options (2) were not offered as variants: the owner asked for the finish itself; `?menu=0` still shows
   the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
   to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
+
+## ADR-273 — Non-stop pressure for Shen Hui: his moves hand on sooner, the long strings first, the same damage a minute (`?pressure=nonstop`) (2026-11-27)
+
+- **Context:** the owner sent a Phantom Blade Zero boss film: "this is the type of combat i want in our game where
+  its nonstop sword clashes and attacks from the boss. with epic moments and combat feel", and approved a non-stop
+  pass, piloted on the Ash Disciple before it spreads to the other bosses. From stills of the film: the boss is
+  almost never idle for more than about a second, she throws strings of four to six blows with red and blue mixed
+  in, and comes straight back in when a string ends. Measured first (a new opt-in meter, `duel.mjs . nonstop`):
+  against a steady defender he was already inside a move 94 - 99 % of the time and his footwork never lasted over
+  0.75 s; every gap of over a second between his blows with the hero in reach was a HAND-OFF between two moves
+  (the next one starting half way through the recovery, or footwork after the whole recovery), never inside a move.
+- **Decision:** one switch, `?pressure=0|nonstop` (`0` today, the default until the owner picks from the films),
+  the Lab's `pressure` row, live. Data only: `TUNING.nonstop` in `ashDisciple/tuning.js` (`tuning`: a partial TUNING
+  written over his numbers while it is on and given back exactly when it goes off; `weight`: his AI's weight per
+  move; `links`: the combo links' chances scaled), applied by `ashDisciple/pressure.js` through his own hooks
+  (`weigh`, `get LINKS`). The shared duelist engine is not touched, so no other boss can move.
+  1. The hand-off: links and the flow at 0.3 of the recovery (0.5), the flow roll ~0.95, a breather only after
+     8 / 9 / 10 moves (4 / 5 / 7) and shorter, footwork between moves shorter.
+  2. The strings first: the 4 - 10 blow strings x1.6 - 1.8 in phase 1, the lone blows x0.4 - 0.6, the strings'
+     bias 2.2; every link x1.3 - 1.5, a pursuit back in x1.5 - 1.8, at most 0.9.
+  3. The same damage a minute: `damageScale` 1.0 (1.15) with it on. The owner's rule: harder is more pressure, not
+     more damage. Without it the dodge-only bot at 85 % won 2 of 10 fights instead of 4 (the same miss rate on
+     ~20 % more blows).
+  4. Unchanged: every tell, windup floor and the fairness guard; every opening's length (a parried string's
+     recoil, a stagger, a reel, the break, the execution: `openingGap`); only a move that ended on its own hands on
+     early. The breathing room is what the hero earns.
+  5. The clash dance (ADR-247) is not part of the switch: the owner made it the game's default the same day, it
+     already pays for parries in a row inside a string, and longer strings give it more to pay. The meter plays it
+     on both ways.
+- **Consequences:** measured with a steady defender (3 seeds, 90 s a phase), phase 1: blows a minute 77 → 94, the
+  longest gap between his swings with the hero in reach 2.49 → 1.49 s, gaps over 1.25 s 4.7 → 2.1 a minute; phases 2
+  and 3 the same way and smaller (they were busier already). Against a near-perfect fencer about two thirds of
+  the fight is his reactions both ways: the openings it earns, left alone. The parry-only and dodge-only bots
+  still win: 30 seeds at 85 %, parry-only 23 / 30 both ways, dodge-only 12 / 30 today and 11 / 30 non-stop; in god
+  mode both win every fight, faster (parry-only 46 → 43 s, dodge-only 57 → 51 s on 10 seeds). The phases still
+  ramp (every phase busier than the one before on every seed), less from phase 1 to 2 (x1.09, today x1.2), since it
+  lifts phase 1 the most; its own pace meter targets (`nonstop.tuning.pressure.meter`) say so. Open: the owner's pick
+  from the films and their hands on it; phases 2 and 3 on film; then the other sword bosses (the Starless Lord's
+  called strikes and 0.4 s guard, Lu Wusheng's draw rhythm and Xin Yi's tricks need their own measures, not these
+  numbers).
