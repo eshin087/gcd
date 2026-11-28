@@ -39,3 +39,33 @@ export const WYRM_STRIKE = Object.freeze({
   // the body also surges `surge` units toward the hero over the lead (only when it stands `surgeFrom` units off)
   bite: Object.freeze({ lead: 0.1, lower: 0.42, pitch: 0.22, settle: 0.12, ease: 0.35, headRate: 70, surge: 0.4, surgeFrom: 4 }),
 });
+
+/** THE PAW BLOWS' TELLS (pawTells.js; `?pawBlue=a|b|c`, `?pawRed=a|b`; '0' as they shipped; the owner's picks, the
+ *  defaults (2026-11-28, ADR-274): a the scythe, a the leap). The owner (2026-11-27): "the blue and red warning paw attacks from the dragon need to be
+ *  completely different ... it kinda uses the same animation". Both rose up out of the stance and came down in
+ *  front of the hero: the blue overhead (one paw raised over the shoulder) and the red stomp (reared, both paws
+ *  raised). The options split them on what the game camera reads first: blue is ONE paw, its body twisted or
+ *  coiled to one side, at the hero's height; red is the WHOLE body, both paws, symmetric. Model units (x SCALE)
+ *  in the root frame (x mirrored by the paw's side), pose fields (rig/anim.js createPose). */
+export const WYRM_PAW = Object.freeze({
+  // BLUE (the overhead's performance when its tell is blue; a white overhead keeps today's)
+  // a  THE SCYTHE: the paw swung out wide and back beside the flank at shoulder height, the chest twisted
+  //    away and the near wing folded out of its way, the head low on the hero; then a flat sweep across that
+  //    chops down on him
+  scythe: Object.freeze({ wind: [3.6, 2.7, 0.2], turn: 0.32, twist: 0.42, roll: 0.1, lower: 0.06, spreadNear: 0.15, spreadFar: 0.62, mid: [2.6, 2.2], follow: 0.3, ease: 1.6 }),
+  // b  THE JAB: crouched low, the paw drawn back and tucked under the chest, the wings folded tight, the head
+  //    down and still on him, a tremble at the end of the cock; then a straight punch along the ground
+  jab: Object.freeze({ wind: [0.8, 1.15, 0.5], lower: 0.34, pitch: 0.16, head: -1.1, spread: 0.12, tremble: [0.75, 0.06, 41], mid: 1.1, ease: 2.2, lunge: 0.8 }),
+  // c  THE UPPERCUT: the claws dragged low and back along the ground on the paw's side (grit off them), the
+  //    body leaning over them; then swept up from below into the hero, ending at his chest
+  upper: Object.freeze({ wind: [2.0, 0.35, 1.0], roll: 0.14, lower: 0.2, twist: 0.2, spreadNear: 0.3, top: 1.25, low: 0.35, ease: 2.4, grit: 0.4 }),
+  // RED (the stomp, every one)
+  // a  THE LEAP: it crouches, then the whole body jumps straight up off the ground with a beat of the wings
+  //    (its shadow left behind), hangs at the top with both paws raised and the wings wide; then it falls
+  //    onto both paws. Seen from the fight camera's height a blow that leaves the ground cannot be a paw's
+  leap: Object.freeze({ crouchEnd: 0.4, lower: 0.36, pitch: 0.16, alt: 2.6, airPitch: -0.32, paws: [1.6, 2.4, 3.2], flap: 0.55, flapHz: 2.4, spread: 1.0, head: [0, 6.4, 3.4] }),
+  // b  THE QUAKE: it sinks low, the wings flat over its back, both paws pressed out wide on the ground, the
+  //    head down between them, a shudder building through the body; at the end of the windup it heaves up
+  //    (the paws off the ground, the wings snapped open) and slams
+  quake: Object.freeze({ lower: 0.46, pitch: 0.18, spread: 0.0, paws: [2.4, 3.1], head: [0, 1.6, 4.6], shake: [0.05, 37], heave: 0.78, heavePitch: -0.5, heaveLower: -0.18, heavePaws: [1.7, 2.6, 3.0], heaveSpread: 0.95 }),
+});

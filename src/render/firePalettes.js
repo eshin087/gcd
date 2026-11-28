@@ -101,3 +101,9 @@ export const FIRE_SMOKE = { color: [0.085, 0.078, 0.074], back: 0.42 };
 
 /** The kinds a blob can be (FireField.spawn's `kind`): each has its own channel of the heat buffer. */
 export const FIRE_KIND = { fire: 0, smoke: 1, void: 2, steel: 3 };
+/**
+ * Added to a blob's kind: SEEN, drawn over the scene (no soft depth test). For a timing cue only (a
+ * boss's white / blue glint, DuelFx._drawGlint): a cue must be seen whatever stands between it and the
+ * camera (the wyrm's own paw and wing hid its claw glints; 2026-11-27).
+ */
+export const FIRE_SEEN = 4;

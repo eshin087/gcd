@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-28 — Swipe to dodge on touch, the guard on the left to try (ADR-274; `ui/touch-swipe-dodge`)
+## 2026-11-28 — Swipe to dodge on touch, the guard on the left to try (ADR-278; `ui/touch-swipe-dodge`)
 
 **Owner:** too slow to parry or dodge on the phone compared with mouse / keyboard / controller; picked "guard on the
 left hand as an option and swipe to dodge" to test first.
@@ -35,6 +35,174 @@ left hand as an option and swipe to dodge" to test first.
   ATTACK, DODGE under); `?pad=split` only turns the left BLOCK on; old saves take the default arrangement (`v: 2`).
 - **Open:** whether GUARD should be the default layout; a touch timing
   allowance if parries are still late.
+
+## 2026-11-28 — Varr Nihil after the reference pack (ADR-277; `enemies/varr-ref-anim`)
+
+**Goal:** the owner's reference pack for Varr Nihil (`docs/art/character-packs-v04/varr-nihil`, kept out of the repo:
+CLAUDE-HANDOFF.md, COVERAGE.md, inventory.json, fifteen sheets; pages 13 - 15 correct the earlier ones) turned into
+his look and his motion, in stages, with no change to balance, and filmed before / after at the game camera. The
+owner approves the art; both pieces sit behind switches until then.
+
+- **Stage 1, the look (`?lordRef=a`, read when his rig is built; `starlessLord/refLook.js`):** no form-by-form
+  dressing (the hood, helm, plate, skirt and whole cape in all four forms, over `?lordLook=b`); every blade split:
+  two rails of the blade's light meeting at the point with a dark slit (`armor`) between them, for the main blade,
+  the staff's back blade, the off-hand blade and the cross-hilt's side blades (`blades.cores`, kept shown and scaled
+  with their blades in `_showForm`); a short dark cross-guard; the blade field draws two rails of steel half a cell
+  each side and no middle stroke, its heat sheath pushed out and lower, the mesh's bloom halved (without those the
+  slit filled with glow even at 2 m); the thrown blade two rails; the crimson sash and clasp (`piping`: `lining` is a
+  back-face material and never showed from the front); the cape's side sheets turned out and standing off him, every
+  sheet lagging further; the crimson inks stronger.
+- **Stages 2 - 3, the poses (`?lordRefMove=a`, live):** a pose layer over whatever keys the shipped switches pick,
+  the same key times and eases (moves.js `refKey` / `refKeysOf`, `REALISERS_REF`, `CLIPS_BY_FORM_REF`, `clipsOf`;
+  poses.js `GUARDS_REF`, `FORM_POSES_REF`, `GLIDE_REF`; lord.js `staffHands`). Guards 9 cm lower on feet 12 cm wider
+  and a longer stride; form 1's free fist at his side; form 3's hands wide on the staff (`offAt` -0.14, reset to 0
+  every frame outside form 3: the duelist's poses never write it, and -0.24 leaked into form 4 and left the hand off
+  the staff); form 4 nearer upright, the hands under the guard (13 H1). Loads sink 0.05, strikes and follow-throughs
+  sink 0.09 and lean 0.1 rad, never below -0.4 (a crouch is not pushed deeper: the knees folded shut), feet 3 cm
+  wider, not in a flight; the free fist out behind through a one-handed cut. Vigil's Fall lower in its follow-through
+  (13 H2; its blade path kept: a steeper path bent his wrist to 70 - 73°), Starfall landing on the staff pointed down
+  ahead of his feet (13 H3; straight down, the animator swings a blade out of his legs). Reactions bigger, the carried
+  steps and the glide leaning further.
+- **Stage 4, the spells:** their looks, origins, lifetimes and paths are the owner's earlier picks and stay; what
+  changed is what they are cast with (the split blade in the thrown blade and the blade field). Rupture's floor
+  plates (14 Q1) are already floor pieces; nothing of his armour detaches.
+- **Kept on purpose:** the two-handed chops on a diagonal (ADR-251, the owner's pick; 05 C6 draws one straight down).
+- **Verified:** `lord.mjs . lordref` (2710 realisations time every beat the same on / off; the same seeded 24 s fight
+  lands 16 blows at the same times either way; wrist <= 61°, blade >= 0.10 m from the head; four split blades, no
+  dressing), `data,timing,forms,spells,swordmotion,lordform` green; an in-browser audit of all 67 moves before /
+  after (foot slide, knees, pops, the blade's distance to the hero at each impact, the staff grip); films of 16 moves
+  at the game camera (720p) and a close three-quarter view, before / after, impacts at the same times in every take.
+- **Open:** the owner's pick of both switches from the films; a per-move pass on what they name; the split at 720p is
+  two rails of letters (the blade mesh is ~2 px wide there); the crimson still reads faint at the game camera; the
+  form-3 off hand sits further from the staff's line (the audit's wrist-to-line 0.12 -> 0.26 - 0.3 m in the staff's
+  long moves); a little more foot slide in Lightning Verse and Wheel of Stones (+0.15 - 0.2 m) and the staff's
+  flurry (its flits); harder pops (the second difference of a joint's path) in Severance, Starfall, Void Waltz and
+  Vigil's Fall (+30 - 65 %); the phone.
+
+
+## 2026-11-28 — Agents check what their branch changed before a PR; CI runs the full set (ADR-276; `test/changed-suites`)
+
+**Goal:** the owner saw the later chats take longer to open PRs. Each agent ran the full `npm test` before
+its PR (ADR-205), about 75 minutes of work on 8 shared slots, so agents near a PR at once queued for them.
+
+- **The rule (CLAUDE.md, "Go easy on the owner's PC"):** before a PR, run `npm test -- --changed`, not the
+  full set. CI runs every task on every PR and auto-merge waits for it, so the gate is unchanged.
+- **`--changed` (`tests/run.mjs`, rules in `tests/changed.mjs`):** the files changed since the branch left
+  `origin/main` (committed, staged, unstaged, new), mapped to tasks by first-match rules: a boss (folder,
+  level, set) to his suite, the wyrm to `integ`, the living world to `life`, the dragon print to its
+  suites, a suite or test helper to the suites that use it, docs to `changelogcheck`, and any other
+  `src/` file to everything. `--list` prints the pick and why; `--base <ref>` compares with another ref.
+- **`changedcheck` (a new task, ~1 s):** every boss folder and level has a rule, every task a rule names
+  exists, the files `BOSSES` names exist, and a handful of example picks.
+
+**Verification:** `changedcheck` passes; `--changed --list` on this branch picks everything (it changes
+the runner); the rules replayed over the last 60 merged PRs narrow 9. The other 51 touch shared code,
+mostly `duelist/lookSwitch.js`. The full `npm test` was not run locally, on purpose: CI runs it on the PR.
+
+**Open:** narrowing `duelist/lookSwitch.js` would need its diff read by section (each boss's switches
+sit in its own block); left for later, if the owner wants more out of `--changed`.
+
+---
+
+## 2026-11-28 — The wyrm's death neck, every white spark seen, the scythe and the leap (ADR-274; branch `dragon/death-neck-tells`)
+
+**Owner:** "when the dragon dies and flies up, the head and neck looks unnatural ... like the neck is broken";
+"make sure every normal attack shows the white spark hit"; "the blue and red warning paw attacks ... need to be
+completely different ... think of multiple different animations that stand out".
+
+**Measured first** (headless Edge, `__tick`, the neck's joints per frame and stick figures of the chain; each cue
+rendered twice, with the scene's depth and with nothing in front):
+- The death: the throe's head goal lay 8 m off a 6 m neck (the neck pulled straight up, a pole), the limp head was
+  laid level whatever the neck did (60 - 62° off the neck's end from 0.2 to 1.3 s), the goal's straight line to the
+  ground buckled the neck into a zig-zag as it landed.
+- The glints: the wyrm's own paw, foreleg and wings hid 92 - 100 % of its claw glints; a wing blow's glint fell
+  off the screen. The fight camera looks down at 58°, so a paw raised and brought down (the blue overhead, the red
+  stomp) is foreshortened into the same growing blob.
+
+**Changed:** the death's head swings round the neck's base inside its reach, the throe's head up and forward,
+it looks along its neck, the dying head hangs at most ~31° off it (`?deathNeck=0` before). A glint's letters
+are drawn over the scene (`FIRE_SEEN`, a blob flag in the fire field) and kept inside the frame, every boss
+(`?glintSeen=0` before). The paw blows: `?pawBlue=a|b|c` (scythe, jab, uppercut) and `?pawRed=a|b` (leap, quake),
+`pawTells.js` + `WYRM_PAW`, the Lab's LOOKS rows; the owner picked from the films ("the leap and the scythe look
+good"): the scythe and the leap are the defaults. The owner also saw the head and neck "all weird" at the films'
+start: the film rig's `debug.reset()` left the wyrm in its sleep curl standing beside the hero (a state the game
+never shows: it wakes as you come near); re-filmed from its combat stance.
+
+**Verification:** integ `pawtells` (the glint's seen flag and shader; every paw option lands on its cue,
+0.00 - 0.03 s off; the death: off the neck 62° → 33°, the sharpest bend 36° → 32°, the head's fling 1.49 → 0.82 m);
+the glint audit over every wyrm melee move (claws 90 - 100 % seen); films at the fight camera (sent to the owner).
+Full `npm test` before the PR.
+
+**Open / next:** the owner's playtest of the scythe and the leap in the fight (and on the iPhone); the leap's
+height and hang may want tuning by feel.
+## 2026-11-28 — A new fight stance: the middle guard (ADR-275; `player/stance-four`)
+
+**Owner:** "lets change gcds combat default pose. the way he holds the sword and the angle of the sword doesn't
+look like a good fighting stance. give me 4 new combat stance for me to review and approve. show me the video clip
+of close and far all in one clip." Picked from the clip: **A, the middle guard**.
+
+- **The switch** (`refStance.js` `HOLDS`, `setHold` / `holdMode`, `?hold=`): a hold is the whole fight stance
+  (hands, blade, elbows, free hand, body, knees, feet). `setHold` copies the chosen one into `REF_READY`, so the
+  fight's habits (idles.js, `syncStandArm`) aim about its blade. Default `a`; `ref` the ADR-207 hold; `b` high
+  guard, `c` sword fingers (one hand), `d` low trailing (one hand). One-handed holds play no fight habits
+  (`holdHabits`: they keep both hands on the grip) and the stance's blend never puts the free hand on the grip.
+- **The film** (headless Edge, 1080p): per hold a close orbit beside the game camera at true size and x2 (the
+  duel's own framing pushed him to the bottom edge, so the far view is the game camera's pitch, distance and
+  FOV centred on him), then the four side by side. From straight behind at the game camera A, B and C read alike
+  (a blade up the screen); side-on they are four different shapes.
+- **Anatomy:** my in-page wrist measure said 42°; `heroref`'s said 73° (bar 60). A sweep in the harness found the
+  elbow's pole: tucked a little in (`rP` 0.45, -0.88, -0.15) the wrist is 54° at most over four facings with the
+  blade the owner saw (-4°, 30° up; raised to 36° later, below). The toes went back to ADR-207's turn (`heroweight`: the draw cut's
+  pivot turned the right foot 0.07 rad from the filmed -0.2, under half the pivot), and the free elbow points out
+  to his left (the full run's `looks`: the robe's sleeve wing in his chest on 23 % of frames with it down and in;
+  now 2.4 %, main 2.5; ADR-207 met the same). The full run's duel `contact`: a deathblow's last cut lands as he
+  is back in the hold, and the filmed blade (30° up) stood 10.5 cm in the duelist at 1.5 m (bar 8). Probed at
+  1.3 / 1.5 / 1.7 / 2 m: 36° up with the hands 3 cm higher clears him at 1.5 m (-0.1 cm), wrist 54°. B and D were tuned under 60 for the film (55°, 54° in-page).
+- **Checked:** `heroref` green (the hold, the blend, the three habits, every move out of it within ×1.5 + 10 cm of
+  the stance before, the guard from the hold); the hero suites; a film strip of a light chain, a block and a roll
+  out of the hold.
+- **Open:** the owner on the preview (lock-on duels, strafing); whether the turned-down holds b-d stay.## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
+
+**Goal:** two looks from the owner's Phantom Blade Zero reference (a boss fight they sent): a charged (black) attack
+drains the whole picture to dark grey, the boss alone readable with a white glint, colour back on the strike; a red
+string leaves a long thin red crescent on every cut. Options behind switches, filmed, a draft PR for the owner to pick.
+
+- **The blackout (`?black=0|a|b|c`, default `0`):** `combat/blackout.js` `Blackout` (`game.blackout`, owned and
+  stepped by `ui/tells.js`) drives the final pass's new `uBlack` grade: the world drains and dims, the actors are read
+  off the scene's ASCII flag (sceneRT alpha, five taps spread by 0.7 of a letter cell): the boss kept whole, the hero
+  60 %, a letter brighter than 0.5 - 0.85 keeps its light. The violet goes in it (`TELL_STYLE.black.pale`): the flare
+  undyed (white-hot), the charge a white point with pale motes, no violet body, no dark edges. a = dark over the last
+  0.3 s before the cue (the film), b = built through the whole charge, c = a darker. Hold 0.3 s past the cue, back
+  in 0.08 s of real time (a first version on game time stayed half dark through the strike's hit-stop).
+- **Cancels with no list:** whatever draws a charge calls `blackout.beat()` each frame (`DuelFx.charge`, so every
+  duelist and the wyrm; one line in the Fox's Howl); 0.15 s without a beat = cancelled, gone in 0.25 s. A retry /
+  a state change clears it at once. Checked: stagger, posture break, a Lab interrupt, a retry, his death (duel
+  `blackout`), the wyrm's stagger (integ `flare`).
+- **The red trail (`?redTrail=0|a|b`, default `0`):** a red cue opens a window to its impact + 0.14 s
+  (`DuelFx.tellFlash`), inside which `DuelFx.sweep` lays a line of low-heat fire just outside the tip's path. Blades
+  only (Shen Hui, the Lord, Lu Wusheng); fists and the wyrm's claws left out (their path lies on the contact).
+- **Films** (game camera, full frame, real speed, 60 fps, beats captioned; the hero holds his guard for the black
+  blow, no red hurt edge drawn): `films/adr-271/` in the worktree (not committed) and the shared notes folder's
+  `blackout-films/`: `black-ash-compare.mp4` / `black-wyrm-compare.mp4` (today | a / b | c), `red-ash-compare.mp4`
+  / `red-lord-compare.mp4` (today | a / b), and each take on its own.
+- **Perf:** `npm run perf` (RTX 4090; main saved first, then this branch, then `--black`, which pins the blackout
+  full on): the final pass 0.01 / 0.02 ms (1080p / the phone's size) on main and with the blackout off, 0.02 / 0.03 ms
+  pinned on (+0.01 ms GPU, the five flag taps); the whole frame 0.85 / 1.01 ms (Cinderwood) and 0.97 - 1.05 / 1.05 -
+  1.10 ms (Ashfall) in all three runs. Script: the blackout's step is a few multiplies; the frame's 2.6 - 2.9 ms moved
+  within run-to-run noise. No triangles or draws added (`cost.mjs` unchanged).
+- **The owner's picks:** blackout **b**, red trail **a**, made the defaults. Then: "we need all blackout attacks to end
+  with a devasting impact even if it misses the player ... the dragon blackout attack looks like it does nothing when
+  it misses". Added `combat/blackImpact.js` (`?blackImpact=a`, default): the black cue arms it, the beat's own
+  impact clock fires it (a duelist's `brain.act`, the wyrm's `brain.action`), hit or miss: a crater + breakables
+  struck at power 1.8 in 3.2 m, a shock front of dust 6.5 m (wyrm x 1.8), light, shake 0.45 - 0.85 + punch, a 0.07 s
+  held frame on a miss, an explosion + sub + music dip. No extra damage. A cancel before the impact lands nothing.
+  Checked: duel `blackout` (one blast at the impact on a guard and on a miss 12 m off, none with `0`, none after a
+  stagger), integ `flare` (Black maw missing a hero 16 m off). Films: `impact-ash-compare.mp4`,
+  `impact-wyrm-compare.mp4` (before | after on a miss, and on a guard). The pale charge now draws the fight's stream
+  (rnd) exactly as the violet one did and the red trail uses the look stream, so the looks never move a seeded fight.
+- **Open:** the black flare is white, the colour of a parryable glint (a streak in a dark frame, not the cross);
+  things drawn only in the fire field near the boss dim with the world unless bright; a red wake for fists and claws;
+  on the bare-handed bosses and the Fox's Howl the impact lands a stride in front of the body; the phone.
 
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
 

@@ -4,7 +4,7 @@ import { DIM, BODY, HAIR_CLUSTERS, HERO_SCALE, sheetOffset } from './model.js';
 import { SWINGS, FH } from './swings.js';
 import { atEase, fencerGuard } from './stances.js';
 import { idlesOld, idlesRef, idlesMode, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, easeRests, fightRests, stowHidden, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, FIGHT_ACTS_REF, EASE_REF_EXTRA, IDLES } from './idles.js';
-import { refStand, refReady, refGuard, guardMode, REF_GUARD } from './refStance.js';
+import { refStand, refReady, refGuard, guardMode, REF_GUARD, HOLDS, holdMode, holdHabits } from './refStance.js';
 import { offHandLook } from './offHand.js';
 import { feelLook, warpPhase } from './feel.js';
 
@@ -360,7 +360,7 @@ export function stand(p, A) {
         blend(p, p, SCR_FIGHT, f * f * (3 - 2 * f));
         // the free hand is drawn up before him first and takes the grip late in the change (with the
         // stance's own blend its straight way from the thigh to the grip ran through the coat at the hip)
-        p[P.twoHand] = smoothstep(0.35, 0.95, f);
+        p[P.twoHand] = smoothstep(0.35, 0.95, f) * (HOLDS[holdMode()]?.two ?? 1);
       }
     }
     // on the move the free hand lets go of the grip: it swings with the stride (loco, runArms.js)
@@ -3533,7 +3533,7 @@ export class HeroAnimator {
     }
     // which actions may play now (F.pool): the old ones at ease; ADR-186's at ease, or in the fight
     // (also locked on: the small habits of the guard), never while the stance is changing
-    const pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? 2 : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
+    const pool = old ? (still && !pl.lockOn && !(this.fightW > 0.05) ? 0 : -1) : still && this.fightW > 0.95 ? (holdHabits() || !idlesRef() ? 2 : -1) : still && !pl.lockOn && this.fightW < 0.05 ? 1 : -1;
     const calm = pool >= 0;
     if (!old) {
       if (!this.rests) this.rests = newRests();

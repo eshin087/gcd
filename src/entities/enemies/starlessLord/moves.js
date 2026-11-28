@@ -4,7 +4,8 @@ import { makeRealise } from '../duelist/realise.js';
 import { GUARD_CLIPS } from '../duelist/guard.js';
 import { lookOf } from '../duelist/lookSwitch.js';
 import { motionize } from '../duelist/tellPose.js';
-import { FORM_POSES, GUARDS } from './poses.js';
+import { FORM_POSES, FORM_POSES_REF, GUARDS } from './poses.js';
+import { refMove } from './refLook.js';
 import { TUNING } from './tuning.js';
 import { buildPace, paceOn, paceCue } from './pace.js';
 
@@ -1438,11 +1439,112 @@ export const CLIPS = {
 };
 
 /** Compiled reaction clips, one set per form (each round its form's guard). */
-export const CLIPS_BY_FORM = FORM_POSES.map((K) => {
-  const out = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k, K.compileClip(c.keys.map(([t, pose]) => ({ t, ...pose })), c.dur, { hold: !!c.hold })]));
+const compileClips = (K, edit = null) => {
+  const out = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k, K.compileClip(c.keys.map(([t, pose]) => ({ t, ...(edit ? edit(k, pose) : pose) })), c.dur, { hold: !!c.hold })]));
   for (const [k, c] of Object.entries(out)) c.name = k;
   return out;
-});
+};
+export const CLIPS_BY_FORM = FORM_POSES.map((K) => compileClips(K));
+
+// ---------------------------------------------------------------- after the reference pack (ADR-277)
+// `?lordRefMove=a` (refLook.js; '0' = as shipped): the reference pack's poses over whatever keys the
+// shipped switches pick (ADR-226's held tells, ADR-251's form, the pace's holds): the same key times, the
+// same eases, so every windup, impact, active window, zone, flash and cue lands where it did (the
+// realiser times a beat from its windup, never from its poses), and no root motion is added (bX / bZ are
+// pose offsets). What changes, from the strips (docs/art/character-packs-v04/varr-nihil, COVERAGE.md):
+//   - each form's guard lower on wider feet (poses.js GUARDS_REF), so every clip starts and ends there;
+//   - the load before a blow sinks a little (05 C1-C7 anticipation), the strike and its follow-through
+//     sink further and lean into the cut (05 contact / follow: "full commit, weight forward"); feet on the
+//     floor a little wider; not in the air (a flip's, a cartwheel's turn) and not on a leap;
+//   - the free fist thrown out behind in opposition through a one-handed cut (06 F1-F3, 15);
+//   - Vigil's Fall ends low with the point at the floor (13 H2, which replaces 08 M3);
+//   - Starfall lands with the staff upright, its lower end driven into the floor (13 H3, replaces 07 A6);
+//   - the reactions read bigger: the recoils further back, the stagger lower (03 R5 - R7); the carried
+//     backstep / sidestep lean further (02 L4 / L5).
+const REF = { load: 0.05, sink: 0.09, lean: 0.1, wide: 0.03, fist: [0.08, 0.02, -0.08], floor: -0.4 };
+// (a key already lower than `floor` keeps its own height: a crouch, a sweep or a kneel is not pushed deeper,
+// the knees would fold shut)
+const sinkTo = (bY, by) => Math.max(bY - by, Math.min(bY, REF.floor));
+const FLOOR = ANK + 0.02;
+const widen = (v, s) => (v.length === 2 ? [v[0] + s * REF.wide, v[1]] : v[1] <= FLOOR ? [v[0] + s * REF.wide, v[1], v[2]] : v);
+const clampReach = (v, r = 0.55) => {
+  const n = Math.hypot(v[0], v[1], v[2]);
+  return n > r ? v.map((x) => (x * r) / n) : v;
+};
+/** The move each beat belongs to (for the two corrections that name a move). */
+const MOVE_OF = new WeakMap();
+for (const [n, def] of Object.entries(MOVES)) for (const raw of def.beats ?? []) for (const b of alts(raw)) MOVE_OF.set(b, n);
+/** One key of a beat in the reference's poses. */
+function refKey(u, k, b, name) {
+  const o = { ...k };
+  const flight = Math.abs(k.pitch ?? 0) > 1 || Math.abs(k.roll ?? 0) > 1 || !!b.leap;
+  const hit = u >= 1 - 1e-6;
+  if (!flight) {
+    if (hit) {
+      if (k.bY != null) o.bY = sinkTo(k.bY, REF.sink);
+      if (k.pitch != null) o.pitch = k.pitch + REF.lean;
+    } else if (u > 0.3 && k.bY != null) o.bY = sinkTo(k.bY, REF.load);
+    if (Array.isArray(k.rF)) o.rF = widen(k.rF, -1);
+    if (Array.isArray(k.lF)) o.lF = widen(k.lF, 1);
+  }
+  // the free fist out behind in opposition (a one-handed cut with the main blade, the off hand free)
+  if (hit && Array.isArray(k.lH) && !((k.two ?? 0) > 0.5) && !(k.larm > 0) && !b.left && !voidBeat(b) && !Array.isArray(k.lsw)) {
+    o.lH = clampReach([k.lH[0] + REF.fist[0], k.lH[1] + REF.fist[1], k.lH[2] + REF.fist[2]]);
+  }
+  if (name === 'vigilFall' && hit && Array.isArray(k.sw) && u > 1.3) {
+    // 13 H2: the strike carried down to the floor, the weight forward, low
+    // (the body goes down to the floor with it, not the wrist: the blade's own path is kept, so the sword
+    // stays in line with the forearm)
+    o.bY = Math.min(o.bY ?? -0.3, -0.48);
+  }
+  if (name === 'starfall' && hit) {
+    // 13 H3: he lands with the staff upright before him, its lower end driven into the floor
+    // (pointed a little ahead of his feet: a blade aimed down through the legs is swung out of them by the animator)
+    Object.assign(o, { two: 1, sw: [0.0, -1.12], rH: [0.1, -0.04, 0.46], rP: [-0.8, -0.2, -0.1], bY: -0.42, pitch: 0.22, hdX: 0.1 });
+  }
+  return o;
+}
+const REF_KEYS = new WeakMap(); // beat -> (keys -> the reference's keys)
+function refKeysOf(b, keys) {
+  if (!Array.isArray(keys)) return keys;
+  let M = REF_KEYS.get(b);
+  if (!M) REF_KEYS.set(b, (M = new WeakMap()));
+  let r = M.get(keys);
+  if (!r) {
+    const name = MOVE_OF.get(b);
+    r = keys.map(([u, k]) => [u, refKey(u, k, b, name)]);
+    M.set(keys, r);
+  }
+  return r;
+}
+const REF_RECOVERY = new WeakMap();
+function refRecoveryOf(R) {
+  if (!Array.isArray(R)) return R;
+  let r = REF_RECOVERY.get(R);
+  if (!r) REF_RECOVERY.set(R, (r = R.map(([t, k]) => [t, k.bY != null && !(Math.abs(k.pitch ?? 0) > 1) ? { ...k, bY: sinkTo(k.bY, REF.load) } : k])));
+  return r;
+}
+/** The reaction clips in the reference's poses: the recoils bigger, the carried steps leaning further. */
+const BIG = new Set(['flinch', 'stagger', 'recoil', 'reeling', 'trampled']);
+function refClipKey(name, k) {
+  if (BIG.has(name)) {
+    const o = { ...k };
+    if (k.pitch != null) o.pitch = k.pitch * 1.3;
+    if (k.bZ != null) o.bZ = k.bZ * 1.35;
+    if (k.spX != null) o.spX = k.spX * 1.3;
+    if (k.bY != null) o.bY = sinkTo(k.bY, 0.04);
+    return o;
+  }
+  if (name === 'backstep' && k.pitch != null) return { ...k, pitch: k.pitch * 1.35 };
+  if (name === 'sidestep' && k.roll != null) return { ...k, roll: k.roll * 1.4 };
+  return k;
+}
+export const CLIPS_BY_FORM_REF = FORM_POSES_REF.map((K) => compileClips(K, refClipKey));
+/** The reaction clips of a form (1-based), the reference's while `?lordRefMove` is on. */
+export const clipsOf = (form) => {
+  const S = refMove() ? CLIPS_BY_FORM_REF : CLIPS_BY_FORM;
+  return S[Math.min(S.length, Math.max(1, form | 0)) - 1];
+};
 /** (form 1's set: the kit's default) */
 export const CLIP = CLIPS_BY_FORM[0];
 
@@ -1456,16 +1558,24 @@ const keysNow = (b) => {
 };
 // (ADR-251, `?lordPace=a`: the readable pace, pace.js: each form's extra hold per beat, and the cue's lead)
 export const PACE = buildPace(MOVES, TUNING);
-const REALISERS = FORM_POSES.map((K, i) => makeRealise({
+const recoveryNow = (def) => (formOn() && def.formRecovery ? def.formRecovery : motionOn() ? (def.motionRecovery ?? null) : null);
+const makeRealisers = (SETS, ref) => SETS.map((K, i) => makeRealise({
   TUNING, MOVES, compileClip: (keys, dur) => K.compileClip(keys, dur), completeBeat: K.completeBeat,
   keysOf: (b) => {
-    const k = keysNow(b);
+    let k = keysNow(b);
+    // (ADR-277: the reference's poses over the keys the shipped switches chose; the same key times)
+    if (ref) k = refKeysOf(b, k ?? b.keys);
     if (!paceOn()) return k;
     const hold = PACE[i].get(b) ?? 0;
     return hold > 0 ? { keys: k ?? b.keys, hold } : k;
   },
-  recoveryKeysOf: (def) => (formOn() && def.formRecovery ? def.formRecovery : motionOn() ? (def.motionRecovery ?? null) : null),
+  recoveryKeysOf: (def) => {
+    const R = recoveryNow(def);
+    return ref ? (refRecoveryOf(R ?? def.recoveryKeys) ?? null) : R;
+  },
 }));
+const REALISERS = makeRealisers(FORM_POSES, false);
+const REALISERS_REF = makeRealisers(FORM_POSES_REF, true);
 /**
  * A move as it will play this time (duelist/realise.js), compiled round the stance of the form it is
  * used in; a form's ignition is compiled round the NEW form's stance, so it ends in that guard.
@@ -1476,7 +1586,8 @@ export function realise(name, phase = 1, rnd = Math.random, opts = null) {
   const def = MOVES[name];
   if (!def) return null;
   const form = def.transition ? def.phase : phase;
-  const A = REALISERS[Math.min(REALISERS.length, Math.max(1, form)) - 1](name, phase, rnd, opts);
+  const RS = refMove() ? REALISERS_REF : REALISERS;
+  const A = RS[Math.min(RS.length, Math.max(1, form)) - 1](name, phase, rnd, opts);
   if (A && paceOn()) paceCue(A, TUNING);
   return A;
 }

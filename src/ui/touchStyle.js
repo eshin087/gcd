@@ -253,7 +253,7 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-root.lguard .tc-guard { display: flex; }
 .tc-guard .g { font-size: calc(22px * var(--tc-k, 1)); }
 .tc-guard .t { font-size: calc(8px * var(--tc-k, 1)); line-height: 1.3; }
-/* the left hand's GUARD is drawn like the pad's tiles (ADR-274): the same corner brackets, a fainter frame,
+/* the left hand's GUARD is drawn like the pad's tiles (ADR-278): the same corner brackets, a fainter frame,
    and a lower resting opacity, so it sits in the picture instead of over it */
 .tc-guard { opacity: 0.4; border-color: rgba(207, 214, 230, 0.07); }
 .tc-guard::before { inset: 3px; opacity: 0.6; }
@@ -311,7 +311,7 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
   color: #ffd2a4;
 }
 .tc-root.off.peek .tc-padlock { opacity: 0; }
-/* GUARD's padlock (ADR-274): only with the guard on the left hand */
+/* GUARD's padlock (ADR-278): only with the guard on the left hand */
 .tc-guardlock { display: none; z-index: 2; }
 .tc-root.lguard .tc-guardlock { display: block; }
 .tc-root.editing .tc-guard { border-style: dashed; border-color: rgba(255, 138, 61, 0.7); background: rgba(255, 138, 61, 0.06); }
@@ -369,7 +369,7 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-swipe.on { animation: tc-swipe 0.32s ease-out forwards; }
 @keyframes tc-swipe { 0% { opacity: 0.95; } 100% { opacity: 0; } }
 
-/* ---------- ADR-274: the owner's notes on the left side ----------
+/* ---------- ADR-278: the owner's notes on the left side ----------
    No gauge line under either BLOCK (the HUD's GD meter has it; a low guard warms the glyph instead),
    ATTACK's dagger points down, and the stick and the left BLOCK drawn as one set (?leftLook=a|b|c). */
 .tc-block::after, .tc-guard::after { display: none; }

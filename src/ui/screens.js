@@ -324,7 +324,7 @@ export class PauseMenu {
     this.btnPadLayout = button(panel, 'tp-only', () => game.touch?.cyclePad?.('layout'));
     el('span', '', 'PAD LAYOUT', this.btnPadLayout);
     this.padLayoutVal = el('span', 'v', '', this.btnPadLayout);
-    // ... and which of the two guard buttons are drawn (ADR-274: the one beside the stick, the one in the cluster)
+    // ... and which of the two guard buttons are drawn (ADR-278: the one beside the stick, the one in the cluster)
     this.btnLGuard = button(panel, 'tp-only', () => game.touch?.cyclePad?.('lguard'));
     el('span', '', 'LEFT BLOCK', this.btnLGuard);
     this.lGuardVal = el('span', 'v', '', this.btnLGuard);

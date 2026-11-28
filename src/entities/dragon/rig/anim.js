@@ -365,6 +365,12 @@ export const NECK_MODE = (() => {
 })();
 /** Fastest the head's aim may turn (rad/s) when no hit sphere rides on it (see _updateNeck). */
 const HEAD_AIM_RATE = 11;
+/**
+ * Dying (s.dead), the head may hang at most this much LESS far off the neck's last segment (rad): the
+ * limp head was laid level whatever the neck did, so on the death's raised neck it hinged ~60° off its
+ * end, a broken neck (2026-11-27). 1.1 - 0.55 = 0.55 rad (~31°) once dead. `?deathNeck=0`: as before.
+ */
+const DEAD_HINGE = String(new URLSearchParams(globalThis.location?.search ?? '').get('deathNeck') ?? '') === '0' ? 0 : 0.55;
 /** ... and when a hit sphere rides on it (pose.headExact). */
 const HEAD_EXACT_RATE = 45;
 /** Waking, the resting S only fades in once the sleeping curl (s.sleep) is below this. */
@@ -980,7 +986,7 @@ export class Rig {
     }
     // at most ~63Â° off the neck's last segment; resting, ~34Â°: past that the head reads as hinged off
     // the neck's end (a broken neck), so the resting head looks down less instead
-    constrainDir(dir, last, 1.1 - 0.5 * s.rest);
+    constrainDir(dir, last, 1.1 - 0.5 * s.rest - DEAD_HINGE * s.dead);
     // the head's aim turns at most HEAD_AIM_RATE: a look target passing under or behind the head (the
     // leap's dive onto its mark, the death fall, a target swapped mid-move) flipped it 30-90Â° in one
     // frame. Attacks whose hit spheres ride on the snout or the mouth set pose.headExact for their

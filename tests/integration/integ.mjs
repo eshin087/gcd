@@ -3596,7 +3596,40 @@ async function scenarioFlare() {
   assert(bare.rec.res === RESULT.HIT && bare.rec.hp0 - bare.rec.hpAtHit > 30, `unanswered it lands: ${(bare.rec.hp0 - bare.rec.hpAtHit).toFixed(0)} HP`);
   const roll = maw({ answer: 'dodge' });
   assert(roll.rec.res === RESULT.PERFECT && evn(roll.rec, 'player:perfectDodge') === 1 && (evn(roll.rec, 'player:flurry') === 1 || evn(roll.rec, 'player:plunge') >= 1), `a perfect dodge of it is answered as a red blow's is (${roll.rec.res}; flurry ${evn(roll.rec, 'player:flurry')})`);
-  // (let the answer play out)
+  // --- the blackout (?black=a, ADR-271): the picture drains over the charge's last 0.3 s, colour back
+  // after the strike; a stagger in the charge lets it go
+  run(G, 4, { passive: true });
+  const B = await imp('src/combat/blackout.js'), bo = game.blackout, O = TELL_STYLE.black.out;
+  B.setBlack('a');
+  const ks = [], up0 = bo.update.bind(bo);
+  bo.update = () => { up0(); ks.push([game.time, bo.k]); };
+  const lit = maw({ hold: true });
+  run(G, 1, { passive: true });
+  const kAt = (t) => ks.reduce((best, x) => (Math.abs(x[0] - t) < Math.abs(best[0] - t) ? x : best), [Infinity, 0])[1];
+  const fT = lit.rec.flashT;
+  assert(fT !== null && kAt(fT - O.a.over - 0.1) < 0.02 && kAt(fT) > 0.95 && kAt(fT + O.hold + O.snap + 3 * DT) === 0, `?black=a on Black maw: ${kAt(fT - O.a.over - 0.1).toFixed(2)} before the last ${O.a.over} s, ${kAt(fT).toFixed(2)} at the cue, ${kAt(fT + O.hold + O.snap + 3 * DT)} after the strike`);
+  B.setBlack('b');
+  settle(G);
+  place(G, 6);
+  run(G, 0.3, { passive: true });
+  ks.length = 0;
+  d.debug.trigger('blackMaw');
+  run(G, 1.0, { passive: true });
+  const kCut = bo.k;
+  d.debug.stagger();
+  run(G, O.drop + 0.15, { passive: true });
+  assert(kCut > 0.2 && bo.k === 0, `?black=b: staggered in the charge, the dark (${kCut.toFixed(2)}) is gone (${bo.k})`);
+  bo.update = up0;
+  // --- the black impact (?blackImpact=a, the default): Black maw lands its blast on a miss too (the hero far)
+  const bi = game.blackImpact;
+  settle(G);
+  place(G, 16);
+  run(G, 0.3, { passive: true });
+  const f0 = bi.stats.fired, hpB = p.hp;
+  d.debug.trigger('blackMaw');
+  run(G, 5, { passive: true });
+  assert(bi.stats.fired - f0 === 1 && hpB === p.hp && !bi.stats.last?.hit, `Black maw missing the hero (16 m off) still lands its blast (${bi.stats.fired - f0}), ${bi.stats.last ? Math.hypot(bi.stats.last.x - d.position.x, bi.stats.last.z - d.position.z).toFixed(1) : '-'} m from the wyrm`);
+  B.setBlack(B.BLACK_DEFAULT);
   run(G, 4, { passive: true });
   return G;
 }
@@ -4377,7 +4410,8 @@ async function scenarioLab() {
     // (Armageddon's meteors fall for ~12 s after the trigger: its window is longer; a background
     // hazard never spills into the next ability's count)
     // (a flying combo (flight, 2nd pass) runs 7 - 13 s to its crash: it gets the longer window too)
-    const r = forceAttack(G, a.name, { max: a.name === 'meteorRain' ? 17 : TUNING.attacks[a.name]?.parts ? 16 : 9, settle: 600 });
+    // (Cataclysm rolls up to nine blows: its last cue can come after 9 s; ADR-271's impact shifted the seeded stream onto such a roll)
+    const r = forceAttack(G, a.name, { max: a.name === 'meteorRain' ? 17 : TUNING.attacks[a.name]?.parts ? 16 : a.name === 'cataclysm' ? 14 : 9, settle: 600 });
     run(G, 10, { passive: true, god: true }, () => !d.brain.action && d.state === 'combat');
     d.hazards.clear();
     d.brood?.clear?.(); // (a brood lives on past its move: none spills into the next ability's count)
@@ -10103,14 +10137,14 @@ async function scenarioTouch() {
       const lay = t.cyclePad('layout'), Gd = t.padPoint('guard'), A2 = t.padPoint('attack'), D2 = t.padPoint('dodge');
       const Bs = t.padPoint('block');
       assert(lay === 'split' && root.classList.contains('split') && !!t.padGeo.tiles.block && !!D2 && !!Bs && near(Bs.x, A2.x, 1) && Bs.y > A2.y + 40, 'PAD LAYOUT → split: ATTACK / HEAVY / DODGE and a second guard (BLOCK) right under ATTACK');
-      // (ADR-274: close by the ring, its left edge just over the ring's glyphs)
+      // (ADR-278: close by the ring, its left edge just over the ring's glyphs)
       const gEdge = Gd ? Gd.x - t.guardGeo.w / 2 : NaN, ringEdge = t.stick.ox + 62 * t.fit;
       assert(Gd && Gd.x < innerWidth * 0.4 && gEdge > ringEdge - 10 && gEdge <= ringEdge + 2 && near(A2.x, A.x, 1e-6), `GUARD stands right against the stick's ring (its left edge ${gEdge.toFixed(0)} px, the ring's ${ringEdge.toFixed(0)}), ATTACK where it was`);
       P('pointerdown', 50, Bk.x, Bk.y);
       assert(!held('@block') && (held('@heavy') || held('@dodge')), 'a touch where BLOCK stood goes to the nearest tile left, never to a guard');
       P('pointerup', 50, Bk.x, Bk.y);
       frames(1.4);
-      // the second guard under ATTACK (ADR-274) guards like the left one, and the thumb slides to it from ATTACK
+      // the second guard under ATTACK (ADR-278) guards like the left one, and the thumb slides to it from ATTACK
       P('pointerdown', 56, A2.x, A2.y);
       P('pointermove', 56, Bs.x, Bs.y);
       assert(held('@block') && B('block').classList.contains('on') && !held('@attack'), 'the second GUARD under ATTACK: a slide from ATTACK raises the guard');
@@ -10137,7 +10171,7 @@ async function scenarioTouch() {
       assert(guard.classList.contains('low'), 'GUARD carries the guard meter too');
       p.guard = p.maxGuard;
       p.guardWait = 0;
-      // the padlock drags GUARD too (ADR-274; kept, RESET puts it back)
+      // the padlock drags GUARD too (ADR-278; kept, RESET puts it back)
       {
         assert(!!cls('tc-guardlock'), 'GUARD has a padlock of its own');
         cls('tc-guardlock').dispatch('pointerdown', { pointerType: 'touch', pointerId: 70 });
@@ -10159,7 +10193,7 @@ async function scenarioTouch() {
         assert(near(t.padPoint('guard').x, g0.x, 1e-6), 'RESET puts GUARD back too');
         frames(0.5);
       }
-      // each guard can be turned off (ADR-274); one always stays; the arrangement can be swapped back
+      // each guard can be turned off (ADR-278); one always stays; the arrangement can be swapped back
       {
         assert(t.cyclePad('rguard') === false && !t.padGeo.tiles.block && t.padPoint('block') === null && B('block').style.display === 'none' && !!t.padPoint('guard'), 'RIGHT GUARD → off: no BLOCK tile in the cluster, the left GUARD stays');
         assert(t.cyclePad('lguard') === false && t.rightGuard === true && !!t.padGeo.tiles.block && t.padPoint('guard') === null, 'LEFT GUARD → off while the right is off: the right comes back (one always stays)');
@@ -10295,7 +10329,7 @@ async function scenarioTouch() {
     };
     frames(0.6);
     const r0 = c('player:roll');
-    assert(t.swipeDodge === true, 'SWIPE DODGE: on by default (the owner, ADR-274)');
+    assert(t.swipeDodge === true, 'SWIPE DODGE: on by default (the owner, ADR-278)');
     flick(42, 600, 200, -60, 0);
     frames(0.05);
     const d = p.rollDir;
@@ -15391,6 +15425,9 @@ async function scenarioWyrmHeld() {
   const { ATTACKS, bandWeight } = await imp('src/entities/dragon/attacks.js');
   const { WYRM_HELD } = await imp('src/entities/dragon/tuningMotion.js');
   const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  // (ADR-223's colour pose on the paw blows as they shipped: the scythe and the leap draw their own, ADR-274)
+  setLook('pawBlue', '0');
+  setLook('pawRed', '0');
   const G = build();
   fightSetup(G);
   G.game.player.debug.noRiposte = true;
@@ -15449,6 +15486,8 @@ async function scenarioWyrmHeld() {
     const on = bandWeight(spec, d, s);
     assert(off === 0 && on > 0 && !!ATTACKS.snapSwipe?.string, `the snap swipe: weight ${off} with ?wyrmQuick=0, ${on} by default (the owner's pick)`);
   }
+  setLook('pawBlue', null);
+  setLook('pawRed', null);
   return G;
 }
 
@@ -15565,7 +15604,176 @@ async function scenarioWyrmHead() {
   return G;
 }
 
+// ================================================================== scenario: pawtells (2026-11-27, ADR-274)
+// The owner: "when the dragon dies and flies up, the head and neck looks unnatural ... like the neck is
+// broken"; "make sure every normal attack shows the white spark"; "the blue and red warning paw attacks ...
+// need to be completely different". 1. The death: the head never hinges far off the neck's end, the neck
+// never kinks, the throe does not fling the head up. 2. A cue glint's letters are drawn over the scene
+// (FIRE_SEEN: no depth fade), `?glintSeen=0` as before. 3. Every paw option (`?pawBlue=`, `?pawRed=`) lands
+// on its cue (the flash flashLead before the blow), on a hero standing in front of it, with no NaN.
+async function scenarioPawTells() {
+  out('\n== scenario PAWTELLS (the death\'s neck, the glint seen through the body, the paw blows\' options land on their cue) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { setGlintSeen, glintSeen } = await imp('src/entities/enemies/duelist/fx.js');
+  const { FIRE_SEEN, FIRE_KIND } = await imp('src/render/firePalettes.js');
+  const { ATTACKS, makeString } = await imp('src/entities/dragon/attacks.js');
+  const G = build();
+  fightSetup(G);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  const deg = (r) => (r * 180) / Math.PI;
+  // 2. the glint: its letters carry the seen flag (the field draws them over the scene)
+  {
+    const f = game.fx.fire;
+    const kinds = () => {
+      const o = new Set();
+      for (let i = 0; i < f.count; i++) o.add(f.data[i * 15 + 12]);
+      return o;
+    };
+    settle(G);
+    f.clear?.();
+    const c = d.rig.pt.chest;
+    d.fx.tellFlash('normal', c.x, c.y, c.z);
+    const on = kinds();
+    f.clear?.();
+    setGlintSeen(false);
+    d.fx.tellFlash('normal', c.x, c.y, c.z);
+    const off = kinds();
+    setGlintSeen(true);
+    f.clear?.();
+    const SEEN = FIRE_KIND.steel + FIRE_SEEN;
+    assert(glintSeen() && on.has(SEEN) && !off.has(SEEN) && off.has(FIRE_KIND.steel), `a white glint's letters are drawn seen (kinds ${[...on].join('/')}; ?glintSeen=0: ${[...off].join('/')})`);
+    const src = f.blobMat.fragmentShader + f.blobMat.vertexShader;
+    assert(/vSeen/.test(src) && src.includes('max(clamp((sceneZ - vViewZ) / uSoft, 0.0, 1.0), vSeen)'), 'the blob shader lets a seen blob past the depth fade');
+  }
+  // 3. the paw options: the owner's picks are the defaults, and every option lands on its cue
+  {
+    const { lookOf } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+    const { pawBlueOf, pawRedOf } = await imp('src/entities/dragon/pawTells.js');
+    assert(lookOf('pawBlue', '0') === 'a' && lookOf('pawRed', '0') === 'a' && pawBlueOf({ tell: 'blue' }) === 'a' && pawBlueOf({ tell: 'normal' }) === '0' && pawRedOf() === 'a', 'the defaults: the scythe (a blue overhead only; a white one as shipped) and the leap');
+  }
+  if (!ATTACKS.__pawBlue) {
+    TUNING.attacks.__pawBlue = { label: 'Overhead (blue)', tell: 'blue', phase: 1, hits: [{ kind: 'overhead', side: 1, tell: 'blue', windup: 0.7, active: 0.24, impact: 0.22, damage: 22, knockback: 3, lunge: 1.2 }], recovery: 1.2, cooldown: 0, weight: 0, range: [2.4, 5.4], maxAng: 0.9 };
+    ATTACKS.__pawBlue = makeString('__pawBlue');
+  }
+  const cases = [['pawBlue', '0', '__pawBlue'], ['pawBlue', 'a', '__pawBlue'], ['pawBlue', 'b', '__pawBlue'], ['pawBlue', 'c', '__pawBlue'], ['pawRed', '0', 'stomp'], ['pawRed', 'a', 'stomp'], ['pawRed', 'b', 'stomp']];
+  for (const [sw, opt, name] of cases) {
+    setLook(sw, opt);
+    settle(G);
+    place(G, name === 'stomp' ? 3.4 : 4.4, 0.1);
+    p.debug.god = false;
+    let flashT = -1, hurtT = -1, bad = false;
+    const t0 = game.time;
+    G.watch = (n, e) => {
+      if (n === 'combat:flash' && e?.source === 'dragon' && !e.hazard && flashT < 0) flashT = game.time - t0;
+      if (n === 'player:hurt' && hurtT < 0) hurtT = game.time - t0;
+    };
+    d.brain.startAction(ATTACKS[name]);
+    for (let i = 0; i < Math.round(4 / DT); i++) {
+      G.tick(DT);
+      if (!Number.isFinite(d.rig.pt.arms[0].toe.y + d.rig.pt.arms[1].toe.y + d.rig.pt.head.y + d.position.x)) bad = true;
+      if (!d.brain.action) break;
+    }
+    G.watch = null;
+    p.debug.heal();
+    setLook(sw, null);
+    const late = hurtT - (flashT + TUNING.flashLead);
+    out(`  ${sw}=${opt} (${name}): flash ${flashT.toFixed(2)} s, the blow ${hurtT.toFixed(2)} s (${late >= 0 ? '+' : ''}${late.toFixed(2)} s after the cue's lead)`);
+    assert(!bad && flashT > 0 && hurtT > 0 && Math.abs(late) <= 0.12, `${sw}=${opt}: it lands on its cue (${late.toFixed(2)} s off), no NaN`);
+  }
+  // (the test's own attack leaves the table: the other scenarios hash and walk every real move)
+  delete ATTACKS.__pawBlue;
+  delete TUNING.attacks.__pawBlue;
+  // 1. the death: the head stays on the neck's line, the neck never kinks, the throe keeps the head down
+  {
+    settle(G);
+    place(G, 9, 0.3);
+    const R = d.rig, n = R.neck.n;
+    run(G, 0.5, { passive: true });
+    const y0 = R.pt.head.y;
+    let hinge = 0, kink = 0, peak = -1e9;
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), hf = new THREE.Vector3();
+    d.debug.kill();
+    for (let i = 0; i < Math.round(2.4 / DT); i++) {
+      G.tick(DT);
+      a.subVectors(R.neck.p[n], R.neck.p[n - 1]).normalize();
+      hf.copy(R.pt.headFwd).normalize();
+      hinge = Math.max(hinge, deg(Math.acos(Math.max(-1, Math.min(1, a.dot(hf))))));
+      for (let j = 1; j < n; j++) {
+        a.subVectors(R.neck.p[j], R.neck.p[j - 1]).normalize();
+        b.subVectors(R.neck.p[j + 1], R.neck.p[j]).normalize();
+        kink = Math.max(kink, deg(Math.acos(Math.max(-1, Math.min(1, a.dot(b))))));
+      }
+      peak = Math.max(peak, R.pt.head.y);
+    }
+    out(`  death: the head at most ${hinge.toFixed(0)}° off the neck's end (was 62°), the neck's sharpest bend ${kink.toFixed(0)}° (was 36°), the head at most ${(peak - y0).toFixed(2)} m above where it stood (was 1.49)`);
+    assert(hinge <= 40 && kink <= 35 && peak - y0 <= 1.2, `the death's neck: no hinge (${hinge.toFixed(0)}° <= 40), no kink (${kink.toFixed(0)}° <= 35), no fling (${(peak - y0).toFixed(2)} m <= 1.2)`);
+  }
+  return G;
+}
+
+// ================================================================== scenario: wyrmmotion (opt-in, 2026-11-28: every move and state's motion, flagged)
+async function scenarioWyrmMotion() {
+  out('\n== scenario WYRMMOTION (every move and state of the wyrm, frame by frame: snaps, skating feet, parts through the ground or the body, kinks, spins, stretch) ==');
+  const { makeWyrmMotion } = await import(pathToFileURL(`${ROOT}/tests/integration/wyrmMotion.mjs`).href);
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const { ATTACKS } = await imp('src/entities/dragon/attacks.js');
+  const G = build();
+  fightSetup(G);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.noRiposte = true;
+  p.debug.god = true;
+  const A = makeWyrmMotion({ THREE, G, DT, SCALE, place, settle });
+  const rows = [];
+  const only = process.env.GCD_MOVES ? new Set(process.env.GCD_MOVES.split(',')) : null;
+  const go = (label, start, opts) => {
+    if (only && !only.has(label)) return;
+    const r = A.measure(label, start, opts);
+    rows.push(r);
+    A.print(out, r);
+  };
+  const BACK = new Set(['tail', 'tailLash', 'pivotLash', 'rearGuard']);
+  const FAR = new Set(['breath', 'fireball', 'charge', 'leap']);
+  // the states first (phase 1)
+  go('idle', () => { settle(G); place(G, 9, 0.2); }, { secs: 5 });
+  go('chase+turn', () => { settle(G); place(G, 16, 0); d.debug.setAI(true); }, {
+    secs: 7,
+    each: (i) => {
+      const t = i * DT, a = d.yaw + 0.9 * t; // the hero circles it: it walks and turns after him
+      const c = d.position;
+      p.debug.teleport(c.x + Math.sin(a) * 15, c.z + Math.cos(a) * 15);
+    },
+  });
+  d.debug.setAI(false);
+  go('stagger', () => { settle(G); place(G, 8, 0); d.debug.stagger(); }, { secs: 4, done: () => !d.brain.action });
+  go('postureBreak', () => { settle(G); place(G, 8, 0); d.debug.postureBreak(); }, { secs: 8, done: () => !d.brain.action });
+  // every attack, in its own phase
+  for (const name of Object.keys(ATTACKS)) {
+    if (name.startsWith('__')) continue;
+    const ph = Math.max(1, TUNING.attacks[name]?.phase ?? ATTACKS[name].phase ?? 1);
+    go(name, () => {
+      settle(G);
+      if (d.phase !== ph) d.enterPhase(ph);
+      d.hazards?.clear?.();
+      d.brood?.clear?.();
+      game.world?.restore?.();
+      place(G, FAR.has(name) ? 11 : 5.5, BACK.has(name) ? Math.PI * 0.9 : 0.1);
+      d.brain.startAction(ATTACKS[name]);
+    }, { secs: 17, done: () => !d.brain.action });
+  }
+  go('phase2', () => { settle(G); d.enterPhase(1); place(G, 9, 0); d.debug.phase2(); }, { secs: 7, done: () => !d.brain.action });
+  go('phase3', () => { settle(G); place(G, 9, 0); d.debug.phase3(); }, { secs: 7, done: () => !d.brain.action });
+  go('wake', () => { d.debug.reset(); run(G, 0.5, { passive: true }); place(G, 12, 0); d.debug.wake(); }, { secs: 6, done: () => d.state === 'combat' && !d.brain.action });
+  go('death', () => { settle(G); place(G, 9, 0.3); d.debug.kill(); }, { secs: 5.2 });
+  const flagged = rows.filter((r) => r.flags.length);
+  out(`\n  ${flagged.length} of ${rows.length} flagged`);
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
+  return G;
+}
+
 const SCENARIOS = {
+  wyrmmotion: scenarioWyrmMotion,
   wyrmhead: scenarioWyrmHead,
   wyrmanatomy: scenarioWyrmAnatomy,
   wyrmaudit: scenarioWyrmAudit,
@@ -15650,9 +15858,11 @@ const SCENARIOS = {
   breach: scenarioBreach,
   forestedge: scenarioForestEdge,
   probe: scenarioProbe,
+  // (last: its Math.random draws shift no other scenario's seeded run)
+  pawtells: scenarioPawTells,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'wyrmanatomy', 'wyrmhead']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'wyrmanatomy', 'wyrmhead', 'wyrmmotion']); // run only when named
 // GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }

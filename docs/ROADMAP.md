@@ -55,9 +55,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [x] The hero's meters and the boss's never overlap: the top row is fitted to the screen (ADR-131)
   - [x] Two pad switches to try: PAD LAYOUT "guard on left" (one thumb cuts, the other parries) and HOLD ATTACK (ADR-131)
   - [ ] Owner's pick on the phone: which of the two becomes the default, where GUARD stands
-  - [x] SWIPE DODGE: a flick on the right half dodges that way (ADR-274)
-  - [x] Owner's verdict on SWIPE DODGE: liked, on by default; GUARD against the stick with its own padlock (ADR-274)
-  - [x] A second guard under ATTACK, quieter GUARD and padlocks, LEFT / RIGHT GUARD switches, PAD LAYOUT picks BLOCK's place (ADR-274)
+  - [x] SWIPE DODGE: a flick on the right half dodges that way (ADR-278)
+  - [x] Owner's verdict on SWIPE DODGE: liked, on by default; GUARD against the stick with its own padlock (ADR-278)
+  - [x] A second guard under ATTACK, quieter GUARD and padlocks, LEFT / RIGHT GUARD switches, PAD LAYOUT picks BLOCK's place (ADR-278)
   - [ ] The swipe's numbers on the phone; a touch timing allowance if parries are still late
   - [ ] Phone ideas not built yet (ADR-131 lists them): the game drawn under the notch (viewport-fit=cover), a
         drag-to-place layout editor, a left-handed mirror, an "add to home screen" hint for full screen on iOS
@@ -96,6 +96,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The wyrm's neck and head reviewed move by move: level head, no flips, no detached head (ADR-203)
 - [x] Every wyrm fire travels from it; roar-cast spells and a brood of fire; a walk-out forest (ADR-197)
 - [x] The owner's picks for ADR-197's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource): the defaults kept (2026-11-25)
+- [x] The wyrm's death: the neck falls as one curve, the head in line (ADR-274)
+- [x] Every white / blue timing glint seen through the body and inside the frame (ADR-274)
+- [x] The wyrm's blue and red paw blows told apart: the scythe and the leap, the owner's picks (ADR-274)
 - [ ] The wyrm presses in when the hero stands out among the trees (it fights at range there)
 - [x] Hero motion: world-planted feet, blade paths, portrait idle, new windups, two-step dash,
       sliding kneel, crescent trails (ADR-023)
@@ -196,6 +199,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.100 — The blackout and the red trail (2026-11-27, `claude/combat-blackout-red-trails-892472`, ADR-271)
+- [x] `?black=a|b|c`: a black blow drains the picture to dark grey, the boss lit, the violet gone; clears on every cancel
+- [x] `?redTrail=a|b`: a red string's blade cuts leave a red crescent from the flare on
+- [x] Films of today and every variant at the game camera (Shen Hui, the wyrm, the Lord); `npm run perf -- --black`
+- [x] The owner's picks made the defaults: blackout b, red trail a
+- [x] Every black blow lands a devastating impact, hit or miss (`?blackImpact=`), filmed on Shen Hui and the wyrm
+- [ ] A red wake for fists and claws if wanted; the impact along the Fox's Howl beam
 ## M1.93 — Boss motion: Lu Wusheng, Wen Yao, the wyrm (2026-11-26, `claude/enemies-grove-fox-wyrm-motion-59bc46`, ADR-223)
 - [x] The audit tool (`tests/integration/motionAudit.mjs`): hands, pops, sliding feet, facing, the held windup per tell
 - [x] Held blue / red windups, coloured (blue tall, red low), behind `?sheathMotion=` `?foxMotion=` `?wyrmMotion=`
@@ -208,6 +218,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.102 — A new fight stance: the middle guard (2026-11-28, `player/stance-four`, ADR-275)
+- [x] Four fight holds as data behind `?hold=` (middle, high, sword fingers, low trailing), filmed close and far in one clip
+- [x] The owner's pick, A the middle guard, the default; ADR-207's hold `?hold=ref`; the Lab's `hold` row
+- [ ] The owner's playtest on the preview
 ## M1.99 — Bai Wuji's barrier shows where your blade hits it, and he goes down quicker (2026-11-28, `enemies/untouched`, ADR-266)
 - [x] A cut on the barrier chips a quarter of its damage (never his last HP), its number where the blade stopped
 - [x] His health 16000 (20000); the bench: the good bot in about 2.3 min
@@ -782,6 +796,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] A joint-by-joint audit of the new poses (done for the sword: ADR-226, `audit`); a palm strike for Shen Hui's free hand
   - [ ] On the iPhone: frame rate in the Lord's fourth form with the weather and Starless Night
   - [ ] Remove the looks that were turned down and their switches, once the picks have been played
+  - [x] Varr Nihil after the reference pack (ADR-277): his body whole in every form, split blades, the sash, the cape;
+        the poses after the strips over the same timing (`?lordRef=a`, `?lordRefMove=a`)
+  - [ ] The owner picks `?lordRef` / `?lordRefMove` from the films; a per-move pass on what they name
 
 ## M1.45 — The wyrm ablaze, a forest that breaks, letters that follow the zoom (2026-11-16, `dragon/menace-and-ruin`, ADR-120)
 - [x] Every tree of Cinderwood is a breakable that wears down in stages (664 breakables on 228 bones)

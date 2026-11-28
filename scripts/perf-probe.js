@@ -1,6 +1,6 @@
 // The probe `npm run perf` (scripts/perf.mjs) runs inside the game's page: a fight staged at a fixed
 // place, then what one frame costs. One async function; scripts/perf.mjs evaluates `(<this file>)(opts)`.
-//   opts: { sizes: [[w, h], ...], frames }
+//   opts: { sizes: [[w, h], ...], frames, black }
 // Returns: { level, fight, draw, cpu, gpu: { '<w>x<h>': { passes, frame } }, timer }
 async (opts) => {
   const g = window.__game;
@@ -44,6 +44,12 @@ async (opts) => {
   const b = g.boss?.position ?? g.dragon.position;
   g.player.debug.teleport?.(b.x + 5, b.z);
   T(30);
+  // (--black: the blackout pinned full on, combat/blackout.js: what the grade's actor mask costs every frame)
+  if (opts.black && g.blackout) {
+    (await import('/src/combat/blackout.js')).setBlack('a');
+    g.blackout.step = () => (g.blackout.k = 1);
+    T(2);
+  }
 
   // ---- script cost: the CPU ms of a frame by module, over `frames` ticks of the live fight
   const cur = {};

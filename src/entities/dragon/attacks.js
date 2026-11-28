@@ -12,6 +12,7 @@ import { wallWind } from './wallReach.js';
 import { heldMode, tellPose } from './tellPose.js';
 import { WYRM_HELD } from './tuningMotion.js';
 import { biteLead, biteSnap } from './strike.js';
+import { pawBlueOf, pawRedOf, blueWindup, blueAim, blueActive, blueEnd, redWindup } from './pawTells.js';
 
 /** Wing spread the actions return to (the mantled HALF sails, TUNING.rest). */
 const REST_SPREAD = TUNING.rest.spread;
@@ -610,7 +611,8 @@ const _slam = V();
  * height, claws spread; the tail presses flat (the third leg of the tripod), head high, wings flare;
  * the hind feet brace wider. The last third coils higher (anticipation).
  */
-function stompWindup(d, k, dt) {
+function stompWindup(d, k, dt, look = '0') {
+  if (redWindup(d, look, k, dt)) return; // (`?pawRed=`: pawTells.js)
   const pose = d.pose, s = d.sense;
   d.turnToward(s.yawTo, d.turnRate * 0.6, dt);
   const coil = smoothstep(0.62, 1, k);
@@ -636,6 +638,7 @@ function stompAim(d, st) {
   st.pitch0 = d.rig.s.pitch;
   st.rear0 = d.rig.s.rear;
   st.lower0 = d.rig.s.lower;
+  st.alt0 = d.rig.s.alt; // (a stomp from the air, `?pawRed=a`: it falls onto its paws on the impact)
 }
 /**
  * Both forefeet slam down together on their landing spots, accelerating all the way so they strike
@@ -647,6 +650,12 @@ function stompActive(d, st, k) {
   const e = k * k;
   pose.pitch = lerp(st.pitch0 ?? -0.62, 0.16, e);
   pose.rear = (st.rear0 ?? 1) * (1 - e);
+  if (st.alt0 > 0.05) {
+    pose.alt = st.alt0 * (1 - e);
+    pose.altRate = 60;
+    pose.airborne = e < 0.6 ? 1 : 0;
+    pose.airReach = 1;
+  }
   pose.lower = lerp(st.lower0 ?? -0.2, 0.15, e);
   pose.bodyRate = 60;
   for (let i = 0; i < 2; i++) {
@@ -741,7 +750,7 @@ const stomp = {
     else if (phase === 'recovery') stompImpact(d, a, T.stomp);
   },
   update(d, a, dt) {
-    if (a.phase === 'windup') stompWindup(d, a.k, dt);
+    if (a.phase === 'windup') stompWindup(d, a.k, dt, (a.pawRed ??= pawRedOf()));
     else if (a.phase === 'active') stompActive(d, a, a.k);
     else stompRecover(d, a, a.k);
   },
@@ -1478,6 +1487,7 @@ const OVERHEAD = {
     h.lungeV = 0;
     h.plant = null;
     h.planted = false;
+    h.look = pawBlueOf(h.spec); // (`?pawBlue=`: a blue overhead's own performance, pawTells.js)
   },
   enterWindup(d, a, h) {
     autoSide(d, a, h, (sd) => {
@@ -1486,6 +1496,7 @@ const OVERHEAD = {
     });
   },
   windup(d, a, h, k, dt) {
+    if (blueWindup(d, h, k, dt)) return;
     const pose = d.pose, side = h.w.side, ov = pose.pawOv[h.wi];
     d.turnToward(d.sense.yawTo - side * 0.2, d.turnRate * (h.spec.turn ?? 0.8), dt);
     ov.w = 1;
@@ -1519,8 +1530,10 @@ const OVERHEAD = {
     d.rootPt(h.p1, lerp(side * OVH_RAISE[0], lx, 0.35), OVH_RAISE[1] + 0.9, lerp(OVH_RAISE[2], lz, 0.35));
     h.p0.copy(d.rig.pt.arms[h.wi].toe);
     h.lungeV = (travel * S) / Math.max(0.05, a.dur);
+    blueAim(d, h);
   },
   active(d, a, h, k, dt) {
+    if (blueActive(d, h, k, dt)) return;
     const pose = d.pose, side = h.w.side, ov = pose.pawOv[h.wi];
     ov.w = 1;
     // over the top and down, accelerating into the ground
@@ -1542,6 +1555,7 @@ const OVERHEAD = {
     if (h.lungeV > 0) d.moveForward(h.lungeV, dt);
   },
   endActive(d, a, h) {
+    if (blueEnd(d, h)) return;
     // the claws bite into the ground: a heavy dust burst, the paw plants there
     h.plant = d.rig.clampPaw(h.wi, V().copy(h.slam));
     d.fx.dustRing(h.plant.x, h.plant.z, 0.7 * S, 22, 0.9);
@@ -2006,7 +2020,7 @@ const STOMP = {
     return h.spec.radius ?? T.stomp.radius;
   },
   windup(d, a, h, k, dt) {
-    stompWindup(d, k, dt);
+    stompWindup(d, k, dt, (h.st.look ??= pawRedOf()));
   },
   aim(d, a, h) {
     stompAim(d, h.st);
@@ -2720,7 +2734,8 @@ export function makeString(name) {
         const prev = h.idx > 0 ? a.hits[h.idx - 1] : null;
         if (prev) prev.K.recover?.(d, a, prev, Math.min(1, k * 2), dt);
         h.K.windup(d, a, h, k, dt);
-        if (h.mode === 'a') tellPose(d, h.spec.tell, k, h.K.part);
+        // (a paw blow drawn by its own tell option, pawTells.js, says its colour itself)
+        if (h.mode === 'a' && !(h.look && h.look !== '0') && !(h.st?.look && h.st.look !== '0')) tellPose(d, h.spec.tell, k, h.K.part);
       } else {
         h.K.active(d, a, h, a.k, dt);
         // a hit that scatters hanging embers where it lands (spec.burst, bullets.js): each one

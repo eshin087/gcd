@@ -70,7 +70,7 @@ function urlTouch() {
   }
 }
 
-/** ?leftLook=a|b|c: how the stick and the left BLOCK are drawn (ADR-274; the owner picked c, glyphs only). */
+/** ?leftLook=a|b|c: how the stick and the left BLOCK are drawn (ADR-278; the owner picked c, glyphs only). */
 export const LEFT_LOOKS = ['a', 'b', 'c'];
 function urlLeftLook() {
   try {
@@ -168,7 +168,7 @@ export class TouchControls {
     this.fit = 1; // the touch layer's scale from the screen (CONFIG.touch.pad.fit)
     this.layout = 'classic'; // PAD_LAYOUT, the right cluster's arrangement: 'classic' BLOCK beside ATTACK, DODGE under; 'split' DODGE beside, BLOCK under
     this.leftLook = urlLeftLook(); // ?leftLook=a|b|c (default c, the owner's pick)
-    this.leftGuard = false; // the GUARD button beside the stick (ADR-274: its own switch)
+    this.leftGuard = false; // the GUARD button beside the stick (ADR-278: its own switch)
     this.rightGuard = true; // the BLOCK tile in the right cluster (never both off)
     this.holdAttack = false; // a held ATTACK keeps cutting
     this.swipeDodge = true; // SWIPE DODGE (on by default, the owner's pick): a flick on the bare right half dodges that way
@@ -453,7 +453,7 @@ export class TouchControls {
       const o = JSON.parse(globalThis.localStorage?.getItem?.(PAD_KEY) ?? 'null');
       if (PAD_POS.includes(o?.pos)) this.padPos = o.pos;
       if (PAD_SIZE.includes(o?.size)) this.padSize = o.size;
-      // (v2, ADR-274: a pad saved before kept 'split' for the left guard; the arrangement it meant is BLOCK
+      // (v2, ADR-278: a pad saved before kept 'split' for the left guard; the arrangement it meant is BLOCK
       // under ATTACK, the owner's swap puts BLOCK beside it again, so an old save takes the default)
       if (PAD_LAYOUT.includes(o?.layout) && o?.v === 2) this.layout = o.layout;
       // (a pad saved before the guards had their own switches: 'split' was the guard on the left)
@@ -541,7 +541,7 @@ export class TouchControls {
     let guard = null;
     if (lguard) {
       const rest = this._stickRest(), up = h > w, g = (up && P.split.guardPortrait) || P.split.guard;
-      // (landscape: centred on the stick, ADR-274; look b: the stick's square tile's height, against its edge)
+      // (landscape: centred on the stick, ADR-278; look b: the stick's square tile's height, against its edge)
       const pair = this.leftLook === 'b' && !up;
       const gw = g.w * k, gh = pair ? 128 * fit : g.h * k;
       const left0 = up ? Math.max(8, rest.x - gw / 2) : pair ? rest.x + 64 * fit : rest.x + RING_R * fit + fin(g.gap, 14) * fit;
@@ -692,7 +692,7 @@ export class TouchControls {
       this._bindPad(pad);
 
       // the padlock: tap to move the right-hand controls (drag the pad), tap again to keep them there
-      // (split: GUARD has one too, ADR-274; the two are one lock: open, the pad and GUARD both drag)
+      // (split: GUARD has one too, ADR-278; the two are one lock: open, the pad and GUARD both drag)
       const padlock = (cls) => {
         const b = el('button', cls, null, root);
         b.type = 'button';

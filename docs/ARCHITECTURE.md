@@ -106,7 +106,7 @@ ADR-120).
 | `THREE`, `CONFIG` | three.js namespace, `core/config.js` |
 | `renderer, scene, fxScene, camera, pipeline, U` | rendering. `U` = shared uniforms (`render/shaderLib.js`), including `U.uBoneTex` (the rigid batches' bone matrices, see Rigid batching below) and the living world's wind, `U.uWind` (vec4) and `U.uWindFronts` (vec4[12]; written by `world/life/wind.js`, all zero while its piece is off: "The living world" → The wind). `pipeline.setShadowSize(texels)` resizes the moon shadow map (`pipeline.shadowSize`; main.js `applyQuality` passes the preset's `shadow`) |
 | `events` | pub/sub: `on(name, fn)` → unsubscribe fn, `emit(name, data)` |
-| `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `dodgeToward(x, y)` (ADR-274, the touch swipe): a dodge press (`pulse('@dodge')`) with its own direction in `moveAxis()`'s space, in `dodgeAim` `{x, y, set}` for that frame only; the player takes it with the buffered press (`rollAim`) and rolls that way instead of along the stick. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
+| `input` | **Actions** (ADR-067, `core/bindings.js`): `act(a)`, `actPressed(a)`, `actReleased(a)` — true when any code bound to action `a` (or its virtual code `'@a'`) is down / pressed / released; `bindings` (the `Bindings` instance); the player, flow and timing trainer read only actions. Raw: `down(code)`, `pressed(code)`, `released(code)`, `mouseDown(b)`, `mousePressed(b)`, `mouseReleased(b)`, `moveAxis()` → `{x, y}` (y = up/north, from the up / down / left / right actions; keys give a unit vector, a deflected virtual stick wins with its analog length ≤ 1), `anyPressed`, `wheel`. Codes are `KeyboardEvent.code`. **Virtual sources** (touch): `setVirtual(code, down)` (code = a `KeyboardEvent.code` or `'Mouse0'`/`'Mouse1'`/`'Mouse2'`; same one-frame `pressed` / `released` edges as the real device, only on a change), `setVirtualAxis(x, y)`, `releaseVirtual()` (everything up, stick centred). Virtual holds are tracked apart from the real keys / buttons. **Gamepad source** (ADR-066): `setPad(code, down)`, `setPadAxis(x, y)`, `releasePad()` — the same semantics with their own holds (a release on one source never drops a hold on another); a deflected pad stick wins over the touch stick and the keys in `moveAxis()`. `pulse(code)`: a one-frame `pressed` edge with no hold. `dodgeToward(x, y)` (ADR-278, the touch swipe): a dodge press (`pulse('@dodge')`) with its own direction in `moveAxis()`'s space, in `dodgeAim` `{x, y, set}` for that frame only; the player takes it with the buffered press (`rollAim`) and rolls that way instead of along the stick. `kbmT`: `performance.now()` of the last real keyboard / mouse event (a mousemove only with movement). Mouse events within 1 s of a touch pointer event (browser compatibility mousedown / mouseup / mousemove) are ignored. |
 | `mouseGround` | `Vector3` — mouse ray ∩ ground plane, updated each frame (the ray from the camera without the kick's translation, `cameraRig.kickOff`); with a gamepad in use or touch controls on, their aim point (see Gamepad controls, Touch controls; shared helper `ui/aim.js` `aimWithoutCursor`) |
 | `cameraRig` | `addTrauma(0..1)`, `extraZoom`, `focus`, `zoom(steps)` (2.5 m per step, clamped to the profile), `targetDistance`; `wheelDistance` (2026-11-16, ADR-120: the player's own zoom, `targetDistance` eased at 4/s without the framing, the cinematics and the punches the game adds; every update writes `camera.userData.zoomRatio` = `wheelDistance / defaultDistance` and `camera.userData.zoomArtOff` = `mobile`: what the letters follow, see "The letters follow the zoom"); distance profile `setMobile(bool, portrait = false)` / `mobile` / `portrait` / `lead`, `defaultDistance`, `minDistance`, `maxDistance`, `maxExtraZoom` (desktop: `CONFIG.camera.distance/min/max`, unlimited extra zoom; phone: `mobileDistance` 20 / `mobileMinDistance` 14 / `mobileMaxDistance` 34, extra zoom (lock-on, boss framing, title / intro shots) capped at `mobileMaxExtraZoom` 3 m). `setMobile` resets the zoom to the profile default; a phone held upright (`portrait`) stands `CONFIG.camera.portraitDistance` (1.2) × further back and looks `portraitLead` (1.5 m) south of the focus, so the hero stands above the middle of the screen (ADR-097). `fovFor(aspect)` (exported by `core/cameraRig.js`, applied by main.js on every resize): the vertical field of view, `CONFIG.camera.fov` in landscape, opened in a window taller than wide until the view is as wide as a square window's (`portraitMaxFov` 68 at most). `punch(m)`: the zoom punch (`game.punch`). `kick(dx, dy, dz, m)`: the directional kick (`game.kick`): `kickX` / `kickY` (m along the screen's right / up axes; the camera and its look point move together, so the view direction and the figures' lean are unchanged) and their velocities `kickVX` / `kickVY`, a damped spring (`KICK`: ω 30, ζ 0.55, ≤ 0.5 m per axis) stepped in real time after the frame's offset is drawn (the kick's frame shows the whole throw); `kickOff` (Vector3): the world translation the kick put on the camera this frame (0 without one; main.js takes it off the mouse ray, so `mouseGround` and the aim never wobble with a landed cut); `snap()` zeroes it and the punch. `cine = { zoom, x, z, w }`: flow.cinematic's pull-in (zoom m added to the distance at the desktop distance, scaled by `defaultDistance / CONFIG.camera.distance` on the phone like the punch; negative = closer; the follow focus leans toward (x, z) by w; all 0 when no moment runs). **Keep-in-view** (`FIT` in `core/cameraRig.js`): `keep(x, y, z, r = 1, must = false)` asks for a world sphere to stay on screen this frame (≤ 16 per frame; non-finite input is ignored). After the usual follow / distance damping the rig projects the subjects with the real camera and eases a ground-plane pan (`fitX` / `fitZ`, ≤ 30 m) and extra distance (`fitZoom`: ≤ 6 m to fit every subject, ≤ 12 m for `must` ones; phone 1.5 / 3 m) until they sit inside the NDC box (\|x\| 0.9, top 0.86, bottom 0.78). `must` subjects (the hero) are never cropped to fit the others. Damped (5/s, 12/s while a must subject is off the box), eased back to 0 with no requests, reset by `snap()`. `focus` = the damped follow focus + the pan. **Hold** (ADR-154, the fox's Howl): `hold(m, x, z, w)` asks for `m` desktop metres of pull-back this frame (scaled for the phone like a cinematic; eased in at 4/s, out at 2.5/s; `held` the eased value) and, with a finite (x, z) and w > 0, leans the follow focus w toward that point (`holdLean`; the strongest ask of the frame wins); inert unless called, so it can hold a framing longer than `flow.cinematic` (3 s) and past the phone's `maxExtraZoom`. |
 | `touch` | touch controls (`ui/touch.js`, below): `active`, `phone`, `portrait`, `autoAim`, `setActive(bool)`, `update(realDt)` |
@@ -533,6 +533,8 @@ Render helpers for creature modules:
     (overlaps ADD UP: ~0.4 a cool rim, ~1 the body, 2+ the white heart; default `heatEnd` 0.35 x
     `heat`; the last sixth of its life it fades out); `kind` `'fire'` (default) | `'void'` |
     `'steel'` | `'smoke'` or a `FIRE_KIND` number; `gravity` > 0 rises. NaN positions are dropped.
+    A number kind plus `FIRE_SEEN` (4) is drawn SEEN: past the soft depth test, over the scene (a
+    timing cue only: DuelFx's white / blue glint, ADR-274).
     `clear()`, `update(dt)` (main.js, with `fxDt`), `count`, `max` (6000), `active`.
   - Pipeline side: `init(type, depthTexture)`, `setSize(W, H, cell, art, minCell = cell)`,
     `setCell(cell, art)`, `render(renderer, camera,
@@ -750,6 +752,25 @@ Render helpers for creature modules:
     printed through his cover (see "The hero seen through what covers him" above).
 - `gi(ch)`, `gis(str)` (`render/glyphs.js`).
 - `game.pipeline.finalMat.uniforms` — `uHurt` (red edge 0..1), `uFade` (black 0..1), `uDesat` (0..1), `uWarm` (boss grade 0..1), `uExposure`, `uBloom`. **Owned by the HUD/flow module** (game/grade.js `ScreenGrade`: `hurtPulse`, `ghostPulse`, `dip`, `fadeTo`, `desatTo`, and `flashPulse(k)`: a white flash, `uExposure` × (1 + 0.9 k) over its base, gone in ~0.2 s; flow fires it on every `player:parry` of a blade).
+- The blackout's uniforms (ADR-271, `?black=`): `uBlack` (0..1), `uBlackK` (vec4: the world's light left,
+  its grey, the hero kept, the actor mask's reach in letter cells), `uBlackKeep` (vec2: the light a letter keeps
+  from), `uBlackCell` (the art cell), `tFlag` (`sceneRT`'s texture: its alpha is the ASCII flag the mask reads).
+  **Owned by `combat/blackout.js` `Blackout`** (`game.blackout`, built and stepped by `ui/tells.js` `TellEdges`
+  every HUD frame; `start(dur)` on `combat:charge`, `cue()` on a black `combat:flash`, `beat()` every frame of a
+  charge from what draws it, `release(over)`, `clear()`, `step()` → `k`, `update()` writes the uniforms). A charge
+  with no beat for 0.15 s of game time is cancelled: **whatever draws a black charge calls
+  `game.blackout?.beat()` every frame of it** (`DuelFx.charge` does, so every duelist and the wyrm get it; the Fox's
+  Howl calls it in `thousandFox/beam.js`). Its numbers: `TELL_STYLE.black.out` / `.pale` (`rules.js`);
+  `flareStyle(tell)` and `blackBody()` give the black flare's colours and the body's darkening for the switch.
+- The black impact (ADR-271, `?blackImpact=`): **`combat/blackImpact.js` `BlackImpact`** (`game.blackImpact`, built
+  and stepped by `ui/tells.js` with the blackout). A black `combat:flash` arms it with the boss in the slot: a
+  duelist's black beat in `brain.act` (it fires when `act.t` passes the beat's `impact`; the point
+  `tellPoint(part)`), the wyrm's `brain.action.cur` (when `a.T` passes `b.at + b.impactIn`; the point
+  `rig.pt.mouth`), else `impact.lead` s after the cue. An act / action gone before then (a cancel) lands nothing;
+  a retry or a new title / dead / victory state disarms it. `fire()` calls `world.groundBlow` (kind `blast`),
+  `world.impact` (marked), `world.gust`, `fx.shock` or `fx.groundShock`, `lights.add`, `game.shake` / `punch` /
+  `hitstop` (not when the hero was hurt: `player:hurt`), `audio.play('explosion')`, `play('sub')`,
+  `thump.dip`. No damage, no new event; `stats.fired` / `stats.last` for tests.
 - `game/grade.js` `ScreenGrade.dimPulse(k = 0.4, hold = 0.4)` (ADR-167): the world dims to k (`uExposure` × (1 − 0.6 k)) over ~4 frames, holds `hold` s, comes back over ~0.25 s; the perfect parry's cinema beat uses it in place of the white flash (lines printed hotter than the scene still stand out). `resetInstant` clears it.
 
 ## Module contracts
@@ -1353,7 +1374,7 @@ the pick (tests). The blade is still the hit test, so each look is swung at the 
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
-the cleave lets go in its follow-through). The block is two-handed. The hero's (ADR-207, `refStance.js` `refGuard`,
+the cleave lets go in its follow-through). The fight stance (ADR-275): `refStance.js` `refReady` draws the hold `HOLDS[holdMode()]` (`?hold=`, default `a` the middle guard; `setHold(id)` copies it into `REF_READY`, then idles.js `syncStandArm()`; `holdHabits()`: the fight's habits only in a two-handed hold). The block is two-handed. The hero's (ADR-207, `refStance.js` `refGuard`,
 `guardMode()` / `setGuard(id)`, `?guard=ward`): a braced crouch (`REF_GUARD.sink` 0.3 s into it on `A.t`), the feet
 settling to `REF_GUARD.feet`, both hands on the grip before the right shoulder with the elbows out, the blade rising
 ~32° across his face to his left (upright seen from his side), the flat to the enemy. `?guard=ward` and every
@@ -2278,6 +2299,10 @@ Damages the player only via `game.player.takeHit(...)` with tell data; announces
   y, z, flare)` → `DuelFx.tellFlash(tell, x, y, z, k, flare)` draws the flare for a red or black
   blow and for a blue one whose beat says `flare` (`rules.js` `isFlare`), else the white glint. One
   flare per cue (a blow of both forefeet is one streak), kept inside the frame.
+- **the red trail (`?redTrail=a|b`, ADR-271; `combat/redTrail.js`, numbers `TELL_STYLE.red.trail`)**:
+  `DuelFx.tellFlash` of a red cue opens a window to the cue's `flashLead` + `follow` s (any other cue
+  closes it); inside it `DuelFx.sweep` lays one line of fire at a low heat just outside the tip's path.
+  Every blade that cuts through `sweep` (Shen Hui, the Lord, Lu Wusheng) gets it with no code of its own.
 - red (dodge-only) hits: nothing through the windup (`TELL_STYLE.red.warn` from = to = 0; until
   ADR-118 `uWarn` ramped 0.1 → 0.38) and no heat on the ground under its own area
   (`TELL_STYLE.red.floor` false: `Brain._warnZone` returns at once). On the cue `uWarn` on every
@@ -2287,7 +2312,7 @@ Damages the player only via `game.player.takeHit(...)` with tell data; announces
   its own (Armageddon's rear-up and salvo) sets `dragon.bodyWarn` 0..1 every frame: a 0.1 → 0.38
   ramp of its own (`BODY_WARN`), read and zeroed by `_updateWarn`.
 - black (charged) hits: through the windup `Brain._charge` draws the charge on the striking part
-  (`fx.charge` → `DuelFx.charge`) and emits `combat:charge` once; `_updateWarn` ramps
+  (`fx.charge` → `DuelFx.charge`, which beats the blackout) and emits `combat:charge` once; `_updateWarn` ramps
   `TELL_STYLE.black.warn` (x `BLACK_BODY` 0.16 on a body this size; `dragon.warnRGB` is the colour
   written to `uWarn`).
 - a blue hit marked `flare` (a parry moment): `hitPlayer` passes `flare` and holds the blow as a
@@ -3299,7 +3324,7 @@ timings are the real device's):
 | the HUD prompt | `@<action>` from its `[@interact]` chip | rest at the bonfire / fight again |
 | a bare-screen tap on title / death | `Mouse0` | "press any key" |
 | two bare-screen fingers in play | `cameraRig.zoom` | pinch (distance × start / now) |
-| a quick flick on the bare right half in play (SWIPE DODGE on; ADR-274) | `input.dodgeToward(dx, -dy)` | fires once the finger has gone `swipe.dist` px (× fit) within `swipe.time` s of touching down; a second bare finger cancels it |
+| a quick flick on the bare right half in play (SWIPE DODGE on; ADR-278) | `input.dodgeToward(dx, -dy)` | fires once the finger has gone `swipe.dist` px (× fit) within `swipe.time` s of touching down; a second bare finger cancels it |
 
 **The pad** (ADR-096; `CONFIG.touch.pad`; four tiles since ADR-115, laid out again in ADR-270): HEAVY
 over ATTACK, BLOCK beside ATTACK (where DODGE stood) and DODGE right under ATTACK, so ATTACK shares an
@@ -3340,17 +3365,17 @@ default; `?pad=split|classic` and `?hold=1|0` set them for one page load):
   gauge) `pad.split.guard.gap` px right of the stick's ring on the cluster's bottom line; held upright
   it stands above the ring (`pad.split.guardPortrait`). `.tc-root.split` shows it and hides the
   BLOCK tile; `padPoint('guard')` / `guardGeo` give its place (null in `classic`). Changing the layout
-  releases every held control. ADR-274: GUARD stands against the ring (`gap` -6 px, its edge just over the
+  releases every held control. ADR-278: GUARD stands against the ring (`gap` -6 px, its edge just over the
   ring's glyphs; upright `lift` 4 px) and has a padlock of its own (`.tc-guardlock`, over its top-right corner,
   shown in `split` only). The two padlocks are one lock (`editing`): open, a drag on GUARD moves it
   (`guardOff`, px at fit 1, + right / + up, kept on the left half, saved as `goff`) and raises no guard;
-  RESET (`resetPadOffset()`) puts GUARD back too. Also in `split` (ADR-274, the owner): a second guard, the
+  RESET (`resetPadOffset()`) puts GUARD back too. Also in `split` (ADR-278, the owner): a second guard, the
   BLOCK tile (`@block`, the guard gauge too), stands right under ATTACK in the cluster (`split.tiles.block`;
   ATTACK, HEAVY, DODGE and the flask moved up by its height), so either thumb can guard and a slide from ATTACK
   raises it. The left GUARD is drawn like the tiles (their corner brackets, a fainter frame, resting opacity
   0.4) and the padlocks are bare icons at 0.34 (0.9 open), with no disc or frame: nothing of the layer should
   pull the eye in play.
-  **The guard switches** (ADR-274, the owner: "options in settings to remove either left or right guard button ...
+  **The guard switches** (ADR-278, the owner: "options in settings to remove either left or right guard button ...
   change the button layout"): three pause-menu entries, kept in `gcd.touchPad`. PAD LAYOUT (`layout`) is only the
   right cluster's arrangement now: `classic` BLOCK beside ATTACK and DODGE under it, `split` DODGE beside and BLOCK
   under (`pad.tiles` / `pad.split.tiles`, both with a `block`). LEFT GUARD (`leftGuard`, `lg`, off by default)
@@ -3369,7 +3394,7 @@ default; `?pad=split|classic` and `?hold=1|0` set them for one page load):
   swapped DODGE and BLOCK back: BLOCK beside ATTACK, DODGE under it, the default arrangement); `?pad=under` is
   the BLOCK UNDER arrangement, `?pad=classic` the left BLOCK off. The saved pad carries `v: 2`; an older save's
   `layout` is ignored (it was `split` for the left guard), so it takes BLOCK beside ATTACK.
-- SWIPE DODGE (ADR-274; `swipeDodge`, `cyclePad('swipe')`, `?swipe=1|0`; `CONFIG.touch.swipe`): a finger that
+- SWIPE DODGE (ADR-278; `swipeDodge`, `cyclePad('swipe')`, `?swipe=1|0`; `CONFIG.touch.swipe`): a finger that
   touches the bare screen right of `swipe.from` (half the width) during play and travels `dist` px (30, × the
   fit) within `time` s (0.2) dodges the way it went (`input.dodgeToward`), once per touch, at that moment (not
   on the lift); a slower drag and a second bare finger (a pinch) are no swipe. A short ASCII streak (`.tc-swipe`)
@@ -5639,8 +5664,10 @@ A `Duelist` with `LORD_KIT`; COMBAT.md → "The Starless Lord" has the fight. Th
 kind = 'duelist';  name = 'VARR NIHIL, THE STARLESS LORD';  phase 1..4 = his blade FORM
 lives: { total: 4, left }      // the forms still to beat (this one included); hp / maxHp = this form's bar
 lit: 0..1                      // how far the blades are lit (they extend from the hilt)
-blades: { A, B, hiltB, Q, off, L }   // main blade, the staff's second blade + joined hilt, the cross-hilt's
-                               // side blades, the off-hand saber's joint and its blade (gear.js names them)
+blades: { A, B, hiltB, Q, off, L, cores }   // main blade, the staff's second blade + joined hilt, the cross-hilt's
+                               // side blades, the off-hand saber's joint and its blade (gear.js names them);
+                               // cores: [[blade, slit]] the split blades' dark slits (`?lordRef=a`, ADR-277;
+                               // empty otherwise), kept shown and scaled with their blades by _showForm
 _onHpZero()                    // an empty bar BREAKS him (no death): on one knee for posture.breakTime
 onExecute({ damage })          // the DEATHBLOW: the form ends ('dragon:plunged {execution, deathblow, form}');
                                // forms 1-3: react 'executed', then kit.transitions[form + 1] (enterPhase: a
@@ -6528,7 +6555,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   with its flash, and a blow it turns into a feint sends neither; the wyrm's phase-3 fire, ablaze.js, dims round it, ADR-120),
   `combat:charge {source:'dragon', attack, dur, x, z}` (a black blow begins to charge: darkness gathers on the
   striking part for dur game seconds, until its cue; the HUD darkens the screen edge through it, audio plays
-  the charge's swell),
+  the charge's swell; with ?black=a|b|c the blackout darkens the whole picture instead of the edge, ADR-271),
   `combat:clash {heavy, crush, counter, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
   neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back, counter = the
   flash counter (it is followed by player:counter and the HUD shows that instead); HUD "CLASH",

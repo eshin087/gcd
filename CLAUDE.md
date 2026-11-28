@@ -48,6 +48,8 @@ npm test         # headless integration sims (real game modules, mocked DOM/WebG
                  #  woke.mjs: Xin Yi, `woke.mjs . strategy` opt-in)
                  # --only integ,life: only those tasks (names from --list). Locally every run
                  # shares 8 slots machine-wide (ABYSS_JOBS) at low priority; CI is unchanged (ADR-205)
+                 # --changed: only the tasks that cover what this branch changed since origin/main
+                 #  (--list: the pick and why; --base <ref>; rules in tests/changed.mjs; ADR-276)
 npm run perf     # what a frame costs on THIS machine's GPU: draw calls / triangles by pass, GPU ms at 1080p and the phone's size,
                  # script ms by module (--all, --levels ash,city, --4k, --save a baseline, --check; ADR-206)
 npm run build    # single-file dist/index.html (what Vercel serves)
@@ -56,7 +58,7 @@ npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne, `?level=ring` the Skybreak Ring, `?level=fox` the Foxfire Terrace, `?level=grove` the Windless Grove (`?tech=draw`: One Breath without the kill), `?level=code` the Hall of Falling Script (`?tech=lean`: the Long Second without the kill), `?level=city` Halcyon Plaza, `?level=veil` the Veiled Crossing (default:
 Cinderwood); the title screen and the Lab pick one too. The hero's idles and guard after the owner's reference footage (ADR-207): `?idles=new|old`
 (ADR-186's rests, habits and tricks / the hand on the belt; default `ref`: the one-handed stand, the two-handed fight hold, the put-away
-and draw) and `?guard=ward` (the cross ward; default `ref`: the braced guard, the blade across his face) (Lab: `idles`, `guard`, `idle ▸`).
+and draw) and `?guard=ward` (the cross ward; default `ref`: the braced guard, the blade across his face); the fight stance `?hold=ref|b|c|d` (ADR-275; default `a`, the owner's pick: the middle guard, the blade at the foe; `ref` ADR-207's hold, b-d turned down) (Lab: `idles`, `guard`, `hold`, `idle ▸`).
 Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
 (`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
 `?wyrmTop=0|a|b` the drake head from above before the owner's pick `c` (ADR-189); `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
@@ -64,7 +66,7 @@ and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters
 follow the zoom) and `?ablaze=off|a|c` (b: the wyrm's phase 3 fire). The impact pass's pieces (ADR-149): `?impact=off|all|stamp,ripple,react,thump` (default all; Lab: the 'impact' row), and
 `?calm=0..3` the light at the contact (default 1; 0 = as before; Lab: the row's `calm` button). The streak pass's switches (ADR-167): `?streakfx=off|all|storm,tiers,aura,counter,sound,world`,
-`?tempo=0` (the storm without its tempo: the pace of ADR-167), `?chain=0` (the flurry's passes teleport round the ring again, with the crescents and the 'A' shards: the paths before the chain), `?figure=any|star|zigzag|cage|spiral|cross` (the shape the chained passes draw; default any: a different one each flurry), `?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row); the flurry's cuts ripping the picture `?rip=off|tear|strip|ghosts|negative` (default strip, the owner's pick; player/timeRip.js; Lab: the streak row's `rip`); the perfect parry's spark spit `?parryFx=0|a` (default a; ADR-181; Lab: the streak row's `parryFx`). Bites (a blow knocks the bricks, the letters, out of
+`?tempo=0` (the storm without its tempo: the pace of ADR-167), `?chain=0` (the flurry's passes teleport round the ring again, with the crescents and the 'A' shards: the paths before the chain), `?figure=any|star|zigzag|cage|spiral|cross` (the shape the chained passes draw; default any: a different one each flurry), `?perfect=today|sharp|cinema` (default sharp), `?burst=0..3` (default 2), `?streakCount=` and `?auraFire=` (Lab: the 'streak' row); the flurry's cuts ripping the picture `?rip=off|tear|strip|ghosts|negative` (default strip, the owner's pick; player/timeRip.js; Lab: the streak row's `rip`); the perfect parry's spark spit `?parryFx=0|a` (default a; ADR-181; Lab: the streak row's `parryFx`). The tells' looks (ADR-271; the owner's picks are the defaults): `?black=0|a|b|c` (default b: a black blow drains the picture to dark grey, the boss lit; `0` = the violet charge), `?redTrail=0|a|b` (default a: a red string's cuts leave a red crescent) and `?blackImpact=0|a` (default a: a black blow lands a crater and a shock, hit or miss) (Lab: the streak row's `black`, `redTrail`, `blackImpact`). Bites (a blow knocks the bricks, the letters, out of
 a piece where it struck; the hero's blade goes clean through what it does not fell, chipping it along
 the cut) are on: `?chip=0` turns them off (ADR-132); `?cutStop=1` gives back the blade that stops there
 (ADR-177; Lab: WORLD → Blade). Floor marks (every boss blow that meets the ground leaves a mark of its
@@ -168,8 +170,13 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
   and AUTO quality (ADR-200) is the safety net, not a licence to spend. A new level gets a baseline row.
 - **Go easy on the owner's PC (ADR-205).** Many agents share one machine, and the owner games on it.
   - While working, test only what you changed: one suite (`node tests/integration/<suite>.mjs . <scenario>`)
-    or `npm test -- --only <names>`. Run the full `npm test` once, before opening the PR; CI runs
-    everything anyway.
+    or `npm test -- --only <names>`. Before opening the PR, run `npm test -- --changed` (the tasks
+    that cover what the branch changed; `--changed --list` shows the pick and why; ADR-276), not the
+    full set: CI runs every task on every PR and it cannot merge until they pass. When `--changed`
+    says "everything" (shared code: combat, the hero, the duelist engine, core, render, main.js), run
+    the suites your change is about with `--only` and let CI run the rest. A CI failure after the PR
+    is open is fixed on the branch like any other. A new boss or level gets a rule in
+    `tests/changed.mjs` (`changedcheck` fails until it has one).
   - Never start a second `npm test` while one of yours is still running. If a test command times out,
     check whether it is still running (and wait for it or stop it) before running it again.
   - Run long test commands in the background and wait for them; do not start another meanwhile.
