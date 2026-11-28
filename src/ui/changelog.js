@@ -23,6 +23,7 @@ export const RELEASES = [
         notes: [
           'Every parry is now a perfect parry: the same sparks, freeze and rewards every time you parry on time.',
           'A parry pressed a touch early no longer counts as a weaker, different-looking parry.',
+          "So Bai Wuji's barrier now opens on every parry, and every bullet you parry flies back at whoever fired it.",
         ],
       },
       {
