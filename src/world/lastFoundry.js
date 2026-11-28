@@ -97,7 +97,7 @@ export const FOUNDRY = Object.freeze({
   tanks: Object.freeze([[11.8, -11.8], [-11.8, -11.8], [11.8, 11.6], [-11.8, 11.6], [18.4, -14.8]].map(([x, z]) => Object.freeze({ x, z }))),
   columns: Object.freeze([[-16.6, -16.4], [16.6, -16.4], [-16.6, -2.5], [16.6, -1.5], [-16.6, 7.5], [16.6, 15.6]].map(([x, z]) => Object.freeze({ x, z }))),
   furnace: Object.freeze({ x: 0, z: -30, r: 5 }),
-  jibPostX: 17.4, // the jib cranes' posts stand at |x| = this, level with their ladles
+  jibPostX: 17.0, // the jib cranes' posts stand at |x| = this, level with their ladles
   staticR: 30, // past this: the wreck field, a static mesh (no blow reaches it)
 });
 
@@ -105,7 +105,7 @@ export const FOUNDRY = Object.freeze({
  *  the light's numbers (content is data). */
 export const FOUNDRY_TUNING = Object.freeze({
   // structure (hp). A ladle's chain: three or four of the hero's heavy cuts, one of his blows
-  ladle: 0.5, press: 6, pressHead: 4.5, frame: 0.8, conveyor: 2.2, tank: 0.9, column: 3.2, gantry: 2.4, jibPost: 3, jib: 1.8,
+  ladle: 0.5, press: 6, pressHead: 4.5, frame: 0.8, conveyor: 2.2, tankHp: 0.9, column: 3.2, gantry: 2.4, jibPost: 3, jib: 1.8,
   ingots: 2.2, girder: 2.4, pipes: 2.6, catwalk: 2.2, wall: 4.5, slag: 1.6,
   molten: Object.freeze({
     max: 8, r: 2.2, life: 14, spill: Object.freeze({ r: 2.6, life: 16 }), ignite: 1, glow: 10,
@@ -280,7 +280,7 @@ function buildFoundry(U, colliders) {
     for (let k = 0; k < 6; k++) {
       const z = Ln.z0 + (k + 0.5) * len;
       // (a run 3.7 m long: its footprint the middle 2.8 m, two circles hold the hero off it end to end)
-      const cs = [colliders.add(Ln.x, z - 1.0, 0.8, 'stone'), colliders.add(Ln.x, z + 1.0, 0.8, 'stone')];
+      const cs = [colliders.add(Ln.x, z - 1.1, 1.0, 'stone'), colliders.add(Ln.x, z + 1.1, 1.0, 'stone')];
       piece('conveyor', Ln.x, z, 1.4, buildConveyor(pr, Ln.x, z, len, [0]), { cs, hp: T.conveyor, weight: 1.6, topples: false, cover: false });
       // (his brothers: headless, one-armed, half-shelled; facing the floor)
       const fk = [0, 2, 1, 0, 1, 2][k];
@@ -299,7 +299,7 @@ function buildFoundry(U, colliders) {
   const tanks = [];
   for (const { x, z } of FOUNDRY.tanks) {
     const yaw = Math.atan2(-x, -z);
-    const def = piece('tank', x, z, 0.75, buildTank(pr, x, z, yaw), { cr: 0.62, hp: T.tank, weight: 1, topples: false, cover: true, lift: 1, broken: { geos: buildTankWreck(br, x, z, yaw), r: 0 }, wreck: false });
+    const def = piece('tank', x, z, 0.75, buildTank(pr, x, z, yaw), { cr: 0.62, hp: T.tankHp, weight: 1, topples: false, cover: true, lift: 1, broken: { geos: buildTankWreck(br, x, z, yaw), r: 0 }, wreck: false });
     tanks.push(def);
   }
 
@@ -330,7 +330,8 @@ function buildFoundry(U, colliders) {
       const x = P.x0 + (k + 0.5) * w;
       piece('catwalk', x, cz, w / 2, buildCatwalk(pr, x, cz, w - 0.2, 3.2), { cr: 0, hp: T.catwalk, weight: 1.2, topples: false, cover: false, wreck: true });
     }
-    for (let k = 0; k <= 4; k++) colliders.add(P.x0 + k * w, cz, k === 0 || k === 4 ? 0.3 : 0.75, 'trunk');
+    // (the inner legs' circles reach the pour's, so no gap between them wedges the hero; the end legs stand clear)
+    for (let k = 1; k < 4; k++) colliders.add(P.x0 + k * w, P.z0 - 0.75, 0.9, 'trunk');
   }
 
   // ---- the blast furnace beyond the pour (left whole: it chips), its tap hole and the runner to the pour
@@ -339,7 +340,7 @@ function buildFoundry(U, colliders) {
     const geos = buildFurnace(pr, furnace.x, furnace.z, { r: furnace.r, runTo: P.z0 - furnace.z });
     breakables.push({ kind: 'furnace', mat: 'stone', look: 'prop', x: furnace.x, z: furnace.z, r: furnace.r * 1.06, h: geosHeight(geos), geos, colliders: [colliders.add(furnace.x, furnace.z, furnace.r * 1.08, 'stone')], hp: Infinity, topples: false, cover: true, lift: 0, wreck: false, broken: null });
     // (the runner's edge: nobody walks the trough)
-    colliders.add(furnace.x, P.z0 - 2.4, 0.55, 'stone');
+    colliders.add(furnace.x, P.z0 - 2.6, 1.0, 'stone');
     vents.push({ x: furnace.x, y: 16.5, z: furnace.z, k: 2.2, def: null, smoke: true });
   }
 
@@ -350,7 +351,7 @@ function buildFoundry(U, colliders) {
       const x = side * 25, low = (k + (side > 0 ? 1 : 0)) % 3 === 2, h = range(pr, 3.2, 4.4);
       const w = buildWall(pr, x, z, Math.PI / 2, 5.6, h, low);
       // (two circles hold the hero off it; they go with it: what is left is a low ruin he steps over)
-      const cs = [-1.5, 1.5].map((dz) => colliders.add(x, z + dz, 1.25, 'stone'));
+      const cs = [-1.4, 1.4].map((dz) => colliders.add(x, z + dz, 1.25, 'stone'));
       piece('wall', x, z, 2.8, w.geos, { cs, mat: 'stone', hp: T.wall, weight: 2.2, topples: false, cover: true, wreck: false, broken: { geos: w.ruin, r: 0 } });
     });
   }
@@ -366,8 +367,8 @@ function buildFoundry(U, colliders) {
       sceneryGeos.push(...buildHulk(sr, x, z, yaw));
       for (const d of [-1.8, 1.8]) colliders.add(x + Math.sin(yaw) * d, z + Math.cos(yaw) * d, 2.1, 'stone');
     }
-    for (let k = 0; k < 18; k++) {
-      const a = (k / 18) * TAU + sr() * 0.2, rr = range(sr, S + 1, S + 9);
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * TAU + sr() * 0.2, rr = range(sr, S + 1, S + 9);
       const x = Math.sin(a) * rr, z = Math.cos(a) * rr;
       if (z > 24 && Math.abs(x) < 8) continue; // (the yard by the bonfire stays open)
       const m = range(sr, 0.8, 1.8);
@@ -376,10 +377,10 @@ function buildFoundry(U, colliders) {
     }
     // the north wall behind the furnace, broken in places
     for (let k = 0; k < 7; k++) {
-      const x = -18 + k * 6, z = -37 + range(sr, -0.6, 0.6);
+      const x = -18 + k * 6, z = -38.5 + range(sr, -0.4, 0.4);
       if (sr() < 0.25) continue;
       sceneryGeos.push(...buildWall(sr, x, z, 0, 5.6, range(sr, 3.5, 6), sr() < 0.3).geos);
-      for (const dx of [-1.5, 1.5]) colliders.add(x + dx, z, 1.25, 'stone');
+      for (const dx of [-2, 0, 2]) colliders.add(x + dx, z, 1.25, 'stone');
     }
   }
 

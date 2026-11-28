@@ -207,7 +207,7 @@ export function buildLadle(rng, x, z, h, top, spoutYaw = 0) {
 export function buildPress(rng, x, z, { headY = 3.4, yaw = 0 } = {}) {
   const base = [], head = [];
   base.push([bx(4.6, 0.9, 3.6), worn(C.concrete, 0.6, 3)], [bx(3.6, 0.55, 2.6, 0, 0.9, 0), C.dark], [bx(2.2, 0.35, 1.6, 0, 1.45, 0), C.steel, 1.2]);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) base.push([cy(0.24, 0.24, 7.6 - 0.9, sx * 1.55, 0.9, sz * 1.0, 10), C.steel, 1.25]);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) base.push([cy(0.24, 0.24, 7.6 - 0.9, sx * 1.55, 0.9, sz * 1.0, 8), C.steel, 1.25]);
   // the crown, its cylinder, the ram and the upper die
   head.push([bx(4.2, 1.3, 3.0, 0, 6.3, 0), C.rust, 1.05], [cy(0.75, 0.75, 1.7, 0, 7.6, 0, 12), C.dark], [bx(1.0, 0.25, 1.0, 0, 9.3, 0), C.steel]);
   head.push([bx(2.8, 0.5, 2.0, 0, headY + 1.2, 0), C.steel, 1.1], [cy(0.42, 0.42, 6.3 - (headY + 1.7), 0, headY + 1.7, 0, 10), C.steel, 1.3], [bx(2.0, 1.0, 1.4, 0, headY + 0.2, 0), C.dark]);
@@ -330,7 +330,7 @@ export function buildPipeRack(rng, x, z, yaw, len = 4.6, vent = true) {
     parts.push([bx(1.9, 0.16, 0.2, 0, 3.0, pz), C.steel, 1.15], [bx(1.6, 0.12, 0.16, 0, 1.9, pz), C.dark]);
   }
   const pipe = (px, py, r) => {
-    const g = prep(new THREE.CylinderGeometry(r, r, len, 8, 1));
+    const g = prep(new THREE.CylinderGeometry(r, r, len, 6, 1));
     g.rotateX(Math.PI / 2);
     g.translate(px, py + r, 0);
     return g;
