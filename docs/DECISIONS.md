@@ -7893,3 +7893,41 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   look options (2) were not offered as variants: the owner asked for the finish itself; `?menu=0` still shows
   the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
   to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
+
+## ADR-271 — The blackout for a black blow, red trails for a red string: options behind switches (2026-11-27)
+
+- **Context:** the owner sent a Phantom Blade Zero boss fight as the reference for combat feel and approved two of
+  its looks. At 0:17 a charged attack: over about 0.3 s the whole picture drains to dark grey, only the boss stays
+  readable with a white glint on her blade, colour snaps back on the strike. At 0:34 and 1:17 a red string: every
+  cut leaves a long thin red crescent. Today a black blow is drawn violet (an eclipse with violet strokes on the
+  striking part, the body darkened violet, the flare dyed violet, the screen's edges dimming), and a red blow's cut
+  is the same white steel as any other. Owner rules: no background colour change on a parry or dodge (the blackout
+  is their explicit exception for BLACK blows only); for red "the flare stays the timing cue, nothing before it"
+  (ADR-118); a look change is shown as films and the owner picks; the default is what the owner approved.
+- **Decision:**
+  1. THE BLACKOUT (`?black=0|a|b|c`, `combat/blackout.js`, default `0` = today). A grade in the final pass
+     (`uBlack`): the world's colour drains and its light drops; the boss is kept whole and the hero partly, found
+     on the scene's ASCII flag (sceneRT alpha), spread by part of a letter cell; a letter above a light keeps its
+     light (the flare, the glint). The HUD is DOM and untouched. The violet goes in it (`TELL_STYLE.black.pale`):
+     the flare undyed (a white-hot streak), the charge a white point with pale motes drawn in, no darkened body,
+     no dark screen edges. Variants, one dimension apart: a the film (dark over the last 0.3 s before the cue), b
+     the dark built through the whole charge, c as a, darker. It holds 0.3 s past the cue (the strike) and comes
+     back in 0.08 s of REAL time (a hit-stop must not hold it).
+  2. DRIVEN BY WHAT EXISTS: `combat:charge` starts it, the black `combat:flash` holds it to the strike, and a
+     `beat()` every frame from what draws the charge keeps it (DuelFx.charge: every duelist and the wyrm; the Fox's
+     Howl in `beam.js`): a charge whose beats stop for 0.15 s is cancelled and lets go in 0.25 s, so every path
+     that stops drawing the charge (stagger, posture break, parry recoil, a Lab interrupt, death) clears it with
+     no list to keep; a retry or a change of state clears it at once (`ui/tells.js`, which owns it as
+     `game.blackout`). No new event. `answer.js` and `audio.js` hear the same events as before.
+  3. THE RED TRAIL (`?redTrail=0|a|b`, `combat/redTrail.js`, default `0` = off). A red cue opens a window to its
+     impact + 0.14 s (`DuelFx.tellFlash`); inside it `DuelFx.sweep` lays one line of fire at a low heat (red
+     strokes) just outside the tip's path. a ~0.2 s, b ~0.45 s and a little hotter. Blades only; the bare-handed
+     bosses and the wyrm are left out: a fist's or a claw's path is short and lies on the contact, where a red
+     wake would hide the blow, and the flare already marks it.
+  4. Numbers in `TELL_STYLE` (`rules.js`): `black.out`, `black.pale`, `red.trail`. Lab: `black`, `redTrail` in the
+     streak grid. `npm run perf -- --black` measures a frame with the blackout pinned on.
+- **Consequences:** the black flare in the blackout is white, the colour of a parryable glint; it is a streak, not
+  the cross, and the whole frame is dark around it, but the owner should judge it. The mask is the scene's flag,
+  so what is drawn only in the fire field near the boss (his spell, the Fox's spirit) dims with the world unless
+  it is bright. Open: the owner's pick of a / b / c and a / b (films in the PR, made with the scratch film rig), the phone, and a
+  red wake for fists and claws if the owner wants one.

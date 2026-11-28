@@ -266,6 +266,19 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   on it (a disc of blacked-out cells with a pale corona), motes of pale light pulled in from all
   round, the body darkening (`TELL_STYLE.black.warn`), the screen edge dimming (`combat:charge`).
   The levels are dark, so black is drawn by what rings it. Then the black flare.
+- **The blackout (`?black=a|b|c`, ADR-271; off by default until the owner picks).** The Phantom Blade
+  Zero reference: instead of the violet look, the whole picture drains toward dark grey and dims as a
+  black blow charges, the boss stays lit with a white point on the striking part, the black flare is a
+  white-hot streak, and colour snaps back on the strike. a: the dark drops in over the last 0.3 s
+  before the cue (the film); b: it builds through the whole charge; c: as a, darker. Black blows only:
+  red, blue and normal blows never touch the picture. Driven by `combat:charge`, a `beat()` from
+  whatever draws the charge each frame (`DuelFx.charge`: every duelist and the wyrm; the Fox's Howl),
+  and the black `combat:flash`; it clears on every path the charge clears on (below), a cancelled
+  charge over 0.25 s. STYLE.md "The blackout and the red trail".
+- **The red trail (`?redTrail=a|b`, ADR-271; off by default).** From a red blow's flare on, a blade's
+  cut leaves a thin red crescent just outside its white edge, so every cut of a red string reads red;
+  nothing before the cue, nothing on a white or blue blow. a: thin, ~0.2 s; b: longer, ~0.45 s. Blades
+  only (Shen Hui, the Starless Lord, Lu Wusheng); the bare-handed bosses and the wyrm are left out.
 - **Parryable (`normal`, `blue`) — the animation is the tell.** No colour coding during the windup
   (audio: the blue warning for `blue`; nothing for `normal`). On the cue a brief **white cross** pops at
   the striking part (a `blue` one with the blue timing sound): one row of `-` (13 cells) through one column of `|`
@@ -315,7 +328,8 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   (`TELL_BLAZE`). The owner asked for the flare instead of "a red circular area of where the attack
   will land".
 - The glow clears the moment the windup is cancelled: stagger, posture break, parry recoil, the
-  plunge's reaction, death, reset, or a Lab interrupt replacing the attack.
+  plunge's reaction, death, reset, or a Lab interrupt replacing the attack. So does the blackout
+  (checked by duel `blackout` and integ `flare`).
 - After-the-fact feedback (PARRY / DEFLECT / DEFLECT ×N / GHOSTEP / EXECUTION / GUARD BROKEN
   call-outs, white/gold parry sparks, the clang that climbs with a deflect chain) is not a tell and
   stays.

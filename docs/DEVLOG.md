@@ -5,6 +5,39 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The blackout for a black blow, red trails for a red string (ADR-271; `claude/combat-blackout-red-trails-892472`)
+
+**Goal:** two looks from the owner's Phantom Blade Zero reference (a boss fight they sent): a charged (black) attack
+drains the whole picture to dark grey, the boss alone readable with a white glint, colour back on the strike; a red
+string leaves a long thin red crescent on every cut. Options behind switches, filmed, a draft PR for the owner to pick.
+
+- **The blackout (`?black=0|a|b|c`, default `0`):** `combat/blackout.js` `Blackout` (`game.blackout`, owned and
+  stepped by `ui/tells.js`) drives the final pass's new `uBlack` grade: the world drains and dims, the actors are read
+  off the scene's ASCII flag (sceneRT alpha, five taps spread by 0.7 of a letter cell): the boss kept whole, the hero
+  60 %, a letter brighter than 0.5 - 0.85 keeps its light. The violet goes in it (`TELL_STYLE.black.pale`): the flare
+  undyed (white-hot), the charge a white point with pale motes, no violet body, no dark edges. a = dark over the last
+  0.3 s before the cue (the film), b = built through the whole charge, c = a darker. Hold 0.3 s past the cue, back
+  in 0.08 s of real time (a first version on game time stayed half dark through the strike's hit-stop).
+- **Cancels with no list:** whatever draws a charge calls `blackout.beat()` each frame (`DuelFx.charge`, so every
+  duelist and the wyrm; one line in the Fox's Howl); 0.15 s without a beat = cancelled, gone in 0.25 s. A retry /
+  a state change clears it at once. Checked: stagger, posture break, a Lab interrupt, a retry, his death (duel
+  `blackout`), the wyrm's stagger (integ `flare`).
+- **The red trail (`?redTrail=0|a|b`, default `0`):** a red cue opens a window to its impact + 0.14 s
+  (`DuelFx.tellFlash`), inside which `DuelFx.sweep` lays a line of low-heat fire just outside the tip's path. Blades
+  only (Shen Hui, the Lord, Lu Wusheng); fists and the wyrm's claws left out (their path lies on the contact).
+- **Films** (game camera, full frame, real speed, 60 fps, beats captioned; the hero holds his guard for the black
+  blow, no red hurt edge drawn): `films/adr-271/` in the worktree (not committed) and the shared notes folder's
+  `blackout-films/`: `black-ash-compare.mp4` / `black-wyrm-compare.mp4` (today | a / b | c), `red-ash-compare.mp4`
+  / `red-lord-compare.mp4` (today | a / b), and each take on its own.
+- **Perf:** `npm run perf` (RTX 4090; main saved first, then this branch, then `--black`, which pins the blackout
+  full on): the final pass 0.01 / 0.02 ms (1080p / the phone's size) on main and with the blackout off, 0.02 / 0.03 ms
+  pinned on (+0.01 ms GPU, the five flag taps); the whole frame 0.85 / 1.01 ms (Cinderwood) and 0.97 - 1.05 / 1.05 -
+  1.10 ms (Ashfall) in all three runs. Script: the blackout's step is a few multiplies; the frame's 2.6 - 2.9 ms moved
+  within run-to-run noise. No triangles or draws added (`cost.mjs` unchanged).
+- **Open:** the owner's picks (both default to today's look); the black flare is white, the colour of a parryable
+  glint (a streak in a dark frame, not the cross: their call); things drawn only in the fire field near the boss dim
+  with the world unless bright; a red wake for fists and claws if wanted; the phone.
+
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
 
 **Owner:** one tap on the path or BEGIN HERE must start; BOSS RUSH and BEGIN HERE looked bad, the menus should look

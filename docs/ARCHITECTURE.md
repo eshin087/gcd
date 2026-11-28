@@ -750,6 +750,16 @@ Render helpers for creature modules:
     printed through his cover (see "The hero seen through what covers him" above).
 - `gi(ch)`, `gis(str)` (`render/glyphs.js`).
 - `game.pipeline.finalMat.uniforms` — `uHurt` (red edge 0..1), `uFade` (black 0..1), `uDesat` (0..1), `uWarm` (boss grade 0..1), `uExposure`, `uBloom`. **Owned by the HUD/flow module** (game/grade.js `ScreenGrade`: `hurtPulse`, `ghostPulse`, `dip`, `fadeTo`, `desatTo`, and `flashPulse(k)`: a white flash, `uExposure` × (1 + 0.9 k) over its base, gone in ~0.2 s; flow fires it on every `player:parry` of a blade).
+- The blackout's uniforms (ADR-271, `?black=`): `uBlack` (0..1), `uBlackK` (vec4: the world's light left,
+  its grey, the hero kept, the actor mask's reach in letter cells), `uBlackKeep` (vec2: the light a letter keeps
+  from), `uBlackCell` (the art cell), `tFlag` (`sceneRT`'s texture: its alpha is the ASCII flag the mask reads).
+  **Owned by `combat/blackout.js` `Blackout`** (`game.blackout`, built and stepped by `ui/tells.js` `TellEdges`
+  every HUD frame; `start(dur)` on `combat:charge`, `cue()` on a black `combat:flash`, `beat()` every frame of a
+  charge from what draws it, `release(over)`, `clear()`, `step()` → `k`, `update()` writes the uniforms). A charge
+  with no beat for 0.15 s of game time is cancelled: **whatever draws a black charge calls
+  `game.blackout?.beat()` every frame of it** (`DuelFx.charge` does, so every duelist and the wyrm get it; the Fox's
+  Howl calls it in `thousandFox/beam.js`). Its numbers: `TELL_STYLE.black.out` / `.pale` (`rules.js`);
+  `flareStyle(tell)` and `blackBody()` give the black flare's colours and the body's darkening for the switch.
 - `game/grade.js` `ScreenGrade.dimPulse(k = 0.4, hold = 0.4)` (ADR-167): the world dims to k (`uExposure` × (1 − 0.6 k)) over ~4 frames, holds `hold` s, comes back over ~0.25 s; the perfect parry's cinema beat uses it in place of the white flash (lines printed hotter than the scene still stand out). `resetInstant` clears it.
 
 ## Module contracts
@@ -2278,6 +2288,10 @@ Damages the player only via `game.player.takeHit(...)` with tell data; announces
   y, z, flare)` → `DuelFx.tellFlash(tell, x, y, z, k, flare)` draws the flare for a red or black
   blow and for a blue one whose beat says `flare` (`rules.js` `isFlare`), else the white glint. One
   flare per cue (a blow of both forefeet is one streak), kept inside the frame.
+- **the red trail (`?redTrail=a|b`, ADR-271; `combat/redTrail.js`, numbers `TELL_STYLE.red.trail`)**:
+  `DuelFx.tellFlash` of a red cue opens a window to the cue's `flashLead` + `follow` s (any other cue
+  closes it); inside it `DuelFx.sweep` lays one line of fire at a low heat just outside the tip's path.
+  Every blade that cuts through `sweep` (Shen Hui, the Lord, Lu Wusheng) gets it with no code of its own.
 - red (dodge-only) hits: nothing through the windup (`TELL_STYLE.red.warn` from = to = 0; until
   ADR-118 `uWarn` ramped 0.1 → 0.38) and no heat on the ground under its own area
   (`TELL_STYLE.red.floor` false: `Brain._warnZone` returns at once). On the cue `uWarn` on every
@@ -2287,7 +2301,7 @@ Damages the player only via `game.player.takeHit(...)` with tell data; announces
   its own (Armageddon's rear-up and salvo) sets `dragon.bodyWarn` 0..1 every frame: a 0.1 → 0.38
   ramp of its own (`BODY_WARN`), read and zeroed by `_updateWarn`.
 - black (charged) hits: through the windup `Brain._charge` draws the charge on the striking part
-  (`fx.charge` → `DuelFx.charge`) and emits `combat:charge` once; `_updateWarn` ramps
+  (`fx.charge` → `DuelFx.charge`, which beats the blackout) and emits `combat:charge` once; `_updateWarn` ramps
   `TELL_STYLE.black.warn` (x `BLACK_BODY` 0.16 on a body this size; `dragon.warnRGB` is the colour
   written to `uWarn`).
 - a blue hit marked `flare` (a parry moment): `hitPlayer` passes `flare` and holds the blow as a
@@ -6493,7 +6507,7 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   with its flash, and a blow it turns into a feint sends neither; the wyrm's phase-3 fire, ablaze.js, dims round it, ADR-120),
   `combat:charge {source:'dragon', attack, dur, x, z}` (a black blow begins to charge: darkness gathers on the
   striking part for dur game seconds, until its cue; the HUD darkens the screen edge through it, audio plays
-  the charge's swell),
+  the charge's swell; with ?black=a|b|c the blackout darkens the whole picture instead of the edge, ADR-271),
   `combat:clash {heavy, crush, counter, x, y, z}` (the trade clash: the hero's cut met a duelist's blow at the same moment and
   neither landed; heavy = the hero's cut was a heavy one, crush = a full cleave that was not thrown back, counter = the
   flash counter (it is followed by player:counter and the HUD shows that instead); HUD "CLASH",
