@@ -16,6 +16,13 @@ export const TUNING = {
     gripMax: 0.7, // rad (~40°): the most the blade turns off his sword forearm (anim.js gripMax; the hero ≤ 60°)
     armSoft: [0.9, 0.985], // his arms' soft reach (anim.js armSoft): a cut and a thrust end on an open arm
   },
+  // ---- the form pass (ADR-250; on behind `?ashForm=a`): the same, the arm opening further at a thrust's full
+  // reach (a lunge's hand is keyed past it: ~160° at the elbow, not 145°)
+  formMotion: {
+    gripMax: 0.7,
+    armSoft: [0.9, 0.99], // (1.0 locked a cut's arm dead straight, 176°)
+    liftEase: 0.05, // s: a planted foot the clip lifts eases off its spot (anim.js; 0.12 s, the others', slid his feet)
+  },
 
   // ---- tells (rules: COMBAT.md; checked by the duel tests). PBZ-boss speed (owner, 2026-11-12):
   // openers ~0.46–0.6 s, a string's hits ~0.34 s apart, the flash the timing cue

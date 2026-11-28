@@ -268,6 +268,37 @@ strokes, white only at the first peak, before the films were sent.
 **Open:** the kick and the palm snap harder at the contact (largest frame jolt 282 → 424, 174 → 236 mm/f²); the
 lead foot's step lives in the hero's animator (anim.js) and was left alone.
 
+## 2026-11-26 — Shen Hui's form, and looks for two of his specials (ADR-250; branch `claude/shen-hui-motion-d768f0`)
+
+**Owner:** the motion audit of every boss (weird arm angles and sword positions, unrealistic attacks, readable
+tells, special effects at the fox's and Bai Wuji's bar), one session and one draft PR per fighter.
+
+**Measured first** (the sword audit with a new impact table, `GCD_AUDIT_IMPACT=1`): thrusts on a bent arm with the
+point off the arm's line, the long lunges on two locked knees, overheads straight down (a bar at the game camera)
+with the free hand thrown onto the hilt at 17 - 19 m/s, the low sweeps' legs crossing, the front foot still up at
+most impacts. His kicks were already straight.
+
+**Changed** behind `?ashForm=a` (moves.js: each key helper pairs its keys with the form's; a post-pass makes
+`formKeys` / `formMotionKeys` / `formRecovery`; the realiser picks them): the lunge, the diagonal overhead, the
+sweep on the feet, the quieter free hand, the keyed step that lands with the blow; his own `formMotion` (the soft
+reach, a short foot ease). Effects to pick: `?whirlFx=a|b|c`, `?fallFx=a|b|c` (specialFx.js). Lab LOOKS rows.
+
+**Film.** Every move, before / after, at the game camera (cropped round him) and side-on, phases 1 - 3, real and
+half speed; the effect options at the game camera. Rig: `take.js` (a film per move, beat marks), `compose.sh`
+(2 x 2 grids), `keys.py` (key-frame sheets).
+
+**Picked** (2026-11-27, from one comparison video per decision): the form (`ashForm=a`), Ember Whirl b the cyclone,
+Heaven-Splitting Fall b the split; all three the default now (PICKED). The owner added that the Fall did not look
+natural in his body: ADR-226's held red coil covered his whole flight (a ground crouch 3.6 m up, the blade trailing
+behind, whipped over in 0.3 s). The form gives it its own keys, a jump: load, drive, tuck with the blade raised
+through the lock, legs reaching down, landing into the cut; filmed before / now side-on (a camera that follows his
+height) and at the game camera. Then the arms (the owner: "awkward and stiff"): one rising arc up his right side,
+the blade still cocking back behind his head through the lock instead of frozen, the hands leading into the cut. Then no backswing (the arms rise straight from his guard, in front of his face),
+the cut starting in the air, and a landing 1.6 m short of the hero (leap `short`, opt-in) so the blade meets him.
+
+**Open.** His pace unchanged (the owner chose it fast). Feet still slide 0.15 - 0.5 m over a long string where the
+close-in carries his root under a planted foot.
+
 ---
 
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)

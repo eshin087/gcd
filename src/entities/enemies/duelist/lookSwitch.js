@@ -76,6 +76,9 @@ export const PICKED = Object.freeze({
   oneBoltFx: 'a', // his palm bolts: the seed, a hot core in turning rings of digits (the owner's pick, 2026-11-27, ADR-253; 0 as before, b the fold)
   // the sword motion pass (ADR-226; the owner's pick, 2026-11-26, from the before / after films)
   ashMotion: 'a', // Shen Hui: the jian in line with the arm, held blue / red windups (Piercing Ash keeps its thrust), quick blows
+  ashForm: 'a', // Shen Hui's form: thrusts in a lunge, overheads on a diagonal, sweeps on his feet, the Fall a jump (ADR-250; the owner's pick)
+  whirlFx: 'b', // Ember Whirl: the cyclone (ADR-250; the owner's pick)
+  fallFx: 'b', // Heaven-Splitting Fall: the split (ADR-250; the owner's pick)
   lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl
   // the Starless Lord's audit (ADR-251; the owner's picks, 2026-11-27, from the before / after and option films)
   lordForm: 'a', // thrusts on the arm's line out of a real lunge, diagonal overheads, sweeps on the feet, the step on the blow

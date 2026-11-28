@@ -4,7 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-five pieces of work since 0.4.0:
+One hundred and thirty-six pieces of work since 0.4.0:
+- **Shen Hui fights with better form** (2026-11-26, ADR-250). *Changed (the owner's pick; `?ashForm=0` as before):* his thrusts
+  land on a straight arm with the point on its line, out of a real lunge (front knee bent, back leg long); his
+  overheads come down one-handed on a diagonal across you instead of straight down; his low sweeps turn on his feet
+  instead of winding his legs round each other; his free hand stays quiet through a string; and the front foot comes
+  down as the blade lands; Heaven-Splitting Fall is a real jump (he tucks with the blade raised, reaches his legs
+  down and lands into the cut) instead of flying in a crouch. The same timings and cues. *Added:* Ember Whirl
+  raises a cyclone of fire round him, and Heaven-Splitting Fall splits the floor in fire ahead and behind
+  (the owner's picks; `?whirlFx=` / `?fallFx=` a, c or 0 for the others).
 - **Blows land on what they strike** (2026-11-27, ADR-259). *Changed (the owner's pick from the films, `b`, the
   default):* every hit, block and guard is drawn ON what it strikes in the frozen frame (a blade's edge bites a
   few cm in, a fist lands on the body; it used to stop 10 - 75 cm short or show 10 - 40 cm through), held there

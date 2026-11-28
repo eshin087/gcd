@@ -6962,6 +6962,86 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
   `link`, `links`, `last`.
 
+## ADR-250 — Shen Hui's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps that turn on the feet, the step that lands with the blow; looks for Ember Whirl and Heaven-Splitting Fall (2026-11-26)
+
+- **Context:** the owner's motion audit of every boss (2026-11-26): "weird looking arm angles and sword positioning
+  and attacks that look unrealistic", every attack readable, the special moves' effects at the bar of Wen Yao's and
+  Bai Wuji's. ADR-226 already put his jian in line with his forearm (wrist ≤ 40 - 50°) and held his blue / red
+  windups. Measured what was still off (`tests/integration/swordAudit.mjs`, new opt-in `GCD_AUDIT_IMPACT=1`: at each
+  blow's impact the sword elbow, the wrist, both knees, the front foot down or not, the blade's elevation, the cut's
+  tilt (the point's path off level), a thrust's arm line (shoulder → grip against the blade) and a kick's knee; and
+  when the free hand peaks and the elbow folds):
+  - **Thrusts** landed on a bent arm (elbow 135 - 150°) with the point 21 - 26° off the line of the arm; the long
+    lunges (Plum Thrust, Piercing Ash, the perilous ends) on two locked knees (176° / 176°): the feet set 1.5 - 1.7 m
+    apart, wider than his legs reach at that depth.
+  - **Overheads** (Falling Ash, the strings' held overhead, the leaping two-handed chops) cut straight down: the
+    point's path 75 - 81° off level, one upright bar at the game camera; in the strings the free hand flew from the
+    held pose (out at the foe) onto the hilt in the 0.1 s strike: 17 - 19 m/s, the fastest thing he did.
+  - **The low sweeps** (Lotus Sweep, Twin Embers' second, Ember Whirl's last, Ash Lotus's, Ash on the Wind) turned
+    his hips a full circle over feet that stayed put: the legs crossed (-0.73 m) and the knee popped (630 mm a frame²).
+  - **The front foot was still in the air at most impacts** (15 - 18 cm): the foot planner steps a keyed foot only
+    once its key has drifted 14 cm, then takes ~0.1 s, so in a 0.34 s string windup it landed after the blade.
+  - Fine already: his kicks are straight at contact (176°, the support leg bent), the blade stays off his head and
+    body, his chest faces the hero at every impact.
+- **Decision** (`?ashForm=a`, the owner's pick, 2026-11-27, `0` = as before; Lab LOOKS `ashForm`): every beat gets
+  `formKeys` (and, for the blows ADR-226 holds, `formMotionKeys`), its move a `formRecovery`, played through the
+  realiser's `keysOf` / `recoveryKeysOf`: the windups, impacts, zones, cues and root motion are the move's own, only
+  the poses change. His data only (moves.js; the shared engine untouched: `keysOf`, `recoveryKeysOf`, `animOpts`
+  and `kit.motion` are kit options that already existed).
+  - **The thrust**: the sword hand keyed on the blade's own line out of the shoulder, past full reach, with his own
+    soft reach `TUNING.formMotion.armSoft` [0.9, 0.99] (ADR-226's 0.985 held a thrust at 145°; 1.0 locked a cut's arm
+    at 176°): elbow ~160°, the point 2° off the arm. The lunge's feet set where the legs reach: the front shin
+    upright over its foot, the back leg long (`lungeFeet`): knees ~70 - 100° front, ~155 - 176° back.
+  - **The overhead** as a ONE-handed steep diagonal (the jian is a one-handed sword): from high over the sword
+    shoulder down through the opponent to low at his left hip, the free hand drawn back in opposition; the blue HIGH
+    hold for these blows a little further out over the shoulder (world az -1.1, not -0.42) and ended at 0.7 of the
+    windup (not 0.8), so the strike comes ACROSS him; the leaping two-handed chops keep both hands, on the same
+    diagonal. Tilt 55 - 61° (the other diagonals ~43°: still its own shape).
+  - **The low sweep**: the feet go round with him (the right leg sweeping the stones, the left turning on its ball),
+    keyed just off the floor so the clip carries them.
+  - **The free hand** through a cut gathered by the sternum and split to his left in opposition: half the travel,
+    so a string no longer pumps it back and forth; Flicking Willow keeps the raised sword-finger up through the
+    flick (it fell 0.66 m in 0.09 s).
+  - **The step lands with the blow** (ki-ken-tai-ichi): where a beat steps its front foot in, the foot is keyed off
+    the stones halfway through the step and down at 0.86 of the strike, not left to the planner; outside dashes,
+    leaps, flits and the courtyard's moves. A planted foot its clip lifts eases off its spot over
+    `TUNING.formMotion.liftEase` 0.05 s (the others' 0.12 s dragged his feet 1.2 m through Rain of Ashes).
+  - **Effects to pick** (the owner's bar: the fox's and Bai Wuji's spells), `ashDisciple/specialFx.js`, heat in the
+    fire field and one-cell embers at the blade, his body or the landing spot, no hit and no cue of their own:
+    `?whirlFx=` Ember Whirl (a the wheel: the point leaves a burning ring; b the cyclone: fire whirling up round him,
+    embers off the point; c the disc: the swept width burns an instant) and `?fallFx=` Heaven-Splitting Fall (a the
+    comet: a tail of fire down, a column where he lands; b the split: a seam of fire down the cut, the floor split in
+    fire ahead and behind, out past the burning ring; c fire raining on the locked ring). `0` = as they ship. The
+    owner's picks (2026-11-27): `whirlFx=b` the cyclone, `fallFx=b` the split. The Kindling keeps its picked look
+    (ADR-118's three, `kindle=a`).
+  - **The Fall as a jump** (the owner, picking: it "doesn't look natural in his motion"): ADR-226's held red coil
+    spans 0.36 - 0.72 of its windup, which is his whole flight, so he flew 3.6 m up in a ground crouch (feet set in a
+    lunge, the blade trailing behind him) and whipped the blade over in the last 0.3 s. In the form it has its own
+    keys: he loads (sinks, the blade swung low behind his right hip), drives up off both feet as the arms swing the
+    blade up, tucks his knees at the top with the blade raised over his sword shoulder (held through the ring's
+    lock, where the red reads), reaches his legs down as the blade starts over, and lands into the cut (the root's
+    arc ends at the impact), sinking on through the active frames; his recovery rises where he landed. The arms (the owner: "awkward and
+    stiff"): the hands lift the blade up his right side in one rising arc (no swing forward under him and back),
+    and it keeps cocking slowly back behind his head through the lock (the arms never freeze), turning over into
+    the cut as he drops with the hands leading the steel. Then (the owner: the arms "barely visible" in the air,
+    the low backswing "a complete circle", the swing "way too late", "lands on top of the character like
+    kamikaze"): no backswing, the arms leave his guard straight up, the hands high in FRONT of his face; the cut
+    starts in the air past the top, the blade level in front of him before his feet touch; and he lands 1.6 m
+    short of the hero (the leap's new opt-in `short`, duelist/brain.js `_leap`; the form only) so the steel, not
+    his body, meets him (the 2.6 m ring still takes the hero in).
+- **Kept:** his pace (the owner's PBZ-fast openers ~0.46 s and strings 0.34 s apart, his TUNING floors 0.42 / 0.32 s:
+  the brief's 0.7 / 0.45 s floor would slow every move of his, which the owner chose fast; asked, not changed);
+  his colours and hat; Piercing Ash's old drawn-back windup (the owner's call in ADR-226; its lunge gets the new legs
+  and arm); the riposte's first blow a meetable diagonal cut (the flash chain's strike-back, ADR-246).
+- **Consequences** (the audit, every move, the form on): thrust elbows 156 - 161° (from 135 - 150), arm line 2 - 3°
+  (from 21 - 26), lunge knees front 69 - 98° / back 140 - 176° (from 176 / 176 on the long ones); overhead tilt
+  55 - 61° (from 75 - 81); the free hand's peak 4.5 - 10 m/s in every string (from 17 - 19); the front foot down at
+  every cut's impact (from up 15 - 18 cm in most); the sweeps' legs no longer cross (+0.3 m), the knee pop gone. The
+  duel suite with the form on: green, two checks read the engine on the poses they were tuned on (`ashForm=0`, as
+  `ashMotion=0` already: MOTION's two-handed overhead, REACT's layer under the raised blade). Open: the sweeping
+  foot counts as sliding in the audit (it is the sweep); feet still slide 0.15 - 0.5 m over a long string where the
+  close-in carries his root under a planted foot.
+
 ## ADR-247 — The clash dance: parries in a row pay more posture, the ring rises, his recovery slows with his health (`?clash=dance`) (2026-11-26)
 
 - **Context:** research into Sekiro, Phantom Blade Zero and Onimusha: Way of the Sword proposed five combat additions
