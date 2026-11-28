@@ -3365,7 +3365,10 @@ default; `?pad=split|classic` and `?hold=1|0` set them for one page load):
   is a switch for the owner to pick (`?leftLook=a|b|c`, `touch.leftLook`, `.tc-root.look-*`): `a` quiet (a faint
   ring, a bare knob, BLOCK in corner brackets only), `b` a pair of tiles (the stick in a square tile of the pad's
   brackets, the ring dotted, BLOCK the same height against its edge), `c` glyphs only (the ring's four arrows at
-  rest, no frames).
+  rest, no frames). The owner picked `c`, the default. `?pad=split` now only turns the left BLOCK on (the owner
+  swapped DODGE and BLOCK back: BLOCK beside ATTACK, DODGE under it, the default arrangement); `?pad=under` is
+  the BLOCK UNDER arrangement, `?pad=classic` the left BLOCK off. The saved pad carries `v: 2`; an older save's
+  `layout` is ignored (it was `split` for the left guard), so it takes BLOCK beside ATTACK.
 - SWIPE DODGE (ADR-274; `swipeDodge`, `cyclePad('swipe')`, `?swipe=1|0`; `CONFIG.touch.swipe`): a finger that
   touches the bare screen right of `swipe.from` (half the width) during play and travels `dist` px (30, × the
   fit) within `time` s (0.2) dodges the way it went (`input.dodgeToward`), once per touch, at that moment (not

@@ -31,7 +31,9 @@ left hand as an option and swipe to dodge" to test first.
 - **Then:** both buttons named BLOCK, no gauge line under them, ATTACK's dagger down, the left BLOCK centred on the
   stick, and three left-side looks behind `?leftLook=a|b|c` for the owner to pick (a quiet, b a pair of tiles, c
   glyphs only). Touch suite green.
-- **Open:** the owner's pick of `leftLook`; whether GUARD should be the default layout; a touch timing
+- **Picked:** `leftLook` c (glyphs only) is the default; DODGE and BLOCK swapped back on the right (BLOCK beside
+  ATTACK, DODGE under); `?pad=split` only turns the left BLOCK on; old saves take the default arrangement (`v: 2`).
+- **Open:** whether GUARD should be the default layout; a touch timing
   allowance if parries are still late.
 
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
