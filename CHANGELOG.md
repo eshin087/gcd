@@ -4,7 +4,19 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-six pieces of work since 0.4.0:
+One hundred and forty-seven pieces of work since 0.4.0:
+- **Xin Yi after the reference pack, to try** (2026-11-28, ADR-285). *Added (options, off by default: the owner
+  picks):* `?oneRef=a` draws Xin Yi after the owner's reference pack (`docs/art/character-packs-v04/xin-yi`): the
+  coat open in every phase and down to the floor with a wider hem, a taller collar split in front over a pale inner
+  band, the offset jade-grey seam down his left front, jade cuffs, the glasses' jade temples, a faint grey streak
+  in his hair, squarer guns (the muzzles where they were). `?oneRefMove=a` poses him after the sheets: the
+  turnaround's guards (the right arm out in the offer with the left hand behind his back, gear 2's lead hand high,
+  the guns held low at his sides, the open hands of the Source), hand blows landing into a lunge, the beckon
+  further out, the reload's arms thrown wide, Unwriting's lifted palms, a longer, lower Dive Within, a hands-low
+  rise off the floor, bigger leans and recoils, a deeper Bend. Every effect, projectile, cue and number is as
+  before: the same timing, zones, damage, root motion and effects (`woke.mjs . oneref` checks every move, phase,
+  gear, branch and count, and that seeded fights fire the same effects and shots at the same times). The Lab's
+  `oneRef` and `oneRefMove` rows.
 - **The deathblow is not cut short** (2026-11-28, ADR-280). *Fixed:* pressing guard during a deathblow ended it at
   once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
   boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of

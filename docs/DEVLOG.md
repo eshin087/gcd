@@ -5,6 +5,31 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — Xin Yi after the reference pack, to try (ADR-285; branch `enemies/xinyi-ref-anim`)
+
+**Owner:** implement Xin Yi's selected appearance and character animation from the reference pack
+(`docs/art/character-packs-v04/xin-yi`) on the existing rig; keep every spell, weapon and special effect exactly
+as it is (the sheets inform the body only); balance untouched; the candidate behind a switch for comparison, a
+preview to test.
+
+**Done:** two switches, off by default (PENDING; the Lab's `oneRef` / `oneRefMove` rows):
+- `?oneRef=a` (gear.js, look.js): the coat open in every phase down to the floor in a wider A, a taller collar
+  split in front over a pale inner band, the offset jade-grey seam (his left side of the V, his left front panel's
+  inner edge), jade cuffs, the glasses' jade temples, a faint grey streak lying on the crown, squarer guns (muzzle
+  cells untouched). Parts 7 / 9 inked jade-grey (REF_JADE).
+- `?oneRefMove=a` (refMoves.js, poses.js, moves.js): the turnaround's four guards; a key layer through the
+  realiser's `keysOf` (same key times): hand blows into a lunge, the beckon out further, the reload's arms wide,
+  Unwriting's palms lifted, a long low Dive Within, a hands-low rise, a low Falling Fist landing; reaction clips
+  bigger (leans, recoils, stagger, reeling, the Bend) and the Stop's palm straight; phase 1 gear 1's left hand
+  behind his back everywhere. Runs over whichever `?oneMoves` is picked.
+- Source drift reconciled: the pack's `oneMoves=a` baseline predates ADR-253; today's pick is `b`, so the films
+  compare against `b` (the shipped default) and the layer covers 0 / a / b.
+
+**Verification:** `woke.mjs . oneref` all passed (1944 realisations timed identically; phase 1 g1 / g2, 2, 3 fights: same blows, same fx triggers, same shots and bolts). With both switches on: data, timing, wall, flight, gear, bend, stop, dejavu, flurry, stance, rising, herolike all passed. Motion audit off / on: total jolt +1.4 %, foot slide 101.7 / 107.5 m. Films: current vs candidate at the game camera, the same seed per move.
+
+**Open / next:** the owner picks from the films and the preview; per-move corrections on what they name. Known
+limits: the grey streak reads faintly; the gear-2 opening and the wall-step take-off jolt a little more out of the new guards; Long Lesson slides its feet a little more; the right hand is a fist mesh (the open offer reads as a forward fist at 720p); the pose layer is broad, not a per-move re-key of all 122 beats.
+
 ## 2026-11-28 — The world suite's felled-trunk check made deterministic (branch `test/wreck-trunk-flake`)
 
 **Owner:** "fix the thing thats blocking every pr": `world wreck` ("a felled tree's trunk lies along its fall")

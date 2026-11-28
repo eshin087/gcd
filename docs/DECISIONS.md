@@ -8112,3 +8112,40 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
   guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
   change is a combo where a lock was.
+
+## ADR-285 — Xin Yi after the reference pack: his look and his poses behind two switches (`?oneRef`, `?oneRefMove`) (2026-11-28)
+
+- **Context:** the owner generated a reference pack for Xin Yi (`docs/art/character-packs-v04/xin-yi`, not in the
+  repo: an original anchor, ten sheets T1 - T2, A1 - A5, S1 - S3, a handoff, a coverage table of 42 moves / 122 beat
+  alternatives / 21 clips) and asked for his appearance and his character animation to follow it, with one override
+  above everything in the pack: **every existing spell, weapon and special effect stays exactly as it is** (look,
+  timing, trajectory, attachment, trigger); the sheets inform the character's body, pose, clothing and equipment
+  only. Balance (damage, reach, zones, windows, windups, holds, cues, root motion, cooldowns, weights) unchanged.
+- **Source drift:** the pack was inventoried before PR 184 (ADR-253) landed; its `oneMoves=a` baseline is now `b`
+  (the owner's pick). The pose layer runs over whichever `?oneMoves` set is picked, so it applies to 0, a and b alike.
+- **Decision:** ADR-277's pattern (Varr Nihil). Two switches, `0` (as shipped) until the owner picks (PENDING):
+  - `?oneRef=a`, the look (gear.js / look.js, read when his rig is built): on `?oneBody`'s figure, the coat's torso
+    open in every phase (the shirt in its V), the skirt to the floor (hem ~9 cm up standing) falling in a wider A, a
+    taller collar split in front over a pale inner band, the offset jade-grey seam (a strip down his left side of the
+    V, and piping down his left front panel's inner edge), jade cuff bands, short jade temples on the glasses, a
+    faint grey streak lying on his crown, squarer guns. The jade-grey pieces are the rig's `facing` / `piping`
+    materials, parts 7 and 9, inked by look.js (REF_JADE: no ink gain over 1.5, printed as his cloth). The guns'
+    muzzle cells are untouched (gunAim.js leaves the shots from their centres).
+  - `?oneRefMove=a`, the poses (refMoves.js, poses.js; live from his next move): the turnaround's guards (T1.9 - 12:
+    the right arm out in the offer, the left hand behind his back; gear 2's lead hand high; the guns low at his sides;
+    the open hands of the Source), so every clip and move starts and ends in them; a key layer through the
+    realiser's `keysOf` (the same key times, eases and cock: the realiser times a beat from its windup, never its
+    poses): grounded hand blows land into a lunge (lower, leaning in, the rear foot back), the beckon further out,
+    the reload's arms thrown wide, Unwriting's lifted palms, the Dive Within long and low, the rise off the floor
+    hands-low, the Falling Fist landing low; reaction clips (refClipKey): leans, recoils and the Bend bigger, the
+    Stop's palm out straight; phase 1 gear 1's left hand behind his back through every key and clip. No root field
+    is written (bX / bZ, travel, lift, dash). Not touched: the guns' aims, the bolts' and shots' release poses, the
+    transitions' kneel and rising, the hover and the pass.
+- **Verification:** `woke.mjs . oneref`: 1944 realisations (every move, phase, gear, branch, hold draw, mirror,
+  flurry count, under `?oneMoves=0|a|b`) time every beat identically on and off; seeded 20 s fights in phase 1 (both
+  gears), 2 and 3 land the same blows at the same times AND make the same calls into his effects at the same times
+  (every fx entry point, by name) and the same shots / bolts (time, kind, speed, heading, first point within 0 cm);
+  the look builds and fights in every phase. The mechanic scenarios pass with both switches on.
+- **Consequences:** the default is unchanged until the owner picks from the films and the preview. Drawn-follow
+  effects (a limb's trail, the palms' cue point) follow the new poses as they always followed the limbs. Known
+  limits are in the DEVLOG entry; per-move corrections wait for the owner's notes.
