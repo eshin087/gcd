@@ -76,6 +76,36 @@ export class Banner {
     const { lines, cols } = blockText(this.text, { maxCols: Math.floor((0.92 * W) / (CH * BLOCK_MIN)) });
     this.block.textContent = lines.join('\n');
     this.block.style.fontSize = `${Math.max(4, Math.min(BLOCK_MAX[this.blockKind] ?? 10, (0.9 * W) / (cols * CH))).toFixed(1)}px`;
+    this._clearHud();
+  }
+
+  /**
+   * A phase call keeps clear of the HUD at the top of the screen (ADR-270): on a phone 21 % down
+   * the screen ran over the player's frame, its lock line and the boss bar. Its middle goes below
+   * the lowest of them (by half its own height and a margin), never higher than its 21 %.
+   */
+  _clearHud() {
+    const S = this.root.style;
+    if (this.blockKind !== 'phase') {
+      if (S.top) S.top = '';
+      return;
+    }
+    try {
+      const host = this.root.parentNode, H = num(globalThis.innerHeight, 720);
+      if (!host?.querySelectorAll || !this.block.getBoundingClientRect) return;
+      let bottom = 0;
+      for (const n of host.querySelectorAll('.ab-pf, .ab-boss')) {
+        const r = n.getBoundingClientRect?.();
+        if (!r || !(r.height > 0) || !(r.bottom < H * 0.5)) continue;
+        if (globalThis.getComputedStyle?.(n)?.visibility === 'hidden' || globalThis.getComputedStyle?.(n)?.display === 'none') continue;
+        bottom = Math.max(bottom, r.bottom);
+      }
+      const half = num(this.block.getBoundingClientRect().height, 0) / 2;
+      const want = Math.max(H * 0.21, bottom + half + 10);
+      S.top = `${Math.min(want, H * 0.42).toFixed(0)}px`;
+    } catch {
+      /* no layout (headless): the stylesheet's place */
+    }
   }
 
   /** Blinking line under the banner (e.g. "press any key to rise again"); null clears it. */

@@ -252,6 +252,161 @@ const CSS = `
   .gm-c .gm-open .gm-act { margin-top: 10px; }
   .gm-c .gm-xlist { margin-top: 6px; }
 }
+
+/* ================= the finish (ADR-270): game-menu buttons and panels =================
+   Chamfered corners (two cut corners, like a blade's tip), a hairline frame, an ember fill for the
+   one thing to press, a gold card for the rush; each answers a hover, a press and the pad's focus. */
+.gm { --gm-cut: 9px; --gm-cut2: 6px; }
+/* (the menus' cut-corner buttons, hudStyle .ab-btn, are not the worlds' entries: those keep their own frame) */
+.gm .gm-e:not(.gm-rush):not(.gm-small) { box-shadow: none; clip-path: none; }
+.gm .gm-e.pad-focus:not(.gm-rush):not(.gm-small) { box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.35); }
+.gm .gm-e, .gm .gm-act, .gm .gm-close {
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.08s ease, filter 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.gm .gm-e:active, .gm .gm-act:active, .gm .gm-close:active { transform: translateY(1px) scale(0.985); }
+
+/* the panel of the world in focus: a framed slab with an ember rule along its top */
+.gm-c .gm-open, .gm-b .gm-strip, .gm-a .gm-detail {
+  position: relative;
+  border: 1px solid rgba(207, 214, 230, 0.14);
+  background: linear-gradient(180deg, rgba(14, 17, 24, 0.86), rgba(6, 8, 12, 0.9));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  clip-path: polygon(var(--gm-cut) 0, 100% 0, 100% calc(100% - var(--gm-cut)), calc(100% - var(--gm-cut)) 100%, 0 100%, 0 var(--gm-cut));
+}
+.gm-c .gm-open::before, .gm-b .gm-strip::before, .gm-a .gm-detail::before {
+  content: '';
+  position: absolute;
+  left: var(--gm-cut);
+  right: 30%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.85), rgba(255, 138, 61, 0));
+  pointer-events: none;
+}
+.gm .gm-dname { text-shadow: 0 0 14px rgba(255, 138, 61, 0.18); }
+.gm .gm-dhere {
+  padding: 2px 7px 1px;
+  border: 1px solid rgba(255, 138, 61, 0.45);
+  background: rgba(255, 138, 61, 0.08);
+  letter-spacing: 0.2em;
+}
+
+/* the one thing to press: an ember blade of a button */
+.gm .gm-act {
+  position: relative;
+  min-width: 190px;
+  min-height: 44px;
+  padding: 9px 18px 9px 20px;
+  justify-content: center;
+  align-items: flex-start;
+  border: 0;
+  color: #1a0d05;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  background: linear-gradient(180deg, #ffb070 0%, #ff8a3d 48%, #e0682a 100%);
+  box-shadow: 0 0 0 1px rgba(255, 190, 140, 0.35) inset, 0 6px 20px rgba(255, 110, 30, 0.28);
+  clip-path: polygon(var(--gm-cut2) 0, 100% 0, 100% calc(100% - var(--gm-cut2)), calc(100% - var(--gm-cut2)) 100%, 0 100%, 0 var(--gm-cut2));
+  text-shadow: 0 1px 0 rgba(255, 220, 190, 0.35);
+}
+.gm .gm-act::after {
+  /* a sheen that passes over it on hover */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 30%, rgba(255, 245, 230, 0.4) 48%, rgba(255, 255, 255, 0) 62%);
+  background-size: 260% 100%;
+  background-position: 120% 0;
+  pointer-events: none;
+}
+.gm .gm-act:hover, .gm .gm-act.pad-focus { color: #120801; border: 0; filter: brightness(1.08) saturate(1.05); background: linear-gradient(180deg, #ffc08a 0%, #ff964d 48%, #e8722f 100%); box-shadow: 0 0 0 1px rgba(255, 220, 190, 0.6) inset, 0 8px 26px rgba(255, 120, 40, 0.42); }
+.gm .gm-act:hover::after, .gm .gm-act.pad-focus::after { background-position: -20% 0; transition: background-position 0.7s ease; }
+.gm .gm-arow { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; }
+.gm .gm-al { white-space: nowrap; }
+.gm .gm-chev { display: inline-block; font-size: 1.35em; line-height: 0.8; font-weight: 700; transition: transform 0.18s ease; }
+.gm .gm-act:hover .gm-chev, .gm .gm-act.pad-focus .gm-chev, .gm .gm-rush:hover .gm-chev, .gm .gm-rush.sel .gm-chev { transform: translateX(4px); }
+.gm .gm-act .gm-actsub { color: rgba(40, 18, 6, 0.72); font-weight: 600; letter-spacing: 0.12em; }
+/* TRAVEL (another world): the same blade, cooler, so BEGIN HERE stays the hottest thing on screen */
+.gm .gm-act.gm-travel {
+  color: #f2e7d2;
+  text-shadow: none;
+  background: linear-gradient(180deg, rgba(255, 138, 61, 0.2), rgba(255, 138, 61, 0.08));
+  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.6) inset;
+}
+.gm .gm-act.gm-travel .gm-actsub { color: var(--ab-dim); font-weight: 400; }
+.gm .gm-act.gm-travel:hover, .gm .gm-act.gm-travel.pad-focus { color: #fff; background: linear-gradient(180deg, rgba(255, 138, 61, 0.34), rgba(255, 138, 61, 0.14)); box-shadow: 0 0 0 1px rgba(255, 160, 100, 0.9) inset, 0 6px 20px rgba(255, 110, 30, 0.2); }
+
+/* BOSS RUSH: a gold card, an emblem, its line, its best and a chevron */
+.gm .gm-e.gm-rush {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  min-height: 50px;
+  padding: 8px 18px 8px 16px;
+  border: 0;
+  background: linear-gradient(90deg, rgba(216, 184, 106, 0.16), rgba(216, 184, 106, 0.04) 55%, rgba(216, 184, 106, 0.1)), rgba(8, 10, 14, 0.86);
+  box-shadow: 0 0 0 1px rgba(216, 184, 106, 0.42) inset;
+  clip-path: polygon(var(--gm-cut) 0, 100% 0, 100% calc(100% - var(--gm-cut)), calc(100% - var(--gm-cut)) 100%, 0 100%, 0 var(--gm-cut));
+}
+.gm .gm-e.gm-rush:hover, .gm .gm-e.gm-rush.sel, .gm .gm-e.gm-rush.pad-focus {
+  background: linear-gradient(90deg, rgba(216, 184, 106, 0.28), rgba(216, 184, 106, 0.08) 55%, rgba(216, 184, 106, 0.18)), rgba(8, 10, 14, 0.86);
+  box-shadow: 0 0 0 1px rgba(243, 220, 148, 0.85) inset, 0 6px 22px rgba(216, 184, 106, 0.16);
+}
+.gm .gm-remb { flex: none; font-size: 16px; color: var(--ab-gold); text-shadow: 0 0 10px rgba(216, 184, 106, 0.7); }
+.gm .gm-rtx { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.gm .gm-rush .gm-name { color: #f6ecd2; font-weight: 800; letter-spacing: 0.26em; }
+.gm .gm-rush .gm-sub { color: #a89a76; letter-spacing: 0.1em; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.gm .gm-rush .gm-g { flex: none; }
+.gm .gm-rush .gm-chev { flex: none; color: var(--ab-gold); font-size: 20px; }
+.gm-c .gm-xlist .gm-rush, .gm-b .gm-xlist .gm-rush { justify-content: flex-start; gap: 14px; }
+
+/* the small corner buttons (WHAT'S NEW, CONTROLS) and CLOSE: quiet frames that light on a hover */
+.gm .gm-e.gm-small, .gm .gm-close {
+  border: 0;
+  background: rgba(10, 13, 19, 0.62);
+  box-shadow: 0 0 0 1px rgba(207, 214, 230, 0.16) inset;
+  clip-path: polygon(var(--gm-cut2) 0, 100% 0, 100% calc(100% - var(--gm-cut2)), calc(100% - var(--gm-cut2)) 100%, 0 100%, 0 var(--gm-cut2));
+  color: #c4cbda;
+  letter-spacing: 0.18em;
+}
+.gm .gm-e.gm-small:hover, .gm .gm-e.gm-small.sel, .gm .gm-e.gm-small.pad-focus, .gm .gm-close:hover {
+  color: #fff;
+  background: rgba(255, 138, 61, 0.1);
+  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.65) inset;
+}
+.gm .gm-e .ab-news-badge.on { padding: 1px 6px; background: var(--ab-ember); color: #1a0d05; font-weight: 800; }
+
+/* the path's fires: a soft ember glow under the one in focus, the current one's mark burning */
+.gm-c .gm-node { border-radius: 2px; }
+.gm-c .gm-node:hover:not(.sel) { background: rgba(207, 214, 230, 0.04); }
+.gm-c .gm-node.sel { background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 138, 61, 0.14), rgba(255, 138, 61, 0.03)); border-color: rgba(255, 138, 61, 0.5); box-shadow: 0 0 18px rgba(255, 120, 40, 0.12); }
+.gm-c .gm-node.on .gm-name { color: #ffe9d2; }
+
+/* PRESS ANY KEY: a slow breath, not a hard blink */
+.gm .gm-press { letter-spacing: 0.42em; color: #b9b2a6; }
+
+/* the CONTROLS drawer: the same slab as the detail */
+.gm .gm-dpanel {
+  border: 1px solid rgba(207, 214, 230, 0.14);
+  background: linear-gradient(180deg, rgba(14, 17, 24, 0.96), rgba(6, 8, 12, 0.97));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  clip-path: polygon(var(--gm-cut) 0, 100% 0, 100% calc(100% - var(--gm-cut)), calc(100% - var(--gm-cut)) 100%, 0 100%, 0 var(--gm-cut));
+}
+
+@media (max-height: 500px) {
+  .gm { --gm-cut: 7px; --gm-cut2: 5px; }
+  .gm .gm-act { min-width: 150px; min-height: 40px; padding: 7px 14px 7px 16px; }
+  .gm .gm-e.gm-rush { min-height: 42px; padding: 5px 14px 5px 12px; gap: 10px; }
+  .gm .gm-rush .gm-sub { font-size: 9px; }
+  .gm .gm-remb { font-size: 13px; }
+}
+@media (max-width: 560px) and (orientation: portrait) {
+  .gm .gm-act { width: 100%; }
+  /* upright: the open world's panel rides the bottom of the list, so BEGIN is always on screen */
+  .gm-c .gm-open { position: sticky; bottom: 0; z-index: 2; background: linear-gradient(180deg, #0e1118, #06080c); box-shadow: 0 -12px 24px rgba(3, 5, 9, 0.85); }
+}
 `;
 
 export function injectTitleMenuStyle() {

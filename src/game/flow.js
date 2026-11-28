@@ -710,6 +710,9 @@ export class GameFlow {
     this.bossBarHideT = -1;
     this.dragonDownT = -1;
     this.deadPollT = 0;
+    // on touch the fight starts locked on (ADR-270): tried each frame for a few seconds (the boss
+    // may still be out of lock range or not yet targetable as the fight begins)
+    this.autoLockT = g.touch?.active && !g.gamepad?.active ? finite(CONFIG.touch?.autoLock, 0) : 0;
   }
 
   _boss(rdt) {
@@ -720,6 +723,10 @@ export class GameFlow {
     if (this.dragonDownT < 0 && this._playerDead()) {
       this._enterDead();
       return;
+    }
+    if (this.autoLockT > 0) {
+      this.autoLockT -= rdt;
+      if (this._try(() => g.player?.lockOn || g.player?.takeLock?.(), 'player.takeLock')) this.autoLockT = 0;
     }
     this._bossFrame(rdt);
     // Lab 'victory': the dragon never reported its death

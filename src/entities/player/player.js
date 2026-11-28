@@ -1027,6 +1027,13 @@ export class Player {
     if (dist <= TUNE.lockRange) this._setLock(true);
   }
 
+  /** Take the lock on the boss if it can be taken now (in range, targetable); true when locked
+   *  (game/flow.js: a touch fight starts locked on, ADR-270). */
+  takeLock() {
+    if (!this.lockOn) this._toggleLock();
+    return this.lockOn;
+  }
+
   _updateLock() {
     if (!this.lockOn) return;
     const d = this.game.dragon;

@@ -19,6 +19,17 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
+        notes: [
+          'On a phone, one tap on a world, BEGIN HERE or BOSS RUSH now starts it: no more second tap.',
+          'The title and the pause menu have new buttons and panels: BEGIN HERE burns ember, BOSS RUSH is a gold card.',
+          'Touch: BLOCK now sits beside ATTACK, DODGE right under it, and the FLASK where BLOCK was. The buttons sit a little further in from the edge and size themselves to your screen.',
+          'Tap the small padlock above the buttons to drag them where your thumb likes them; tap it again to keep them there.',
+          'On touch the fight now starts locked on to the boss, and the phase call no longer covers your health.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: "Bai Wuji's barrier shows where your blade hits it, and he goes down quicker",
         notes: [
           "A cut that stops on Bai Wuji's barrier now still takes a little off his health, and he has less health to begin with: the fight is about a fifth shorter.",
