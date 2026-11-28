@@ -27,7 +27,9 @@ where its snout / toe / tail struck; react.js gains the arm and the struck limb.
 blocks drawn through the hero 41 / 33 % → 0 %; Tian Lei's short hits 64 → 32 % with b. The page audit's before /
 after table and the films (all nine bosses, 0 | a | b, half speed) in the PR.
 
-**Open:** the owner's pick; the wyrm's poses; the execution's thrust, the plunge and the flurry's cuts; blows whose
+**The owner's pick:** `b` (a + the reach), made the default.
+
+**Open:** the wyrm's poses; the execution's thrust, the plunge and the flurry's cuts; blows whose
 zone outreaches the drawn limb (the motion sessions' data, listed in the notes folder).
 
 ## 2026-11-27 — The wyrm's head in the meteors' roar (ADR-258; branch `claude/wyrm-head-motion`)

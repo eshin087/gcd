@@ -21,8 +21,8 @@ export const RELEASES = [
         date: '2026-11-27',
         title: 'Blows land on what they strike',
         notes: [
-          'To try: ?contact=a draws every hit, block and guard on what it strikes: the blade bites in, a fist lands on the body, held through the freeze, then the swing carries on, with the sparks where the two met and the struck part flinching by where it was hit.',
-          'And ?contact=b: the same, and a blow of a boss that would fall short is reached into. No change to any timing or damage.',
+          'Every hit, block and guard now lands on what it strikes: the blade bites in, a fist lands on the body, held through the freeze, then the swing carries on, with the sparks where the two met and the struck part flinching by where it was hit.',
+          'A boss leans into a blow that would have fallen short of you. No change to any timing or damage; ?contact=0 shows it as before.',
         ],
       },
       {

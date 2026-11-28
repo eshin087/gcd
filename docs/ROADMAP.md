@@ -1240,7 +1240,7 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [x] Contact (ADR-259): every hit, block, guard and clash drawn ON what it strikes (the bite and follow-through),
       the sparks at the meeting, the struck part answering (the hero's HitReact, arms), an optional reach for a boss's
       short blows; behind `?contact=a|b`, the contact audit, draft PR, films sent
-  - [ ] The owner's pick from the films, made the default
+  - [x] The owner's pick from the films (2026-11-27): `b`, the default
   - [ ] Next: the wyrm's poses on its blows (its jaws still short when its hit spheres connect), the execution's
         thrust and the plunge, blows whose hit zone outreaches the drawn limb (move data, the boss sessions')
 

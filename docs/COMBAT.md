@@ -782,7 +782,7 @@ Measured with a bot making plain parries of all-white strings (a parried blue bl
 ADR-211), red blows rolled, the same strings both ways (the film, 2026-11-26): Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. A string of 7 blows
 from an empty bar breaks Shen Hui either way (the full deflect's bonus).
 
-## Where blows meet (2026-11-27, ADR-259; `?contact=0|a|b`, off by default until the owner picks from film)
+## Where blows meet (2026-11-27, ADR-259; `?contact=0|a|b`, `b` the default: the owner's pick from the films)
 The owner: every hit, deflect, guard, parry and deadly blow should look like it really strikes the part it hits,
 cleanly, from the player's camera, and whoever is hit should react to where and how hard. Measured first (the
 contact audit, every duelist's every move on the hero standing, blocking and parrying, and the hero's cuts): at the
@@ -813,7 +813,8 @@ compare every result. The logic is `combat/contact.js`; the numbers `CONTACT` th
   m, his feet planted, the legs solved again), held through the bite, eased back over 0.22 s. A fist or a blade that
   stopped 10 - 30 cm short now lands; blows whose hit zone reaches past the drawn limb by more stay short (their
   move data: the boss sessions').
-- **Off** (`?contact=0`, the Lab's `contact` row `old`): every pose and effect as before.
+- **The default is `b`** (the owner's pick from the before | a | b films, 2026-11-27). **Off** (`?contact=0`, the
+  Lab's `contact` row `old`): every pose and effect as before; `?contact=a` without the reach.
 - **Not changed:** the parry and the trade clash (they already met), the execution's thrust, the plunge, the
   flurry's cuts, the wyrm's poses (it has its own clock; only its hurt sparks move onto the hero). The deathblow's
   combo cuts land as any cut of the hero's.

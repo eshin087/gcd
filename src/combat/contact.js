@@ -18,7 +18,9 @@
 //                                   his drawn steel meets the boss's drawn body (a cut) or blade (a guard)
 //   reactions                       the struck part answers (duelist/react.js; the hero's own: player/
 //                                   heroReact.js), from the meeting point
-// The headless sims keep `0` unless a scenario sets it (their checks were written for today's frames).
+// The owner picked `b` from the before | a | b films (2026-11-27): the game's default; `?contact=0` draws as
+// before, `a` without the reach. The headless sims keep `0` unless a scenario sets it (their checks were
+// written for the frames before).
 
 import { closestOnSegments } from './clashFx.js';
 
@@ -26,7 +28,7 @@ const IDS = ['0', 'a', 'b'];
 let mode = '0';
 
 export const CONTACT_IDS = IDS;
-export const DEFAULT_CONTACT = '0';
+export const DEFAULT_CONTACT = 'b'; // the owner's pick from the films (2026-11-27)
 /** '0' (as before), 'a' (blows land on what they strike) or 'b' (a, and a boss's blow that would fall short
  *  is reached into: his drawn body eases toward the hero as it comes). */
 export const contactMode = () => mode;

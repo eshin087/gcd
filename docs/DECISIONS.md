@@ -7229,7 +7229,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   into his body in 24 % of blocks (the blades 0.38 m apart), the hero's cut through the boss in 50 % (short in 18 %)
   and through his ward in 58 %; the hurt sparks 0.56 m from the meeting (on the hero's chest), the block's 0.61 m
   (mid-blade). 56 % of the bosses' hits were 10 cm+ short (the fist bosses 60 - 86 %). Parries met (ADR-079: 1 cm).
-- **Decision** (`combat/contact.js`, `CONTACT`; behind `?contact=`, `0` the default until the owner picks):
+- **Decision** (`combat/contact.js`, `CONTACT`; behind `?contact=`; `b` the default, the owner's pick from the
+  before | a | b films of every boss, 2026-11-27; `0` as before, `a` without the reach):
   - `a`: the striker is posed where it meets the struck surface for the frame the freeze holds, found along its own
     clip (back ≤ 0.16 s where it went through, on ≤ 0.075 s where it fell short; steps of 1/120 s and three
     halvings): a blade's edge 3.5 cm in (a thin part at most 0.4 of its radius), a fist or foot on the surface. The
