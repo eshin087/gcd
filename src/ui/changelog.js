@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'The last blow, up close',
+        notes: [
+          'A test for now: add ?lastBlow=a, b or c to the address. When your blow takes a boss down, the camera cuts in low and close on the two of you, time slows as he falls, then the fight ends as before.',
+          'a cuts in for a moment, b holds it for two seconds, c pushes in and out instead of cutting. You cannot be hurt while it holds.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
         notes: [
           'On a phone, one tap on a world, BEGIN HERE or BOSS RUSH now starts it: no more second tap.',

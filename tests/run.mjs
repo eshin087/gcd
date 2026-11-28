@@ -77,6 +77,8 @@ const TASKS = [
   ['city pace', [CITY, '.', 'pace'], {}, 108],
   ['integ hero + world', [INTEG, '.', INTEG_2.join(',')], {}, 150],
   ['sheath', ['tests/integration/sheath.mjs', '.', 'all'], {}, 102],
+  // (the last blow, ADR-272: every level's boss killed with each mode)
+  ['lastblow', ['tests/integration/lastblow.mjs', '.', 'all'], {}, 30],
   ['lord fxlooks', [LORD, '.', 'fxlooks'], { GCD_FX: FX_TERRAIN.map((k) => `!${k}`).join(',') }, 80],
   ['city win', [CITY, '.', 'win'], {}, 69],
   ['dbfx', ['tests/integration/dbfx.mjs', '.', 'all'], {}, 8],

@@ -461,6 +461,7 @@ export class Player {
     if (!this.alive) return RESULT.IGNORED;
     const g = this.game;
     if (g.state === 'victory' || g.state === 'title') return RESULT.IGNORED;
+    if (g.flow?.lastBlow?.holding) return RESULT.IGNORED; // the last blow's shot (game/lastBlow.js): nothing reaches him while it holds
     if (this.state === 'plunge' || this.state === 'flurry') return RESULT.IGNORED; // in the air / on the head / between two blinks: out of reach
     if (this.state === 'lock') return RESULT.IGNORED; // blades locked: the push decides it
     const kind = typeof hit.kind === 'string' ? hit.kind : 'hit';
@@ -3257,7 +3258,7 @@ export class Player {
 
   /** Lose HP unless the Lab's god mode is on (the hit still reacts and reports). */
   _damage(amount) {
-    if (this.debug.god) return;
+    if (this.debug.god || this.game.flow?.lastBlow?.holding) return;
     this.hp = Math.max(0, this.hp - Math.max(0, fin(amount)));
   }
 
@@ -3491,7 +3492,8 @@ export class Player {
     // takeHit ignores damage on the title / after victory; burn must not finish the hero off there
     const st = this.game.state;
     if (this.burnT > 0 && (st === 'victory' || st === 'title')) this._clearBurn();
-    if (this.burnT > 0 && this.alive) {
+    // (the last blow's shot holds the burn where it is: nothing hurts him while it holds)
+    if (this.burnT > 0 && this.alive && !this.game.flow?.lastBlow?.holding) {
       this.burnAcc += TUNE.burnDps * Math.min(dt, this.burnT);
       this.burnT -= dt;
       const tick = TUNE.burnDps * TUNE.burnTick;

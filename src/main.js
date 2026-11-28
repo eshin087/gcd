@@ -237,6 +237,9 @@ async function boot() {
   const lock = new THREE.Vector3();
 
   const updateMouseGround = () => {
+    // (a shot that holds the hero's aim, the last blow's: the ground point stays where it was, so he does
+    // not turn toward what the cursor points at in a camera he does not play from)
+    if (game.viewOverride?.holdAim) return;
     ndc.set(game.input.mouse.ndcX, game.input.mouse.ndcY);
     ray.setFromCamera(ndc, camera);
     // (a landed cut's kick translates the camera and its look point: aim from the camera without it,
@@ -284,8 +287,9 @@ async function boot() {
     game.cameraRig.update(dt, focus);
   };
 
-  // View override (Lab model viewer; ARCHITECTURE.md → Lab → Model viewer):
-  //   game.viewOverride = { pos, target, focus? } | null   (Vector3-likes, world metres)
+  // View override (Lab model viewer; the last blow's shot, game/lastBlow.js; ARCHITECTURE.md → Lab → Model viewer):
+  //   game.viewOverride = { pos, target, focus?, holdAim? } | null   (Vector3-likes, world metres;
+  //   holdAim: the mouse's ground point is not re-aimed while it holds)
   // applied AFTER the rig update: the camera sits at `pos` looking at `target`, and the fog centre,
   // light selection and shadow box follow `focus` (default `target`) instead of the player. The rig
   // keeps running underneath, so clearing the override snaps back to the game camera. A missing,

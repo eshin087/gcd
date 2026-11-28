@@ -7,6 +7,7 @@ import { ScreenGrade } from './grade.js';
 import { RunStats } from './stats.js';
 import { MoveLog, prettyMove } from './telemetry.js';
 import { Arrival } from './arrival.js';
+import { LastBlow } from './lastBlow.js';
 import { Recorder } from './recorder.js';
 import { formatTime } from './records.js';
 import { burstScreen } from '../entities/player/flurryBurst.js';
@@ -95,6 +96,8 @@ export class GameFlow {
     this._tmp = new THREE.Vector3();
     /** the camera's opening shot as the player enters from the title (game/arrival.js; ?life=arrival) */
     this.arrival = new Arrival(game, this);
+    // the cinematic last blow (game/lastBlow.js, ?lastBlow=; ADR-272): its shot, its clock, the hero held unhurt
+    this.lastBlow = new LastBlow(game, this);
 
     this.grade = new ScreenGrade(game);
     this.stats = new RunStats();
@@ -267,17 +270,22 @@ export class GameFlow {
     } catch (err) {
       this._report('update', err);
     }
-    this._try(() => this.recorder.frame(rdt, g.state), 'recorder.frame');
+    this._try(() => this.recorder.frame(rdt, this.lastBlow?.active ? 'lastBlow' : g.state), 'recorder.frame');
     // the perfect parry's / dodge's marks (combat/perfectFx.js: drawn before the fire field's update)
     perfectUpdate(g, dt, realDt);
     // always keep time + screen grade coherent, even after an error
-    g.timeScale = g.state === 'paused' ? 0 : clamp(Math.min(this.slowmo, this.cineScale), 0.05, 1);
+    g.timeScale = g.state === 'paused' ? 0 : this._scale();
     try {
       this._gradeTargets();
       this.grade.update(rdt);
     } catch (err) {
       this._report('grade', err);
     }
+  }
+
+  /** The flow's time scale outside a pause: its own slow-mo, a cinematic moment's and the last blow's, min-merged. */
+  _scale() {
+    return clamp(Math.min(this.slowmo, this.cineScale, this.lastBlow?.scale ?? 1), 0.05, 1);
   }
 
   /** Esc / pause menu. Only from explore, bossIntro or boss. */
@@ -294,7 +302,7 @@ export class GameFlow {
       const to = PLAY.has(this.pausedFrom) ? this.pausedFrom : 'explore';
       this.pausedFrom = null;
       this._setState(to);
-      g.timeScale = clamp(Math.min(this.slowmo, this.cineScale), 0.05, 1);
+      g.timeScale = this._scale();
       g.hud?.showPause?.(false);
     }
   }
@@ -455,6 +463,7 @@ export class GameFlow {
       }
     }
     if (this.restCooldown > 0) this.restCooldown -= rdt;
+    this._try(() => this.lastBlow.update(rdt), 'lastBlow.update');
     this._updateCinematic(rdt);
     this._try(() => this.arrival.update(rdt), 'arrival.update');
     if (this.slowmoHold > 0) this.slowmoHold -= rdt;
@@ -991,6 +1000,7 @@ export class GameFlow {
   _resetWorld() {
     const g = this.game;
     this.arrival.cancel();
+    this._try(() => this.lastBlow.cancel(), 'lastBlow.cancel');
     const p = g.player;
     this._respawnPlayer();
     this._try(() => g.dragon?.reset?.(), 'dragon.reset');
@@ -1068,6 +1078,7 @@ export class GameFlow {
   _debugPrelude() {
     const g = this.game;
     this.arrival.cancel();
+    this._try(() => this.lastBlow.cancel(), 'lastBlow.cancel');
     if (g.state === 'paused') {
       this.pausedFrom = null;
       g.hud?.showPause?.(false);

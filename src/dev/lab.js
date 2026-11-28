@@ -44,6 +44,7 @@ import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/p
 import { RUN_SWORD_IDS, RUN_SWORD_NAMES, runSwordMode, setRunSword } from '../entities/player/runSword.js';
 import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
 import { buildLooks } from './labLooks.js';
+import { LAST_BLOW, lastBlowMode, setLastBlow } from '../game/lastBlow.js';
 import { lookOf, setLook } from '../entities/enemies/duelist/lookSwitch.js';
 import { LIFE, setLife, setLifeK } from '../world/life/lifeSwitch.js';
 
@@ -412,6 +413,20 @@ export class Lab {
     // these interrupt the current attack: its announced impacts will never land
     if (r !== null && r !== false) this.trainer.clearPending();
     return r;
+  }
+
+  /** The boss one blow from death: a duelist into his last phase (his change not played), 1 HP. */
+  _lastHit() {
+    this._prepareFlow();
+    const d = this.target;
+    if (!d || d.state === 'dead' || d.state === 'dying' || d.mode === 'dying' || d.mode === 'dead') return false;
+    if (d.kit) {
+      const last = d.kit.maxPhase ?? (Array.isArray(d.T?.phaseAt) ? d.T.phaseAt.length + 1 : 1);
+      if ((d.phase ?? 1) < last) this._skipToPhase(last);
+    }
+    d.hp = Math.min(Number.isFinite(d.hp) ? d.hp : 1, 1);
+    this._status('the next blow kills', 'ok');
+    return true;
   }
 
   /** A duelist straight into phase / form `n`, its change not played (the Lord's setForm dresses
@@ -857,6 +872,14 @@ export class Lab {
     button(grid, 'Stagger', () => this._fightAction('stagger'));
     button(grid, 'Posture break', () => this._fightAction('postureBreak'));
     button(grid, 'Kill', () => this._fightAction('kill'), 'danger');
+    // the cinematic last blow (game/lastBlow.js, ?lastBlow=; ADR-272): its variant, and a boss one blow from death
+    // (the Kill above deals no blow of the hero's: it never takes the shot)
+    const lb = button(grid, `Last blow ${lastBlowMode()}`, () => {
+      const M = LAST_BLOW.opts;
+      lb.textContent = `Last blow ${setLastBlow(M[(M.indexOf(lastBlowMode()) + 1) % M.length])}`;
+    });
+    lb.title = "the shot of the blow that kills the boss (?lastBlow=): a a hard cut, a 0.8 s hold; b a hard cut, a 2 s hold; c a cut to the shot further back and a fast dolly in (and out), a 2 s hold; off as before. Read as he dies";
+    button(grid, 'Next blow kills', () => this._lastHit()).title = 'the boss into his last phase (not played) at 1 HP: the next blow that lands kills him (the last blow shot, if it is on)';
     // the wyrm's phase-3 fire (dragon/ablaze.js): cycle its strength off / a / b / c
     if (typeof this.game.dragon?.debug?.ablaze === 'function') {
       const b = button(grid, `Ablaze ${this.game.dragon.debug.ablaze()}`, () => {
