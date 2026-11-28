@@ -8189,8 +8189,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   instead of under the ground): the timing, strings, melee, reach, flight, plunge, death, brood and paw-tell
   suites pass. `integ wyrmfix` holds the worst offenders under the new limits.
 
-## ADR-278 — The aimed tail spin: the sweeps and whips steer onto the beat (2026-11-28)
-- **Context:** ADR-277 left the tail sweeps and whips spinning the body ~700°/s (the sweep: 220° in 0.45 s on an
+## ADR-282 — The aimed tail spin: the sweeps and whips steer onto the beat (2026-11-28)
+- **Context:** ADR-281 left the tail sweeps and whips spinning the body ~700°/s (the sweep: 220° in 0.45 s on an
   ease, its impact at 0.2 s; the whip: 180° in 0.3 s), with ~130° after the blow. A fixed slower curve that started
   in the windup missed `integ timing` by up to 283 ms: near and straight-behind heroes were hit early, flank ones
   late. The owner: "Yes, the spins next".
