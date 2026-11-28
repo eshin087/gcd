@@ -5,6 +5,25 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — Halcyon rebuilt after the reference sheet, and his attacks (ADR-289, second pass; `halcyon-ref-look`)
+
+**Owner**, shown the first pass beside sheet 01: "rebuild him to look identical to the reference sheet and same with
+his attacks".
+
+- **The body (`halcyon/refGear.js`, `?halRef=a`):** a V-tapered torso with flat pectoral plates (a first try read as
+  breasts: flattened and squared), six ab plates, smaller shoulders under pauldrons, limb plates and greaves, every
+  plate edged in gold; collar, clasps, belt, cuffs, gold-capped boots; a square jaw; three rows of swept locks. The
+  cape: a mantle over the shoulders and five overlapping sheets to the heels, swinging less. Its lower third printed
+  lavender: the bosses' pale hem (ADR-194); a per-material `uArtNoHem` keeps it crimson (0 for everything else).
+- **The attacks (`?halRefMove=a`):** sheet 02's legs (the right knee drawn up in the windup, bent and trailing from
+  the strike, a kick's other knee tucked), the hover and the hover reactions the same; `?halMotion=b`'s straight
+  arms kept. Timing identity re-checked (`halref`), the city suite green with both switches forced.
+- **Comparisons (local, beside the pack, `implementation/`):** `look-compare-v2.png` (sheet 01 / today / rebuilt,
+  four views), `strikes-compare-v2.png` (sheet 02's eight strikes at its four stages / today / after, side-on).
+- **Removed:** the first pass's recolour inside gear.js and the cape-size override (`lookExplicit`): the rebuild
+  replaced them.
+- **Open:** the owner's verdict; the blows still aim down at the hero where the sheet's punches are level (gameplay).
+
 ## 2026-11-28 — Halcyon after the reference pack, behind `?halRef` / `?halRefMove` (ADR-289; `halcyon-ref-look`)
 
 **Owner:** implement Halcyon's selected look and animation references (`docs/art/character-packs-v04/halcyon`: the

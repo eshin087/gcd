@@ -5541,6 +5541,8 @@ data and a subclass with a few hooks.
   blade's way home is predicted while it still flies out), (d) `expect`. Queries: `conflict(at, ans, sep,
   ...)`, `clearShift(at, ans, sep, max, ...)`, `pending(ans, horizon)`, `liveHazards()`, `travel(b)`. Fixed
   pools; nothing allocated per frame.
+- `materials.js` hero-art materials carry `uArtNoHem` (0; 1 keeps a material's own fill below the bosses' pale
+  hem line, `uBossPrint`: only Halcyon's `?halRef=a` cape sets it, ADR-289).
 - `lookSwitch.js` (ADR-122): the look options behind URL switches (STYLE.md "The look switches").
   `PICKED` (the owner's picks, 2026-11-16: name → option; the Skybreak Ring's of 2026-11-21: `ring`,
   `ascLook`, `ascAura`, `ascBeam`, `ascLift`, all 'a'). `lookOf(name, def = '0', pick = 'a')` → the
@@ -5549,8 +5551,7 @@ data and a subclass with a few hooks.
   `'0'` (a REDRAW: the look before this pass; a thing new in this pass keeps its pick, even one with a
   `'0'` option such as `presence`); the pick from `PICKED`; under `?looks=new` `pick` for a redraw no one
   has picked (none today); else `def`. Also `pickedOf(name)` (the pick or null), `allOld()`,
-  `allProposals()`, `lookExplicit(name)` (true when the URL or `setLook` named the switch, not its default or
-  pick: Halcyon's `?halRef=a` asks for its long cape only then, ADR-289), `readLookUrl(search)` (read once at load; the tests call it to play a URL, `''` to
+  `allProposals()`, `readLookUrl(search)` (read once at load; the tests call it to play a URL, `''` to
   go back), `looksNow(names)`. Read at draw time (a Map lookup); a switch read when the rig or the
   level is built (`ashLook`, `lordLook`, `floor`, `ring`, `ascLook`, `ascLift`) needs a reload. The Lab's LOOKS section
   (`dev/labLooks.js` `LOOK_SWITCHES`) lists them.
