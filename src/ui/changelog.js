@@ -22,7 +22,7 @@ export const RELEASES = [
         title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
         notes: [
           'On a phone, one tap on a world, BEGIN HERE or BOSS RUSH now starts it: no more second tap.',
-          'The title and the pause menu have new buttons and panels: BEGIN HERE burns ember, BOSS RUSH is a gold card.',
+          'The title and the pause menu have new buttons and panels: the world and its two buttons, BEGIN HERE and BOSS RUSH, share one panel.',
           'Touch: BLOCK now sits beside ATTACK, DODGE right under it, and the FLASK where BLOCK was. The buttons sit a little further in from the edge and size themselves to your screen.',
           'Tap the small padlock above the buttons to drag them where your thumb likes them; tap it again to keep them there.',
           'On touch the fight now starts locked on to the boss, and the phase call no longer covers your health.',

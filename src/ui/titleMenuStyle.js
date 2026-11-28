@@ -336,31 +336,39 @@ const CSS = `
 .gm .gm-act.gm-travel .gm-actsub { color: var(--ab-dim); font-weight: 400; }
 .gm .gm-act.gm-travel:hover, .gm .gm-act.gm-travel.pad-focus { color: #fff; background: linear-gradient(180deg, rgba(255, 138, 61, 0.34), rgba(255, 138, 61, 0.14)); box-shadow: 0 0 0 1px rgba(255, 160, 100, 0.9) inset, 0 6px 20px rgba(255, 110, 30, 0.2); }
 
-/* BOSS RUSH: a gold card, an emblem, its line, its best and a chevron */
+/* BOSS RUSH: the second button, an ember outline on the dark (the first is the ember fill) */
 .gm .gm-e.gm-rush {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 14px;
-  min-height: 50px;
-  padding: 8px 18px 8px 16px;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 16px 8px 20px;
   border: 0;
-  background: linear-gradient(90deg, rgba(216, 184, 106, 0.16), rgba(216, 184, 106, 0.04) 55%, rgba(216, 184, 106, 0.1)), rgba(8, 10, 14, 0.86);
-  box-shadow: 0 0 0 1px rgba(216, 184, 106, 0.42) inset;
-  clip-path: polygon(var(--gm-cut) 0, 100% 0, 100% calc(100% - var(--gm-cut)), calc(100% - var(--gm-cut)) 100%, 0 100%, 0 var(--gm-cut));
+  color: #f2e7d2;
+  background: linear-gradient(180deg, rgba(255, 138, 61, 0.1), rgba(255, 138, 61, 0.03)), rgba(8, 10, 14, 0.86);
+  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.5) inset;
+  clip-path: polygon(var(--gm-cut2) 0, 100% 0, 100% calc(100% - var(--gm-cut2)), calc(100% - var(--gm-cut2)) 100%, 0 100%, 0 var(--gm-cut2));
 }
 .gm .gm-e.gm-rush:hover, .gm .gm-e.gm-rush.sel, .gm .gm-e.gm-rush.pad-focus {
-  background: linear-gradient(90deg, rgba(216, 184, 106, 0.28), rgba(216, 184, 106, 0.08) 55%, rgba(216, 184, 106, 0.18)), rgba(8, 10, 14, 0.86);
-  box-shadow: 0 0 0 1px rgba(243, 220, 148, 0.85) inset, 0 6px 22px rgba(216, 184, 106, 0.16);
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255, 138, 61, 0.24), rgba(255, 138, 61, 0.1)), rgba(8, 10, 14, 0.86);
+  box-shadow: 0 0 0 1px rgba(255, 170, 110, 0.9) inset, 0 6px 20px rgba(255, 110, 30, 0.18);
 }
-.gm .gm-remb { flex: none; font-size: 16px; color: var(--ab-gold); text-shadow: 0 0 10px rgba(216, 184, 106, 0.7); }
+.gm .gm-remb { display: none; }
 .gm .gm-rtx { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1 1 auto; min-width: 0; }
-.gm .gm-rush .gm-name { color: #f6ecd2; font-weight: 800; letter-spacing: 0.26em; }
-.gm .gm-rush .gm-sub { color: #a89a76; letter-spacing: 0.1em; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.gm .gm-rush .gm-name { color: inherit; font-weight: 800; letter-spacing: 0.24em; }
+.gm .gm-rush .gm-sub { color: var(--ab-dim); font-size: 9px; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .gm .gm-rush .gm-g { flex: none; }
-.gm .gm-rush .gm-chev { flex: none; color: var(--ab-gold); font-size: 20px; }
-.gm-c .gm-xlist .gm-rush, .gm-b .gm-xlist .gm-rush { justify-content: flex-start; gap: 14px; }
+.gm .gm-rush .gm-chev { flex: none; color: var(--ab-ember); font-size: 1.35em; }
+
+/* the one panel (c, the sword's path): the world on the left, its button and BOSS RUSH on the right */
+.gm-c .gm-open { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 26px; align-items: center; }
+.gm-c .gm-open > .gm-info { grid-column: 1; grid-row: 1; min-width: 0; }
+.gm-c .gm-open > .gm-acts { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 8px; width: 232px; }
+.gm-c .gm-acts .gm-act { margin: 0; width: 100%; min-width: 0; }
+.gm-c .gm-acts .gm-rush { width: 100%; }
 
 /* the small corner buttons (WHAT'S NEW, CONTROLS) and CLOSE: quiet frames that light on a hover */
 .gm .gm-e.gm-small, .gm .gm-close {
@@ -398,12 +406,17 @@ const CSS = `
 @media (max-height: 500px) {
   .gm { --gm-cut: 7px; --gm-cut2: 5px; }
   .gm .gm-act { min-width: 150px; min-height: 40px; padding: 7px 14px 7px 16px; }
-  .gm .gm-e.gm-rush { min-height: 42px; padding: 5px 14px 5px 12px; gap: 10px; }
-  .gm .gm-rush .gm-sub { font-size: 9px; }
-  .gm .gm-remb { font-size: 13px; }
+  .gm .gm-e.gm-rush { min-height: 40px; padding: 5px 12px 5px 16px; gap: 8px; }
+  .gm .gm-rush .gm-sub { font-size: 8.5px; }
+  .gm-c .gm-open > .gm-acts { width: 200px; gap: 6px; }
 }
 @media (max-width: 560px) and (orientation: portrait) {
   .gm .gm-act { width: 100%; }
+  /* upright: the two buttons side by side under the world */
+  .gm-c .gm-open { grid-template-columns: minmax(0, 1fr); }
+  .gm-c .gm-open > .gm-acts { grid-column: 1; grid-row: 2; width: auto; flex-direction: row; margin-top: 10px; }
+  .gm-c .gm-acts > * { flex: 1 1 0; min-width: 0; }
+  .gm-c .gm-acts .gm-rush .gm-sub, .gm-c .gm-acts .gm-act .gm-actsub { display: none; }
   /* upright: the open world's panel rides the bottom of the list, so BEGIN is always on screen */
   .gm-c .gm-open { position: sticky; bottom: 0; z-index: 2; background: linear-gradient(180deg, #0e1118, #06080c); box-shadow: 0 -12px 24px rgba(3, 5, 9, 0.85); }
 }

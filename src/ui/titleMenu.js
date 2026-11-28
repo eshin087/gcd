@@ -162,8 +162,12 @@ export class TitleMenu {
       el('span', 'gm-name', String(W.name).replace(/^The /, '').toUpperCase(), txt);
       E.grade = el('span', 'gm-g', '', txt);
     }
+    // one panel (ADR-270, the owner's call): the world in focus on the left, its button and BOSS RUSH
+    // stacked on the right (the rush is an entry of its own there, kept across re-draws)
     this.detail = el('div', 'gm-detail gm-open', null, this.body);
-    this.xList = el('div', 'gm-xlist', null, this.body);
+    this.infoEl = el('div', 'gm-info', null, this.detail);
+    this.xList = el('div', 'gm-acts', null, this.detail);
+    this.actSlot = el('div', 'gm-actslot', null, this.xList);
   }
 
   /** BOSS RUSH, WHAT'S NEW and CONTROLS: under the list (a), the rush under the grid / path and the
@@ -263,7 +267,7 @@ export class TitleMenu {
     const id = this.sel === 'news' || this.sel === 'ctrl' ? this._shown ?? this.current : this.sel ?? this.current;
     if (id === this._shown && !force) return;
     this._shown = id;
-    const D = this.detail;
+    const D = this.infoEl ?? this.detail;
     if (!D) return;
     D.textContent = '';
     this._detailFire = null;
@@ -273,6 +277,7 @@ export class TitleMenu {
       el('span', 'gm-dname', 'BOSS RUSH', h);
       el('div', 'gm-dsub2', `every keeper back to back, on one clock · ${this.worlds.length} fires`, D);
       this._recLine(D, b);
+      if (this.actSlot) return; // (one panel: the rush's own button is beside the world's)
       const act = button(D, 'gm-act', () => this.records?.startRush?.());
       const row = el('span', 'gm-arow', null, act);
       el('span', 'gm-al', 'BEGIN THE RUSH', row);
@@ -296,7 +301,8 @@ export class TitleMenu {
     el('span', 'gm-ke', `, ${W.names.title}`, k);
     el('div', 'gm-dsub2', W.sub ?? '', D);
     this._recLine(D, this._best(W.id));
-    const act = button(D, `gm-act${here ? '' : ' gm-travel'}`, () => this._world(W.id));
+    if (this.actSlot) this.actSlot.textContent = '';
+    const act = button(this.actSlot ?? D, `gm-act${here ? '' : ' gm-travel'}`, () => this._world(W.id));
     const row = el('span', 'gm-arow', null, act);
     el('span', 'gm-al', here ? 'BEGIN HERE' : 'TRAVEL', row);
     el('span', 'gm-chev', '›', row);
