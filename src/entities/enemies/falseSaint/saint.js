@@ -6,6 +6,7 @@ import { DuelBrain } from '../duelist/brain.js';
 import { TELL } from '../../../combat/rules.js';
 import { FS_LOADOUT, FS_FIST } from './gear.js';
 import { FS_POSES } from './poses.js';
+import { boostLoco } from './posesBoost.js';
 import { MOVES, MOVE_NAMES, CLIP, TRANSITIONS, REACT, OPEN, realise, HANDLERS, COUNTERS, STREAKS } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
@@ -47,6 +48,12 @@ import * as FX_DEBUG from './fxDebug.js';
 //              A routed beat's onImpact adds to the engine's world blow and floor mark (they still run as
 //              for any beat unless it is selfHit / cast).
 //   core's own fields (handled here; moves.js header): fsMoment (a transition's impact).
+//   FsBrain's own: a flurry move marked `fsNoCount` plays as authored (startStreak), not cut to the count.
+//   Through a phase's change (until its push ring is out) nothing lands on him (takeHit: _inChange; the
+//          multi-form duelists' rule); a cut rings off him (a spark, no damage, no posture).
+//   The jets' layers on his footwork pose (SAINT_POSES: posesBoost.js boostLoco reads d.pilot.fsDashK /
+//          fsHoverK); the boost handler sets d.fsJets { elbowR, elbowL, back, calfR, calfL, palmR, core },
+//          d.fsThrustK, d.fsCoreK every frame for the body to draw (boost.js header).
 //   Poses: poses.js merges posesMelee.js (`ml` names), posesBoost.js (`bo`), posesArsenal.js (`ar`),
 //          posesTerrain.js (`tr`).
 //   Tuning: tuning.js merges tuningMelee / tuningBoost / tuningArsenal / tuningTerrain as TUNING.melee /
@@ -59,6 +66,16 @@ import * as FX_DEBUG from './fxDebug.js';
 //          at x, z: the set's molten.add) · tidy().
 // ======================================================================================================
 
+/** His pose table: the body's (poses.js FS_POSES), the footwork's jet layers on top (posesBoost.js
+ *  boostLoco: the jet step's lean, d.pilot.fsDashK; the rigid hover's legs, d.pilot.fsHoverK). */
+const SAINT_POSES = Object.freeze({
+  ...FS_POSES,
+  loco: (p, A) => {
+    FS_POSES.loco(p, A);
+    boostLoco(p, A?.player);
+  },
+});
+
 /** Everything the shared duelist needs to be him (duelist.js: kit). */
 export const SAINT_KIT = Object.freeze({
   id: 'saint',
@@ -68,7 +85,7 @@ export const SAINT_KIT = Object.freeze({
   counterMove: (phase) => COUNTERS[Math.min(COUNTERS.length, Math.max(1, phase | 0)) - 1],
   streakMove: (phase) => STREAKS[Math.min(STREAKS.length, Math.max(1, phase | 0)) - 1],
   loadout: FS_LOADOUT,
-  poses: FS_POSES,
+  poses: SAINT_POSES,
   blade: FS_FIST,
   scale: TUNING.scale,
   REACT, OPEN,
@@ -93,10 +110,27 @@ export class FsBrain extends DuelBrain {
     return super._reach(b);
   }
 
+  /** The reach watch (pressure.pursue) never breaks off a beat whose handler says it reaches wherever the
+   *  hero is (reach(b) = Infinity: the dive, the passes, Last Rite), not even past his bound. */
+  _outOfReach(a, b, t, s) {
+    const H = this.d._handlerOf?.(b.def);
+    if (H?.reach?.(b) === Infinity) return false;
+    return super._outOfReach(a, b, t, s);
+  }
+
   startReact(kind) {
     const ok = super.startReact(kind);
     if (ok) this.d._stopParts?.();
     return ok;
+  }
+
+  /** His flurry: a move marked `fsNoCount` (Rosary) plays as authored (its drawn blows, the last blue), not
+   *  cut to the streak's count (realise's `count` keeps the first beat and cycles the rest: its last blow
+   *  would never come). Any other flurry as the engine's. */
+  startStreak(count = null) {
+    const name = this._streakMove();
+    if (this.K.MOVES?.[name]?.fsNoCount) return this.startAct(name, this.d.phase);
+    return super.startStreak(count);
   }
 
   /** Footwork: every handler's footwork(dt, s) first (the jet step), then the engine's. */
@@ -339,6 +373,12 @@ export class FalseSaint extends Duelist {
   // ---------------------------------------------------------------- the hero's blade on him
   /** A cut of the hero's: the handlers first (false: it does nothing), the engine's, then the shell. */
   takeHit(o = {}) {
+    // (through a phase's change, until its push ring goes out, nothing lands on him: the multi-form
+    // duelists' rule (Tian Lei, the Starless Lord, Xin Yi: `_changing`); the hero's blade rings off him)
+    if (this._inChange()) {
+      if (Number(o?.damage) > 0 && !o.exact) this._turned(o);
+      return 0;
+    }
     for (const { h } of this._partList ?? []) {
       let r;
       try {
@@ -352,6 +392,27 @@ export class FalseSaint extends Duelist {
     const dmg = super.takeHit(o);
     if (dmg > 0) this._chip(o);
     return dmg;
+  }
+
+  /** In a phase's change, before its ring has gone out (its impact's active frames): he cannot be hurt. */
+  _inChange() {
+    const a = this.brain?.act;
+    if (this.mode !== 'act' || !a?.def?.transition) return false;
+    const b = a.beats[0];
+    return !b || a.t < b.impact + b.A;
+  }
+
+  /** A cut turned aside by the change: a spark where it met him, a jolt, no damage, no posture. */
+  _turned(o) {
+    const pt = o?.point;
+    const x = Number.isFinite(pt?.x) ? pt.x : this.position.x, y = Number.isFinite(pt?.y) ? pt.y : 1.2, z = Number.isFinite(pt?.z) ? pt.z : this.position.z;
+    try {
+      this.fx.guard?.(x, y, z, { heavy: !!o.heavy, deflect: false });
+    } catch (err) {
+      console.error('[saint] turned', err);
+    }
+    this.hitstop(0.05, 0.05);
+    this.jolt = Math.max(this.jolt, 0.2);
   }
 
   /** A cut landed: the shell chips where it landed (a sword's cut; a heavy one more). */
@@ -393,7 +454,13 @@ export class FalseSaint extends Duelist {
       _a.set(fin(x, this.position.x), 0.3, fin(z, this.position.z));
       const took = this.shell.strip(fin(this.T.terrain?.molten?.strip, 0.05), _a);
       if (took > 0) this.fx.shellStrip?.(_a.x, 0.4, _a.z, took);
-      if (!this.broken && this.mode !== 'act') this.brain.startReact('stagger');
+      // (staggered once per `molten.staggerEvery` s (2.5): a pool's every burn re-staggering him kept him
+      // reeling in it 8 s (measured, saint.mjs boostPace); between, his footwork takes him out of it)
+      const every = fin(this.T.terrain?.molten?.staggerEvery, 2.5);
+      if (!this.broken && this.mode !== 'act' && !(this.time - fin(this._moltenT, -99) < every)) {
+        this._moltenT = this.time;
+        this.brain.startReact('stagger');
+      }
     }
     return dealt;
   }
