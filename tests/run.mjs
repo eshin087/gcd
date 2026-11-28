@@ -90,6 +90,8 @@ const TASKS = [
   ['dbsfx', ['tests/integration/dbsfx.mjs', '.'], {}, 3],
   ['veil', [VEIL, '.', 'all'], { GCD_SKIP: VEIL_OWN.join(',') }, 45],
   ['veil pace', [VEIL, '.', 'pace'], {}, 90],
+  // saint's (the Last Foundry and the False Saint): the later agents' scenarios run in `saint` too
+  ['saint', ['tests/integration/saint.mjs', '.', 'all'], {}, 40],
   ['groundfx', ['tests/integration/groundfx.mjs', '.', 'all'], {}, 15],
   ['dragonProps', ['tests/integration/dragonProps.mjs', '.', 'all'], {}, 15],
   ['dggrass', ['tests/integration/dgGrass.mjs', '.'], {}, 15],
