@@ -88,3 +88,29 @@ export function halKeys(beat) {
 export const halMotionOn = () => lookOf('halMotion', '0') !== '0';
 /** True under `b` (ADR-254: the flier's limbs, the level pass; read live). */
 export const halLimbsOn = () => lookOf('halMotion', '0') === 'b';
+
+// ---------------------------------------------------------------- the reference pack's poses (ADR-289)
+// `?halRefMove=a` (lookSwitch PENDING: the owner picks it from the films; '0' as today), live: his pose
+// keys after the character pack (docs/art/character-packs-v04/halcyon/: 01 B, 03, 06, 07). Poses only:
+// no key time, ease, zone, reach, root height, cue or travel changes (city.mjs HALREF checks it).
+//   1. THE FLOWN REACTIONS: Tian Lei's reaction clips (ward ... lock) kept his planted stance: at the
+//      hover (0.5 m) he stood on air. Every key of the ten he takes at the hover gets the flier's legs of
+//      `?halMotion=b` (limbs.js legsFor: long, the knees soft, trailing with the body's lean). The ones the
+//      engine plays on the floor keep theirs: the open reactions (stagger, recoil, reeling, trampled,
+//      executed: struck out of the air he drops, flight.js) and the kneeling ones (broken, death, crashed,
+//      blinded). The pack draws stagger / recoil / reeling / trampled in the air (07 rows 10 - 13); his
+//      height is gameplay (the hover rule), so they stay grounded.
+//   2. THE BRAKE AND THE BANK (poses.js hoverLoco, pilot.halAcc from halcyon.js brainFrame): slowing, he
+//      leans back; in a turn he banks into it (01 B10, B11).
+//   3. METEOR'S LANDING: a three-point landing in the crater, held into the recovery (03 row 6, 06 row 5).
+//   4. WHAT HE HOLDS (terrain.js): the car on his right palm (03 row 4), the statue's arm thrown from his
+//      right hand (03 row 7).
+export const halRefMoveOn = () => lookOf('halRefMove', '0') !== '0';
+
+/** The reactions he takes in the air (the hover): their keys flown. */
+export const HOVER_REACT = Object.freeze(['ward', 'wardR', 'wardHigh', 'clash', 'deflect', 'wardHold', 'flinch', 'backstep', 'sidestep', 'lock']);
+
+/** A reaction clip's keys flown: the flier's legs on every key (build time). */
+export function flyReactKeys(keys) {
+  return keys.map(([t, pose]) => [t, legsFor(pose, false)]);
+}
