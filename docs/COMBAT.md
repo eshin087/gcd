@@ -1307,6 +1307,20 @@ out of his guard: **Darting Needle** (the pointed jian drawn a hand's width back
 and **Flicking Willow** (the point flicks up and cuts down across you; a 2.1 m sector). Block or parry them; each runs
 into a string.
 
+**His form** (ADR-250; the owner's pick, `?ashForm=0` as before): the same moves, windups,
+cues and zones, posed better. A thrust lands on a straight arm (~160°) with the point on the arm's line, out of a
+lunge whose front shin stands over its foot and whose back leg is long; an overhead (Falling Ash, the strings' held
+overhead, Three Tolls' last) comes down ONE-handed on a steep diagonal across you from high over his sword shoulder
+(the blue HIGH hold a little wider over the shoulder for it); the leaping two-handed chops come down on the same
+diagonal; a low sweep turns on his feet (the right leg sweeping the stones); his free hand stays near his chest
+and opens to his left as he cuts; and the front foot comes down with the blade. Heaven-Splitting Fall is a jump:
+he loads, drives up, tucks with the blade raised over his shoulder through the ring's lock, reaches his legs down
+and lands into the cut. Two specials have looks (the owner's picks; the others behind their switches): Ember
+Whirl a cyclone of fire round him (`?whirlFx=b`; a a ring, c a disc, 0 none) and Heaven-Splitting Fall a seam of
+fire down the cut and the floor split in fire ahead and behind (`?fallFx=b`; a a comet, c fire rain, 0 none);
+they carry no cue of their own.
+
+
 **Every phase asks for dodges** (the tuning pass): a red blow sits inside eight strings (Drifting
 Cloud's kick, Chasing Rain's glide, Whirling Step's second spin, Brand and Kick's kick, Cinder Cross's
 burning cut, Falling Embers' second leap, the 4th blow of Scattered Petals and of Ten Thousand

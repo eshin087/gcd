@@ -117,6 +117,15 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'Shen Hui fights with better form',
+        notes: [
+          'The Ash Disciple thrusts on a straight arm out of a real lunge, brings his overheads down one-handed on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quiet and lands his front foot with the blade. Same timings, same cues.',
+          'Heaven-Splitting Fall is a real jump now: he tucks high with the blade raised, reaches his legs down and lands into the cut.',
+          'Ember Whirl raises a cyclone of fire round him, and Heaven-Splitting Fall splits the floor in fire ahead of and behind him.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'The clash dance, to try',
         notes: [
           'Add ?clash=dance to the address to try it against the human bosses: parries in a row inside one of his strings break his posture faster, and the clash of steel rings a little higher with each one.',

@@ -62,7 +62,8 @@ const W2B = (wAz, yaw) => wAz - yaw; // a world-relative blade azimuth → body 
 
 /** Thrust beat keys: the blade drawn back along the body at the cock, driven home at the impact
  *  on a long lunge, held through the active frames, then a beat of follow-through. */
-const thrustKeys = (k = 1, cock = 0.74) => [
+const thrustKeys = (k = 1, cock = 0.74) => withForm(thrustKeys0(k, cock), thrustKeys0(k, cock));
+const thrustKeys0 = (k = 1, cock = 0.74) => [
   [cock * 0.5, { gather: true, ...COIL, bY: -0.18 * k, rH: [-0.04, -0.18, 0.12] }],
   [cock, { ...COIL, rH: [-0.08 * k, -0.24, -0.02], bY: -0.24 * k }],
   [1.0, { ...LUNGE, e: 'i', bZ: 0.16, rH: [0.04, -0.05, 0.49] }],
@@ -79,20 +80,32 @@ const thrustKeys = (k = 1, cock = 0.74) => [
  * follow-through it whips on to. `yaw` = the body's turn at the three points (the hips lead the cut).
  * The strike itself (cock → impact) is the fast part: an ease-in snap through ~30 % of the windup.
  */
-function slashKeys({ from, through, to, yaw: [y0, y1, y2], cock = 0.7, sink = 0, extra = {} }) {
+// (the form pass, ADR-250: each helper below pairs its keys with the form's through FORM; a beat's
+// `formKeys` is made from them after the table is built, played while `?ashForm` is on)
+const FORM = new WeakMap();
+const withForm = (keys, alt) => (FORM.set(keys, alt), keys);
+/** The free hand through a cut: gathered (the gather), cocked, at the strike, the follow-through, settled. */
+const FREE_0 = { gather: [0.04, -0.1, 0.32], cock: [0.0, -0.13, 0.32], strike: [0.26, -0.1, -0.16], follow: [0.3, -0.04, -0.22], settle: [0.28, -0.06, -0.18] };
+// (the form: gathered by the sternum, split to his left in opposition as the steel goes out: half the
+// travel, so a string of cuts no longer pumps the arm back and forth through every blow)
+const FREE_F = { gather: [0.06, -0.08, 0.24], cock: [0.05, -0.1, 0.26], strike: [0.22, -0.06, -0.02], follow: [0.26, -0.03, -0.08], settle: [0.24, -0.05, -0.06] };
+function slashKeys(o) {
+  return withForm(slashKeys0(o, FREE_0), slashKeys0(o, FREE_F));
+}
+function slashKeys0({ from, through, to, yaw: [y0, y1, y2], cock = 0.7, sink = 0, extra = {} }, FH = FREE_0) {
   const dir = Math.sign(to[0] - from[0]) || 0; // the swing's turn: + toward his left
   const sw = (w, y) => [W2B(w[0], y), w[1]];
   const gy = (y0 + 0.62) / 2;
   return [
     // gathering: the blade begins its draw toward the cock, the weight settles back
-    [cock * 0.45, { gather: true, arm: 0.7, ext: 0.6, lead: 0.05 * dir, yaw: gy, sw: sw([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.2 - sink * 0.5, bZ: -0.03, lH: [0.04, -0.1, 0.32], lP: [0.6, -0.7, 0.1], ...SET }],
+    [cock * 0.45, { gather: true, arm: 0.7, ext: 0.6, lead: 0.05 * dir, yaw: gy, sw: sw([from[0] * 0.55, from[1] * 0.55 + 0.08], gy), bY: -0.2 - sink * 0.5, bZ: -0.03, lH: FH.gather, lP: [0.6, -0.7, 0.1], ...SET }],
     // cocked: wound up on the back foot, the free hand reaching forward for balance
-    [cock, { arm: 1, ext: 0.5, lead: 0.22 * dir, yaw: y0, sw: sw(from, y0), bY: -0.24 - sink, bZ: -0.06, pitch: 0.08, hip: 0.1 * dir, lH: [0.0, -0.13, 0.32], lP: [0.6, -0.8, 0.1], ...SET, ...extra.cocked }],
+    [cock, { arm: 1, ext: 0.5, lead: 0.22 * dir, yaw: y0, sw: sw(from, y0), bY: -0.24 - sink, bZ: -0.06, pitch: 0.08, hip: 0.1 * dir, lH: FH.cock, lP: [0.6, -0.8, 0.1], ...SET, ...extra.cocked }],
     // the strike: the fist arrives first, the steel snaps through the opponent on a step in
-    [1.0, { e: 'i', arm: 1, ext: 1, lead: 0, yaw: y1, sw: sw(through, y1), bY: -0.28 - sink, bZ: 0.1, pitch: 0.1, hip: -0.06 * dir, lH: [0.26, -0.1, -0.16], lP: [0.8, -0.4, -0.5], ...STEP_IN, ...extra.strike }],
+    [1.0, { e: 'i', arm: 1, ext: 1, lead: 0, yaw: y1, sw: sw(through, y1), bY: -0.28 - sink, bZ: 0.1, pitch: 0.1, hip: -0.06 * dir, lH: FH.strike, lP: [0.8, -0.4, -0.5], ...STEP_IN, ...extra.strike }],
     // follow-through: the blade whips past the fist and on round
-    [1.6, { e: 'o', arm: 1, ext: 0.88, lead: -0.32 * dir, yaw: y2, sw: sw(to, y2), bY: -0.24 - sink, bZ: 0.08, pitch: 0.04, hip: -0.12 * dir, lH: [0.3, -0.04, -0.22], ...STEP_IN, ...extra.follow }],
-    [2.0, { settle: true, arm: 1, ext: 0.84, lead: -0.26 * dir, yaw: y2, sw: sw([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.22 - sink, bZ: 0.06, lH: [0.28, -0.06, -0.18], ...STEP_IN }],
+    [1.6, { e: 'o', arm: 1, ext: 0.88, lead: -0.32 * dir, yaw: y2, sw: sw(to, y2), bY: -0.24 - sink, bZ: 0.08, pitch: 0.04, hip: -0.12 * dir, lH: FH.follow, ...STEP_IN, ...extra.follow }],
+    [2.0, { settle: true, arm: 1, ext: 0.84, lead: -0.26 * dir, yaw: y2, sw: sw([to[0] * 0.94, to[1] * 0.9], y2), bY: -0.22 - sink, bZ: 0.06, lH: FH.settle, ...STEP_IN }],
   ];
 }
 
@@ -105,7 +118,18 @@ const CUTS = {
   diag: { from: [-1.2, 1.1], through: [0.0, 0.15], to: [1.4, -0.75], yaw: [0.25, 0.55, 0.9], zone: { kind: 'sector', r: 2.15, ang: 0.85 } }, // high right → low left
 };
 /** The overhead: raised two-handed, then a stepping chop (keyed hands: both on the grip). */
-const overKeys = (cock = 0.7) => [
+const OVERS = new WeakSet(); // (the form's overheads: their held tell pose is widened, below)
+const overKeys = (cock = 0.7) => {
+  const f = slashKeys0({ ...OVER_F, cock }, FREE_F);
+  OVERS.add(f);
+  return withForm(overKeys0(cock), f);
+};
+/** (the form, ADR-250) the overhead as a ONE-handed diagonal (the jian is a one-handed sword): from high over
+ *  his sword shoulder, the point to the sky, down through the opponent to low at his left hip, the free
+ *  hand drawn back in opposition. A straight-down chop drew one upright bar at the game camera, and the
+ *  free hand flew 0.5 m onto the hilt in the 0.1 s strike (17 - 19 m/s, the fastest thing he did). */
+const OVER_F = { from: [-1.05, 1.18], through: [0.15, -0.26], to: [1.1, -0.88], yaw: [0.3, 0.25, 0.6], sink: 0.08 };
+const overKeys0 = (cock = 0.7) => [
   [cock * 0.5, { gather: true, ...RAISED, rH: [0.1, 0.3, 0.14], sw: [-0.2, 1.5], bY: -0.1, ...SET }],
   [cock, { ...RAISED, sw: [-0.2, 2.05], rF: [-0.12, 0.42], lF: [0.2, -0.28] }],
   [1.0, { ...CHOP, e: 'i' }],
@@ -141,7 +165,8 @@ const spinFeet = (ph, y = ANK) => {
   return { rF: [r[0], y, r[1]], lF: [l[0], y, l[1]], rFy: -0.25 + ph, lFy: 0.9 + ph };
 };
 /** A spin cut: wound up, then a full turn with the blade out level at his sword side (a ring). */
-const spinKeys = (cock = 0.66, low = false) => {
+const spinKeys = (cock = 0.66, low = false) => (low ? withForm(spinKeys0(cock, true), sweepKeysF(cock)) : spinKeys0(cock, false));
+const spinKeys0 = (cock = 0.66, low = false) => {
   const B = low ? { ...CROUCH } : { bY: -0.22 };
   const out = { arm: 1, ext: 1, lead: 0, sw: low ? [-1.45, -0.44] : [-1.45, -0.04], lH: [0.3, low ? -0.12 : 0.04, 0.08], lP: [0.9, 0.1, -0.2] };
   const wound = { ...B, arm: 1, ext: 0.55, lead: -0.2, yaw: 1.2, sw: low ? [-2.1, -0.5] : [-2.15, -0.12], lH: [0.12, -0.08, 0.28], hdY: -1.0 };
@@ -173,6 +198,56 @@ const spinKeys = (cock = 0.66, low = false) => {
 const PERIL_COIL = { ...COIL, bY: -0.34, bZ: -0.14, yaw: 0.95, rH: [-0.12, -0.32, -0.08], sw: [-1.0, -0.08], lH: [0.28, 0.06, 0.1], lP: [0.9, 0.2, -0.2], hdY: -0.8, rF: [-0.12, 0.34], lF: [0.2, -0.38] };
 const PERIL_LUNGE = { ...LUNGE, bZ: 0.3, bY: -0.34, rF: [-0.08, 1.05], lF: [0.22, -0.68], lH: [0.2, 0.08, -0.44] };
 const perilKeys = () => [[0.4, { gather: true, ...PERIL_COIL }], [0.84, { ...PERIL_COIL, bY: -0.36, rH: [-0.14, -0.33, -0.1] }], [1.0, { ...PERIL_LUNGE, e: 'i' }], [1.6, { ...PERIL_LUNGE, e: 'o', bZ: 0.34 }], [2.0, { ...PERIL_LUNGE }]];
+
+// ---------------------------------------------------------------- the form pass (ADR-250): fragments
+// What the audit found at the impacts (tests/integration/swordAudit.mjs, GCD_AUDIT_IMPACT): a thrust
+// landed on a bent arm (135 - 150°) with the point 21 - 26° off the line of the arm, and the long lunges
+// on two locked knees (176 / 176°: the feet set wider than his legs reach); the overheads cut straight
+// down (the point's path 75 - 81° off level: one upright bar at the game camera); the low sweeps turned
+// his hips a full circle over feet that stayed put (the legs wound round each other, the knee popped);
+// the front foot was still in the air at most impacts (the foot planner steps only once the key has
+// drifted 14 cm, then takes ~0.1 s). Played instead of the beats' own keys while `?ashForm` is on.
+const LIFT = ANK + 0.08; // a foot in its step, off the stones (the planner leaves a foot this high to the clip)
+/** The sword hand on the blade's own line out of the shoulder: [az, el] in body space, `r` m out. */
+const reachLine = (az, el, r) => [Math.sin(az) * Math.cos(el) * r, Math.sin(el) * r - 0.02, Math.cos(az) * Math.cos(el) * r];
+/** A lunge's feet round the hips at `bZ`: the front shin upright over its foot (the knee ~110°), the back
+ *  leg long behind (~165°), as far as his legs reach at a lunge's depth. */
+const lungeFeet = (bZ, front = 0.42, back = 0.62) => ({ rF: [-0.1, bZ + front], lF: [0.2, bZ - back], rK: [-0.15, 0, 1], lK: [0.35, -0.3, 0.9] });
+/** The lunge (a thrust's strike): hips sunk, the arm long and the point on its line, the free hand back. */
+const lungeF = (k, u, deep = false) => {
+  const bZ = k.bZ ?? GUARD.bZ, sw = k.sw ?? LUNGE.sw;
+  return {
+    bY: Math.min(k.bY ?? -0.3, deep ? -0.4 : -0.34),
+    rH: reachLine(sw[0], sw[1], u < 1.3 ? 0.6 : 0.62), rP: [-0.75, -0.25, -0.3], // (past full reach: TUNING.formMotion.armSoft opens the arm to ~160°)
+    ...lungeFeet(Math.min(bZ, 0.24), deep ? 0.48 : 0.44, deep ? 0.8 : 0.74),
+    lH: [0.24, 0.08, -0.3], lP: [0.7, -0.2, -0.6],
+  };
+};
+/** The low sweep: the same crouch, but the feet go round with him (the right leg sweeps the stones, the
+ *  left turns on its ball), each just off the floor so the clip carries them. */
+const sweepFeet = (ph) => {
+  const r = rotXZ(-0.46, 0.22, ph), l = rotXZ(0.12, -0.04, ph);
+  return { rF: [r[0], ANK + 0.04, r[1]], lF: [l[0], ANK + 0.04, l[1]], rFy: -0.7 + ph, lFy: 0.9 + ph };
+};
+const sweepKeysF = (cock = 0.62) => {
+  const k = spinKeys0(cock, true);
+  const B = { ...CROUCH };
+  const at = (u, ph) => [u, { e: 'l', yaw: 0.9 + ph, ...sweepFeet(ph) }];
+  return [
+    k[0],
+    [1.0, { ...k[1][1], ...sweepFeet(0) }],
+    at(1.25, -TAU * 0.25),
+    at(1.5, -TAU * 0.5),
+    at(1.75, -TAU * 0.75),
+    [2.0, { ...k[2][1], ...B, yaw: 0.9 - TAU, ...sweepFeet(-TAU) }],
+    [2.001, { e: 'h', yaw: 0.9, ...sweepFeet(0), rF: [-0.46, 0.22], lF: [0.12, -0.04] }],
+  ];
+};
+/** The two-handed chop (the leaps' and the Fall's) as a diagonal: raised over his sword shoulder, it comes
+ *  down through the opponent to low at his left (world [az, el] through a body yaw). */
+const RAISED2_F = { yaw: 0.1, sw: [W2B(-1.1, 0.1), 1.15], rH: [-0.1, 0.34, 0.08] };
+const CHOP2_F = { yaw: 0.3, sw: [W2B(0.15, 0.3), -0.3], rH: [0.0, -0.2, 0.44], pitch: 0.18, spX: 0.12, hdX: -0.1 };
+const CHOP2_FOLLOW = { yaw: 0.55, sw: [W2B(1.0, 0.55), -0.85], rH: [0.12, -0.34, 0.34] };
 
 // ---- the second pass's beats (strings that move: a kick, a glide, a leap, a spin that travels, the
 // qi as a string's last word). Composed from the fragments above; the kick's poses are the Flying
@@ -1026,6 +1101,150 @@ Object.assign(MOVES, {
 motionize(MOVES);
 // (the owner, 2026-11-26: Piercing Ash keeps its old windup, the blade drawn back and thrust, not the coil)
 delete MOVES.piercingAsh.beats[0].motionKeys;
+
+// ---------------------------------------------------------------- the form pass (ADR-250): the keys
+// Behind `?ashForm=a` ('0' = as before; duelist/lookSwitch.js): every beat's `formKeys` (and, for the
+// blows ADR-226 holds, `formMotionKeys`), its move's `formRecovery`: the same windups, impacts, zones and
+// root motion, only the poses (the fragments above). Read by the realiser through `keysOf`.
+export const formOn = () => lookOf('ashForm', '0') !== '0';
+const near = (a, b) => Math.abs(a - b) < 1e-6;
+/** One key of a beat in the form: a thrust's lunge, a two-handed chop's diagonal. */
+function formKey(u, k, b) {
+  if (u >= 1 - 1e-6 && b.zone?.kind === 'line' && Array.isArray(k.sw) && !(k.arm > 0)) {
+    return { ...k, ...lungeF(k, u, !!b.mikiri) };
+  }
+  if ((k.two ?? 0) > 0.95 && Array.isArray(k.sw)) {
+    if (u >= 1 - 1e-6 && k.sw[1] < -0.4) {
+      const bZ = k.bZ ?? GUARD.bZ;
+      return { ...k, ...(u < 1.3 ? CHOP2_F : CHOP2_FOLLOW), rF: [-0.1, bZ + 0.44], lF: [0.2, bZ - 0.58], rK: [-0.2, 0, 1], lK: [0.35, -0.2, 0.9] };
+    }
+    if (u < 1 - 1e-6 && k.sw[1] > 1.3) return { ...k, ...RAISED2_F };
+  }
+  return k;
+}
+/** The value of a foot field at key i or before (its guard value before any key sets it). */
+function footAt(keys, i, f) {
+  for (let j = i; j >= 0; j--) if (keys[j][1][f]) return keys[j][1][f];
+  return GUARD[f];
+}
+/** The strike lands with the front footfall (ki-ken-tai-ichi): where a beat steps its front foot in, the
+ *  foot is keyed off the stones halfway through the step and down just before the impact, instead of the
+ *  planner stepping it once the key has drifted (it came down 0.05 - 0.1 s after the blade). Not in a
+ *  dash, a leap or a beat of the courtyard (the root carries the feet), nor where the foot is already up. */
+function stepIn(keys, b) {
+  if (b.dash || b.lift || b.leap || b.go || b.spring || b.flit) return keys;
+  const hi = keys.findIndex(([u]) => near(u, 1));
+  if (hi < 1) return keys;
+  const rf = keys[hi][1].rF;
+  if (!rf) return keys;
+  const prev = footAt(keys, hi - 1, 'rF');
+  const z0 = prev.length === 2 ? prev[1] : prev[2], z1 = rf.length === 2 ? rf[1] : rf[2];
+  const y1 = rf.length === 3 ? rf[1] : ANK, y0 = prev.length === 3 ? prev[1] : ANK;
+  if (z1 - z0 < 0.12 || y1 > ANK + 0.02 || y0 > ANK + 0.02) return keys;
+  const u0 = keys[hi - 1][0], um = u0 + 0.5 * (1 - u0), ud = u0 + 0.86 * (1 - u0);
+  const x0 = prev[0], x1 = rf[0];
+  const out = keys.slice(0, hi);
+  out.push([um, { rF: [(x0 + x1) / 2, LIFT, z0 + 0.55 * (z1 - z0)] }]);
+  out.push([ud, { rF: [x1, ANK, z1] }]);
+  return out.concat(keys.slice(hi));
+}
+const formBeat = (b, keys) => stepIn(keys.map(([u, k]) => [u, formKey(u, k, b)]), b);
+const DOWN = new WeakSet(); // beats that come down from overhead in the form (the diagonal ones)
+for (const def of Object.values(MOVES)) for (const b of def.beats ?? []) {
+  if (!Array.isArray(b.keys)) continue;
+  const alt = FORM.get(b.keys);
+  b.formKeys = formBeat(b, alt ?? b.keys);
+  if ((alt && OVERS.has(alt)) || b.keys.some(([u, k]) => u < 1 && (k.two ?? 0) > 0.95 && k.sw?.[1] > 1.3)) DOWN.add(b);
+}
+/** The blue HIGH hold (duelist/tellPose.js) of a blow that comes down in the form: the same raised blade,
+ *  a little further out over his sword shoulder (world az -1.1, not -0.42), so the strike from it comes
+ *  ACROSS him (a diagonal at the game camera) instead of straight down the middle. */
+const HIGH_F = [-1.1, 1.15];
+// (its hold ends at 0.7 of the windup, not 0.8: the wider strike gets half as long again, so the hand
+// never travels more than ~0.13 m in 1/120 s: duel.mjs MOTION)
+const widenHigh = (keys) => keys.map(([u, k]) => {
+  if (!(u > 0.3 && u < 1 && k.sw && k.sw[1] > 1.1)) return [u, k];
+  return [k.e === 'h' && u > 0.75 ? 0.7 : u, { ...k, sw: [W2B(HIGH_F[0], k.yaw ?? GUARD.yaw), HIGH_F[1]] }];
+});
+// the kneel and sweep of Ash on the Wind (its keys spread from spinKeys, so not paired above)
+{
+  const b = MOVES.ashWind.beats[0];
+  b.formKeys = [...b.keys.slice(0, 2), ...sweepKeysF(0.9)];
+}
+// the held tell poses (ADR-226) over the form's keys: motionize a shadow table, then keep its keys
+{
+  const shadow = {};
+  for (const [n, def] of Object.entries(MOVES)) shadow[n] = { ...def, beats: (def.beats ?? []).map((b) => ({ ...b, keys: b.formKeys ?? b.keys, motionKeys: undefined })) };
+  motionize(shadow);
+  for (const [n, def] of Object.entries(MOVES)) (def.beats ?? []).forEach((b, i) => {
+    const m = shadow[n].beats[i].motionKeys;
+    if (m && b.motionKeys) b.formMotionKeys = stepIn(DOWN.has(b) && b.tell === B ? widenHigh(m) : m, b);
+  });
+}
+// a move's recovery in the form: a lunge held as the lunge now is; after the one-handed diagonal the arm
+// comes back from low at his left (not a two-handed grip found in 0.3 s); a two-handed chop on its diagonal
+{
+  const ONE = { arm: 1, ext: 0.8, sw: [0.25, -0.65], yaw: 0.45, bY: -0.26, two: 0, ...STEP_IN };
+  for (const [n, def] of Object.entries(MOVES)) {
+    const R = def.recoveryKeys;
+    if (!Array.isArray(R)) continue;
+    if (n === 'fallingAsh' || n === 'bellToll') { def.formRecovery = [[0.5, ONE]]; continue; }
+    const line = def.beats.some((b) => b.zone?.kind === 'line'), mik = def.beats.some((b) => b.mikiri);
+    def.formRecovery = R.map(([r, k]) => {
+      if (line && Array.isArray(k.rF) && k.rF[k.rF.length - 1] > 0.8) return [r, { ...k, ...lungeF(k, 1.6, mik), bY: -0.28 }];
+      if ((k.two ?? 0) > 0.25 && Array.isArray(k.sw) && k.sw[1] < -0.3) return [r, { ...k, sw: [W2B(0.5, 0.45), -0.6], yaw: 0.45 }];
+      return [r, k];
+    });
+  }
+}
+delete MOVES.piercingAsh.beats[0].formMotionKeys; // (as its motionKeys: the owner kept its thrust)
+// Flicking Willow, a quick blow out of his guard (0.34 s): the sword-finger raised over his head in the guard
+// came down to his chest in 0.09 s (14.6 m/s, the flail the owner dislikes). In the form it stays up as the
+// point flicks, and drops to his shoulder only as the cut comes across (opposition, not a throw).
+{
+  const b = MOVES.wristFlick.beats[0], up = [-0.04, 0.36, 0.04], mid = [0.08, 0.14, 0.12];
+  b.formKeys = b.formKeys.map(([u, k]) => (k.lH ? [u, { ...k, lH: u < 0.7 ? up : u < 1.3 ? mid : [0.14, 0.06, 0.06] }] : [u, k]));
+}
+// Heaven-Splitting Fall, a jump (the owner, 2026-11-27: "doesn't look natural in his motion"). The held red
+// coil (ADR-226) spans 0.36 - 0.72 of its windup, which is his whole flight: he flew 3.6 m up in a ground
+// crouch, feet set in a lunge, and whipped the blade from behind him to the chop in the last 0.3 s. In the
+// form it is a jump: he loads (sinks, the blade swung down behind his right hip), drives up off both feet
+// as the arms swing the blade up, tucks his knees at the top with the blade raised over his sword shoulder
+// (held through the ring's lock: the red tell reads there), reaches his legs down as the blade starts
+// over, and lands INTO the cut (the root's arc ends at the impact), the knees taking it as he sinks on.
+{
+  const b = MOVES.heavenFall.beats[0], Y = 0.1; // (the jump's facing: the leap turns him to where he lands)
+  const RAISE = { two: 1, yaw: Y, rP: [-0.8, 0.3, -0.3], swF: [1, 0, 0] };
+  // The arms, a third time (the owner: "his arms are barely visible in the air ... should go from neutral and
+  // motion upwards instead of going down and doing a complete circle ... swinging way too late and lands too far
+  // ... the boss just lands on top of the character"). No backswing: the arms leave his guard straight UP as he
+  // drives, the hands high in front of his face (never behind his head, where his body hid them), and the cut
+  // STARTS in the air, past the top: the blade comes over through the fall and is low in front of him as his feet
+  // touch. And he lands a blade's reach short (leap.short, below), so the steel meets the hero, not his body.
+  const keys = [
+    // the load: the knees sink, the arms still in his guard
+    [0.24, { bY: -0.42, pitch: 0.2, spX: 0.08, hdX: -0.1, rF: [-0.14, 0.22], lF: [0.16, -0.22], rK: [-0.25, 0.3, 1], lK: [0.3, 0.3, 1], flat: 0.8 }],
+    // the drive: legs straight, up on his toes, both hands rising in front of him, the blade lifting point-up
+    [0.36, { two: 1, yaw: 0.15, bY: 0.02, pitch: -0.06, spX: -0.02, hdX: 0.04, hdY: 0, rH: [-0.02, 0.2, 0.3], rP: [-0.8, 0.1, -0.3], sw: [W2B(-0.35, 0.15), 1.05], swF: [1, 0, 0], rF: [-0.12, 0.16], lF: [0.15, -0.2], flat: 0 }],
+    // off the stones: the legs trailing long below him, the hands above his forehead, still in front
+    [0.5, { ...RAISE, bY: 0.04, pitch: -0.1, spX: -0.06, hdX: 0.06, rH: [-0.05, 0.4, 0.2], sw: [W2B(-0.75, Y), 1.5], rF: [-0.1, ANK + 0.02, 0.04], lF: [0.15, ANK + 0.08, -0.2], rK: [-0.2, 0.2, 1], lK: [0.3, 0.2, 1] }],
+    // the top (the ring locks): knees drawn up, back arched, the arms high, the blade tipped just past upright
+    [0.66, { ...RAISE, bY: -0.06, pitch: -0.14, spX: -0.11, hdX: 0.08, rH: [-0.06, 0.45, 0.13], sw: [W2B(-0.85, Y), 1.78], rF: [-0.12, 0.36, 0.16], lF: [0.15, 0.3, -0.08], rK: [-0.2, 0.4, 1], lK: [0.3, 0.4, 1] }],
+    // the cut starts as he falls: the hands drive forward over his head, the blade coming over
+    [0.77, { ...RAISE, bY: -0.04, pitch: -0.02, spX: -0.02, hdX: 0.04, rH: [-0.04, 0.4, 0.32], sw: [W2B(-0.6, 0.15), 1.15], yaw: 0.15, rF: [-0.12, 0.3, 0.26], lF: [0.15, 0.26, -0.2], rK: [-0.2, 0.3, 1], lK: [0.3, 0.3, 1] }],
+    // the legs reach for the ground, the arms long out in front, the blade level and falling toward him
+    [0.89, { ...RAISE, yaw: 0.22, bY: -0.02, pitch: 0.1, spX: 0.06, hdX: -0.04, rH: [-0.02, 0.2, 0.46], rP: [-0.8, 0, -0.1], sw: [W2B(-0.25, 0.22), 0.35], rF: [-0.1, ANK + 0.1, 0.42], lF: [0.2, ANK + 0.16, -0.5], rK: [-0.2, 0.1, 1], lK: [0.35, 0, 0.9] }],
+    // the landing is the end of the cut (the steel across the hero); the knees take it on
+    [1.0, { two: 1, ...CHOP2_F, bY: -0.42, rP: [-0.8, -0.3, 0], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56], rK: [-0.2, 0.1, 1], lK: [0.35, -0.1, 0.9], flat: 0.6 }],
+    [2.0, { two: 1, ...CHOP2_FOLLOW, bY: -0.52, pitch: 0.42, spX: 0.18, hdX: -0.14, rP: [-0.8, -0.3, 0], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56], rK: [-0.2, 0.1, 1], lK: [0.35, -0.1, 0.9], flat: 0.8 }],
+  ];
+  // he lands 1.6 m short of the hero, at the blade's reach (the ring, 2.6 m, still takes him in), in the form only
+  Object.defineProperty(b.leap, 'short', { get: () => (formOn() ? 1.6 : 0), enumerable: true });
+  b.formKeys = keys;
+  if (b.formMotionKeys) b.formMotionKeys = keys;
+  // and he rises out of it where he landed (no step: the feet stay)
+  MOVES.heavenFall.formRecovery = [[0.5, { two: 0.5, yaw: 0.45, bY: -0.3, pitch: 0.24, spX: 0.14, hdX: -0.1, rH: [0.1, -0.3, 0.42], rP: [-0.8, -0.3, 0], sw: [W2B(0.5, 0.45), -0.6], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56] }]];
+}
 export const MOVE_NAMES = Object.keys(MOVES);
 
 // ---------------------------------------------------------------- reaction clips (no hits)
@@ -1145,7 +1364,16 @@ for (const [k, c] of Object.entries(CLIP)) c.name = k;
  * holds, absolute times per beat ({ start, impact, end, flash, tellAt }) and the compiled clip. `rnd`
  * = a 0..1 source (the game's Math.random, so the seeded sims replay).
  */
-export const realise = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: (b) => (motionOn() ? (b.motionKeys ?? null) : null) });
+export const realise = makeRealise({
+  TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat,
+  // ADR-226's held tell poses (`?ashMotion`) and ADR-250's form (`?ashForm`), either or both
+  keysOf: (b) => {
+    const m = motionOn();
+    if (formOn()) return (m ? (b.formMotionKeys ?? b.formKeys ?? b.motionKeys) : b.formKeys) ?? null;
+    return m ? (b.motionKeys ?? null) : null;
+  },
+  recoveryKeysOf: (def) => (formOn() ? (def.formRecovery ?? null) : null),
+});
 
 /** The guard pose (for tools). */
 export { GUARD };
