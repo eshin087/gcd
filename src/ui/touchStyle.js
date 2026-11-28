@@ -368,6 +368,44 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
 }
 .tc-swipe.on { animation: tc-swipe 0.32s ease-out forwards; }
 @keyframes tc-swipe { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+
+/* ---------- ADR-274: the owner's notes on the left side ----------
+   No gauge line under either BLOCK (the HUD's GD meter has it; a low guard warms the glyph instead),
+   ATTACK's dagger points down, and the stick and the left BLOCK drawn as one set (?leftLook=a|b|c). */
+.tc-block::after, .tc-guard::after { display: none; }
+.tc-block, .tc-guard { padding-bottom: 0; }
+.tc-block.low .g, .tc-guard.low .g { color: #ffb27a; text-shadow: 0 0 8px rgba(255, 138, 61, 0.7), 0 1px 2px #000; }
+.tc-block.low, .tc-guard.low { border-color: rgba(207, 214, 230, 0.13); }
+.tc-attack .g { display: inline-block; transform: scaleY(-1); }
+/* a: QUIET. The ring a faint dotted circle at the tiles' strength, the knob a bare '@' in small brackets;
+   BLOCK only its corner brackets (no frame), at the stick's strength */
+.look-a .tc-ring > span { color: rgba(207, 214, 230, 0.4); font-weight: 400; }
+.look-a .tc-ring > span.c { color: rgba(207, 214, 230, 0.6); }
+.look-a .tc-knob { background: none; border-color: transparent; }
+.look-a .tc-stick.on .tc-knob { border-color: transparent; }
+.look-a .tc-guard { border-color: transparent; opacity: 0.4; }
+.look-a .tc-guard::before { inset: 6px; opacity: 0.55; }
+/* b: A PAIR OF TILES. The stick sits in a square tile like the pad's (corner brackets, a faint frame),
+   the ring's strokes are dots, and BLOCK is framed the same beside it: the left hand reads as two tiles */
+.look-b .tc-disc { border-radius: 0; border: 1px solid rgba(207, 214, 230, 0.1); background: ${corners(CORNER, 10)}; }
+.look-b .tc-ring > span:not(.c) { color: transparent; text-shadow: none; }
+.look-b .tc-ring > span:not(.c)::after { content: '·'; color: rgba(207, 214, 230, 0.45); }
+.look-b .tc-ring > span.l1:not(.c)::after, .look-b .tc-ring > span.l2:not(.c)::after { color: ${EMBER}; }
+.look-b .tc-ring > span.c { color: rgba(207, 214, 230, 0.55); }
+.look-b .tc-knob { background: rgba(6, 9, 14, 0.18); border-color: rgba(207, 214, 230, 0.13); }
+.look-b .tc-guard { border-color: rgba(207, 214, 230, 0.13); opacity: 0.45; }
+.look-b .tc-guard::before { inset: 3px; opacity: 0.6; }
+/* c: GLYPHS ONLY. No ring at rest, just its four arrows; no box round the knob; BLOCK only its glyph
+   and name, like a word written on the ground */
+.look-c .tc-ring > span:not(.c) { opacity: 0; }
+.look-c .tc-stick.on .tc-ring > span:not(.c) { opacity: 1; }
+.look-c .tc-ring > span.c { color: rgba(207, 214, 230, 0.5); }
+.look-c .tc-knob { background: none; border-color: transparent; }
+.look-c .tc-knob::before { display: none; }
+.look-c .tc-guard { border-color: transparent; opacity: 0.45; }
+.look-c .tc-guard::before { display: none; }
+.look-c .tc-guard.on { background: none; }
+.look-c .tc-guard.on .g { color: #ffe2cc; }
 `;
 
 export function injectTouchStyle() {

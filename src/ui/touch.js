@@ -45,7 +45,7 @@ const BUTTONS = [
   { id: 'heavy', code: '@heavy', glyph: '‡', label: 'HEAVY', sub: 'hold: charge', tile: true },
   { id: 'block', code: '@block', glyph: '[#]', label: 'BLOCK', sub: 'tap: parry', tile: true },
   { id: 'dodge', code: '@dodge', glyph: '»', label: 'DODGE', tile: true },
-  { id: 'guard', code: '@block', glyph: '[#]', label: 'GUARD', sub: 'tap: parry' }, // (PAD LAYOUT split: the left hand)
+  { id: 'guard', code: '@block', glyph: '[#]', label: 'BLOCK', sub: 'tap: parry' }, // (PAD LAYOUT split: the left hand)
   { id: 'flask', code: '@flask', glyph: '◆', label: 'FLASK' },
   { id: 'lock', code: '@lockOn', glyph: '◎', label: 'LOCK' },
   { id: 'pause', code: '@pause', glyph: '||', label: '' },
@@ -67,6 +67,17 @@ function urlTouch() {
     return !(v === '0' || v === 'false' || v === 'off');
   } catch {
     return null;
+  }
+}
+
+/** ?leftLook=a|b|c: how the stick and the left BLOCK are drawn (ADR-274; options for the owner to pick). */
+export const LEFT_LOOKS = ['a', 'b', 'c'];
+function urlLeftLook() {
+  try {
+    const v = new URLSearchParams(String(globalThis.location?.search ?? '')).get('leftLook');
+    return LEFT_LOOKS.includes(v) ? v : 'a';
+  } catch {
+    return 'a';
   }
 }
 
@@ -153,6 +164,7 @@ export class TouchControls {
     this._drag = null; // { id, x, y, ox, oy } while a finger drags the pad
     this.fit = 1; // the touch layer's scale from the screen (CONFIG.touch.pad.fit)
     this.layout = 'classic'; // PAD_LAYOUT, the right cluster's arrangement: 'classic' BLOCK beside ATTACK, DODGE under; 'split' DODGE beside, BLOCK under
+    this.leftLook = urlLeftLook(); // ?leftLook=a|b|c (the owner picks one)
     this.leftGuard = false; // the GUARD button beside the stick (ADR-274: its own switch)
     this.rightGuard = true; // the BLOCK tile in the right cluster (never both off)
     this.holdAttack = false; // a held ATTACK keeps cutting
@@ -524,9 +536,11 @@ export class TouchControls {
     let guard = null;
     if (lguard) {
       const rest = this._stickRest(), up = h > w, g = (up && P.split.guardPortrait) || P.split.guard;
-      const gw = g.w * k, gh = g.h * k;
-      const left0 = up ? Math.max(8, rest.x - gw / 2) : rest.x + RING_R * fit + fin(g.gap, 14) * fit;
-      const bottom0 = up ? h - rest.y + RING_R * fit + fin(g.lift, 14) * fit : py + fin(g.y) * k;
+      // (landscape: centred on the stick, ADR-274; look b: the stick's square tile's height, against its edge)
+      const pair = this.leftLook === 'b' && !up;
+      const gw = g.w * k, gh = pair ? 128 * fit : g.h * k;
+      const left0 = up ? Math.max(8, rest.x - gw / 2) : pair ? rest.x + 64 * fit : rest.x + RING_R * fit + fin(g.gap, 14) * fit;
+      const bottom0 = up ? h - rest.y + RING_R * fit + fin(g.lift, 14) * fit : h - rest.y - gh / 2;
       // the player's drag (the padlock open), kept on the left half and clear of the top
       const left = Math.min(Math.max(left0 + this.guardOff.x * fit, 4), Math.max(4, w * 0.5 - gw));
       const bottom = Math.min(Math.max(bottom0 + this.guardOff.y * fit, 4), Math.max(4, h - gh - 52 * fit));
@@ -643,7 +657,7 @@ export class TouchControls {
       injectTouchStyle();
       const host = document.getElementById?.('ui') ?? document.body;
       if (!host) return;
-      const root = el('div', 'tc-root off', null, host);
+      const root = el('div', `tc-root off look-${this.leftLook}`, null, host);
       root.addEventListener('contextmenu', (e) => e.preventDefault?.());
 
       // left thumb: capture zone + the floating ASCII stick
