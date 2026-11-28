@@ -155,7 +155,20 @@ const boRiHug = {
   rF: [-0.22, ANK, -0.5], lF: [0.2, ANK, 0.6], rK: [-0.2, -0.3, 0.9], lK: [0.3, 0, 1], rFy: -0.2, lFy: 0.15,
 };
 
+// ---------------------------------------------------------------- the brake (the owner's v04 pack: A12 deep stop, B4 brake)
+/** The deep planted stop at the end of every dash: sunk very low, the lead (left) leg far out in front and
+ *  bent, its sole flat on the plates, the rear leg stretched straight back, the torso pitched over the lead
+ *  knee, the left hand down to the floor by the lead foot, the right arm back for balance, the head up on
+ *  the hero. */
+const boBrake = {
+  bY: -0.56, bZ: 0.1, pitch: 0.46, yaw: -0.42, hip: -0.1, spY: -0.04, hdX: -0.34,
+  lF: [0.26, ANK, 0.66], lK: [0.4, 0, 0.9], rF: [-0.3, ANK, -0.78], rK: [-0.3, -0.4, 0.8], lFy: 0.2, rFy: -0.8, flat: 1,
+  lH: [0.12, -0.58, 0.28], lP: [0.9, -0.2, 0.2], rH: [-0.2, -0.22, -0.26], rP: [-0.8, 0.2, -0.4], sw: PALM,
+};
+
 // ---------------------------------------------------------------- the footwork's layers (saint.js reads them)
+/** The brake as a footwork layer (pilot.fsBrakeK): the deep stop's channels, absolute. */
+export const BO_BRAKE_LAYER = boBrake;
 /** The jet step's lean (the loco pose layered by d.pilot.fsDashK): pitched into the dash, the arms swept
  *  back, the legs together behind him (body / foot deltas, not a whole pose). */
 export const BO_DASH_LAYER = Object.freeze({ pitch: 0.42, bodyY: -0.18, spX: 0.1, hdX: -0.3, rH: [-0.12, -0.3, -0.3], lH: [0.12, -0.3, -0.3], rP: [-0.6, 0.2, -0.8], lP: [0.6, 0.2, -0.8] });
@@ -189,6 +202,12 @@ export function boostLoco(p, pl) {
     to3(p, P.rF, -0.1, ANK + 0.12, -0.3, k);
     to3(p, P.lF, 0.1, ANK + 0.08, -0.22, k);
   }
+  const b = Math.min(1, Math.max(0, Number(pl?.fsBrakeK) || 0));
+  if (b > 0.01) {
+    const L = BO_BRAKE_LAYER;
+    for (const [i, v] of [[P.bodyY, L.bY], [P.bodyZ, L.bZ], [P.pitch, L.pitch], [P.yaw, L.yaw], [P.pelvY, L.hip], [P.spY, L.spY], [P.hdX, L.hdX], [P.footFlat, L.flat], [P.lFy, L.lFy], [P.rFy, L.rFy]]) p[i] += (v - p[i]) * b;
+    for (const [i, v] of [[P.lF, L.lF], [P.rF, L.rF], [P.lK, L.lK], [P.rK, L.rK], [P.lH, L.lH], [P.rH, L.rH], [P.lP, L.lP], [P.rP, L.rP]]) to3(p, i, v[0], v[1], v[2], b);
+  }
 }
 
 export const FRAGS = Object.freeze({
@@ -197,7 +216,7 @@ export const FRAGS = Object.freeze({
   boLift, boHang, boDive, boLand,
   boElCoil, boElHit, boKiCoil, boKiHit,
   boVeSet, boVePass, boVeDive,
-  boRiWhine, boRiHug,
+  boRiWhine, boRiHug, boBrake,
 });
 export const CLIPS = Object.freeze({});
 export const REACT = Object.freeze({});

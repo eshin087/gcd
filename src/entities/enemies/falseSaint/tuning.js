@@ -26,11 +26,12 @@ export const TUNING = {
   scale: PLAYER_SCALE * 1.1,
   bound: 13.8,
 
-  // ---- tells: never under the hardest duelist's today (Tian Lei / Bai Wuji: 0.26 / 0.40 / 0.34); the
-  // BRIEF's floor for his windups is 0.42
-  flashLead: 0.26,
-  minFirstWindup: 0.42,
-  minHitGap: 0.36,
+  // ---- tells (COMBAT.md, the rule; the lead's correction with the owner's v04 pack): the cue 0.35 s before
+  // the impact; the first windup of a melee move / string >= 0.7 s in phase 1 (later phases through
+  // windupScale: 0.7 x windupScale[f]); a string's hits >= 0.45 s apart in every phase (saint.mjs DATA)
+  flashLead: 0.35,
+  minFirstWindup: 0.7,
+  minHitGap: 0.45,
   // faster each phase; realise scales every unfixed windup, the minimums still hold (saint.mjs DATA)
   windupScale: [1, 0.94, 0.88, 0.84],
   recoveryScale: [0.8, 0.72, 0.66, 0.6],
@@ -108,10 +109,8 @@ export const TUNING = {
   // part beside it takes `spill` of that. `height`: his drawn height, m (the parts' anchors are shares of it).
   fsShell: { limit: [0.08, 0.3, 0.68, 0.97], perCut: 0.12, heavyK: 1.6, spill: 0.35, height: 2.05 },
 
-  // ---- THE JET STEP (Censer Step; the BOOST AGENT's footwork, FsBoost.footwork): OFF until built
-  // (`on` false). from: the first phase it is used in; at: m away he jets in; every: s between; speed;
-  // stop: m short of the hero; zig: the phase the zig-zag starts.
-  fsJet: { on: false, from: 2, at: 6, every: 3, speed: 22, stop: 2.2, max: 10, zig: 3 },
+  // ---- THE JET STEP (Censer Step; FsBoost.footwork): its switch and numbers are TUNING.boost.step
+  // (tuningBoost.js; `on`), the brake at its end TUNING.boost.brake.
 
   // ---- the beam's drawing borrows Tian Lei's (fxBeam.js reads d.T.beam.look)
   beam: { ...BEAM_TUNING },

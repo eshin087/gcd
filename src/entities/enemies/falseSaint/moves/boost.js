@@ -53,6 +53,9 @@ export function moves(X) {
     return o;
   };
   const back = (frag) => [[0.6, W(frag)], [1.0, STAND]]; // a move's recovery: back into the guard
+  // the end of a booster move that crossed the floor: the deep planted stop (the v04 pack, A12 / B4), then the guard
+  const BRAKE = W(FR.boBrake);
+  const braked = [[0.28, BRAKE], [0.62, BRAKE], [1.0, STAND]];
 
   // ---------------------------------------------------------------- the booster punch
   const V = TB.votive;
@@ -154,7 +157,7 @@ export function moves(X) {
         tell: B, windup: VS.windup, fixed: true, cock: 0.7, active: VS.active, damage: VS.damage, knockback: VS.knockback,
         zone: { kind: 'ring', r: VS.r }, part: 'fistR', close: 0, track: 0, air: true, groundMark: false,
         fsBlitz: { pass: i, last },
-        keys: [[0.7, VE_SET], [0.82, { ...VE_PASS, e: 'o' }], [2.0, VE_PASS]],
+        keys: [[0.7, VE_SET], [0.82, { ...VE_PASS, e: 'o' }], [1.3, VE_PASS], [2.0, { ...BRAKE, e: 'o' }]],
       });
   }
 
@@ -169,7 +172,7 @@ export function moves(X) {
     votiveFist: {
       label: 'Votive Fist', phase: 2, weight: V.weight, cooldown: V.cooldown, band: V.band, recovery: V.recovery, cat: 'closer', gapCloser: true,
       beats: [votive({ fsDash: { carry: true } })],
-      recoveryKeys: back(FR.boVoOver),
+      recoveryKeys: braked,
     },
     /** Rosary (his flurry from P2, out of a streak of guards): the plated arm's pistons in a stutter of
      *  threes (short, short, long), 7 - 10 blows, the last a blue parry moment. */
@@ -213,7 +216,7 @@ export function moves(X) {
           keys: [[0.4, mid(KI_HIT, VO_COIL, 0.6)], [V.cock, VO_COIL], [V.dashFrom, VO_COIL], [1.0, { ...VO_FIST, e: 'i' }], [1.6, { ...VO_OVER, e: 'o' }], [2.0, VO_OVER]],
         }),
       ],
-      recoveryKeys: back(FR.boVoOver),
+      recoveryKeys: braked,
     },
     /** Vespers, OVERCLOCK (P4): four jet-streak passes through the hero from four sides (blue), each
      *  announced (he jets to its launch point and the line shows), afterimages on each line, the last from

@@ -1,5 +1,6 @@
 import { TELL, RESULT } from '../../../combat/rules.js';
 import { TUNING_BOOST } from './tuningBoost.js';
+import { turnToward as turnTo } from '../../../core/math.js';
 
 // FsBoost: what rides the False Saint's jets (the BOOST AGENT's handler; its moves: moves/boost.js; its
 // numbers: tuningBoost.js, TUNING.boost; its poses: posesBoost.js). The routing contract's hooks (saint.js
@@ -47,7 +48,7 @@ export class FsBoost {
   }
 
   reset() {
-    this.stats = { steps: 0, zigs: 0, stepAborts: 0, dashes: 0, carries: 0, craters: 0, overshoots: 0, chips: 0, dives: 0, passes: 0, sets: 0, rites: 0, riteHits: 0, riteOpen: 0, swept: 0 };
+    this.stats = { steps: 0, zigs: 0, stepAborts: 0, dashes: 0, carries: 0, craters: 0, overshoots: 0, chips: 0, dives: 0, passes: 0, sets: 0, rites: 0, riteHits: 0, riteOpen: 0, swept: 0, plants: 0, outOfPool: 0, lines: 0 };
     for (const k of JETS) this.jets[k] = this._want[k] = 0;
     this.step = null;
     this.stepCool = 0;
@@ -108,9 +109,11 @@ export class FsBoost {
   onImpact(b, s) {
     const D = b.def, d = this.d;
     if (D.fsJet?.pulse) this.jets[D.fsJet.part] = 1;
-    if (D.fsDash && !D.fsDash.rite && b._fsDash) {
+    if (D.fsDash && b._fsDash) {
       const F = b._fsDash;
-      d.fx.dashTrail?.(F.x0, F.z0, d.position.x, d.position.z, 1);
+      if (!D.fsDash.rite) d.fx.dashTrail?.(F.x0, F.z0, d.position.x, d.position.z, 1);
+      // (the blink ends with the lead sole planted: its scuff and dust)
+      if (d.position.y < 0.3) this._plant(d.position.x, d.position.z, F.dx, F.dz, 0.8);
     }
     if (D.fsJet?.part === 'elbowR' && D.fsJet.pulse) this._chipBeside(s);
     if (D.fsJet?.part === 'calfR') {
@@ -205,8 +208,9 @@ export class FsBoost {
     if (d.mode !== 'act' || !a || a.name !== 'lastRite') d.fsCoreK = Math.max(0, d.fsCoreK - dt * 3);
     const pl = d.pilot;
     if (pl) {
-      const dash = this.step && this.step.t >= this.step.pre ? 1 : 0;
+      const brake = this.step && this.step.brake >= 0 ? 1 : 0, dash = this.step && this.step.t >= this.step.pre && !brake ? 1 : 0;
       pl.fsDashK = dash ? 1 : Math.max(0, fin(pl.fsDashK) - dt * 7);
+      pl.fsBrakeK = brake ? Math.min(1, fin(pl.fsBrakeK) + dt * 14) : Math.max(0, fin(pl.fsBrakeK) - dt * 4);
     }
   }
 
@@ -225,6 +229,7 @@ export class FsBoost {
   footwork(dt, s) {
     const d = this.d, S = this.T.step, ph = d.phase;
     if (this.step) return this._stepTick(dt, s);
+    if (s && this._outOfPool(dt, s)) return true;
     // (only where he would otherwise walk or run to the hero: in a breather, or once the engine found no
     // move for this range and set him running; never in place of a move his AI picks)
     if (!S?.on || ph < S.from || !s || !(s.dist > pp(S.at, ph)) || this.stepCool > 0 || !(d.brain.gapT > 0 || this._runT > 0.2)) return false;
@@ -252,19 +257,70 @@ export class FsBoost {
       }
     }
     const legs = n === 2 ? this._legs : [E];
-    this.step = { t: 0, pre: pp(S.pre, ph), legs, leg: 0, speed: pp(S.speed, ph), x: x0, z: z0, gone: false, stuck: 0, max: 0 };
-    this.step.max = this.step.pre + (len * (n === 2 ? 1.35 : 1)) / this.step.speed + 0.25;
+    this.step = { t: 0, pre: pp(S.pre, ph), legs, leg: 0, speed: pp(S.speed, ph), x: x0, z: z0, gone: false, stuck: 0, max: 0, brake: -1 };
+    this.step.max = this.step.pre + (len * (n === 2 ? 1.35 : 1)) / this.step.speed + 0.6;
     this.stats.steps++;
     if (n === 2) this.stats.zigs++;
     return this._stepTick(dt, s);
+  }
+
+  /** Standing in molten steel: out of it, to `poolOut` m past its rim (away from its middle, toward the
+   *  hero when he stands at the middle): a jet step from phase `from`, a run before. True: it moved him. */
+  _outOfPool(dt, s) {
+    const d = this.d, S = this.T.step, p = d.position;
+    const pool = this.game.world?.forest?.foundry?.molten?.at?.(p.x, p.z);
+    if (!pool) return false;
+    let ax = p.x - pool.x, az = p.z - pool.z, l = Math.hypot(ax, az);
+    if (l < 0.2) {
+      ax = s.dx;
+      az = s.dz;
+      l = s.dist || 1;
+    }
+    ax /= l;
+    az /= l;
+    const R = fin(pool.r, 2) + S.poolOut, B = d.bound - 0.3;
+    let tx = pool.x + ax * R, tz = pool.z + az * R;
+    for (const da of [0, 0.7, -0.7, 1.5, -1.5, Math.PI]) {
+      const c = Math.cos(da), sn = Math.sin(da), x = pool.x + (ax * c + az * sn) * R, z = pool.z + (az * c - ax * sn) * R;
+      if (Math.hypot(x, z) < B && (d.standable?.(x, z) ?? true) && Math.hypot(x - s.p.x, z - s.p.z) > 1.2) {
+        tx = x;
+        tz = z;
+        break;
+      }
+    }
+    if (d.phase >= S.from && S.on) {
+      const E = this._legs[1];
+      E.x = tx;
+      E.z = tz;
+      this.step = { t: 0, pre: 0, legs: [E], leg: 0, speed: pp(S.speed, d.phase), x: p.x, z: p.z, gone: false, stuck: 0, max: 1.2, brake: -1, pool: true };
+      this.stats.outOfPool++;
+      return this._stepTick(dt, s);
+    }
+    const dx = tx - p.x, dz = tz - p.z, dl = Math.hypot(dx, dz) || 1, v = fin(d.T.move?.run, 7);
+    const x0 = p.x, z0 = p.z;
+    d.moveBy((dx / dl) * v * dt, (dz / dl) * v * dt);
+    d.groundVelSet((p.x - x0) / Math.max(dt, 1e-4), (p.z - z0) / Math.max(dt, 1e-4));
+    d.yaw = s.ang;
+    return true;
   }
 
   _stepTick(dt, s) {
     const d = this.d, S = this.T.step, J = this.step;
     J.t += dt;
     d.groundVelSet(0, 0);
-    // never through the hero: he stops where he is if the hero came to him, or if the step ran long
-    if (!s || s.dist <= S.stop || J.t > J.max) return this._stepEnd(!s || J.t > J.max);
+    // THE BRAKE (the owner's v04 pack, A12 deep stop / B4 brake): down into a deep planted stop, the lead
+    // sole on the plates, a hand down, held `brake` s (pilot.fsBrakeK: posesBoost.js BO_BRAKE_LAYER)
+    if (J.brake >= 0) {
+      J.brake += dt;
+      if (s) d.yaw = turnTo(d.yaw, s.ang, 10 * dt);
+      return J.brake >= pp(S.brake, d.phase) ? this._stepEnd(false) : true;
+    }
+    // never through the hero: he brakes where he is if the hero came to him, or if the step ran long
+    if (!s || (!J.pool && s.dist <= S.stop) || J.t > J.max) {
+      if (!J.gone || !s) return this._stepEnd(true);
+      if (J.t > J.max) this.stats.stepAborts++;
+      return this._brakeNow();
+    }
     if (J.t < J.pre) {
       // the boosters light, he sinks into it (the read: a dash is coming)
       d.yaw = s.ang;
@@ -286,8 +342,9 @@ export class FsBoost {
     this._light('back', 1);
     this._light('calfR', 0.7);
     this._light('calfL', 0.7);
-    // the second leg stops short of where the hero is NOW (he may have moved)
-    if (J.leg === J.legs.length - 1) {
+    const last = J.leg === J.legs.length - 1;
+    // the last leg stops short of where the hero is NOW (he may have moved)
+    if (last && !J.pool) {
       const want = Math.hypot(s.p.x - d.position.x, s.p.z - d.position.z) - S.stop;
       if (want < l) {
         L.x = d.position.x + (dx / (l || 1)) * Math.max(0, want);
@@ -297,7 +354,10 @@ export class FsBoost {
         l = Math.hypot(dx, dz);
       }
     }
-    const step = Math.min(l, J.speed * dt);
+    // full speed through a first leg; the last one DECELERATES to zero at its end (v = sqrt(2 a l): the
+    // speed a constant braking `decel` m/s^2 allows from here, capped at the dash's speed)
+    const v = last ? Math.min(J.speed, Math.sqrt(2 * fin(S.decel, 60) * l) + 0.6) : J.speed;
+    const step = Math.min(l, v * dt);
     const x0 = d.position.x, z0 = d.position.z;
     if (l > 1e-3) {
       d.moveBy((dx / l) * step, (dz / l) * step);
@@ -305,15 +365,49 @@ export class FsBoost {
     }
     const moved = Math.hypot(d.position.x - x0, d.position.z - z0);
     J.stuck = moved < step * 0.3 ? J.stuck + 1 : 0;
-    if (J.stuck >= 3) return this._stepEnd(true);
+    if (J.stuck >= 3) {
+      this.stats.stepAborts++;
+      return this._brakeNow();
+    }
     if (l - step < 0.05) {
-      if (J.leg + 1 < J.legs.length) {
+      if (!last) {
         J.leg++;
         d.fx.afterimage?.(d, 0, 0, 0.35);
         d.fx.jetBurst?.(d.position.x, d.position.z, -(dz / (l || 1)), dx / (l || 1), 0.6);
-      } else return this._stepEnd(false);
+      } else return this._brakeNow();
     }
     return true;
+  }
+
+  /** The dash's end: the deep planted stop (A12 / B4), its scuff and dust (C2). */
+  _brakeNow() {
+    const d = this.d, J = this.step;
+    J.brake = 0;
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    this._plant(d.position.x, d.position.z, fx, fz, 1);
+    d.fx.dashTrail?.(J.x, J.z, d.position.x, d.position.z, 0.7);
+    J.gone = false; // (its trail is drawn)
+    return true;
+  }
+
+  /** A sole planted hard at (x, z) moving along (dx, dz): the scuff it leaves on the plates (a short furrow
+   *  up to the foot: world.groundBlow, it damages nothing) and the dust (the owner's v04 pack, C2). */
+  _plant(x, z, dx, dz, k = 1) {
+    const d = this.d, w = this.game.world, B = this.T.brake;
+    const l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l, len = B.scuff * k;
+    const g = this._gm;
+    g.kind = 'dash';
+    g.power = B.power * k;
+    g.r = NaN;
+    g.len = len;
+    g.dx = ux;
+    g.dz = uz;
+    g.hot = false;
+    w?.groundBlow?.(x - ux * len, z - uz * len, g);
+    g.len = NaN;
+    g.hot = true;
+    d.fx.dust?.(x + ux * 0.3, z + uz * 0.3, B.dust * k);
+    this.stats.plants++;
   }
 
   _stepEnd(abort) {
@@ -330,7 +424,7 @@ export class FsBoost {
   /** From phase 3, between moves, he hangs a hand's breadth off the floor on his thrusters (stiff: no bob). */
   _hover(dt, a) {
     const d = this.d, S = this.T.step, br = d.brain, p = d.position;
-    const want = d.mode === 'foot' ? pp(S.hover, d.phase) : 0;
+    const want = d.mode === 'foot' && !(this.step?.brake >= 0) ? pp(S.hover, d.phase) : 0;
     const pl = d.pilot;
     let k = 0;
     if (d.mode === 'foot' && want > 0) {
@@ -418,11 +512,12 @@ export class FsBoost {
       this.carry = null;
       return;
     }
-    const step = Math.min(C.left, C.v * dt);
+    // (it decelerates to zero over what is left: v = sqrt(2 a left), the brake's constant deceleration)
+    const v = Math.min(C.v, Math.sqrt(2 * fin(this.T.step.decel, 60) * C.left) + 0.4);
+    const step = Math.min(C.left, v * dt);
     const x0 = d.position.x, z0 = d.position.z;
     d.moveBy(C.dx * step, C.dz * step);
     C.left -= step;
-    C.v = Math.max(8, C.v * Math.exp(-dt * 2.5));
     this._light('elbowR', 0.7);
     if (C.crater) {
       const W = this.game.world?.destructibles;
@@ -438,6 +533,7 @@ export class FsBoost {
     }
     const moved = Math.hypot(d.position.x - x0, d.position.z - z0);
     if (C.left <= 0.02 || moved < step * 0.25) {
+      this._plant(d.position.x, d.position.z, C.dx, C.dz, C.crater ? 1 : 0.7);
       if (C.crater) {
         const ex = d.position.x + C.dx * 0.9, ez = d.position.z + C.dz * 0.9;
         this._crater(ex, ez, V.crater, V.craterPower, 1.0);
@@ -639,7 +735,10 @@ export class FsBoost {
   _sight(ax, az, hx, hz, last, k) {
     const VS = this.T.vespers, dx = hx - ax, dz = hz - az, l = Math.hypot(dx, dz) || 1;
     const over = last ? 0 : VS.over;
-    this.d.fx.sightLine?.(ax, az, hx + (dx / l) * over, hz + (dz / l) * over, k);
+    // (its own drawing, fx.passLine (C: every frame it shows; heat on the floor, NEVER cyan or blue: blue
+    // means parry, cyan is his sensors' only; the v04 pack's rule): the fx agent's to add to FsFx)
+    this.stats.lines++;
+    this.d.fx.passLine?.(ax, az, hx + (dx / l) * over, hz + (dz / l) * over, k);
   }
 
   /** The pass: held at the launch point (the line tracks the hero until `track`), then through his spot at
@@ -690,11 +789,16 @@ export class FsBoost {
       return;
     }
     // through the hero's spot at the impact, on past it at the pass's speed
-    const along = Math.max(0, (t - G.leave) * (G.len / G.T));
-    const run = F.last ? Math.min(G.len, along) : Math.min(G.len + VS.over, along);
+    const vel = G.len / G.T, along = Math.max(0, (t - G.leave) * vel);
+    let run = Math.min(G.len, along), bk = 0;
+    // (past the hero's spot he brakes: `over` m more, decelerating to zero, then the planted stop)
+    if (!F.last && along > G.len) {
+      bk = Math.min(1, (t - G.leave - G.T) / Math.max(0.05, (2 * VS.over) / vel));
+      run = G.len + VS.over * (1 - (1 - bk) * (1 - bk));
+    }
     p.x = G.x + G.dx * run;
     p.z = G.z + G.dz * run;
-    p.y = F.last ? G.y * Math.max(0, 1 - run / G.len) : 0.15;
+    p.y = F.last ? G.y * Math.max(0, 1 - run / G.len) : 0.15 * (1 - bk);
     d.yaw = Math.atan2(G.dx, G.dz);
     d.state = p.y > 0.4 ? 'airborne' : 'combat';
     this._light('back', 1);
@@ -715,13 +819,13 @@ export class FsBoost {
     if (((t * 60) | 0) % 3 === 0 && p.y < 3) d.fx.afterimage?.(d, -G.dx * 1.2, -G.dz * 1.2, 0.35);
     G.px = p.x;
     G.pz = p.z;
-    if (!G.done && (run >= (F.last ? G.len : G.len + VS.over) - 1e-3)) {
+    if (!G.done && (F.last ? run >= G.len - 1e-3 : bk >= 1)) {
       G.done = true;
       d.fx.dashTrail?.(G.x, G.z, p.x, p.z, 1);
       if (F.last) {
         p.y = 0;
         d.moveBy(0, 0);
-      }
+      } else this._plant(p.x, p.z, G.dx, G.dz, 0.8);
     }
     void dt;
   }

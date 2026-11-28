@@ -454,7 +454,13 @@ export class FalseSaint extends Duelist {
       _a.set(fin(x, this.position.x), 0.3, fin(z, this.position.z));
       const took = this.shell.strip(fin(this.T.terrain?.molten?.strip, 0.05), _a);
       if (took > 0) this.fx.shellStrip?.(_a.x, 0.4, _a.z, took);
-      if (!this.broken && this.mode !== 'act') this.brain.startReact('stagger');
+      // (staggered once per `molten.staggerEvery` s (2.5): a pool's every burn re-staggering him kept him
+      // reeling in it 8 s (measured, saint.mjs boostPace); between, his footwork takes him out of it)
+      const every = fin(this.T.terrain?.molten?.staggerEvery, 2.5);
+      if (!this.broken && this.mode !== 'act' && !(this.time - fin(this._moltenT, -99) < every)) {
+        this._moltenT = this.time;
+        this.brain.startReact('stagger');
+      }
     }
     return dealt;
   }

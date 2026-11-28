@@ -479,7 +479,9 @@ async function scenarioData() {
         if (!real.every((b) => [TELL.NORMAL, TELL.BLUE, TELL.RED, TELL.BLACK].includes(b.def.tell))) assert(false, `${tag}: a tell on every real hit`);
         if (!A.beats.filter((b) => b.feint && !b.def.stance).every((b) => b.def.tell === undefined && !b.def.zone && !b.def.damage)) assert(false, `${tag}: a feint says nothing`);
         const first = real[0];
-        if (!def.transition && first && !(first.impact - first.tellAt >= TUNING.minFirstWindup - 1e-6)) assert(false, `${tag}: first real windup ${(first.impact - first.tellAt).toFixed(3)} >= ${TUNING.minFirstWindup}`);
+        // (COMBAT.md: >= 0.7 s in phase 1; a later phase may be faster through windupScale)
+        const fw = TUNING.minFirstWindup * (Array.isArray(TUNING.windupScale) ? TUNING.windupScale[f - 1] ?? 1 : 1);
+        if (!def.transition && first && !(first.impact - first.tellAt >= fw - 1e-6)) assert(false, `${tag}: first real windup ${(first.impact - first.tellAt).toFixed(3)} >= ${fw.toFixed(3)}`);
         for (let i = 1; i < real.length; i++) if (!(real[i].impact - real[i - 1].impact >= TUNING.minHitGap - 1e-6)) assert(false, `${tag}: hits ${i - 1}→${i} ${(real[i].impact - real[i - 1].impact).toFixed(3)} s apart >= ${TUNING.minHitGap}`);
         for (const b of real) if (!(b.def.zone || b.def.release || b.def.cast)) assert(false, `${tag}: hit ${b.hit} has a zone, a release or a cast`);
         for (const b of real) if (b.def.tell === TELL.RED && b.def.zone?.kind === 'ring' && !b.def.ring) assert(false, `${tag}: a red ring has its ring`);
@@ -488,9 +490,9 @@ async function scenarioData() {
       }
     }
   }
-  assert(checked >= 12, `${checked} realisations obey the rules (a tell per hit, feints silent, first windup >= ${TUNING.minFirstWindup} s, hits >= ${TUNING.minHitGap} s apart)`);
-  const { TUNING: ASC_T } = await imp('src/entities/enemies/ascendant/tuning.js');
-  assert(TUNING.flashLead >= ASC_T.flashLead && TUNING.minFirstWindup >= Math.max(ASC_T.minFirstWindup, 0.42) && TUNING.minHitGap >= ASC_T.minHitGap, `his minimums are no lower than Tian Lei's, his first windup no lower than 0.42 (${TUNING.flashLead} / ${TUNING.minFirstWindup} / ${TUNING.minHitGap})`);
+  assert(checked >= 12, `${checked} realisations obey the rules (a tell per hit, feints silent, first windup >= ${TUNING.minFirstWindup} s x windupScale, hits >= ${TUNING.minHitGap} s apart)`);
+  // (COMBAT.md's floors: the cue 0.35 s before the impact, a first windup of 0.7 s in phase 1, hits 0.45 s apart)
+  assert(TUNING.flashLead >= 0.35 - 1e-9 && TUNING.minFirstWindup >= 0.7 - 1e-9 && TUNING.minHitGap >= 0.45 - 1e-9, `his minimums are COMBAT.md's (cue ${TUNING.flashLead} >= 0.35, first windup ${TUNING.minFirstWindup} >= 0.7, hits ${TUNING.minHitGap} >= 0.45 apart)`);
   // every new field is `fs`-prefixed (the engine's names: this list; add an engine field here only if the engine has it)
   const ENGINE = new Set(('tell flare feint windup hold cock active chance fixed pick damage knockback knockdown zone ring part track close travel dash lift leap air release cast sustain selfHit stance draw stopOn mikiri lock flit follow keys bolt pull grip noWorld groundMark blink dive hazard burn whoosh blockPush guardCost mo sweep '
     + 'label phase weight cooldown band recovery recoveryKeys counter transition manual hidden cat terrain gapCloser streak recoverOpen').split(' '));
@@ -799,18 +801,20 @@ async function scenarioBoostStep() {
       if (B.step) { minD = Math.min(minD, flatDist(d.position, p.position)); lens[starts.length - 1] = Math.hypot(d.position.x - x0, d.position.z - z0); }
       if (d.mode === 'foot' && !B.step && d.brain.modeT > 0.6) { hoverY += d.position.y; hoverN++; maxY = Math.max(maxY, d.position.y); }
       // (the hero keeps his distance: back to 10 m whenever he is closed on and the boss stands in footwork)
-      if (d.mode === 'foot' && !B.step && flatDist(d.position, p.position) < 4 && d.brain.modeT > 0.3) placeIn(G, 10);
+      if (d.mode === 'foot' && !B.step && flatDist(d.position, p.position) < 4) placeIn(G, 10);
     });
     const gaps = starts.slice(1).map((t, i) => t - starts[i]);
     const every = Array.isArray(S.every) ? S.every[form - 1] : S.every;
-    for (const k of ['steps', 'zigs', 'stepAborts']) B.stats[k] -= st0[k];
-    out(`     phase ${form}: ${B.stats.steps} steps (${B.stats.zigs} zig-zags, ${B.stats.stepAborts} cut short), lengths ${lens.map((l) => l?.toFixed(1)).join(' / ')} m, closest to the hero in one ${Number.isFinite(minD) ? minD.toFixed(2) : '-'} m, gaps ${gaps.map((g) => g.toFixed(2)).join(' / ')} s, hover ${(hoverY / Math.max(1, hoverN)).toFixed(2)} m (max ${maxY.toFixed(2)})`);
+    for (const k of ['steps', 'zigs', 'stepAborts', 'plants']) B.stats[k] -= st0[k];
+    out(`     phase ${form}: ${B.stats.steps} steps (${B.stats.zigs} zig-zags, ${B.stats.stepAborts} cut short), lengths ${lens.map((l) => l?.toFixed(1)).join(' / ')} m, closest to the hero in one ${Number.isFinite(minD) ? minD.toFixed(2) : '-'} m, gaps ${gaps.map((g) => g.toFixed(2)).join(' / ')} s, hover ${(hoverY / Math.max(1, hoverN)).toFixed(2)} m (max ${maxY.toFixed(2)}), ${B.stats.plants} planted stops`);
     if (form === 1) assert(B.stats.steps === 0, 'phase 1: he walks (no jet step)');
     else {
-      assert(B.stats.steps >= 2, `phase ${form}: he jets at a far hero (${B.stats.steps} steps)`);
+      // (phase 4 flows from move to move (TUNING.chain 0.8): fewer stretches of footwork to jet in)
+      assert(B.stats.steps >= (form >= 4 ? 1 : 2), `phase ${form}: he jets at a far hero (${B.stats.steps} steps)`);
       assert(minD >= S.stop - 0.2, `phase ${form}: never through the hero (closest ${minD.toFixed(2)} m >= ${S.stop - 0.2})`);
       assert(gaps.every((g) => g >= every - 0.05), `phase ${form}: a cooldown between steps (>= ${every} s: ${gaps.map((g) => g.toFixed(2)).join(', ')})`);
       assert(lens.every((l) => l <= S.max * 1.4 + 0.1), `phase ${form}: no step longer than its legs allow (${S.max} m straight)`);
+      assert(B.stats.plants >= B.stats.steps, `phase ${form}: every step ends in the planted stop, its scuff and dust (${B.stats.plants} / ${B.stats.steps})`);
     }
     if (form >= S.zig) assert(B.stats.zigs >= 1, `phase ${form}: the zig-zag (${B.stats.zigs})`);
     if (form >= 3) assert(hoverY / Math.max(1, hoverN) > 0.1 && maxY < 0.4, `phase ${form}: he hovers between moves (${(hoverY / Math.max(1, hoverN)).toFixed(2)} m, never above ${maxY.toFixed(2)})`);
@@ -1013,8 +1017,8 @@ async function scenarioBoostVespers() {
   const d = game.dragon, p = game.player, B = bo(G);
   duel(G, { dist: 4, ai: false, form: 4 });
   const sights = [];
-  const sl = d.fx.sightLine.bind(d.fx);
-  d.fx.sightLine = (...a) => { if (d.brain.act?.name === 'vespers') sights.push(game.time); return sl(...a); };
+  const sl = d.fx.passLine?.bind(d.fx);
+  d.fx.passLine = (...a) => { if (d.brain.act?.name === 'vespers') sights.push(game.time); return sl?.(...a); };
   const dirs = [];
   const watchDirs = () => { for (const b of d.brain.act?.name === 'vespers' ? d.brain.act.beats : []) if (b._fsP?.fixed && !b._fsSeen) { b._fsSeen = true; dirs.push(Math.atan2(b._fsP.dx, b._fsP.dz)); } };
   // the hero stands his ground: every pass comes through him
@@ -1059,10 +1063,12 @@ async function scenarioBoostRite() {
   d.hp = d.maxHp * 0.07;
   p.debug.god = true;
   let seen = 0, at = NaN;
-  G.watch = (n, e) => { if (n === 'dragon:windup' && e?.name === 'lastRite') { seen++; at = flatDist(d.position, p.position); } };
-  run(G, 24, () => { G.input.axis = { x: 0, y: 0 }; game.mouseGround.set(d.position.x, 0, d.position.z); if (d.hp > d.maxHp * 0.07) d.hp = d.maxHp * 0.07; });
+  const wins = [];
+  G.watch = (n, e) => { if (n === 'dragon:windup') wins.push(e?.name); if (n === 'dragon:windup' && e?.name === 'lastRite') { seen++; at = flatDist(d.position, p.position); } };
+  // (the hero kept on his floor: a knock-back past its edge leaves every move of his out of band)
+  run(G, 24, () => { G.input.axis = { x: 0, y: 0 }; game.mouseGround.set(d.position.x, 0, d.position.z); if (d.hp > d.maxHp * 0.07) d.hp = d.maxHp * 0.07; if (d.mode === 'foot' && Math.hypot(p.position.x, p.position.z) > 12.5) placeIn(G, 3); });
   G.watch = null;
-  out(`     his AI threw it ${seen}x in 24 s (from ${at.toFixed(2)} m: ${B.stats.riteHits ? 'caught' : 'missed, open'})`);
+  out(`     his AI threw it ${seen}x in 24 s (from ${at.toFixed(2)} m: ${B.stats.riteHits ? 'caught' : 'missed, open'}; his moves: ${wins.join(' ')})`);
   assert(seen === 1 && d.brain.trigger('lastRite') === false, `once a fight (${seen}; the Lab's trigger refused after)`);
   // caught, the hero on 30 hp: he lives
   const G3 = build();
@@ -1171,7 +1177,7 @@ async function scenarioBoostPace() {
         if (n === 'dragon:windup' && e?.name) acts[e.name] = (acts[e.name] ?? 0) + 1;
       };
       const roam = mulberry32(seed * 31 + ph), goal = { r: 2.5, a: 0, until: -1 };
-      const t0 = game.time, s0 = B.stats.steps;
+      const t0 = game.time, s0 = B.stats.steps, trail = [];
       for (let i = 0; i < Math.round(SECS / DT); i++) {
         const rolled = G.defend.act();
         if (game.time > goal.until) {
@@ -1187,12 +1193,18 @@ async function scenarioBoostPace() {
         }
         game.mouseGround.set(d.position.x, 0, d.position.z);
         G.tick(DT);
+        trail.push([game.time, (d.mode === 'act' ? `act ${d.brain.act?.name}` : d.mode === 'react' ? `react ${d.brain.react?.kind}` : d.mode) + (game.world.forest.foundry?.molten?.at?.(d.position.x, d.position.z) ? ' (in a pool)' : ''), Math.round(flatDist(d.position, p.position))]);
         if (d.phase !== ph && d.mode !== 'act') break;
       }
       const secs = game.time - t0;
       const gaps = flashes.slice(1).map((t, i) => t - flashes[i]);
+      // (what he did through the longest gap between two cues)
+      const gi = gaps.indexOf(Math.max(...gaps, 0)), g0 = flashes[gi] ?? t0, g1 = flashes[gi + 1] ?? game.time;
+      const what = {};
+      for (const [t, m] of trail) if (t > g0 && t < g1) what[m] = (what[m] ?? 0) + 1;
+      const whatS = Object.entries(what).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${(v * DT).toFixed(1)} s`).join(', ');
       const top = Object.entries(acts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ');
-      out(`     seed ${seed} P${ph}: ${(flashes.length / secs * 60).toFixed(0)} cues/min over ${secs.toFixed(0)} s, longest gap ${gaps.length ? Math.max(...gaps).toFixed(1) : '-'} s, ${B.stats.steps - s0} jet steps; moves: ${top}`);
+      out(`     seed ${seed} P${ph}: ${(flashes.length / secs * 60).toFixed(0)} cues/min over ${secs.toFixed(0)} s, longest gap ${gaps.length ? Math.max(...gaps).toFixed(1) : '-'} s (${whatS}), ${B.stats.steps - s0} jet steps; moves: ${top}`);
       G.defend = null;
       G.watch = null;
       assert(flashes.length > 0, `P${ph}: he fights (${flashes.length} cues)`);
