@@ -346,6 +346,22 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
 @media (orientation: portrait) {
   .tc-zone { width: 50%; height: 46%; }
 }
+/* SWIPE DODGE (ADR-271): the flick's mark, a short streak of chevrons that fades where the thumb went */
+.tc-swipe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  transform-origin: 10% 50%;
+  font: 700 calc(15px * var(--tc-f, 1)) / 1 var(--ab-mono, ui-monospace, monospace);
+  letter-spacing: 0.1em;
+  color: #9ec8ff;
+  text-shadow: 0 0 6px rgba(120, 170, 255, 0.6);
+  opacity: 0;
+  white-space: nowrap;
+}
+.tc-swipe.on { animation: tc-swipe 0.32s ease-out forwards; }
+@keyframes tc-swipe { 0% { opacity: 0.95; } 100% { opacity: 0; } }
 `;
 
 export function injectTouchStyle() {

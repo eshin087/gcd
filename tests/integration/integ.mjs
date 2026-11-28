@@ -10239,6 +10239,48 @@ async function scenarioTouch() {
   fireWin('pointerup', { pointerType: 'touch', pointerId: 31 });
   fireWin('pointerup', { pointerType: 'touch', pointerId: 32 });
   assert(rig.targetDistance < z1 - 3 && rig.targetDistance >= CONFIG.camera.mobileMinDistance, `pinch apart → closer (${z1} → ${rig.targetDistance.toFixed(1)} m)`);
+  // SWIPE DODGE (ADR-271): off by default; on, a quick flick on the bare right half dodges the way it
+  // flicked (over the stick), once per flick; the left half, a slow drag and a pinch do nothing
+  {
+    const flick = (id, x0, y0, dx, dy) => {
+      fireWin('pointerdown', { pointerType: 'touch', pointerId: id, target: G.canvas, clientX: x0, clientY: y0 });
+      fireWin('pointermove', { pointerType: 'touch', pointerId: id, clientX: x0 + dx * 0.3, clientY: y0 + dy * 0.3 });
+      fireWin('pointermove', { pointerType: 'touch', pointerId: id, clientX: x0 + dx, clientY: y0 + dy });
+      fireWin('pointermove', { pointerType: 'touch', pointerId: id, clientX: x0 + dx * 2, clientY: y0 + dy * 2 });
+      fireWin('pointerup', { pointerType: 'touch', pointerId: id });
+    };
+    frames(0.6);
+    const r0 = c('player:roll');
+    assert(t.swipeDodge === false, 'SWIPE DODGE: off by default');
+    flick(41, 600, 200, -60, 0);
+    frames(0.1);
+    assert(c('player:roll') === r0, 'off: a flick does not dodge');
+    assert(t.cyclePad('swipe') === true, 'the pause switch turns it on');
+    frames(0.6);
+    flick(42, 600, 200, -60, 0);
+    frames(0.05);
+    const d = p.rollDir;
+    assert(c('player:roll') === r0 + 1 && p.state === 'roll' && d.x < -0.95, `a flick left on the right half → one dodge, left (${c('player:roll') - r0}, ${p.state}, dir ${d.x.toFixed(2)},${d.z.toFixed(2)})`);
+    frames(1.0);
+    flick(43, 600, 200, 0, 60);
+    frames(0.05);
+    assert(c('player:roll') === r0 + 2 && p.rollDir.z > 0.95, `a flick down → a dodge toward the camera (dir ${p.rollDir.x.toFixed(2)},${p.rollDir.z.toFixed(2)})`);
+    frames(1.0);
+    flick(44, 200, 200, -60, 0); // (the left half of the bare screen)
+    frames(0.05);
+    assert(c('player:roll') === r0 + 2, 'the left half: no dodge');
+    fireWin('pointerdown', { pointerType: 'touch', pointerId: 45, target: G.canvas, clientX: 600, clientY: 200 });
+    fireWin('pointermove', { pointerType: 'touch', pointerId: 45, clientX: 610, clientY: 200 });
+    fireWin('pointerdown', { pointerType: 'touch', pointerId: 46, target: G.canvas, clientX: 700, clientY: 200 });
+    fireWin('pointermove', { pointerType: 'touch', pointerId: 45, clientX: 540, clientY: 200 });
+    fireWin('pointerup', { pointerType: 'touch', pointerId: 45 });
+    fireWin('pointerup', { pointerType: 'touch', pointerId: 46 });
+    frames(0.05);
+    assert(c('player:roll') === r0 + 2, 'a second finger (a pinch) is no swipe');
+    t.cyclePad('swipe');
+    frames(1.0);
+    rig.targetDistance = z1;
+  }
   // explore at the bonfire: the "[E] Rest" prompt is a tap target
   assert(game.flow.debug.toState('explore') === true, 'toState(explore)');
   frames(0.3);

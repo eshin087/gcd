@@ -327,6 +327,10 @@ export class PauseMenu {
     this.btnPadHold = button(panel, 'tp-only', () => game.touch?.cyclePad?.('hold'));
     el('span', '', 'HOLD ATTACK', this.btnPadHold);
     this.padHoldVal = el('span', 'v', '', this.btnPadHold);
+    // ... and whether a flick on the right half dodges (ADR-271)
+    this.btnPadSwipe = button(panel, 'tp-only', () => game.touch?.cyclePad?.('swipe'));
+    el('span', '', 'SWIPE DODGE', this.btnPadSwipe);
+    this.padSwipeVal = el('span', 'v', '', this.btnPadSwipe);
     // WHAT'S NEW (ui/changelogPanel.js): every version and what changed; the value counts the unread
     this.btnNews = null;
     if (news) {
@@ -347,7 +351,7 @@ export class PauseMenu {
     this.quitVal = el('span', 'v', '›', this.btnQuit);
     this.quitArmed = 0;
     // the buttons in order, for the gamepad's menu focus (ui/gamepad.js)
-    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnCap, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnPadLayout, this.btnPadHold, this.btnNews, this.btnQuit].filter(Boolean);
+    this.buttons = [resume, this.btnQuality, this.btnMute, this.btnCap, this.btnControls, this.btnFull, this.btnPadPos, this.btnPadSize, this.btnPadLayout, this.btnPadHold, this.btnPadSwipe, this.btnNews, this.btnQuit].filter(Boolean);
     el('div', 'ab-sep', null, panel);
     controlsGrid(panel, 'kb').classList.add('kb-only');
     touchGrid(panel).classList.add('tp-only');
@@ -420,6 +424,11 @@ export class PauseMenu {
     if (ph !== this._ph) {
       this._ph = ph;
       this.padHoldVal.textContent = ph ? 'ON' : 'OFF';
+    }
+    const sw = !!tc?.swipeDodge;
+    if (sw !== this._sw) {
+      this._sw = sw;
+      this.padSwipeVal.textContent = sw ? 'ON' : 'OFF';
     }
     if (this.fullVal) {
       const f = !!globalThis.document?.fullscreenElement;

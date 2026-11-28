@@ -19,7 +19,9 @@ import { aimWithoutCursor } from './aim.js';
 // (ADR-131, both off by default): PAD LAYOUT 'split' moves the guard to the left hand (a GUARD button
 // beside the stick; the right cluster keeps ATTACK, HEAVY and DODGE), and HOLD ATTACK makes a thumb
 // that rests on ATTACK keep cutting (input.pulse, CONFIG.touch.hold). ?pad=split|classic and
-// ?hold=1|0 in the URL set them for one page load.
+// ?hold=1|0 in the URL set them for one page load. SWIPE DODGE (ADR-271, a third switch there, ?swipe=1|0):
+// a quick flick on the bare right half of the screen dodges that way (input.dodgeToward), the DODGE
+// tile stays.
 // Aim: in a fight with the dragon targetable (and within CONFIG.touch.autoAimRange) game.mouseGround
 // is put on its lock point (auto-aim); otherwise it sits CONFIG.touch.aimDistance m ahead of the hero
 // along the last stick direction. Taps on the bare screen dismiss "press any key" screens (title,
@@ -70,7 +72,7 @@ function urlTouch() {
 
 /** ?pad=split|classic and ?hold=1|0: the pad switches for this page load (a link to try one). */
 function urlPad() {
-  const o = { layout: null, hold: null };
+  const o = { layout: null, hold: null, swipe: null };
   try {
     const s = globalThis.location?.search;
     if (typeof s !== 'string') return o;
@@ -78,6 +80,7 @@ function urlPad() {
     const l = (q.get('pad') || '').toLowerCase();
     if (PAD_LAYOUT.includes(l)) o.layout = l;
     if (q.has('hold')) o.hold = !['0', 'false', 'off'].includes((q.get('hold') || '').toLowerCase());
+    if (q.has('swipe')) o.swipe = !['0', 'false', 'off'].includes((q.get('swipe') || '').toLowerCase());
   } catch {
     /* no URL: nothing asked */
   }
@@ -143,6 +146,8 @@ export class TouchControls {
     this.fit = 1; // the touch layer's scale from the screen (CONFIG.touch.pad.fit)
     this.layout = 'classic'; // PAD_LAYOUT: 'split' = the guard on the left hand
     this.holdAttack = false; // a held ATTACK keeps cutting
+    this.swipeDodge = false; // SWIPE DODGE: a flick on the bare right half dodges that way
+    this.swipes = new Map(); // pointerId → { x, y, t, done } (bare-screen fingers on the right half)
     this.guardGeo = null; // split: the GUARD button { x, y, w, h } (its middle, client px)
     this._hold = { t: 0, next: 0, quiet: 0 };
     this._peek = false;
@@ -150,6 +155,7 @@ export class TouchControls {
     const asked = urlPad();
     if (asked.layout) this.layout = asked.layout;
     if (asked.hold !== null) this.holdAttack = asked.hold;
+    if (asked.swipe !== null) this.swipeDodge = asked.swipe;
     this._errors = 0;
 
     const on = (target, name, fn, opts) => target?.addEventListener?.(name, (e) => this._guard(name, fn, e), opts);
@@ -334,23 +340,25 @@ export class TouchControls {
   }
 
   /** Step the cluster's placement ('pos': low / mid / high), its size ('size': s / m / l), its
-   *  layout ('layout': classic / split) or the held attack ('hold': off / on); kept. */
+   *  layout ('layout': classic / split), the held attack ('hold': off / on) or the swipe dodge
+   *  ('swipe': off / on); kept. */
   cyclePad(what) {
     if (what === 'size') this.padSize = PAD_SIZE[(PAD_SIZE.indexOf(this.padSize) + 1) % PAD_SIZE.length];
     else if (what === 'layout') {
       this._releaseControls(); // every button is somewhere else now: nothing stays held
       this.layout = PAD_LAYOUT[(PAD_LAYOUT.indexOf(this.layout) + 1) % PAD_LAYOUT.length];
     } else if (what === 'hold') this.holdAttack = !this.holdAttack;
+    else if (what === 'swipe') this.swipeDodge = !this.swipeDodge;
     else this.padPos = PAD_POS[(PAD_POS.indexOf(this.padPos) + 1) % PAD_POS.length];
     this._savePad();
     this._padLayout();
     if (this.stick.id === null) this._restStick();
-    return what === 'size' ? this.padSize : what === 'layout' ? this.layout : what === 'hold' ? this.holdAttack : this.padPos;
+    return what === 'size' ? this.padSize : what === 'layout' ? this.layout : what === 'hold' ? this.holdAttack : what === 'swipe' ? this.swipeDodge : this.padPos;
   }
 
   _savePad() {
     try {
-      const o = { pos: this.padPos, size: this.padSize, layout: this.layout, hold: this.holdAttack, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)] };
+      const o = { pos: this.padPos, size: this.padSize, layout: this.layout, hold: this.holdAttack, swipe: this.swipeDodge, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)] };
       globalThis.localStorage?.setItem?.(PAD_KEY, JSON.stringify(o));
     } catch {
       /* private mode: the choice lasts for this page */
@@ -408,6 +416,7 @@ export class TouchControls {
       if (PAD_SIZE.includes(o?.size)) this.padSize = o.size;
       if (PAD_LAYOUT.includes(o?.layout)) this.layout = o.layout;
       if (typeof o?.hold === 'boolean') this.holdAttack = o.hold;
+      if (typeof o?.swipe === 'boolean') this.swipeDodge = o.swipe;
       if (Array.isArray(o?.off)) {
         this.padOff.x = fin(Number(o.off[0]));
         this.padOff.y = fin(Number(o.off[1]));
@@ -943,12 +952,54 @@ export class TouchControls {
     } else if (PLAY.has(st)) {
       this.pinch.set(e.pointerId, { x: fin(e.clientX), y: fin(e.clientY) });
       this.pinchD0 = 0;
+      // SWIPE DODGE: a finger on the bare right half may be a flick; a second bare finger is a pinch
+      if (this.pinch.size > 1) this.swipes.clear();
+      else if (this.swipeDodge && this._live() && fin(e.clientX) >= fin(globalThis.innerWidth, 800) * fin(CONFIG.touch.swipe?.from, 0.5)) {
+        this.swipes.set(e.pointerId, { x: fin(e.clientX), y: fin(e.clientY), t: this._now(), done: false });
+      }
     }
+  }
+
+  _now() {
+    const p = globalThis.performance;
+    return typeof p?.now === 'function' ? p.now() / 1000 : Date.now() / 1000;
+  }
+
+  /** A bare-screen finger on the right half moved: a quick enough flick dodges its way, once. */
+  _swipeMove(e) {
+    const S = this.swipes.get(e?.pointerId);
+    if (!S || S.done) return;
+    const W = CONFIG.touch.swipe ?? {};
+    if (!this._live() || this._now() - S.t > fin(W.time, 0.2)) {
+      this.swipes.delete(e.pointerId); // too slow: a drag, not a flick
+      return;
+    }
+    const dx = fin(e.clientX, S.x) - S.x, dy = fin(e.clientY, S.y) - S.y;
+    if (Math.hypot(dx, dy) < fin(W.dist, 30) * Math.max(0.5, this.fit)) return;
+    S.done = true;
+    this.game.input?.dodgeToward?.(dx, -dy); // screen y down → the move axis's y up (north)
+    this._swipeMark(S.x, S.y, dx, dy);
+  }
+
+  /** The flick's mark: a short ASCII streak where the thumb went, gone in a moment. */
+  _swipeMark(x, y, dx, dy) {
+    const root = this.ui?.root;
+    if (!root) return;
+    let m = this.ui.swipeEl;
+    if (!m) m = this.ui.swipeEl = el('div', 'tc-swipe', '»»»', root);
+    const a = (Math.atan2(dy, dx) * 180) / Math.PI;
+    m.style.left = `${Math.round(x)}px`;
+    m.style.top = `${Math.round(y)}px`;
+    m.style.transform = `translate(-10%, -50%) rotate(${a.toFixed(0)}deg)`;
+    m.classList.remove('on');
+    void m.offsetWidth; // restart the fade
+    m.classList.add('on');
   }
 
   _onMove(e) {
     const p = this.pinch.get(e?.pointerId);
     if (!p) return;
+    this._swipeMove(e);
     p.x = fin(e.clientX, p.x);
     p.y = fin(e.clientY, p.y);
     if (this.pinch.size !== 2) return;
@@ -969,6 +1020,7 @@ export class TouchControls {
   _onUp(e) {
     const id = e?.pointerId;
     if (this.pinch.delete(id)) this.pinchD0 = 0;
+    this.swipes.delete(id);
     this._tapUp(e);
   }
 
@@ -1004,6 +1056,7 @@ export class TouchControls {
     if (this.stick.id !== null || this.stick.sprint) this._stickRelease();
     this.pinch.clear();
     this.pinchD0 = 0;
+    this.swipes.clear();
   }
 
   _releaseAll() {
