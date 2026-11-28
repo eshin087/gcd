@@ -1214,29 +1214,32 @@ delete MOVES.piercingAsh.beats[0].formMotionKeys; // (as its motionKeys: the own
 // over, and lands INTO the cut (the root's arc ends at the impact), the knees taking it as he sinks on.
 {
   const b = MOVES.heavenFall.beats[0], Y = 0.1; // (the jump's facing: the leap turns him to where he lands)
-  const RAISE = { two: 1, yaw: Y, rP: [-0.8, 0.4, -0.3], swF: [1, 0, 0] };
-  // The arms (the owner, again: "the sword and arm look awkward and stiff"): the blade no longer swings
-  // forward under him and back up (a flip), nor waits frozen at the top. The hands lift it up his right side
-  // in one rising arc (the tip trailing behind), and it keeps cocking slowly back behind his head through the
-  // lock (the arms never stop), till it turns over into the cut as he drops, the hands leading the steel.
+  const RAISE = { two: 1, yaw: Y, rP: [-0.8, 0.3, -0.3], swF: [1, 0, 0] };
+  // The arms, a third time (the owner: "his arms are barely visible in the air ... should go from neutral and
+  // motion upwards instead of going down and doing a complete circle ... swinging way too late and lands too far
+  // ... the boss just lands on top of the character"). No backswing: the arms leave his guard straight UP as he
+  // drives, the hands high in front of his face (never behind his head, where his body hid them), and the cut
+  // STARTS in the air, past the top: the blade comes over through the fall and is low in front of him as his feet
+  // touch. And he lands a blade's reach short (leap.short, below), so the steel meets the hero, not his body.
   const keys = [
-    // the load: down onto both feet, the blade swung low behind him (the arms' backswing)
-    [0.26, { two: 1, yaw: 0.2, bY: -0.5, pitch: 0.34, spX: 0.14, hdX: -0.2, hdY: -0.05, rH: [-0.04, -0.3, 0.12], rP: [-0.6, -0.4, -0.5], sw: [W2B(-2.3, 0.2), -0.55], swF: [1, 0, 0], rF: [-0.14, 0.22], lF: [0.16, -0.22], rK: [-0.25, 0.3, 1], lK: [0.3, 0.3, 1], flat: 0.8 }],
-    // the drive: legs straight, up on his toes, the hands lifting the blade up his right side, tip behind
-    [0.36, { two: 1, yaw: 0.15, bY: 0.02, pitch: -0.06, spX: -0.02, hdX: 0.06, hdY: 0, rH: [-0.08, 0.02, 0.14], rP: [-0.75, 0.0, -0.45], sw: [W2B(-2.0, 0.15), 0.15], swF: [1, 0, 0], rF: [-0.12, 0.16], lF: [0.15, -0.2], flat: 0 }],
-    // off the stones: the legs trailing long below him, toes down; the hands come up past his shoulder
-    [0.46, { ...RAISE, bY: 0.04, pitch: -0.1, spX: -0.05, hdX: 0.05, rH: [-0.1, 0.26, 0.08], sw: [W2B(-1.6, Y), 0.85], rF: [-0.1, ANK + 0.02, 0.04], lF: [0.15, ANK + 0.08, -0.2], rK: [-0.2, 0.2, 1], lK: [0.3, 0.2, 1] }],
-    // the top: knees drawn up, back arching, the blade up over his sword shoulder and still rising
-    [0.6, { ...RAISE, bY: -0.06, pitch: -0.15, spX: -0.09, hdX: 0.05, rH: [-0.08, 0.38, 0.05], sw: [W2B(-1.2, Y), 1.45], rF: [-0.12, 0.36, 0.16], lF: [0.15, 0.3, -0.08], rK: [-0.2, 0.4, 1], lK: [0.3, 0.4, 1] }],
-    // the deepest cock: the elbows high, the tip behind his head (the lock reads on it); here it turns
-    [0.8, { ...RAISE, bY: -0.08, pitch: -0.14, spX: -0.13, hdX: 0.1, rH: [-0.05, 0.44, 0.0], rP: [-0.8, 0.55, -0.25], sw: [W2B(-1.0, Y), 1.9], rF: [-0.12, 0.34, 0.2], lF: [0.15, 0.3, -0.06], rK: [-0.2, 0.4, 1], lK: [0.3, 0.4, 1] }],
-    // the fall: the legs reach for the ground (the front foot ahead), the hands drive forward over his head
-    // ahead of the steel, the chest starting to fold over it
-    [0.93, { ...RAISE, yaw: 0.2, bY: 0.0, pitch: 0.06, spX: 0.0, hdX: 0.0, rH: [-0.02, 0.36, 0.26], rP: [-0.8, 0.3, -0.2], sw: [W2B(-0.7, 0.2), 1.25], rF: [-0.1, ANK + 0.1, 0.42], lF: [0.2, ANK + 0.16, -0.5], rK: [-0.2, 0.1, 1], lK: [0.35, 0, 0.9] }],
-    // the landing is the cut; the knees take it on through the active frames
-    [1.0, { e: 'i', two: 1, ...CHOP2_F, bY: -0.42, rP: [-0.8, -0.3, 0], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56], rK: [-0.2, 0.1, 1], lK: [0.35, -0.1, 0.9], flat: 0.6 }],
+    // the load: the knees sink, the arms still in his guard
+    [0.24, { bY: -0.42, pitch: 0.2, spX: 0.08, hdX: -0.1, rF: [-0.14, 0.22], lF: [0.16, -0.22], rK: [-0.25, 0.3, 1], lK: [0.3, 0.3, 1], flat: 0.8 }],
+    // the drive: legs straight, up on his toes, both hands rising in front of him, the blade lifting point-up
+    [0.36, { two: 1, yaw: 0.15, bY: 0.02, pitch: -0.06, spX: -0.02, hdX: 0.04, hdY: 0, rH: [-0.02, 0.2, 0.3], rP: [-0.8, 0.1, -0.3], sw: [W2B(-0.35, 0.15), 1.05], swF: [1, 0, 0], rF: [-0.12, 0.16], lF: [0.15, -0.2], flat: 0 }],
+    // off the stones: the legs trailing long below him, the hands above his forehead, still in front
+    [0.5, { ...RAISE, bY: 0.04, pitch: -0.1, spX: -0.06, hdX: 0.06, rH: [-0.05, 0.4, 0.2], sw: [W2B(-0.75, Y), 1.5], rF: [-0.1, ANK + 0.02, 0.04], lF: [0.15, ANK + 0.08, -0.2], rK: [-0.2, 0.2, 1], lK: [0.3, 0.2, 1] }],
+    // the top (the ring locks): knees drawn up, back arched, the arms high, the blade tipped just past upright
+    [0.66, { ...RAISE, bY: -0.06, pitch: -0.14, spX: -0.11, hdX: 0.08, rH: [-0.06, 0.45, 0.13], sw: [W2B(-0.85, Y), 1.78], rF: [-0.12, 0.36, 0.16], lF: [0.15, 0.3, -0.08], rK: [-0.2, 0.4, 1], lK: [0.3, 0.4, 1] }],
+    // the cut starts as he falls: the hands drive forward over his head, the blade coming over
+    [0.77, { ...RAISE, bY: -0.04, pitch: -0.02, spX: -0.02, hdX: 0.04, rH: [-0.04, 0.4, 0.32], sw: [W2B(-0.6, 0.15), 1.15], yaw: 0.15, rF: [-0.12, 0.3, 0.26], lF: [0.15, 0.26, -0.2], rK: [-0.2, 0.3, 1], lK: [0.3, 0.3, 1] }],
+    // the legs reach for the ground, the arms long out in front, the blade level and falling toward him
+    [0.89, { ...RAISE, yaw: 0.22, bY: -0.02, pitch: 0.1, spX: 0.06, hdX: -0.04, rH: [-0.02, 0.2, 0.46], rP: [-0.8, 0, -0.1], sw: [W2B(-0.25, 0.22), 0.35], rF: [-0.1, ANK + 0.1, 0.42], lF: [0.2, ANK + 0.16, -0.5], rK: [-0.2, 0.1, 1], lK: [0.35, 0, 0.9] }],
+    // the landing is the end of the cut (the steel across the hero); the knees take it on
+    [1.0, { two: 1, ...CHOP2_F, bY: -0.42, rP: [-0.8, -0.3, 0], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56], rK: [-0.2, 0.1, 1], lK: [0.35, -0.1, 0.9], flat: 0.6 }],
     [2.0, { two: 1, ...CHOP2_FOLLOW, bY: -0.52, pitch: 0.42, spX: 0.18, hdX: -0.14, rP: [-0.8, -0.3, 0], swF: [1, 0, 0], rF: [-0.1, 0.46], lF: [0.2, -0.56], rK: [-0.2, 0.1, 1], lK: [0.35, -0.1, 0.9], flat: 0.8 }],
   ];
+  // he lands 1.6 m short of the hero, at the blade's reach (the ring, 2.6 m, still takes him in), in the form only
+  Object.defineProperty(b.leap, 'short', { get: () => (formOn() ? 1.6 : 0), enumerable: true });
   b.formKeys = keys;
   if (b.formMotionKeys) b.formMotionKeys = keys;
   // and he rises out of it where he landed (no step: the feet stay)

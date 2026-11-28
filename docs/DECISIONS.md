@@ -7023,7 +7023,12 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     arc ends at the impact), sinking on through the active frames; his recovery rises where he landed. The arms (the owner: "awkward and
     stiff"): the hands lift the blade up his right side in one rising arc (no swing forward under him and back),
     and it keeps cocking slowly back behind his head through the lock (the arms never freeze), turning over into
-    the cut as he drops with the hands leading the steel.
+    the cut as he drops with the hands leading the steel. Then (the owner: the arms "barely visible" in the air,
+    the low backswing "a complete circle", the swing "way too late", "lands on top of the character like
+    kamikaze"): no backswing, the arms leave his guard straight up, the hands high in FRONT of his face; the cut
+    starts in the air past the top, the blade level in front of him before his feet touch; and he lands 1.6 m
+    short of the hero (the leap's new opt-in `short`, duelist/brain.js `_leap`; the form only) so the steel, not
+    his body, meets him (the 2.6 m ring still takes the hero in).
 - **Kept:** his pace (the owner's PBZ-fast openers ~0.46 s and strings 0.34 s apart, his TUNING floors 0.42 / 0.32 s:
   the brief's 0.7 / 0.45 s floor would slow every move of his, which the owner chose fast; asked, not changed);
   his colours and hat; Piercing Ash's old drawn-back windup (the owner's call in ADR-226; its lunge gets the new legs

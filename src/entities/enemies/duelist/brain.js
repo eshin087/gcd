@@ -1574,6 +1574,13 @@ export class DuelBrain {
         tx *= B / r;
         tz *= B / r;
       }
+      // `short` (m, opt-in): he lands that far short of the hero, so his blade, not his body, meets him
+      const sh = L.short ?? 0, gx = tx - J.x, gz = tz - J.z, D = Math.hypot(gx, gz);
+      if (sh > 0 && D > 1e-3) {
+        const f = Math.max(0.4 * D, D - sh) / D;
+        tx = J.x + gx * f;
+        tz = J.z + gz * f;
+      }
       J.target.x = tx;
       J.target.z = tz;
       d.clampTarget?.(J.target); // (a boss whose floor is not a circle)

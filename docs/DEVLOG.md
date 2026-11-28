@@ -192,7 +192,8 @@ natural in his body: ADR-226's held red coil covered his whole flight (a ground 
 behind, whipped over in 0.3 s). The form gives it its own keys, a jump: load, drive, tuck with the blade raised
 through the lock, legs reaching down, landing into the cut; filmed before / now side-on (a camera that follows his
 height) and at the game camera. Then the arms (the owner: "awkward and stiff"): one rising arc up his right side,
-the blade still cocking back behind his head through the lock instead of frozen, the hands leading into the cut.
+the blade still cocking back behind his head through the lock instead of frozen, the hands leading into the cut. Then no backswing (the arms rise straight from his guard, in front of his face),
+the cut starting in the air, and a landing 1.6 m short of the hero (leap `short`, opt-in) so the blade meets him.
 
 **Open.** His pace unchanged (the owner chose it fast). Feet still slide 0.15 - 0.5 m over a long string where the
 close-in carries his root under a planted foot.
