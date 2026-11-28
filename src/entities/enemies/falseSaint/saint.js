@@ -110,6 +110,14 @@ export class FsBrain extends DuelBrain {
     return super._reach(b);
   }
 
+  /** The reach watch (pressure.pursue) never breaks off a beat whose handler says it reaches wherever the
+   *  hero is (reach(b) = Infinity: the dive, the passes, Last Rite), not even past his bound. */
+  _outOfReach(a, b, t, s) {
+    const H = this.d._handlerOf?.(b.def);
+    if (H?.reach?.(b) === Infinity) return false;
+    return super._outOfReach(a, b, t, s);
+  }
+
   startReact(kind) {
     const ok = super.startReact(kind);
     if (ok) this.d._stopParts?.();

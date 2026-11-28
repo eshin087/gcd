@@ -51,6 +51,7 @@ export class FsBoost {
     for (const k of JETS) this.jets[k] = this._want[k] = 0;
     this.step = null;
     this.stepCool = 0;
+    this._runT = 0;
     this.carry = null;
     this._overNext = null;
     this.riteUsed = false;
@@ -65,6 +66,10 @@ export class FsBoost {
     this.step = null;
     this.carry = null;
     this.d.fsCoreK = 0;
+    // (Last Rite cut off before its lunge, by a break or a blast: it has not been spent)
+    const R = this._riteAct;
+    if (R && !R.beats[0]?.struck) this.riteUsed = false;
+    this._riteAct = null;
   }
 
   // ================================================================ the move hooks
@@ -80,6 +85,7 @@ export class FsBoost {
     if (A.name === 'lastRite') {
       if (this.riteUsed) return false;
       this.riteUsed = true;
+      this._riteAct = A;
       this.stats.rites++;
     }
     this.step = null;
@@ -129,7 +135,21 @@ export class FsBoost {
     const b = o?.beat;
     if (!b) return;
     b._fsR = r;
-    if (b.def.fsDash?.rite && r === RESULT.HIT) this._riteBlast();
+    if (b.def.fsDash?.rite) {
+      if (r === RESULT.HIT) this._riteBlast();
+      // (rolled through: open at once, so the hero's answer to the red finds him broken)
+      else if (r === RESULT.DODGED || r === RESULT.PERFECT) this._riteOpen(b);
+    }
+  }
+
+  /** Last Rite missed: he stands wide open (his posture gives: the deathblow's chance). */
+  _riteOpen(b) {
+    const d = this.d;
+    if (b._fsDone) return;
+    b._fsDone = true;
+    this.stats.riteOpen++;
+    d.fsCoreK = 0;
+    d.addPosture(d.maxPosture * 2);
   }
 
   /** The booster punch parried: a big posture hit, and he skids on past the hero's side (with the recoil). */
@@ -148,10 +168,11 @@ export class FsBoost {
     return false;
   }
 
-  /** A beat that reaches wherever the hero is: the dive and the passes (their own motion finds him). */
+  /** A beat that reaches wherever the hero is: the dive and the passes (their own motion finds him); Last
+   *  Rite is committed (he does not break it off: a hero who left is the open he pays for). */
   reach(b) {
     const D = b.def;
-    if (D.fsDive || D.fsBlitz) return Infinity;
+    if (D.fsDive || D.fsBlitz || D.fsDash?.rite) return Infinity;
     return undefined;
   }
 
@@ -160,12 +181,20 @@ export class FsBoost {
     const d = this.d, a = d.brain?.act;
     if (this.stepCool > 0) this.stepCool -= dt;
     if (this.step && d.mode !== 'foot') this.step = null;
+    // (how long the engine's footwork has had him running at the hero: it found no move for this range)
+    const gv = d.pilot?.groundVel, run = d.mode === 'foot' && !this.step && gv && Math.hypot(gv.x, gv.z) >= fin(d.T.move?.run, 7) * 0.9;
+    this._runT = run ? fin(this._runT) + dt : 0;
     if (this._overNext) {
       this.carry = { ...this._overNext, crater: false, src: -1 };
       this._overNext = null;
     }
     if (this.carry) this._carry(dt);
     if (d.mode === 'act' && a) this._watch(a);
+    // (Last Rite gone before its lunge without a reaction: not spent either)
+    if (this._riteAct && a !== this._riteAct) {
+      if (!this._riteAct.beats[0]?.struck) this.riteUsed = false;
+      this._riteAct = null;
+    }
     this._hover(dt, a);
     // the boosters' light: what a beat holds lit this frame, else it dies out (a pulse flickers)
     for (const k of JETS) {
@@ -196,7 +225,9 @@ export class FsBoost {
   footwork(dt, s) {
     const d = this.d, S = this.T.step, ph = d.phase;
     if (this.step) return this._stepTick(dt, s);
-    if (!S?.on || ph < S.from || !s || !(s.dist > pp(S.at, ph)) || this.stepCool > 0 || !(d.brain.gapT > 0)) return false;
+    // (only where he would otherwise walk or run to the hero: in a breather, or once the engine found no
+    // move for this range and set him running; never in place of a move his AI picks)
+    if (!S?.on || ph < S.from || !s || !(s.dist > pp(S.at, ph)) || this.stepCool > 0 || !(d.brain.gapT > 0 || this._runT > 0.2)) return false;
     // the legs: straight to `stop` m short of the hero (at most `max` m); from phase `zig` the first leg
     // `zigAng` rad off the line (to the side with room), the second onto the stop point
     const ux = s.dx / s.dist, uz = s.dz / s.dist;
@@ -364,17 +395,14 @@ export class FsBoost {
     for (const b of a.beats) {
       const D = b.def;
       if (!D.fsDash || b.feint || b._fsDone || a.t < b.end) continue;
-      b._fsDone = true;
-      const missed = !LANDED.has(b._fsR);
       if (D.fsDash.rite) {
-        if (b._fsR !== RESULT.HIT) {
-          // dodged or missed: wide open (his posture gives: the deathblow's chance)
-          this.stats.riteOpen++;
-          d.emit('dragon:stagger');
-          d.addPosture(d.maxPosture * 2);
-        }
+        // (it reached nobody: wide open)
+        if (b._fsR !== RESULT.HIT) this._riteOpen(b);
+        b._fsDone = true;
         continue;
       }
+      b._fsDone = true;
+      const missed = !LANDED.has(b._fsR);
       if (D.fsDash.carry && missed && b.last && b._fsDash) {
         const V = this.T.votive, W = this.game.world?.destructibles;
         this.carry = { dx: b._fsDash.dx, dz: b._fsDash.dz, left: V.carry, v: V.carrySpeed, crater: true, src: W?.swing?.() ?? -1, t: d.time };
@@ -410,7 +438,23 @@ export class FsBoost {
     }
     const moved = Math.hypot(d.position.x - x0, d.position.z - z0);
     if (C.left <= 0.02 || moved < step * 0.25) {
-      if (C.crater) this._crater(d.position.x + C.dx * 0.9, d.position.z + C.dz * 0.9, V.crater, V.craterPower, 1.0);
+      if (C.crater) {
+        const ex = d.position.x + C.dx * 0.9, ez = d.position.z + C.dz * 0.9;
+        this._crater(ex, ez, V.crater, V.craterPower, 1.0);
+        // the punch's wave goes on where his body stops (his floor's edge, a wall): `wave` m more along the
+        // line at fist height (what stands past the floor's edge is reached too)
+        const W = this.game.world?.destructibles;
+        if (W?.sweep && V.wave > 0) {
+          const o = this._o;
+          o.kind = 'blunt';
+          o.dx = C.dx;
+          o.dz = C.dz;
+          o.y = V.y;
+          o.src = W.swing?.() ?? -1;
+          W.sweep(ex, ez, ex + C.dx * V.wave, ez + C.dz * V.wave, V.w * 0.6, V.power * V.waveK, o);
+          d.fx.dashTrail?.(ex, ez, ex + C.dx * V.wave, ez + C.dz * V.wave, 0.6);
+        }
+      }
       this.carry = null;
     }
   }

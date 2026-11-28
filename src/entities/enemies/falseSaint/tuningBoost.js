@@ -20,11 +20,12 @@ export const TUNING_BOOST = {
   // of the windup (the tell, held at the coil from `cock` to `dashFrom`), then he crosses up to `reach` m in
   // a blink behind the fist and stops `stop` m short of the hero. A miss (rolled, whiffed) CARRIES ON
   // `carry` m along the line at `carrySpeed` (everything on it struck at fist height `y`, `power`; a
-  // crater of `crater` m where it ends). Parried: `parryPosture` more posture than any blue parry, and he
-  // skids `overshoot` m past the hero's side.
+  // crater of `crater` m where it ends), and the punch's wave goes on `wave` m past that at `waveK` of the
+  // power (his body stops at his floor's edge, 13.8 m; the set's pieces stand from 16 m). Parried:
+  // `parryPosture` more posture than any blue parry, and he skids `overshoot` m past the hero's side.
   votive: {
     windup: 0.95, cock: 0.62, jetFrom: 0.1, dashFrom: 0.86, reach: 10, stop: 1.3, damage: 30, knockback: 6.5, blockPush: 4.5,
-    y: 1.25, w: 0.9, power: 2.4, carry: 3.4, carrySpeed: 26, crater: 1.6, craterPower: 2.2, parryPosture: 90, overshoot: 1.5,
+    y: 1.25, w: 0.9, power: 2.4, carry: 3.4, carrySpeed: 26, crater: 1.6, craterPower: 2.2, wave: 4.5, waveK: 0.75, parryPosture: 90, overshoot: 1.5,
     weight: [0, 1.5, 1.25, 1.1], cooldown: [9, 5.2, 4.4, 3.8], band: [2.2, 11], recovery: 0.95,
   },
 

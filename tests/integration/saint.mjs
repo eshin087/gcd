@@ -718,6 +718,488 @@ async function scenarioEvents() {
   assert(CATALOGUE.size > 20, `the catalogue is read (${CATALOGUE.size} names)`);
 }
 
+// ================================================================== BOOST (the boost agent's: moves/boost.js, boost.js)
+// The jet step, the booster punch, Rosary, Descent, the jet strings, Vespers, Last Rite, the change's guard,
+// and the pace (cues a minute per phase against a guarding bot: a measure, printed).
+const bo = (G) => G.game.dragon.parts.boost;
+const flatDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+/** The flashes of his blows (tell, time, attack) while `fn` runs. */
+function flashLog(G) {
+  const log = [];
+  const prev = G.watch;
+  G.watch = (n, e) => { prev?.(n, e); if (n === 'combat:flash' && e?.source === 'dragon') log.push({ t: G.game.time, tell: e.tell, attack: e.attack }); };
+  return log;
+}
+/** Run move `name` from `dist` m with the defender bot answering (parry / roll), god mode; until he is back in footwork. */
+function moveWithBot(G, name, dist, { god = true, max = 10, style = 'mixed' } = {}) {
+  const { game } = G;
+  const d = game.dragon;
+  place(G, dist);
+  game.player.debug.god = god;
+  G.defend = makeDefender(G, { style });
+  const log = flashLog(G);
+  const ok = d.brain.trigger(name);
+  let acted = false;
+  run(G, max, () => { G.input.axis = { x: 0, y: 0 }; game.mouseGround.set(d.position.x, 0, d.position.z); G.defend.act(); }, () => {
+    if (d.mode === 'act') acted = true;
+    return acted && d.mode !== 'act' && game.player.state !== 'roll';
+  });
+  G.defend = null;
+  G.watch = null;
+  G.input.up(1);
+  G.input.axis = { x: 0, y: 0 };
+  return { ok, log };
+}
+/** The hero `dist` m from him toward the floor's middle (inside 12 m of it), facing him. */
+function placeIn(G, dist) {
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  let ax = -d.position.x, az = -d.position.z;
+  const l = Math.hypot(ax, az);
+  if (l < 1) { ax = 0; az = 1; } else { ax /= l; az /= l; }
+  let x = d.position.x + ax * dist, z = d.position.z + az * dist;
+  const r = Math.hypot(x, z);
+  if (r > 12) { x *= 12 / r; z *= 12 / r; }
+  p.debug.teleport(x, z);
+  p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+  game.mouseGround.set(d.position.x, 0, d.position.z);
+}
+/** blowAnd without its placing: trigger `name` where everyone stands, answer it `how`, until he is back in footwork. */
+function fireAt(G, name, how, max = 6) {
+  const d = G.game.dragon;
+  const step = answer(G, how, name);
+  const ok = d.brain.trigger(name);
+  let acted = false;
+  run(G, max, step, () => { if (d.mode === 'act') acted = true; return acted && d.mode === 'foot' && G.game.player.state !== 'roll'; });
+  G.watch = null;
+  G.input.up(1);
+  G.input.axis = { x: 0, y: 0 };
+  return ok;
+}
+const tellsOf = (log) => log.map((f) => (f.tell === TELL.BLUE ? 'B' : f.tell === TELL.RED ? 'R' : f.tell === TELL.BLACK ? 'K' : 'N')).join('');
+
+async function scenarioBoostStep() {
+  out('\n== scenario BOOST STEP (Censer Step: a far hero is closed on a jet from phase 2, never through him, a cooldown; two legs and the hover from phase 3) ==');
+  const S = TUNING.boost.step;
+  for (const form of [1, 2, 3, 4]) {
+    const G = build();
+    const { game } = G;
+    const d = game.dragon, p = game.player, B = bo(G);
+    duel(G, { dist: 10, ai: true, form });
+    p.debug.god = true;
+    placeIn(G, 10);
+    const st0 = { ...B.stats };
+    let minD = Infinity, hoverY = 0, hoverN = 0, maxY = 0, prev = B.stats.steps;
+    const starts = [], lens = [];
+    let x0 = 0, z0 = 0;
+    run(G, 16, () => {
+      G.input.axis = { x: 0, y: 0 };
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      if (B.stats.steps > prev) { prev = B.stats.steps; starts.push(game.time); x0 = d.position.x; z0 = d.position.z; }
+      if (B.step) { minD = Math.min(minD, flatDist(d.position, p.position)); lens[starts.length - 1] = Math.hypot(d.position.x - x0, d.position.z - z0); }
+      if (d.mode === 'foot' && !B.step && d.brain.modeT > 0.6) { hoverY += d.position.y; hoverN++; maxY = Math.max(maxY, d.position.y); }
+      // (the hero keeps his distance: back to 10 m whenever he is closed on and the boss stands in footwork)
+      if (d.mode === 'foot' && !B.step && flatDist(d.position, p.position) < 4 && d.brain.modeT > 0.3) placeIn(G, 10);
+    });
+    const gaps = starts.slice(1).map((t, i) => t - starts[i]);
+    const every = Array.isArray(S.every) ? S.every[form - 1] : S.every;
+    for (const k of ['steps', 'zigs', 'stepAborts']) B.stats[k] -= st0[k];
+    out(`     phase ${form}: ${B.stats.steps} steps (${B.stats.zigs} zig-zags, ${B.stats.stepAborts} cut short), lengths ${lens.map((l) => l?.toFixed(1)).join(' / ')} m, closest to the hero in one ${Number.isFinite(minD) ? minD.toFixed(2) : '-'} m, gaps ${gaps.map((g) => g.toFixed(2)).join(' / ')} s, hover ${(hoverY / Math.max(1, hoverN)).toFixed(2)} m (max ${maxY.toFixed(2)})`);
+    if (form === 1) assert(B.stats.steps === 0, 'phase 1: he walks (no jet step)');
+    else {
+      assert(B.stats.steps >= 2, `phase ${form}: he jets at a far hero (${B.stats.steps} steps)`);
+      assert(minD >= S.stop - 0.2, `phase ${form}: never through the hero (closest ${minD.toFixed(2)} m >= ${S.stop - 0.2})`);
+      assert(gaps.every((g) => g >= every - 0.05), `phase ${form}: a cooldown between steps (>= ${every} s: ${gaps.map((g) => g.toFixed(2)).join(', ')})`);
+      assert(lens.every((l) => l <= S.max * 1.4 + 0.1), `phase ${form}: no step longer than its legs allow (${S.max} m straight)`);
+    }
+    if (form >= S.zig) assert(B.stats.zigs >= 1, `phase ${form}: the zig-zag (${B.stats.zigs})`);
+    if (form >= 3) assert(hoverY / Math.max(1, hoverN) > 0.1 && maxY < 0.4, `phase ${form}: he hovers between moves (${(hoverY / Math.max(1, hoverN)).toFixed(2)} m, never above ${maxY.toFixed(2)})`);
+    else assert(maxY < 0.05, `phase ${form}: on the floor between moves (${maxY.toFixed(2)})`);
+  }
+}
+
+async function scenarioBoostVotive() {
+  out('\n== scenario BOOST VOTIVE (the booster punch: the jet tell, the blink, parried / blocked / landed / dodged; a miss carries on into the scenery) ==');
+  const V = TUNING.boost.votive;
+  // the held tell and the blink, as realised
+  for (const f of [2, 3, 4]) {
+    const A = realise('votiveFist', f, () => 0.5), b = A.beats[0];
+    const jet = b.W * (V.dashFrom - V.jetFrom), blink = b.W * (1 - V.dashFrom);
+    out(`     P${f}: windup ${b.W.toFixed(3)} s, the elbow jet lit ${jet.toFixed(2)} s before the dash, the blink ${blink.toFixed(3)} s (up to ${V.reach} m: ${(V.reach / blink).toFixed(0)} m/s), the glint ${(TUNING.flashLead).toFixed(2)} s before the impact`);
+    assert(jet >= 0.45 && b.flash < b.start + b.W * V.dashFrom + 0.06, `P${f}: the jet reads before the blink (${jet.toFixed(2)} s); the glint comes before the blink`);
+  }
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player, B = bo(G);
+  duel(G, { dist: 8, ai: false, form: 2 });
+  // parried
+  let t0 = { x: d.position.x, z: d.position.z }, imp = null;
+  const pv0 = d.posture;
+  let parried = 0;
+  G.watch = null;
+  const w0 = (n, e) => { if (n === 'dragon:parried' && e?.attack === 'votiveFist') parried++; };
+  place(G, 8);
+  t0 = { x: d.position.x, z: d.position.z };
+  G.defend = makeDefender(G, {});
+  G.watch = w0;
+  d.brain.trigger('votiveFist');
+  let acted = false;
+  run(G, 6, () => { G.defend.act(); game.mouseGround.set(d.position.x, 0, d.position.z); if (d.brain.act?.name === 'votiveFist') imp = { x: d.position.x, z: d.position.z }; }, () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act' && d.mode !== 'react'; });
+  G.watch = null;
+  G.defend = null;
+  G.input.up(1);
+  const travel = imp ? flatDist(t0, imp) : 0;
+  out(`     parried: travel ${travel.toFixed(2)} m in the blink, posture ${pv0.toFixed(0)} -> ${d.posture.toFixed(0)}, overshoots ${B.stats.overshoots}`);
+  assert(parried === 1 && B.stats.dashes >= 1 && travel > 5, `the blink crossed ${travel.toFixed(1)} m behind the fist; the hero parried it`);
+  assert(d.posture - pv0 >= V.parryPosture || d.broken, `parried: a big posture hit (+${(d.posture - pv0).toFixed(0)} >= ${V.parryPosture})`);
+  assert(B.stats.overshoots === 1, 'parried: he skids on past the hero');
+  // blocked, landed
+  settle(G);
+  d.posture = 0;
+  const hp0 = p.hp;
+  placeIn(G, 7);
+  fireAt(G, 'votiveFist', 'guard');
+  const blocked = G.hits.at(-1);
+  assert(blocked?.r === RESULT.BLOCKED && p.hp === hp0, `blocked: no damage (${blocked?.r})`);
+  settle(G);
+  p.debug.heal();
+  const hp1 = p.hp;
+  placeIn(G, 7);
+  fireAt(G, 'votiveFist', 'none');
+  const landed = G.hits.at(-1);
+  out(`     landed: ${hp1} -> ${p.hp} hp (${TUNING.boost.votive.damage} x ${TUNING.damageScale})`);
+  assert(landed?.r === RESULT.HIT && p.hp < hp1, `landed: it hurts (${landed?.r})`);
+  // dodged with a piece behind the hero: the fist carries on into it
+  settle(G);
+  p.debug.heal();
+  // (measured: what a miss can reach: his body stops at his bound, the crater 0.9 m on, the wave `wave` m more)
+  const V2 = TUNING.boost.votive, R2 = d.bound + 0.9 + V2.wave;
+  const list = game.world.destructibles.list;
+  const cands = list.filter((b) => !b.floor && b.hp < Infinity && b.y0 < 0.5 && b.state === 0 && b.kind !== 'ladle' && Math.hypot(b.x, b.z) - b.r < R2 - 0.3);
+  const piece = cands.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+  out(`     a miss reaches ${R2.toFixed(1)} m from the middle: ${cands.length} pieces of the set within it (${[...new Set(cands.map((b) => b.kind))].join(', ')})`);
+  assert(!!piece, `a piece to stand in front of (${piece?.kind} at ${piece?.x.toFixed(1)}, ${piece?.z.toFixed(1)}, r ${piece?.r})`);
+  if (piece) {
+    const l = Math.hypot(piece.x, piece.z), ux = piece.x / l, uz = piece.z / l;
+    // (the hero near his floor's edge in front of it, the boss 8 m further in)
+    const hl = Math.min(l - piece.r - 1.5, d.bound - 1.5);
+    const hx = ux * hl, hz = uz * hl;
+    d.position.set(hx - ux * 8, 0, hz - uz * 8);
+    d.yaw = Math.atan2(ux, uz);
+    run(G, 0.1);
+    p.debug.teleport(hx, hz);
+    p.yaw = Math.atan2(-ux, -uz);
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    const hp2 = piece.hp, c0 = B.stats.carries, k0 = B.stats.craters;
+    p.debug.god = true;
+    const stepD = answer(G, 'dodge', 'votiveFist');
+    d.brain.trigger('votiveFist');
+    acted = false;
+    run(G, 6, stepD, () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act' && p.state !== 'roll'; });
+    G.watch = null;
+    G.input.axis = { x: 0, y: 0 };
+    out(`     dodged: carries ${B.stats.carries - c0}, the ${piece.kind}'s hp ${hp2} -> ${piece.hp} (${piece.state}), craters ${B.stats.craters - k0}, he ended ${flatDist(d.position, piece).toFixed(2)} m from it`);
+    assert(B.stats.carries - c0 === 1 && B.stats.craters - k0 >= 1, 'a dodged booster punch carries on, a crater where it ends');
+    assert(piece.hp < hp2 || piece.state !== 0, `... into what stood behind the hero (the ${piece.kind} struck)`);
+  }
+}
+
+async function scenarioBoostRosary() {
+  out('\n== scenario BOOST ROSARY (his flurry from phase 2: 7 - 10 pistons in a stutter, the last blue; it chips what stands beside the hero) ==');
+  const counts = [0, 0.25, 0.5, 0.75, 0.999].map((r) => realise('rosary', 2, () => r).hits);
+  assert(Math.min(...counts) >= 7 && Math.max(...counts) <= 10 && new Set(counts).size >= 2, `7 - 10 blows as drawn (${counts.join(', ')})`);
+  const A = realise('rosary', 3, () => 0.5);
+  const gaps = A.beats.slice(1).map((b, i) => b.impact - A.beats[i].impact);
+  out(`     P3 r0.5: ${A.hits} blows, impacts ${gaps.map((g) => g.toFixed(2)).join(' ')} s apart, ${(A.end).toFixed(2)} s in all`);
+  assert(A.beats.at(-1).def.tell === TELL.BLUE && A.beats.slice(0, -1).every((b) => b.def.tell === TELL.NORMAL), 'normal blows, the last blue');
+  assert(STREAKS[1] === 'rosary' && STREAKS[2] === 'rosary' && STREAKS[3] === 'rosary', 'it is his flurry in phases 2 - 4');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player, B = bo(G);
+  duel(G, { dist: 1.8, ai: false, form: 2 });
+  place(G, 1.8);
+  p.debug.god = true;
+  const log = flashLog(G);
+  const c0 = B.stats.chips;
+  const ok = d.brain.startStreak(3);
+  const hits = d.brain.act?.hits ?? 0;
+  run(G, 8, () => { G.input.press(1); game.mouseGround.set(d.position.x, 0, d.position.z); }, () => d.mode !== 'act');
+  G.input.up(1);
+  G.watch = null;
+  const fg = log.slice(1).map((f, i) => f.t - log[i].t);
+  out(`     through the brain: ${hits} blows (${tellsOf(log)}), flashes ${fg.map((g) => g.toFixed(2)).join(' ')} s apart, chips ${B.stats.chips - c0}, ${G.counts['dragon:flurry'] ?? 0} dragon:flurry`);
+  assert(ok && d.brain.last[0] === 'rosary' && hits >= 7 && log.length === hits && tellsOf(log).endsWith('B') && !tellsOf(log).slice(0, -1).includes('B'), `the streak launches the whole Rosary, its last blow blue (${tellsOf(log)})`);
+  assert(fg.every((g) => g >= TUNING.minHitGap - 0.02), `readable: no two cues under ${TUNING.minHitGap} s apart (shortest ${Math.min(...fg).toFixed(3)})`);
+  assert(B.stats.chips - c0 >= hits - 1, `every piston chips beside the hero (${B.stats.chips - c0})`);
+}
+
+async function scenarioBoostDescent() {
+  out('\n== scenario BOOST DESCENT (up on the thrusters, the hang over the mark, the dive knee: a crater, plates thrown) ==');
+  const P = TUNING.boost.descent;
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player, B = bo(G);
+  duel(G, { dist: 6, ai: false, form: 3 });
+  place(G, 6);
+  p.debug.god = true;
+  const hero = { x: p.position.x, z: p.position.z };
+  const plates = pieces(G, 'plate').filter((b) => Math.hypot(b.x - hero.x, b.z - hero.z) < P.r + 1.5);
+  const hp0 = plates.map((b) => b.hp);
+  let maxY = 0, tTop = NaN, tDown = NaN, land = null;
+  const log = flashLog(G);
+  d.brain.trigger('descent');
+  let acted = false;
+  run(G, 6, () => {
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    const y = d.position.y;
+    maxY = Math.max(maxY, y);
+    if (!Number.isFinite(tTop) && y >= P.h * 0.95) tTop = game.time;
+    if (Number.isFinite(tTop) && !Number.isFinite(tDown) && y < P.h * 0.97 && d.brain.act?.beats[0] && d.brain.act.t > d.brain.act.beats[0].start + d.brain.act.beats[0].W * P.fall - 0.01) tDown = game.time;
+    if (!land && d.brain.act?.beats[0]?.struck) land = { x: d.position.x, z: d.position.z };
+  }, () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act'; });
+  G.watch = null;
+  const struck = plates.filter((b, i) => b.hp < hp0[i] || b.state !== 0).length;
+  const hit = G.hits.at(-1);
+  out(`     up ${maxY.toFixed(1)} m, the hang ${(tDown - tTop).toFixed(2)} s at the top, landed ${land ? flatDist(land, hero).toFixed(2) : '-'} m from where the hero stood, ${struck} / ${plates.length} plates round it struck, craters ${B.stats.craters}, the hero: ${hit?.r} (${tellsOf(log)})`);
+  assert(maxY >= P.h * 0.95 && tDown - tTop >= 0.45, `straight up ${maxY.toFixed(1)} m and a hang of ${(tDown - tTop).toFixed(2)} s (>= 0.45) so the mark reads`);
+  assert(land && flatDist(land, hero) < 0.8 && hit?.r === RESULT.HIT && tellsOf(log) === 'R', 'the dive knee comes down on the hero who stood still (red)');
+  assert(B.stats.craters >= 1 && struck >= 3, `a crater; the plates round it thrown (${struck})`);
+  // rolled out of it: nothing
+  settle(G);
+  p.debug.heal();
+  p.debug.god = false;
+  const hp1 = p.hp;
+  blowAnd(G, 'descent', 'dodge', { dist: 6, god: false });
+  assert(p.hp === hp1, `a roll at the glint takes the hero out of it (${G.hits.at(-1)?.r})`);
+}
+
+async function scenarioBoostStrings() {
+  out('\n== scenario BOOST STRINGS (Censer Wheel: blue, n, blue; Thurible: n, blue, blue; off the floor on the kick) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 7, ai: false, form: 3 });
+  for (const [name, dist, want] of [['censerWheel', 7, 'BNB'], ['thurible', 2.2, 'NBB']]) {
+    settle(G);
+    p.debug.heal();
+    let maxY = 0;
+    const prevAct = d.brain.stats.picks;
+    const r = (() => {
+      place(G, dist);
+      p.debug.god = true;
+      G.defend = makeDefender(G, {});
+      const log = flashLog(G);
+      d.brain.trigger(name);
+      let acted = false;
+      run(G, 8, () => { G.input.axis = { x: 0, y: 0 }; game.mouseGround.set(d.position.x, 0, d.position.z); G.defend.act(); if (d.brain.act?.name === name) maxY = Math.max(maxY, d.position.y); }, () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act' && p.state !== 'roll'; });
+      G.defend = null;
+      G.watch = null;
+      G.input.up(1);
+      return log;
+    })();
+    void prevAct;
+    const res = G.hits.slice(-3).map((h) => h.r).join(', ');
+    out(`     ${name}: ${tellsOf(r)} (${r.map((f) => f.t.toFixed(2)).join(' ')}), up ${maxY.toFixed(2)} m, results ${res}`);
+    assert(tellsOf(r) === want || (tellsOf(r).length < want.length && want.startsWith(tellsOf(r))), `${name}: ${want} (${tellsOf(r)}; a parried blue moment may end it)`);
+    assert(maxY >= 0.5 || tellsOf(r).length < 3, `${name}: off the floor on the rising kick (${maxY.toFixed(2)} m)`);
+  }
+}
+
+async function scenarioBoostVespers() {
+  out('\n== scenario BOOST VESPERS (overclock: four announced passes through the hero from different sides, the last from above) ==');
+  const VS = TUNING.boost.vespers;
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player, B = bo(G);
+  duel(G, { dist: 4, ai: false, form: 4 });
+  const sights = [];
+  const sl = d.fx.sightLine.bind(d.fx);
+  d.fx.sightLine = (...a) => { if (d.brain.act?.name === 'vespers') sights.push(game.time); return sl(...a); };
+  const dirs = [];
+  const watchDirs = () => { for (const b of d.brain.act?.name === 'vespers' ? d.brain.act.beats : []) if (b._fsP?.fixed && !b._fsSeen) { b._fsSeen = true; dirs.push(Math.atan2(b._fsP.dx, b._fsP.dz)); } };
+  // the hero stands his ground: every pass comes through him
+  place(G, 4);
+  p.debug.god = true;
+  const log = flashLog(G);
+  const n0 = G.hits.length, sw0 = B.stats.swept;
+  d.brain.trigger('vespers');
+  let acted = false;
+  run(G, 10, () => { G.input.axis = { x: 0, y: 0 }; game.mouseGround.set(d.position.x, 0, d.position.z); watchDirs(); }, () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act'; });
+  G.watch = null;
+  const fg = log.slice(1).map((f, i) => f.t - log[i].t);
+  const turns = dirs.slice(1).map((a, i) => Math.abs(Math.atan2(Math.sin(a - dirs[i]), Math.cos(a - dirs[i]))));
+  const lead = log.map((f) => { const s = sights.filter((t) => t <= f.t - 0.2); return s.length ? f.t - s[s.length - 1] < 0.4 ? f.t - Math.min(...sights.filter((t) => t > f.t - 1.2 && t <= f.t)) : 0 : 0; });
+  out(`     ${tellsOf(log)}: cues ${fg.map((g) => g.toFixed(2)).join(' / ')} s apart; the lines turn ${turns.map((t) => t.toFixed(2)).join(' / ')} rad; each line shown ${lead.map((x) => x.toFixed(2)).join(' / ')} s before its cue; ${G.hits.length - n0} reached the hero (${G.hits.slice(n0).map((h) => h.r).join(', ')}); ${B.stats.swept - sw0} sweeps of the world`);
+  assert(tellsOf(log) === 'B'.repeat(VS.passes) + 'R', `${VS.passes} blue passes and the red one from above (${tellsOf(log)})`);
+  assert(fg.every((g) => g >= 0.45), `a watcher can follow: >= 0.45 s between passes (${Math.min(...fg).toFixed(2)})`);
+  assert(turns.length >= VS.passes - 1 && turns.slice(0, VS.passes - 1).every((t) => t >= 0.5), `each from another side (the lines turn >= 0.5 rad: ${turns.map((t) => t.toFixed(2)).join(', ')})`);
+  assert(lead.every((x) => x >= 0.4), `each line shown >= 0.4 s before its cue (${lead.map((x) => x.toFixed(2)).join(', ')})`);
+  assert(G.hits.length - n0 >= VS.passes, `the passes go through the hero who stood (${G.hits.length - n0})`);
+  assert(B.stats.swept - sw0 >= VS.passes && B.stats.craters >= 1, 'each line breaks what it crosses; the last craters');
+  // parried throughout
+  settle(G);
+  p.debug.heal();
+  const n1 = G.hits.length;
+  const { log: l2 } = moveWithBot(G, 'vespers', 4, { god: false });
+  const res = G.hits.slice(n1).map((h) => h.r);
+  out(`     against the defender: ${tellsOf(l2)} → ${res.join(', ')}, hero hp ${p.hp}`);
+  assert(res.length >= 1 && res.every((r) => r !== RESULT.HIT) && p.hp === p.maxHp, 'each pass that reaches the defender is answered (parried; the last rolled): no damage');
+}
+
+async function scenarioBoostRite() {
+  out('\n== scenario BOOST RITE (Last Rite: phase 4 under 8 %, once; caught: a blast that never kills; dodged: he is open) ==');
+  const R = TUNING.boost.rite;
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, p = game.player, B = bo(G);
+  duel(G, { dist: 3, ai: true, form: 4 });
+  const w = (hp) => { d.hp = d.maxHp * hp; return d.weigh('lastRite', MOVES.lastRite, 1, 3); };
+  assert(w(0.5) === 0 && w(0.07) > 1, `weighed only under ${R.below * 100} % (${w(0.5)} at 50 %, ${w(0.07)} at 7 %)`);
+  // his AI throws it once he is under the line, and once only (the hero in god mode, standing)
+  d.hp = d.maxHp * 0.07;
+  p.debug.god = true;
+  let seen = 0, at = NaN;
+  G.watch = (n, e) => { if (n === 'dragon:windup' && e?.name === 'lastRite') { seen++; at = flatDist(d.position, p.position); } };
+  run(G, 24, () => { G.input.axis = { x: 0, y: 0 }; game.mouseGround.set(d.position.x, 0, d.position.z); if (d.hp > d.maxHp * 0.07) d.hp = d.maxHp * 0.07; });
+  G.watch = null;
+  out(`     his AI threw it ${seen}x in 24 s (from ${at.toFixed(2)} m: ${B.stats.riteHits ? 'caught' : 'missed, open'})`);
+  assert(seen === 1 && d.brain.trigger('lastRite') === false, `once a fight (${seen}; the Lab's trigger refused after)`);
+  // caught, the hero on 30 hp: he lives
+  const G3 = build();
+  const d3 = G3.game.dragon, p3 = G3.game.player, B3 = bo(G3);
+  duel(G3, { dist: 2.5, ai: false, form: 4 });
+  d3.hp = d3.maxHp * 0.07;
+  place(G3, 2.5);
+  p3.debug.god = false;
+  p3.hp = 30;
+  fireAt(G3, 'lastRite', 'none');
+  out(`     caught: hero hp 30 -> ${p3.hp} (alive ${p3.alive}; ${R.damage} x ${TUNING.damageScale} capped), blast craters ${B3.stats.craters}`);
+  assert(B3.stats.riteHits === 1 && p3.alive && p3.hp >= 1 && p3.hp < 30 && B3.stats.craters >= 1, 'caught: a heavy blast, never the hero\'s last HP');
+  // dodged: open
+  const G2 = build();
+  const d2 = G2.game.dragon;
+  duel(G2, { dist: 3, ai: false, form: 4 });
+  d2.hp = d2.maxHp * 0.07;
+  blowAnd(G2, 'lastRite', 'dodge', { dist: 3 });
+  run(G2, 0.4);
+  out(`     dodged: ${G2.hits.at(-1)?.r}; open ${bo(G2).stats.riteOpen}, his posture broke ${G2.counts['dragon:postureBreak'] ?? 0}x`);
+  assert(bo(G2).stats.riteOpen === 1 && G2.counts['dragon:postureBreak'] >= 1, 'dodged: he is wide open (his posture breaks)');
+  d2.reset();
+  assert(!bo(G2).riteUsed, 'his reset gives it back');
+}
+
+async function scenarioBoostChange() {
+  out('\n== scenario BOOST CHANGE (through a phase\'s change, until its ring, nothing lands on him) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon;
+  duel(G, { dist: 4, ai: true });
+  game.player.debug.god = true;
+  d.hp = d.maxHp * TUNING.phaseAt[1] + 20;
+  d.mode = 'foot';
+  d.brain.act = null;
+  d.takeHit({ damage: 400, part: 'body', heavy: true, exact: true });
+  run(G, 1.5, null, () => d.brain.act?.name === TRANSITIONS[2]);
+  assert(d.brain.act?.name === TRANSITIONS[2], `the change begins (${d.brain.act?.name})`);
+  run(G, 0.4);
+  const hp0 = d.hp, pv0 = d.posture;
+  const pt = new THREE.Vector3(d.position.x, 1.2, d.position.z);
+  const dealt = d.takeHit({ damage: 60, part: 'body', point: pt, dir: { x: 0, z: 1 }, swing: true });
+  assert(d.brain.act?.def.transition && dealt === 0 && d.hp === hp0 && d.posture === pv0, `mid-change a cut does nothing (${dealt} damage, hp ${hp0} -> ${d.hp})`);
+  run(G, 6, null, () => d.mode !== 'act');
+  d.brain.aiEnabled = false;
+  const d1 = d.takeHit({ damage: 60, part: 'body', point: pt, exact: true });
+  assert(d1 > 0, `after it, cuts land again (${d1})`);
+}
+
+/** A god-mode hero that holds the guard through every normal / blue cue and rolls out of a red one, roaming between standoffs (veil.mjs's pace defender). */
+function bPaceDefender(G) {
+  const pend = [];
+  let guardUntil = -1;
+  return {
+    onEvent(n, e) {
+      if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
+      pend.push({ tell: e.tell, at: G.game.time + (e.source === 'world' ? 0.3 : TUNING.flashLead), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false });
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.5) pend.splice(i, 1);
+      let rolled = false;
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - t - DT;
+        if (e.tell === TELL.RED || e.tell === TELL.BLACK) {
+          if (left <= 0.28) {
+            e.done = true;
+            input.up(1);
+            guardUntil = -1;
+            const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
+            const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: -dz / l, y: -dx / l };
+            input.tap('Space');
+            rolled = true;
+          }
+        } else {
+          e.done = true;
+          guardUntil = Math.max(guardUntil, e.at + 0.2);
+        }
+      }
+      if (guardUntil > t) input.press(1);
+      else if (guardUntil > 0) { guardUntil = -1; input.up(1); }
+      return rolled;
+    },
+  };
+}
+
+async function scenarioBoostPace() {
+  const SECS = Number(process.env.GCD_BPSECS ?? 45);
+  const SEEDS = (process.env.GCD_BPSEEDS ?? '4242').split(',').map(Number).filter(Number.isFinite);
+  out(`\n== scenario BOOST PACE (a measure: cues a minute per phase against a god-mode guarding bot that roams 2.5 / 5 / 9 m; ${SECS} s a phase, seeds ${SEEDS.join(', ')}) ==`);
+  for (const seed of SEEDS) {
+    for (let ph = 1; ph <= 4; ph++) {
+      const G = build(seed, true);
+      const { game } = G;
+      const d = game.dragon, p = game.player, B = bo(G);
+      duel(G, { dist: 3, ai: true, form: ph });
+      p.debug.god = true;
+      p.debug.noRiposte = true;
+      G.defend = bPaceDefender(G);
+      Math.random = mulberry32(seed * 7 + ph);
+      const flashes = [], acts = {};
+      G.watch = (n, e) => {
+        if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashes.push(game.time);
+        if (n === 'dragon:windup' && e?.name) acts[e.name] = (acts[e.name] ?? 0) + 1;
+      };
+      const roam = mulberry32(seed * 31 + ph), goal = { r: 2.5, a: 0, until: -1 };
+      const t0 = game.time, s0 = B.stats.steps;
+      for (let i = 0; i < Math.round(SECS / DT); i++) {
+        const rolled = G.defend.act();
+        if (game.time > goal.until) {
+          goal.r = [2.5, 5, 9][Math.floor(roam() * 3)];
+          goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+          goal.until = game.time + 4;
+        }
+        if (!rolled && p.state !== 'roll') {
+          const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+          const k = Math.hypot(gx, gz) > 12 ? 12 / Math.hypot(gx, gz) : 1;
+          const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+          G.input.axis = l > 0.5 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        }
+        game.mouseGround.set(d.position.x, 0, d.position.z);
+        G.tick(DT);
+        if (d.phase !== ph && d.mode !== 'act') break;
+      }
+      const secs = game.time - t0;
+      const gaps = flashes.slice(1).map((t, i) => t - flashes[i]);
+      const top = Object.entries(acts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ');
+      out(`     seed ${seed} P${ph}: ${(flashes.length / secs * 60).toFixed(0)} cues/min over ${secs.toFixed(0)} s, longest gap ${gaps.length ? Math.max(...gaps).toFixed(1) : '-'} s, ${B.stats.steps - s0} jet steps; moves: ${top}`);
+      G.defend = null;
+      G.watch = null;
+      assert(flashes.length > 0, `P${ph}: he fights (${flashes.length} cues)`);
+    }
+  }
+}
+
 // ================================================================== THE SCENARIOS (one entry per line, each agent in its block)
 const S = {
   // --- core
@@ -734,6 +1216,15 @@ const S = {
   // --- fx
   // --- melee
   // --- boost
+  boostStep: scenarioBoostStep,
+  boostVotive: scenarioBoostVotive,
+  boostRosary: scenarioBoostRosary,
+  boostDescent: scenarioBoostDescent,
+  boostStrings: scenarioBoostStrings,
+  boostVespers: scenarioBoostVespers,
+  boostRite: scenarioBoostRite,
+  boostChange: scenarioBoostChange,
+  boostPace: scenarioBoostPace,
   // --- arsenal
   // --- terrain
   // --- tuning
