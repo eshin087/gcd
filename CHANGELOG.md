@@ -4,7 +4,22 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-nine pieces of work since 0.4.0:
+One hundred and forty pieces of work since 0.4.0:
+- **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
+  the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
+  three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s
+  before stepping in to cut him while he reels), `b` space (you strike from 1.3 m and every blow drives him back, so
+  the two bodies never merge), `c` a clean contact (the flash at each cut smaller, beside the wound on his far side
+  and gone at once instead of held through the freeze; the burst out of his back thinner; no white streak on the
+  finishing thrust; his body's white flash dim), `all` the three (the default), `0` as before. The blows and their damage never change. The Lab's `dbread`
+  row. *Added (options, off by default):* `?strikeGap=a|b` keeps a sword boss's dashes from bringing him nearer than
+  1.5 / 1.8 m (off: it bends Shen Hui's lunges), so the blades meet in the open between you at a parry (never past what the blow reaches; fists and
+  feet as before; the Lab's `strikeGap`); `?parryClash=a|b` draws the perfect parry's gold clash and its mark smaller
+  (b: the X alone, no rings; c: no gold at all, a pinpoint where the blades cross and the sparks) so the crossing
+  blades show (the Lab's `parryClash`); `?blueTell=a` draws a boss's blue parry cue as a small blue cross on his
+  blade instead of the big white star and ring (the Lab's `blueTell`). *Changed (the owner's pick, the defaults):*
+  the perfect parry is `c`, a pinpoint where the blades cross and its sparks, no gold burst; the blue cue is `a`
+  (`?parryClash=0` / `?blueTell=0` as before).
 - **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner's pick from the films):* the
   Thousand-Body Fox's straight punches and palms now land on an open arm along one line to you (the elbow 162 - 167°,
   was 123 - 139°), his roundhouse, his paper selves' rising kick and both ankle sweeps land on a straight leg (the

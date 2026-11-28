@@ -1488,7 +1488,7 @@ A VEIL of four faint rows runs close inside it (a thin crescent; the numbers are
 along (a dash) leaves none (`gate: false` for the plunge's dive). `arcGlint(x, y, z, dx, dy, dz,
 heavy, crit)`: a small star and sparks on the arc's edge, once a swing as the cut comes through
 (`player.js` `_combat`), only on a whiff (a landed cut's core is the beat's one star).
-`contact(p, tier, C, crit, k)`: a cut that LANDS, drawn at p (the drawn contact) by
+`contact(p, tier, C, crit, k, lite)`: (lite: the low quality's lighter burst, the deathblow's clean contact ADR-264) a cut that LANDS, drawn at p (the drawn contact) by
 `combat/cutFx.js` `cutBurst(game, x, y, z, o)` (o = { tier, cut, edge, hilt, crit, power, low }):
 a tapered slash line across the body along the cut's screen direction (a second line and a tick
 along the blade on heavy blows, a cross on a crit), thin sparks thrown along the cut, falling motes,
@@ -1769,7 +1769,13 @@ takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, cut:{x,z}, poise, heavy, crit,
                                         // exact: the damage is final (no part / broken multipliers); posture:
                                         // add exactly this much instead of the weapon gain (onPlunge);
                                         // flash: the most the hurt flash may be (the flurry's cuts);
-                                        // reel (a duelist): 1 thrown as by a heavy blow, 2 staggered
+                                        // reel (a duelist): 1 thrown as by a heavy blow, 2 staggered;
+                                        // with reel 1, keepOpen (the deathblow's read a, ADR-264) leaves him
+                                        // in a reeling / recoil / stagger with most of it still to run, and
+                                        // shove m is his flinch's travel back (read b; absent: 0)
+                                        // (?strikeGap, ADR-264: duelist/strikeGap.js strikeGapFloor(d, zone),
+                                        // read by brain._motion: a blade blow's dash stops at the floor (never a
+                                        // dash through him), capped at 0.85 x the blow's reach; off by default)
 onParried({ attack, tell }): void       // the dragon calls this itself when player.takeHit returns 'parried'.
                                         // Deflect chain (contract 1): a string's non-final hit is only
                                         // deflected (posture + a 0.14 s visual knock-back, the string goes

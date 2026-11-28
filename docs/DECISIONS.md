@@ -7754,6 +7754,69 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   `twist` 30° toward −X: (−0.32, −0.60, 0.74), between the two approved poses; the flat shows to the game camera
   (|n·cam| ≥ 0.63; edge-on under ~0.3 vanishes). `g2`'s wrist cap is 26° (the point 8-35° below level).
 
+## ADR-264 — The parry → deathblow exchange read by a watcher: a break beat, space, a clean contact (`?dbread=0|a|b|c|all`) (2026-11-27)
+
+- **Context:** the owner watched a bot parry Shen Hui's Riposte (a diagonal cut, then a blue thrust) into a deathblow
+  and could not tell what happened between the parry and the deathblow: "i never want the game to have certain
+  animation/actions that is not understandable to the player watching the action". They like the deathblow itself
+  (ADR-211: Shatter Web, Flesh). Measured in that exchange: the combo starts 0.11 s after the parry, and his parried
+  recoil (the readable "he is open" pose) is replaced by a flinch 0.15 s later, so no beat or pose says he is broken;
+  the centres stay ~1.0 m apart through the whole combo (he dashed in for the thrust, the deathblow never steps nearer
+  than 1.0 m, nothing pushes him back), so at the game camera the two bodies stack into one shape; each contact's
+  heat flash runs on the hit-pause's slowed clock (0.08 s of life lasts ~0.5 s real), his white hurt flash (0.8)
+  lights his whole body, and on the finisher the hero's own thrust streak and impact burst bloom into a white blot
+  (hiding each scene object in turn and counting the bright pixels: his body and the shared glyph particles, then
+  the particles' spawns by caller), so the contact is covered. (The white star at the blades before the thrust is his blue tell
+  glint, a gameplay cue: kept.) The effect switches barely changed it: the look is built in.
+- **Decision:** three ideas, one each, behind `?dbread=` (the Lab's `dbread`; `DEFENSE.deathblow.read`,
+  `DBFX_TUNE.clean`), read at the parry, damage never changed:
+  - **a, the break:** on the parry that starts the combo he is thrown into his `reeling` (jian flung wide, arms out,
+    stumbling back; recoil / stagger for a kit without it; a posture-broken foe stays on his knee) and the hero holds,
+    unhurt, `beat` 0.35 s after the parry; the first blow's wind-up is at least 0.2 s and steps in up to 1.0 m. The
+    blows land on him while he reels (duelist `takeHit` `keepOpen`: no flinch while 75 % of the reel is still to run).
+  - **b, space:** every blow steps in after him to 1.3 m centre to centre (at most 0.55 m; nearer, a non-final blow
+    steps back up to 0.3 m for room, as against a foe broken on one knee, who is never shoved), and every non-final
+    blow drives him back 0.3 m (`takeHit` `shove`: his flinch's travel).
+  - **c, a clean contact:** each contact's heat flash 0.45 x as wide, moved 0.7 m out of his far side along the blow
+    and aged on the real clock (gone in the hit-pause's first frames instead of held through it); the exit burst's
+    spray 0.4 x, its tip streak 0.6 x as long and held half as long; his hurt flash 0.3 instead of 0.8; the finisher's
+    thrust draws no white `thrustStreak` (measured: the brightest thing on screen at the finisher, by far) and every
+    blow's impact burst (`PlayerFx.contact`) is the low quality's lighter one (`lite`). Shatter Web's cut line, the
+    blood and the parry's own sparks at the blades stay.
+  - `all`: the three, **the owner's pick from the films and the default** ("all is fine"). `0`: as before.
+  - **The strike gap** (`?strikeGap=0|a|b`, `duelist/strikeGap.js`, the Lab's `strikeGap`), asked for next: "during
+    the parries you cant see the swords parrying and clashing with each other because the characters are clumped
+    up". Shen Hui's step-in aims at 0.66 - 0.72 x a blow's reach and his Riposte thrust's dash stops 1.0 m from the
+    hero: the cut was parried at 1.42 m, the thrust at 1.01 m. A floor on how near a duelist's own root motion (the
+    windup's step-in, a dash, authored travel) brings him for a BLADE blow (`_part` marks a bare-handed kit's limb:
+    left as authored), capped at 0.85 x the blow's reach so every blow lands where it did: a 1.5 m, b 1.8 m (the
+    parries at 1.5 / 1.5 m and 1.8 / 1.7 m). The owner picked b; **as a default it broke Shen Hui's authored lunges**
+    (duel `ashform`, ADR-250: a dash stopped short leaves his back knee bent at impact, at 1.5 m as at 1.8) and Lu
+    Wusheng's Thousand Li (a dash THROUGH the hero, stop -3: now never floored). So it is left to dashes only (not the
+    windup's step-in nor authored travel, which footwork is keyed to) and **off by default** until that trade is
+    decided with the owner (re-key his lunges for the room, or keep the spacing as authored). Seen zoomed: the spacing shows
+    the bodies apart up to the contact, but on a perfect parry the gold clash, its mark and its spark spit (ADR-181)
+    cover the hero's chest, where the blades meet, at any gap.
+  - **The clash's size** (`?parryClash=0|a|b`, `combat/perfectFx.js`, the Lab's `parryClash`), the owner's "Yes,
+    film it": the perfect parry's mark (its gold X opening into rings up to 0.52 m) and its gold clash burst drawn
+    smaller, one idea in two steps: a the mark 0.55 x with its rings, the burst 0.6 x; b the X alone at 0.4 x, the
+    burst 0.4 x. The spit of orange sparks off the steel (ADR-181) is left as it is. The owner picked b, then on a
+    closer look turned the whole gold parry burst down ("doesnt look good, doesnt feel like a parry effect, and
+    covering too much of the action. replace this with something better") and with it the big white star with a
+    ring, which is the BLUE TELL (his parry cue, not the parry). Replacements: **c** no gold burst and no rings, a
+    pinpoint where the blades cross (the mark's X at 0.12 x, a cell or two) and the spark spit carries the parry;
+    **`?blueTell=a`** (duelist/fx.js `TELL_GLINT.blueSmall`, the Lab's `blueTell`) a small cross on his blade (4 x 2
+    cells, no rays, no ring, held as long), dyed blue by a fire-field tint zone as the flares are, with a blue sparkle
+    and light. **Both the owner's pick from the films ("Yes, new look") and the defaults** (`?parryClash=0` /
+    `?blueTell=0` as before); filmed
+    with the 1.8 m gap beside today. Seen in the same zoom: the largest thing on screen before his thrust is his blue
+    tell glint (a star and ring) right over the hero where the blades will meet; a gameplay cue, left as it is.
+- **Consequences:** a adds 0.35 s between the parry and the combo and 0.08 s to the first blow (the combo's own
+  tempo after that is unchanged); b and a let the hero leave ADR-211's 0.6 m disc round where he parried. The duel
+  suite's `deathblow` (f) plays every mode on a posture break and a blue parry: the same blows and damage, the beat,
+  the reel kept, the spacing, the dim flash; (g) the strike gap's floor with every blue blow still parried. The
+  older parts (a) - (e) pin `?dbread=0` (they measure ADR-211's combo as built).
+
 ## ADR-266 — Bai Wuji round 4: a cut on the barrier chips him, his health 16000, the barrier shows a patch of itself where each cut lands (`?wjStrike`); no floor ring (2026-11-28)
 
 - **Context:** the owner after the glide (ADR-250): "it takes too much time to chip at him", "balance it to be bit

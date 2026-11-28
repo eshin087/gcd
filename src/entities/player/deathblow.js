@@ -13,6 +13,13 @@
 //
 // Phases (P.db.phase): 'watch' (armed by the parry; starts when the trigger is seen and the parry's freeze is
 // over) -> 'combo' (the blows) -> 'tail' (the finisher's recovery: still unhurt) -> ''.
+//
+// THE READ (`?dbread=`, the Lab's `dbread`; ADR-264; DEFENSE.deathblow.read): the exchange made readable to someone
+// watching, three ideas, one each: a) THE BREAK: the parry throws him open (his `reeling`, arms flung wide, stumbling
+// back) and the hero holds `beat` s before he steps in, the blows landing on him while he reels; b) SPACE: the hero
+// strikes from `gap` m (following him, or a short step back for room), and every blow drives him back `shove` m; c) A CLEAN
+// CONTACT: the heat flash at each contact smaller, moved to his far side and gone with the hit-pause's first
+// frames, the exit burst thinner, his white hurt flash dim. `all`: the three. '0': as before. Damage never changes.
 import { clamp, lerp } from '../../core/math.js';
 import { mulberry32 } from '../../core/rng.js';
 import { DEFENSE } from '../../combat/rules.js';
@@ -27,13 +34,30 @@ const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 /** Glyphs this module prints: none of its own (the hit effect is combat/deathblowFx.js'). */
 export const DEATHBLOW_GLYPHS = [];
 
+const q = (name) => {
+  try {
+    return typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null;
+  } catch {
+    return null;
+  }
+};
+const READ_OPTS = ['0', 'a', 'b', 'c', 'all'];
+export const DBREAD_DEFAULT = 'all'; // (the owner's pick from the films, 2026-11-27; '0' as before)
+/** The read switch (`?dbread=`): read when a parry arms the watch (the Lab cycles it). */
+export const DB_READ = { opts: READ_OPTS, mode: READ_OPTS.includes(q('dbread')) ? q('dbread') : DBREAD_DEFAULT };
+export const dbReadMode = () => DB_READ.mode;
+export const setDbRead = (m) => (DB_READ.mode = READ_OPTS.includes(m) ? m : DBREAD_DEFAULT);
+const readHas = (k) => DB_READ.mode === 'all' || DB_READ.mode === k;
+/** The read's pieces on now: { beat (a), space (b), clean (c) }. */
+export const dbRead = () => ({ beat: readHas('a'), space: readHas('b'), clean: readHas('c') });
+
 const PATH_MAX = 16; // the blade tip's world points kept for the hit effect (`path`)
 const SAMPLES = 8; // the blade tip's screen samples kept (a ring), for the swing's angles
 
 /** The deathblow's own state on the player (one object, reused). */
 export function newDeathblowState() {
   return {
-    phase: '', att: null, was: false, blue: false, t: 0, attack: null, tell: 'normal',
+    phase: '', att: null, was: false, blue: false, t: 0, attack: null, tell: 'normal', rb: false, rs: false, rc: false, thrown: false,
     run: 0, n: 0, i: 0, dealt: 0, done: false, started: false,
     ox: 0, oz: 0, dx: 0, dz: 1, side: 1, rip: null, point: { x: 0, y: 0, z: 0 },
     last: '', lastFin: '', moveOf: null, clips: [], seq: [], rng: mulberry32(0x0db10c5), // (the stream: advances over every combo of the run)
@@ -104,15 +128,16 @@ function blowDef(e, wind, last, i, n) {
 }
 
 /** The tempo: blow `i` (0-based) of `n`: its wind-up (s). */
-export const deathblowWind = (i, n) => {
+export const deathblowWind = (i, n, beat = false) => {
   const D = DEFENSE.deathblow;
-  return i === n - 1 ? D.finWind : Math.max(D.windMin, D.wind0 * Math.pow(D.windK, i));
+  const w = i === n - 1 ? D.finWind : Math.max(D.windMin, D.wind0 * Math.pow(D.windK, i));
+  return beat && i === 0 ? Math.max(w, D.read.entryWind) : w; // (the read's break: the first blow's step in is seen)
 };
 /** About how long a combo of `n` blows runs (s): the cast's hold. */
-export const deathblowDuration = (n) => {
+export const deathblowDuration = (n, beat = false) => {
   const D = DEFENSE.deathblow;
   let t = 0;
-  for (let i = 0; i < n; i++) t += deathblowWind(i, n) + D.ease.dur * 0.6 + (i === n - 1 ? D.finActive + D.finHold : D.active + blowStop(i, n) + D.gap);
+  for (let i = 0; i < n; i++) t += deathblowWind(i, n, beat) + D.ease.dur * 0.6 + (i === n - 1 ? D.finActive + D.finHold : D.active + blowStop(i, n) + D.gap);
   return t;
 };
 
@@ -155,6 +180,20 @@ export function armDeathblow(P, att, attack, tell, blue = false) {
   S.t = 0;
   S.attack = attack ?? null;
   S.tell = tell;
+  const R = dbRead();
+  S.rb = R.beat;
+  S.rs = R.space;
+  S.rc = R.clean;
+  S.thrown = false;
+}
+
+// (the open reactions the break throws him into, the first a kit has; a broken duelist stays on his knee)
+const THROW = ['reeling', 'recoil', 'stagger'];
+/** The read's break: the moment the parry is known to start the combo, he is thrown open. */
+function throwOpen(att) {
+  if (!att || att.mode === 'broken' || att.broken || !att.brain?.startReact) return false;
+  for (const k of THROW) if (att.brain.startReact(k)) return true;
+  return false;
 }
 
 const clear = (P) => {
@@ -179,7 +218,8 @@ export function tickDeathblow(P, dt) {
     // a break comes in the parry's own call stack: not broken by the first frame = it never will (a blue blow needs none)
     const broke = att?.broken === true && !S.was;
     // (a foe whose parry has an answer of its own, Halcyon's crash into the cover, is left to it)
-    if (!P.alive || !alive || (!broke && !S.blue) || S.t > 0.6 || att.flight?.cr?.on) {
+    const beat = S.rb ? DEFENSE.deathblow.read.beat : 0;
+    if (!P.alive || !alive || (!broke && !S.blue) || S.t > 0.6 + beat || att.flight?.cr?.on) {
       clear(P);
       return false;
     }
@@ -187,6 +227,21 @@ export function tickDeathblow(P, dt) {
     if (!FROM.has(P.state)) {
       clear(P);
       return false;
+    }
+    // the read's break: once the combo is sure to come (not a blade lock, in reach), he is thrown open and the hero
+    // holds (unhurt) until the beat is over
+    if (S.rb) {
+      if (!S.thrown) {
+        if (!canCombo(P, att) || att.brain?.react?.kind === 'lock') {
+          clear(P);
+          return false;
+        }
+        S.thrown = true;
+        throwOpen(att);
+      }
+      P.iframeT = Math.max(fin(P.iframeT), beat - S.t + 0.15);
+      P.buf.action = null;
+      if (S.t < beat) return true;
     }
     return startCombo(P, att);
   }
@@ -324,11 +379,16 @@ function aim(P, att, S) {
   return dist;
 }
 
+/** The combo can start on `att` from here (a ground foe in the riposte's reach). */
+function canCombo(P, att) {
+  const p = P.position, tp = att?.position;
+  return P.flurry.reach(att, true) === 'ground' && !!tp && Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange.ground;
+}
+
 function startCombo(P, att) {
   const S = P.db, D = DEFENSE.deathblow, g = P.game, p = P.position;
-  const kind = P.flurry.reach(att, true);
   const tp = att?.position;
-  if (kind !== 'ground' || !tp || !(Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange.ground)) {
+  if (!canCombo(P, att)) {
     clear(P);
     return false;
   }
@@ -360,13 +420,13 @@ function startCombo(P, att) {
   P.parryRun = 0; // spent
   // the camera leans in on him for the whole combo, as the dodge's flurry does (no slow motion: the owner
   // asked for a faster combo; the zoom in metres at the desktop distance, scaled for the phone's camera)
-  g.flow?.cinematic?.({ x: tp.x, z: tp.z, slowmo: D.slow.slowmo, dur: deathblowDuration(S.n) + D.slow.dur, zoom: D.slow.zoom, weight: D.slow.weight, ease: [0.12, 0.3], kind: 'deathblow' });
-  AT[0] = deathblowWind(0, S.n);
+  g.flow?.cinematic?.({ x: tp.x, z: tp.z, slowmo: D.slow.slowmo, dur: deathblowDuration(S.n, S.rb) + D.slow.dur, zoom: D.slow.zoom, weight: D.slow.weight, ease: [0.12, 0.3], kind: 'deathblow' });
+  AT[0] = deathblowWind(0, S.n, S.rb);
   AT[1] = AT[0] + D.active + D.gap;
   P._emit('player:flurry', {
-    strikes: S.n, art: 'deathblow', air: false, dur: deathblowDuration(S.n), streak: S.n, tier: streakTier(S.n), storm: false, at: AT, figure: '', planted: true,
+    strikes: S.n, art: 'deathblow', air: false, dur: deathblowDuration(S.n, S.rb), streak: S.n, tier: streakTier(S.n), storm: false, at: AT, figure: '', planted: true,
   });
-  deathblowMatrixStart?.(g, { n: S.n, dur: deathblowDuration(S.n), hero: p, boss: tp }); // (the code: ?dbmatrix=)
+  deathblowMatrixStart?.(g, { n: S.n, dur: deathblowDuration(S.n, S.rb), hero: p, boss: tp }); // (the code: ?dbmatrix=)
   return true;
 }
 
@@ -375,7 +435,7 @@ function startBlow(P, att, i) {
   const S = P.db, D = DEFENSE.deathblow, p = P.position, e = S.seq[i], last = i === S.n - 1;
   const dist = aim(P, att, S);
   if (dist < 0) return finish(P);
-  const def = blowDef(e, deathblowWind(i, S.n), last, i, S.n);
+  const def = blowDef(e, deathblowWind(i, S.n, S.rb), last, i, S.n);
   // the turn: the foe's bearing, a little to this blow's side (alternating); the finisher faces him square
   S.side = -S.side;
   const off = last ? 0 : S.side * e.yaw * (0.8 + 0.4 * S.rng());
@@ -392,9 +452,15 @@ function startBlow(P, att, i) {
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
   const rx = p.x - S.ox, rz = p.z - S.oz, b = rx * fx + rz * fz, c = rx * rx + rz * rz - D.step * D.step;
   const room = c > 0 ? 0 : -b + Math.sqrt(Math.max(0, b * b - c)); // (to the disc's edge along the facing)
-  const step = i % 2 === 0 || last ? clamp(Math.min(dist - D.minGap, room, last ? D.step : D.stepMid), 0, D.step) : 0;
+  let step = i % 2 === 0 || last ? clamp(Math.min(dist - D.minGap, room, last ? D.step : D.stepMid), 0, D.step) : 0;
+  // the read: space (every blow follows him to `gap`, never nearer, no disc); the break's first blow steps in to him
+  const RD = D.read, gap = S.rs ? RD.gap : D.minGap;
+  // (nearer than the gap, a non-final blow gives itself room: a short step back in its wind-up; a broken foe on his knee is never shoved)
+  if (S.rs) step = clamp(dist - gap, last ? 0 : -RD.back, RD.follow);
+  if (S.rb && i === 0) step = clamp(dist - gap, 0, RD.entry);
   if (def.dash) a.travel = step;
   else a.lunge = step;
+  S.step = step; // (tests, the films)
   a.rip = S.rip ??= { db: true, damage: 0, posture: 0, dx: 0, dz: 1, ox: 0, oz: 0, n: 1, counter: false, attack: null };
   a.rip.damage = deathblowDamage(S.n)[last ? 1 : 0];
   a.rip.dx = S.dx;
@@ -431,8 +497,11 @@ export function deathblowTakeHit(P, point, out) {
   out.crit = true;
   out.exact = true;
   out.posture = 0;
-  out.flash = DEFENSE.deathblow.flash;
+  out.flash = S.rc ? DEFENSE.deathblow.read.hurtFlash : DEFENSE.deathblow.flash;
   out.reel = last ? 2 : 1;
+  // the read: he stays thrown open while the break's reel runs (keepOpen); every blow drives him back (shove)
+  out.keepOpen = S.rb;
+  out.shove = S.rs && !last ? DEFENSE.deathblow.read.shove : 0;
   if (last) out.away = { x: p.x, z: p.z };
   S.point.x = point.x;
   S.point.y = point.y;
@@ -494,7 +563,7 @@ export function deathblowLanded(P, dealt) {
   const hilt = P.sweep?.valid ? P._bladePoint(0, V) : null;
   const base = { x: fin(hilt?.x, pt.x), y: fin(hilt?.y, pt.y), z: fin(hilt?.z, pt.z) };
   try {
-    deathblowHit?.(g, { x: pt.x, y: pt.y, z: pt.z, dx: S.dx, dz: S.dz, i: i + 1, n, last, a0, a1, thrust: S.moveOf?.kind === 'thrust', path: S.path.subarray(0, S.pathN * 3), base, hold });
+    deathblowHit?.(g, { x: pt.x, y: pt.y, z: pt.z, dx: S.dx, dz: S.dz, i: i + 1, n, last, a0, a1, thrust: S.moveOf?.kind === 'thrust', path: S.path.subarray(0, S.pathN * 3), base, hold, clean: S.rc });
   } catch (err) {
     console.error('[deathblow] fx failed', err);
   }

@@ -357,6 +357,13 @@ export const DEFENSE = Object.freeze({
     step: 0.6, stepMid: 0.3, minGap: 1.0,
     slow: Object.freeze({ slowmo: 1, dur: 0.4, zoom: -12, weight: 0.6 }), // the camera leans 12 m in (of 36) for the combo (+ dur s after it), the rig scales it for the phone; slowmo 1: no slow motion
     wMid: 0.4, wLast: 1.35, flash: 0.8, iframePad: 0.05,
+    // the read (`?dbread=`, ADR-264; deathblow.js): a) the break: `beat` real s from the parry to the first blow
+    // (he is thrown into his reeling), that blow's wind-up at least `entryWind` s and its step in at most `entry`
+    // m; b) space: every blow steps in after him to `gap` m (centre to centre), at most `follow` m (nearer: a
+    // non-final blow steps back at most `back` m), and drives him back `shove` m (his flinch's travel; the
+    // finisher's stagger as before); c) a clean contact: his hurt
+    // flash `hurtFlash` (deathblowFx.js has the effect's own numbers, DBFX_TUNE.clean)
+    read: Object.freeze({ beat: 0.35, entryWind: 0.2, entry: 1.0, gap: 1.3, follow: 0.55, back: 0.3, shove: 0.3, hurtFlash: 0.3 }),
   }),
   // --- the clash dance (`?clash=dance`, combat/clashDance.js; ADR-247): parries in a row inside one of a
   // duelist's moves pay more posture each: the run's n-th parry x mult[n - 1] (the last is the cap); the

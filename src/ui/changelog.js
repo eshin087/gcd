@@ -28,6 +28,16 @@ export const RELEASES = [
       },
       {
         date: '2026-11-27',
+        title: 'The parry and the deathblow, readable',
+        notes: [
+          'The parry that starts a deathblow now throws the boss open, arms wide and stumbling back, and you hold a beat before you step in and cut him while he reels.',
+          'You strike from further away and every blow drives him back, so the two of you never merge into one shape, and the flash at each cut no longer covers the wound. The blows and their damage are unchanged; ?dbread=0 plays it as before.',
+          "A perfect parry is now a pinpoint where the two blades cross and its sparks, with no gold burst over the fighters, so you can see the swords meet.",
+          "A boss's blue parry cue is a small blue cross on his blade instead of a big white star, so it no longer covers you. ?parryClash=0 and ?blueTell=0 show them as before.",
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'The clash dance: parries in a row break him faster',
         notes: [
           'Against the human bosses, every parry in a row inside one of his strings breaks his posture faster than the last, and the clash of steel rings a little higher with each one.',

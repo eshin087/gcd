@@ -7,6 +7,7 @@ import { CueLedger, throwsAt, glaiveHome } from './ledger.js';
 import { ATTACK_SOUND, beatSound } from './attackSound.js';
 import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsable } from './director.js';
 import { newPin, pinAt, pinStep } from '../../../combat/contact.js';
+import { strikeGapFloor } from './strikeGap.js';
 
 // ---------------------------------------------------------------------------------------------------
 // THE SECOND PASS: the director, the links, the cue ledger and the fairness guard. The API other
@@ -1504,7 +1505,7 @@ export class DuelBrain {
         if (s) d.yaw = Math.atan2(ax, az);
         // (pressure.pursue: a hero backing away: the length cap x dashK)
         const cap = D.dash.max * (this._chasing(s) ? perPhase(this.P.pursue.dashK ?? 1, d.phase) : 1);
-        b._dash = { x: d.position.x, z: d.position.z, dx: ax / l, dz: az / l, len: clamp(dist - D.dash.stop, 0, cap), done: 0 };
+        b._dash = { x: d.position.x, z: d.position.z, dx: ax / l, dz: az / l, len: clamp(dist - (D.dash.stop >= 0 ? Math.max(D.dash.stop, strikeGapFloor(d, D.zone)) : D.dash.stop), 0, cap), done: 0 }; // (?strikeGap: not a dash through him)
       }
       const k = ease(clamp((u - D.dash.from) / Math.max(1e-4, D.dash.to - D.dash.from), 0, 1));
       const want = b._dash.len * k, step = want - b._dash.done;

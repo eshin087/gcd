@@ -58,6 +58,7 @@ const TRADE = { posture: 1.5, push: 0.5 };
 // the glow on his body (uWarn, additive): a red cue's spike, a black blow's charge
 const WARN_RED = TELL_STYLE.red.warn.color, WARN_BLACK = TELL_STYLE.black.warn.color;
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
+const KEEP_OPEN = new Set(['reeling', 'recoil', 'stagger']); // (the deathblow's read keeps him in these: takeHit)
 /** A move's first real hit's tell (a `pick` beat: its first alternative). */
 const firstTell = (def) => def.beats.map((b) => (Array.isArray(b.pick) ? b.pick[0] : b)).find((b) => !b.feint)?.tell ?? TELL.NORMAL;
 
@@ -410,8 +411,13 @@ export class Duelist {
       }
     } else if (reel > 0) {
       // a flurry's cut: every one flinches him where he stands, whatever he was doing (the string
-      // he was dodged out of is over: he does not hang in its pose while he is cut)
-      if (this.brain.startReact('flinch') && this.brain.react) this.brain.react.travel = 0;
+      // he was dodged out of is over: he does not hang in its pose while he is cut). The deathblow's
+      // read (ADR-264): `keepOpen` leaves him in the open reaction the parry threw him into while most
+      // of it is still to run (the blow jolts him there); `shove` m drives him back with the flinch
+      const RK = this.brain.react;
+      if (!(o.keepOpen && this.mode === 'react' && RK && KEEP_OPEN.has(RK.kind) && RK.t < RK.clip.dur * 0.75)) {
+        if (this.brain.startReact('flinch') && this.brain.react) this.brain.react.travel = -Math.max(0, fin(o.shove, 0));
+      }
     } else this.brain.onStruck(heavy);
     return dmg;
   }
