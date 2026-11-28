@@ -92,6 +92,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The wyrm's neck and head reviewed move by move: level head, no flips, no detached head (ADR-203)
 - [x] Every wyrm fire travels from it; roar-cast spells and a brood of fire; a walk-out forest (ADR-197)
 - [x] The owner's picks for ADR-197's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource): the defaults kept (2026-11-25)
+- [x] The wyrm's death: the neck falls as one curve, the head in line (ADR-274)
+- [x] Every white / blue timing glint seen through the body and inside the frame (ADR-274)
+- [x] The wyrm's blue and red paw blows told apart: the scythe and the leap, the owner's picks (ADR-274)
 - [ ] The wyrm presses in when the hero stands out among the trees (it fights at range there)
 - [x] Hero motion: world-planted feet, blade paths, portrait idle, new windups, two-step dash,
       sliding kneel, crescent trails (ADR-023)
@@ -211,6 +214,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.102 — A new fight stance: the middle guard (2026-11-28, `player/stance-four`, ADR-275)
+- [x] Four fight holds as data behind `?hold=` (middle, high, sword fingers, low trailing), filmed close and far in one clip
+- [x] The owner's pick, A the middle guard, the default; ADR-207's hold `?hold=ref`; the Lab's `hold` row
+- [ ] The owner's playtest on the preview
 ## M1.99 — Bai Wuji's barrier shows where your blade hits it, and he goes down quicker (2026-11-28, `enemies/untouched`, ADR-266)
 - [x] A cut on the barrier chips a quarter of its damage (never his last HP), its number where the blade stopped
 - [x] His health 16000 (20000); the bench: the good bot in about 2.3 min

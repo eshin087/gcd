@@ -533,6 +533,8 @@ Render helpers for creature modules:
     (overlaps ADD UP: ~0.4 a cool rim, ~1 the body, 2+ the white heart; default `heatEnd` 0.35 x
     `heat`; the last sixth of its life it fades out); `kind` `'fire'` (default) | `'void'` |
     `'steel'` | `'smoke'` or a `FIRE_KIND` number; `gravity` > 0 rises. NaN positions are dropped.
+    A number kind plus `FIRE_SEEN` (4) is drawn SEEN: past the soft depth test, over the scene (a
+    timing cue only: DuelFx's white / blue glint, ADR-274).
     `clear()`, `update(dt)` (main.js, with `fxDt`), `count`, `max` (6000), `active`.
   - Pipeline side: `init(type, depthTexture)`, `setSize(W, H, cell, art, minCell = cell)`,
     `setCell(cell, art)`, `render(renderer, camera,
@@ -1372,7 +1374,7 @@ the pick (tests). The blade is still the hit test, so each look is swung at the 
 **One hand, two hands** (ADR-071; it was two hands on every swing, ADR-046): the chain, the sprint
 slash and the roll cut are one-handed, the free hand keyed against the sword hand; the slam, the
 charge and the cleave hold the grip with both (`twoHand` 1, the off hand IK'd to the grip point;
-the cleave lets go in its follow-through). The block is two-handed. The hero's (ADR-207, `refStance.js` `refGuard`,
+the cleave lets go in its follow-through). The fight stance (ADR-275): `refStance.js` `refReady` draws the hold `HOLDS[holdMode()]` (`?hold=`, default `a` the middle guard; `setHold(id)` copies it into `REF_READY`, then idles.js `syncStandArm()`; `holdHabits()`: the fight's habits only in a two-handed hold). The block is two-handed. The hero's (ADR-207, `refStance.js` `refGuard`,
 `guardMode()` / `setGuard(id)`, `?guard=ward`): a braced crouch (`REF_GUARD.sink` 0.3 s into it on `A.t`), the feet
 settling to `REF_GUARD.feet`, both hands on the grip before the right shoulder with the elbows out, the blade rising
 ~32° across his face to his left (upright seen from his side), the flat to the enemy. `?guard=ward` and every

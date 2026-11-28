@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-28 — Agents check what their branch changed before a PR; CI runs the full set (ADR-275; `test/changed-suites`)
+## 2026-11-28 — Agents check what their branch changed before a PR; CI runs the full set (ADR-276; `test/changed-suites`)
 
 **Goal:** the owner saw the later chats take longer to open PRs. Each agent ran the full `npm test` before
 its PR (ADR-205), about 75 minutes of work on 8 shared slots, so agents near a PR at once queued for them.
@@ -29,7 +29,64 @@ sit in its own block); left for later, if the owner wants more out of `--changed
 
 ---
 
-## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
+## 2026-11-28 — The wyrm's death neck, every white spark seen, the scythe and the leap (ADR-274; branch `dragon/death-neck-tells`)
+
+**Owner:** "when the dragon dies and flies up, the head and neck looks unnatural ... like the neck is broken";
+"make sure every normal attack shows the white spark hit"; "the blue and red warning paw attacks ... need to be
+completely different ... think of multiple different animations that stand out".
+
+**Measured first** (headless Edge, `__tick`, the neck's joints per frame and stick figures of the chain; each cue
+rendered twice, with the scene's depth and with nothing in front):
+- The death: the throe's head goal lay 8 m off a 6 m neck (the neck pulled straight up, a pole), the limp head was
+  laid level whatever the neck did (60 - 62° off the neck's end from 0.2 to 1.3 s), the goal's straight line to the
+  ground buckled the neck into a zig-zag as it landed.
+- The glints: the wyrm's own paw, foreleg and wings hid 92 - 100 % of its claw glints; a wing blow's glint fell
+  off the screen. The fight camera looks down at 58°, so a paw raised and brought down (the blue overhead, the red
+  stomp) is foreshortened into the same growing blob.
+
+**Changed:** the death's head swings round the neck's base inside its reach, the throe's head up and forward,
+it looks along its neck, the dying head hangs at most ~31° off it (`?deathNeck=0` before). A glint's letters
+are drawn over the scene (`FIRE_SEEN`, a blob flag in the fire field) and kept inside the frame, every boss
+(`?glintSeen=0` before). The paw blows: `?pawBlue=a|b|c` (scythe, jab, uppercut) and `?pawRed=a|b` (leap, quake),
+`pawTells.js` + `WYRM_PAW`, the Lab's LOOKS rows; the owner picked from the films ("the leap and the scythe look
+good"): the scythe and the leap are the defaults. The owner also saw the head and neck "all weird" at the films'
+start: the film rig's `debug.reset()` left the wyrm in its sleep curl standing beside the hero (a state the game
+never shows: it wakes as you come near); re-filmed from its combat stance.
+
+**Verification:** integ `pawtells` (the glint's seen flag and shader; every paw option lands on its cue,
+0.00 - 0.03 s off; the death: off the neck 62° → 33°, the sharpest bend 36° → 32°, the head's fling 1.49 → 0.82 m);
+the glint audit over every wyrm melee move (claws 90 - 100 % seen); films at the fight camera (sent to the owner).
+Full `npm test` before the PR.
+
+**Open / next:** the owner's playtest of the scythe and the leap in the fight (and on the iPhone); the leap's
+height and hang may want tuning by feel.
+## 2026-11-28 — A new fight stance: the middle guard (ADR-275; `player/stance-four`)
+
+**Owner:** "lets change gcds combat default pose. the way he holds the sword and the angle of the sword doesn't
+look like a good fighting stance. give me 4 new combat stance for me to review and approve. show me the video clip
+of close and far all in one clip." Picked from the clip: **A, the middle guard**.
+
+- **The switch** (`refStance.js` `HOLDS`, `setHold` / `holdMode`, `?hold=`): a hold is the whole fight stance
+  (hands, blade, elbows, free hand, body, knees, feet). `setHold` copies the chosen one into `REF_READY`, so the
+  fight's habits (idles.js, `syncStandArm`) aim about its blade. Default `a`; `ref` the ADR-207 hold; `b` high
+  guard, `c` sword fingers (one hand), `d` low trailing (one hand). One-handed holds play no fight habits
+  (`holdHabits`: they keep both hands on the grip) and the stance's blend never puts the free hand on the grip.
+- **The film** (headless Edge, 1080p): per hold a close orbit beside the game camera at true size and x2 (the
+  duel's own framing pushed him to the bottom edge, so the far view is the game camera's pitch, distance and
+  FOV centred on him), then the four side by side. From straight behind at the game camera A, B and C read alike
+  (a blade up the screen); side-on they are four different shapes.
+- **Anatomy:** my in-page wrist measure said 42°; `heroref`'s said 73° (bar 60). A sweep in the harness found the
+  elbow's pole: tucked a little in (`rP` 0.45, -0.88, -0.15) the wrist is 54° at most over four facings with the
+  blade the owner saw (-4°, 30° up; raised to 36° later, below). The toes went back to ADR-207's turn (`heroweight`: the draw cut's
+  pivot turned the right foot 0.07 rad from the filmed -0.2, under half the pivot), and the free elbow points out
+  to his left (the full run's `looks`: the robe's sleeve wing in his chest on 23 % of frames with it down and in;
+  now 2.4 %, main 2.5; ADR-207 met the same). The full run's duel `contact`: a deathblow's last cut lands as he
+  is back in the hold, and the filmed blade (30° up) stood 10.5 cm in the duelist at 1.5 m (bar 8). Probed at
+  1.3 / 1.5 / 1.7 / 2 m: 36° up with the hands 3 cm higher clears him at 1.5 m (-0.1 cm), wrist 54°. B and D were tuned under 60 for the film (55°, 54° in-page).
+- **Checked:** `heroref` green (the hold, the blend, the three habits, every move out of it within ×1.5 + 10 cm of
+  the stance before, the guard from the hold); the hero suites; a film strip of a light chain, a block and a roll
+  out of the hold.
+- **Open:** the owner on the preview (lock-on duels, strafing); whether the turned-down holds b-d stay.## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
 
 **Goal:** two looks from the owner's Phantom Blade Zero reference (a boss fight they sent): a charged (black) attack
 drains the whole picture to dark grey, the boss alone readable with a white glint, colour back on the strike; a red

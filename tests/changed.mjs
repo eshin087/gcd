@@ -1,4 +1,4 @@
-// `npm test -- --changed`: which of run.mjs's tasks cover the files a branch changed (ADR-275).
+// `npm test -- --changed`: which of run.mjs's tasks cover the files a branch changed (ADR-276).
 //
 // A local pre-check, not the gate: CI runs every task on every PR, and a PR merges only when that is
 // green. So these rules aim at the suites a change is most likely to break, and anything they do not

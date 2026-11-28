@@ -4,7 +4,27 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-two pieces of work since 0.4.0:
+One hundred and forty-four pieces of work since 0.4.0:
+- **The Cinder Wyrm dies whole, every white spark shows, and its blue and red paws look apart** (2026-11-28, ADR-274). *Fixed:* the wyrm's
+  death no longer breaks its neck: its head swings down on the neck (round the neck's base, always in its reach) and
+  looks along it, so the neck falls as one curve; before, the throe flung the head 1.5 m up into a straight pole with
+  the head bent ~60 - 90° off its end, then the neck buckled into a zig-zag as it landed (`?deathNeck=0` as before).
+  Every white (and blue) timing glint of a boss is now seen: its letters are drawn over the scene (a new blob flag
+  in the fire field, `FIRE_SEEN`) and kept inside the frame like the flares; the wyrm's own paw, foreleg and wings
+  hid 92 - 100 % of its claw glints and a wing blow's glint fell off the screen (`?glintSeen=0` as before).
+  *Changed (the owner's picks from the films, the defaults):* the wyrm's blue and red paw blows no longer share a
+  motion: the blue one is **the scythe** (the paw wound out wide and back, the chest twisted away, then swept across
+  and down on you), the red stomp is **the leap** (it crouches, jumps clear of the ground with a beat of its wings and
+  falls on both paws); `?pawBlue=0` / `?pawRed=0` as before. *Added (options):* `?pawBlue=b` the jab (crouched, the
+  paw tucked under the chest, a straight punch), `c` the uppercut (claws dragged low, swept up); `?pawRed=b` the
+  quake (sunk low, wings flat, a shudder, then the heave and the slam). The Lab's LOOKS rows `pawBlue` / `pawRed`.
+- **A new fight stance: the middle guard** (2026-11-28, ADR-275). *Changed (the owner's pick of four filmed stances):* in a fight gcd
+  now stands in a middle guard: both hands on the grip before his navel, the blade pointed forward at the boss's
+  eyes (~36° up), the knees bent, the right foot ahead. It was the blade raised up and out to his right
+  (`?hold=ref` stands him as before). *Added (turned down, kept behind the switch):* `?hold=b` a high guard (the
+  blade upright beside his head), `?hold=c` the sword fingers (one hand, the blade level at the boss, the free
+  hand raised behind his head), `?hold=d` a low trailing guard (one hand, the blade trailing behind his right
+  leg); the Lab's `hold` row. Attacks, the block, rolls and the fight's small habits start from it as before.
 - **A black blow can darken the whole picture, a red string can cut in red** (2026-11-27, ADR-271). *Changed (the owner's picks, the defaults: blackout b, red trail a):* `?black=a|b|c` replaces the
   violet look of a charged (black) blow with a blackout, after the owner's reference film: as the boss charges, the
   whole picture drains to dark grey, the boss stays lit with a white point on his weapon, the black flare is a
@@ -1548,7 +1568,7 @@ One hundred and forty-two pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
-- **Agents no longer run the full test set before a PR; `npm test -- --changed`** (2026-11-28, ADR-275):
+- **Agents no longer run the full test set before a PR; `npm test -- --changed`** (2026-11-28, ADR-276):
   before opening a PR, an agent runs the tasks that cover what its branch changed (`--changed`;
   `--changed --list` shows the pick and why, `--base <ref>` compares with another ref) and leaves the
   full set to CI, which still runs every task on every PR before it can merge. The rules are in

@@ -49,7 +49,7 @@ npm test         # headless integration sims (real game modules, mocked DOM/WebG
                  # --only integ,life: only those tasks (names from --list). Locally every run
                  # shares 8 slots machine-wide (ABYSS_JOBS) at low priority; CI is unchanged (ADR-205)
                  # --changed: only the tasks that cover what this branch changed since origin/main
-                 #  (--list: the pick and why; --base <ref>; rules in tests/changed.mjs; ADR-275)
+                 #  (--list: the pick and why; --base <ref>; rules in tests/changed.mjs; ADR-276)
 npm run perf     # what a frame costs on THIS machine's GPU: draw calls / triangles by pass, GPU ms at 1080p and the phone's size,
                  # script ms by module (--all, --levels ash,city, --4k, --save a baseline, --check; ADR-206)
 npm run build    # single-file dist/index.html (what Vercel serves)
@@ -58,7 +58,7 @@ npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne, `?level=ring` the Skybreak Ring, `?level=fox` the Foxfire Terrace, `?level=grove` the Windless Grove (`?tech=draw`: One Breath without the kill), `?level=code` the Hall of Falling Script (`?tech=lean`: the Long Second without the kill), `?level=city` Halcyon Plaza, `?level=veil` the Veiled Crossing (default:
 Cinderwood); the title screen and the Lab pick one too. The hero's idles and guard after the owner's reference footage (ADR-207): `?idles=new|old`
 (ADR-186's rests, habits and tricks / the hand on the belt; default `ref`: the one-handed stand, the two-handed fight hold, the put-away
-and draw) and `?guard=ward` (the cross ward; default `ref`: the braced guard, the blade across his face) (Lab: `idles`, `guard`, `idle ▸`).
+and draw) and `?guard=ward` (the cross ward; default `ref`: the braced guard, the blade across his face); the fight stance `?hold=ref|b|c|d` (ADR-275; default `a`, the owner's pick: the middle guard, the blade at the foe; `ref` ADR-207's hold, b-d turned down) (Lab: `idles`, `guard`, `hold`, `idle ▸`).
 Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
 (`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
 `?wyrmTop=0|a|b` the drake head from above before the owner's pick `c` (ADR-189); `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
@@ -171,7 +171,7 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
 - **Go easy on the owner's PC (ADR-205).** Many agents share one machine, and the owner games on it.
   - While working, test only what you changed: one suite (`node tests/integration/<suite>.mjs . <scenario>`)
     or `npm test -- --only <names>`. Before opening the PR, run `npm test -- --changed` (the tasks
-    that cover what the branch changed; `--changed --list` shows the pick and why; ADR-275), not the
+    that cover what the branch changed; `--changed --list` shows the pick and why; ADR-276), not the
     full set: CI runs every task on every PR and it cannot merge until they pass. When `--changed`
     says "everything" (shared code: combat, the hero, the duelist engine, core, render, main.js), run
     the suites your change is about with `--only` and let CI run the rest. A CI failure after the PR

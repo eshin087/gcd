@@ -1,4 +1,4 @@
-// Checks tests/changed.mjs, the rules `npm test -- --changed` picks tasks by (ADR-275):
+// Checks tests/changed.mjs, the rules `npm test -- --changed` picks tasks by (ADR-276):
 //  - every task a rule names exists in tests/run.mjs (a renamed suite breaks no rule silently),
 //  - every boss folder in src/entities/enemies and every level in src/levels has a rule of its own
 //    (a new boss gets one; until then this check fails, and --changed would run everything for it),

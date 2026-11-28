@@ -22,7 +22,7 @@
 // --changed runs only the tasks that cover what this branch changed since it left origin/main
 // (committed, staged, unstaged and new files; --base <ref> to compare with another): tests/changed.mjs
 // holds the rules, and a file they do not know runs everything. With --list it prints the pick and why,
-// and runs nothing. It is the local check before a PR; CI still runs every task (ADR-275).
+// and runs nothing. It is the local check before a PR; CI still runs every task (ADR-276).
 import { spawn } from 'node:child_process';
 import { pickTasks, changedFiles } from './changed.mjs';
 import { availableParallelism, constants, setPriority, tmpdir } from 'node:os';

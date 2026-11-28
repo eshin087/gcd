@@ -97,6 +97,7 @@ export class FireField {
         varying vec2 vUv;
         varying vec4 vHeat;
         varying float vViewZ;
+        varying float vSeen;
         void main() {
           vec3 wp = iPos + (uCamRight * position.x + uCamUp * position.y) * iData.x;
           vec4 mv = viewMatrix * vec4(wp, 1.0);
@@ -104,6 +105,8 @@ export class FireField {
           gl_Position = projectionMatrix * mv;
           vUv = uv;
           float k = iData.z;
+          vSeen = step(3.5, k); // (FIRE_SEEN: a cue drawn over the scene)
+          k -= 4.0 * vSeen;
           vHeat = vec4(1.0 - step(0.5, k), step(0.5, k) - step(1.5, k), step(1.5, k) - step(2.5, k), step(2.5, k)) * iData.y;
         }
       `,
@@ -116,6 +119,7 @@ export class FireField {
         varying vec2 vUv;
         varying vec4 vHeat;
         varying float vViewZ;
+        varying float vSeen;
         float linearDepth(float d) {
           float z = d * 2.0 - 1.0;
           return (2.0 * uNear * uFar) / (uFar + uNear - z * (uFar - uNear));
@@ -126,7 +130,7 @@ export class FireField {
           if (r2 > 1.0) discard;
           float w = exp(-3.2 * r2) * (1.0 - r2);
           float sceneZ = linearDepth(texture2D(uDepth, gl_FragCoord.xy / uRes).r);
-          float fade = clamp((sceneZ - vViewZ) / uSoft, 0.0, 1.0);
+          float fade = max(clamp((sceneZ - vViewZ) / uSoft, 0.0, 1.0), vSeen);
           gl_FragColor = vHeat * (w * fade * ${HEAT_ENC.toFixed(2)});
         }
       `,
