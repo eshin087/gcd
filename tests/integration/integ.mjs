@@ -6483,6 +6483,189 @@ async function scenarioInstantSlash() {
   return last;
 }
 
+// SLASHAIM (the owner, 2026-11-27: "make sure the angle of the slash is accurate to the sword swing and motion
+// ... it looks more off when attacking from the side angle or towards the camera"; "the heavy attack slash needs
+// to show up after the slash happens as it shows behind the character"): combo A's five hits, the lone heavy and
+// its four branches, and the charged cleave, each swung facing north (the back view), east, west and south
+// (toward the camera). For each ending slash: the angle on the screen between the drawn line (a → b, the way it
+// is revealed) and the blade's drawn point's path on the screen over its fastest frames (the frames moving at
+// least half the swing's fastest step, about his chest: a dash, a lunge or a lean carries him, it is not the cut). Every line
+// within SLASHAIM_MAX° of it, none passing within 0.8 m of his chest in the picture (never across him); on the
+// wyrm, every line drawn after the contact (within 0.12 s of the attack clock: as the bite lets go), the
+// heavies' and the cleave's ahead of him.
+// GCD_SLASHV=1 prints every line.
+const SLASHAIM_MAX = 15;
+async function scenarioSlashAim() {
+  out('\n== scenario SLASHAIM (each ending slash runs the way the blade did on the screen, from every side; the heavies in front of him) ==');
+  const SL = await imp('src/entities/player/slashFx.js');
+  const CO = await imp('src/entities/player/combos.js');
+  const CB = await imp('src/entities/player/combat.js');
+  const combo0 = CO.comboMode(), V = process.env.GCD_SLASHV === '1';
+  const FACE = { N: Math.PI, E: Math.PI / 2, W: -Math.PI / 2, S: 0 };
+  const _v = new THREE.Vector3();
+  let last = null;
+  // the presses for k lights in rhythm (each in the hit before's recovery), then a heavy, or the charge
+  const lights = (k) => {
+    const P = [];
+    let t = 0.05;
+    for (let i = 0; i < k; i++) {
+      P.push([t, 'L']);
+      const d = CB.LIGHT[i];
+      t += d.windup + d.active + d.recovery * Math.max(0.6, d.chain + 0.1);
+    }
+    return { P, t };
+  };
+  const ATT = [];
+  for (let k = 1; k <= 5; k++) ATT.push({ tag: `A${k}`, P: lights(k).P, want: () => CB.LIGHT[k - 1].name });
+  for (let k = 0; k <= 4; k++) {
+    const { P, t } = lights(k);
+    ATT.push({ tag: `H${k}`, P: [...P, [t, 'H']], want: () => CB.HEAVY[k].name, heavy: true });
+  }
+  ATT.push({ tag: 'CL', P: [[0.05, 'C'], [1.35, 'c']], want: () => 'cleave', heavy: true });
+  const scr = (G, x, y, z) => {
+    _v.set(x, y, z).project(G.game.camera);
+    return [_v.x * (G.game.camera.aspect || 1), _v.y];
+  };
+  const ang = (ax, ay, bx, by) => {
+    const l = Math.hypot(ax, ay) * Math.hypot(bx, by);
+    return l > 1e-12 ? (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / l))) * 180) / Math.PI : NaN;
+  };
+  /** How near the line passes his chest in the picture (m at his depth: the screen's distance / a metre's). */
+  const offHim = (G, l) => {
+    const C = G.game.camera.matrixWorld.elements, sh = scr(G, ...l.chest), s1m = scr(G, l.chest[0] + C[0], l.chest[1] + C[1], l.chest[2] + C[2]);
+    const sa = scr(G, ...l.a), sb = scr(G, ...l.b), vx = sb[0] - sa[0], vy = sb[1] - sa[1];
+    const u = Math.max(0, Math.min(1, ((sh[0] - sa[0]) * vx + (sh[1] - sa[1]) * vy) / (vx * vx + vy * vy || 1)));
+    return Math.hypot(sa[0] + vx * u - sh[0], sa[1] + vy * u - sh[1]) / Math.hypot(s1m[0] - sh[0], s1m[1] - sh[1]);
+  };
+  /** One attack swung facing `yaw`; `hit`: the wyrm stands in front of him. Its frames and its lines. */
+  const swing = (A, yaw, hit = false) => {
+    const G = (last = build());
+    fightSetup(G);
+    const { game, input } = G, p = game.player, d = game.dragon;
+    p.debug.god = true;
+    const fx = Math.sin(yaw), fz = Math.cos(yaw);
+    if (hit) {
+      const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * Math.sin(d.yaw) + (h.z - d.position.z) * Math.cos(d.yaw) > (a.x - d.position.x) * Math.sin(d.yaw) + (a.z - d.position.z) * Math.cos(d.yaw) ? h : a));
+      p.debug.teleport(c.x - fx * (c.r + 2.2), c.z - fz * (c.r + 2.2));
+    } else p.debug.teleport(d.position.x + 14, d.position.z + 14);
+    p.yaw = yaw;
+    const aim = () => game.mouseGround.set(p.position.x + fx * 6, 0, p.position.z + fz * 6);
+    aim();
+    for (let i = 0; i < 30; i++) { aim(); G.tick(DT); }
+    const F = [], lines = [];
+    p.slashFx.onLine = (ax, ay, az, bx, by, bz, look, kind, t0, t1) => {
+      const a = p.atk;
+      const ce = p.rig.chest.matrixWorld.elements;
+      lines.push({ rec: a, name: a?.def?.name, a: [ax, ay, az], b: [bx, by, bz], look, kind, t: a?.t ?? NaN, t0, t1, pos: [p.position.x, p.position.z], chest: [ce[12], ce[13], ce[14]], yaw: p.yaw, hitAt: a?.hitAt ?? -1 });
+    };
+    const end = A.P[A.P.length - 1][0] + 1.6;
+    for (let i = 0, N = Math.round(end / DT); i < N; i++) {
+      const tt = i * DT;
+      for (const [at, b] of A.P) if (Math.abs(tt - at) < DT / 2) {
+        aim();
+        if (b === 'L') input.click(0);
+        else if (b === 'H') input.click(2);
+        else if (b === 'C') input.press(2);
+        else input.up(2);
+      }
+      aim();
+      G.tick(DT);
+      const a = p.atk, e = p.rig?.sword?.matrixWorld?.elements;
+      if (a && e && (p.state === 'attack' || p.state === 'heavy')) {
+        const zt = HERO_DIM.drawnTip;
+        const ce = p.rig.chest.matrixWorld.elements;
+        F.push({ rec: a, t: a.t, tip: [e[8] * zt + e[12], e[9] * zt + e[13], e[10] * zt + e[14]], root: [ce[12], ce[13], ce[14]], ts: null, rs: null });
+      }
+    }
+    p.slashFx.onLine = null;
+    for (const f of F) {
+      f.ts = scr(G, ...f.tip);
+      f.rs = scr(G, f.root[0], f.root[1], f.root[2]);
+    }
+    return { G, F, lines, p };
+  };
+  /** The blade point's path on the screen over the swing's fastest frames (about his chest: his travel, a
+   *  dash's, a lunge's and the lean's, taken out, as the camera that follows him does),
+   *  within the attack clock [t0, t1] when given: [dx, dy] or null. */
+  const ref = (F, rec, t0 = -Infinity, t1 = Infinity) => {
+    const D = rec.def, fr = F.filter((f) => f.rec === rec && f.t >= Math.max(t0, D.windup * 0.5) && f.t <= Math.min(t1, D.windup + D.active + D.recovery * 0.5));
+    if (fr.length < 3) return null;
+    // the blade's point relative to the root (on the screen), and its step a frame (3D, relative to the root)
+    const sp = fr.map((f, i) => (i ? Math.hypot(f.tip[0] - f.root[0] - fr[i - 1].tip[0] + fr[i - 1].root[0], f.tip[1] - f.root[1] - fr[i - 1].tip[1] + fr[i - 1].root[1], f.tip[2] - f.root[2] - fr[i - 1].tip[2] + fr[i - 1].root[2]) : 0));
+    let pk = 0, pi = -1;
+    // (a turn's third: its own fastest frame, wherever it falls; a whole swing's from the windup's end on)
+    fr.forEach((f, i) => { if (i > 0 && f.t >= (Number.isFinite(t0) ? t0 : D.windup - 1e-6) && sp[i] > pk) { pk = sp[i]; pi = i; } });
+    if (pi < 0) return null;
+    let i0 = pi, i1 = pi;
+    while (i0 > 1 && sp[i0 - 1] >= 0.5 * pk) i0--;
+    while (i1 < fr.length - 1 && sp[i1 + 1] >= 0.5 * pk) i1++;
+    const A = fr[i0 - 1], B = fr[i1];
+    return [B.ts[0] - B.rs[0] - A.ts[0] + A.rs[0], B.ts[1] - B.rs[1] - A.ts[1] + A.rs[1], A.t, B.t];
+  };
+  try {
+    CO.setCombo('a');
+    const rows = [], bad = [];
+    let worst = 0, nearMin = Infinity;
+    for (const A of ATT) {
+      const cells = [];
+      for (const [fk, yaw] of Object.entries(FACE)) {
+        const { G, F, lines } = swing(A, yaw);
+        const mine = lines.filter((l) => l.name === A.want());
+        if (!mine.length) { bad.push(`${A.tag} ${fk}: no line`); cells.push(`${fk} -`); continue; }
+        const errs = [];
+        for (const l of mine) {
+          const r = ref(F, l.rec, l.kind === 1 ? l.t0 : -Infinity, l.kind === 1 ? l.t1 : Infinity);
+          const sa = scr(G, ...l.a), sb = scr(G, ...l.b);
+          const e = r ? ang(sb[0] - sa[0], sb[1] - sa[1], r[0], r[1]) : NaN;
+          errs.push(e);
+          const fw = Math.sin(l.yaw), fz = Math.cos(l.yaw), mx = (l.a[0] + l.b[0]) / 2 - l.pos[0], mz = (l.a[2] + l.b[2]) / 2 - l.pos[1];
+          const ahead = mx * fw + mz * fz, ph = (l.t - l.rec.def.windup) / l.rec.def.active;
+          if (V) out(`     ${A.tag} ${fk} ${l.name} k${l.kind} err ${e.toFixed(1)}° ref [${r ? r.slice(0, 2).map((v) => v.toFixed(3)).join(', ') : '-'}] line [${(sb[0] - sa[0]).toFixed(3)}, ${(sb[1] - sa[1]).toFixed(3)}] len ${Math.hypot(sb[0] - sa[0], sb[1] - sa[1]).toFixed(3)} ahead ${ahead.toFixed(2)} m at ${ph.toFixed(2)} of the active`);
+          if (!(e <= SLASHAIM_MAX)) bad.push(`${A.tag} ${fk} ${e.toFixed(0)}°`);
+          const near = offHim(G, l);
+          nearMin = Math.min(nearMin, near);
+          if (!(near >= 0.8)) bad.push(`${A.tag} ${fk}: it passes ${near.toFixed(2)} m from his chest in the picture`);
+          if (A.heavy && !(ahead > 0.3 && ph >= 0)) bad.push(`${A.tag} ${fk}: drawn ${ahead.toFixed(2)} m ahead at ${ph.toFixed(2)} of the active`);
+        }
+        const w = Math.max(...errs.map((e) => (Number.isFinite(e) ? e : 180)));
+        worst = Math.max(worst, w);
+        cells.push(`${fk} ${w.toFixed(0)}°`);
+      }
+      rows.push(`${A.tag} ${A.want()}: ${cells.join(' ')}`);
+    }
+    for (const r of rows) out(`   ${r}`);
+    out(`   the nearest any line passes his chest in the picture: ${nearMin.toFixed(2)} m`);
+    // every attack on the wyrm (facing north, the back view): after the contact (within 0.12 s of the attack
+    // clock: as the bite lets go), the way the blade went, the heavies' ahead of him
+    const onW = [];
+    for (const A of ATT) {
+      const { G, F, lines } = swing(A, FACE.N, true);
+      const mine = lines.filter((l) => l.name === A.want());
+      for (const l of mine) {
+        const fw = Math.sin(l.yaw), fz = Math.cos(l.yaw), mx = (l.a[0] + l.b[0]) / 2 - l.pos[0], mz = (l.a[2] + l.b[2]) / 2 - l.pos[1];
+        const ahead = mx * fw + mz * fz, ph = (l.t - l.rec.def.windup) / l.rec.def.active, hit = l.hitAt >= 0;
+        const near = offHim(G, l);
+        const r = ref(F, l.rec, l.kind === 1 ? l.t0 : -Infinity, l.kind === 1 ? l.t1 : Infinity);
+        const sa = scr(G, ...l.a), sb = scr(G, ...l.b), e = r ? ang(sb[0] - sa[0], sb[1] - sa[1], r[0], r[1]) : NaN;
+        const late = hit ? l.t - l.hitAt : NaN;
+        onW.push(`${A.tag} ${hit ? `+${(late * 1000).toFixed(0)}ms` : 'whiff'} ${Number.isFinite(e) ? e.toFixed(0) : '-'}° ${near.toFixed(2)} m off him`);
+        if (V) out(`     ${A.tag} on the wyrm: ${hit ? 'hit' : 'whiff'} err ${e.toFixed(1)}° ahead ${ahead.toFixed(2)} m at ${ph.toFixed(2)} of the active, ${(late * 1000).toFixed(0)} ms after the contact (attack clock)`);
+        if (!(e <= SLASHAIM_MAX)) bad.push(`${A.tag} on the wyrm ${e.toFixed(0)}°`);
+        if (A.heavy && !(ahead > 0.3 && ph >= 0)) bad.push(`${A.tag} on the wyrm: drawn ${ahead.toFixed(2)} m ahead at ${ph.toFixed(2)} of the active`);
+        // (never across him in the picture)
+        if (!(near >= 0.8)) bad.push(`${A.tag} on the wyrm: it passes ${near.toFixed(2)} m from his chest in the picture`);
+        if (hit && !(late >= 0 && (l.kind === 1 || late <= 0.12))) bad.push(`${A.tag} on the wyrm: drawn ${(late * 1000).toFixed(0)} ms after the contact`);
+      }
+      if (!mine.length) bad.push(`${A.tag} on the wyrm: no line`);
+    }
+    out(`   on the wyrm: ${onW.join(', ')}`);
+    assert(!bad.length, `every ending slash runs within ${SLASHAIM_MAX}° of the blade's path on the screen from all four sides (worst ${worst.toFixed(1)}°), the heavies' after the cut and ahead of him (${bad.slice(0, 8).join('; ') || 'all'})`);
+  } finally {
+    CO.setCombo(combo0);
+  }
+  return last;
+}
+
 // OFFHAND (ADR-240; the owner, 2026-11-26: "make the left hand look more natural and not stand out so much"):
 // `?offhand=side|back|quiet` (offHand.js). Under each, through the light combo's one-handed hits the free hand
 // hangs at its look's rest (p[sd] 1 in the swing, the free wrist within the arm's reach of its shoulder, no
@@ -15609,6 +15792,7 @@ const SCENARIOS = {
   wyrmlook: scenarioWyrmLook,
   herolife: pinAdr186(scenarioHeroLife),
   instantslash: scenarioInstantSlash,
+  slashaim: scenarioSlashAim,
   combos: scenarioCombos,
   planted: scenarioPlanted,
   feel: scenarioFeel,
