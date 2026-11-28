@@ -453,7 +453,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The parry → deathblow exchange readable to a watcher: a break beat, space, a clean contact, filmed (`?dbread=`, ADR-264)
 - [x] The deathblow not cut short: a guard press waits, it takes a perfect blue parry from the blade lock (`?dbLock=`, ADR-277)
 - [ ] The flurry's opening blink after a perfect dodge reads as a teleport with no cue: film it, options for the owner
-- [x] The parry press: a released guard never delays the next press (the wait from the press; ADR-276)
+- [x] The parry press: a released guard never delays the next press (the wait from the press; ADR-278)
 - [ ] Parries that read: the hero's perfect parry draws less than the boss's plain guard; options so the hero's
   parry, block and the boss's guard / deflect each read apart
 - [x] The owner's pick of `?dbread=` made the default (`all`)

@@ -1052,7 +1052,7 @@ at HANG with `execution: true` (`execDamage`, no slow-mo, no perfect-dodge event
 spent.
 **Parry and the deflect chain** (player side): an RMB press counts as a parry attempt only
 `DEFENSE.parryRearm` after the press before it (`rmb.pressT`; anti-mash, every press restarts it; from
-the press, not the release, ADR-276), except right after a successful parry: `_parry` sets
+the press, not the release, ADR-278), except right after a successful parry: `_parry` sets
 `rmb.chain`, so the next press counts as soon as RMB was released; every press clears it, so a whiffed
 press needs the full re-arm again (ADR-032). Parries ≤ `TUNE.deflectChainGap` (1.1 s) apart count up
 `deflect.n` (the blade snaps to alternating sides, the clash grows, `player:parry {chain}` raises

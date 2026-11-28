@@ -8060,3 +8060,26 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
   guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
   change is a combo where a lock was.
+
+## ADR-278 — The parry press: the anti-mash wait counts from the press, so a released guard is free (2026-11-28)
+
+- **Context:** the owner: the parry seems not instant like the dodge, "i dont parry until my guard animation
+  completes". The check never waits for an animation: the press time is stored the instant it comes and the blow
+  reads it. The anti-mash rule did it: a press counted only once the button had been UP `parryRearm` (0.25 s). Sims
+  on the Ash Disciple: a single tap 0.03 - 0.21 s before the blow parried; a guard held and let go 0.3 / 0.2 /
+  0.12 s before, then a tap on time, took the full hit (holding on would have blocked it), and so did a second tap
+  0.2 s after an early one. The dodge has no such rule. Offered: release free (the recommendation), every press
+  counts, or a mash only plain. The owner picked release free.
+- **Decision:** the wait counts from the last PRESS (`rmb.pressT`), not the release; every press restarts it, and a
+  successful parry still re-arms at once (ADR-032). Holding the guard any length and letting go never makes the next
+  press wait. `parryRearm` stays 0.25 s: the option as offered said 0.12 s, but at 0.12 s a steady eight taps a
+  second would count every press, and a 0.22 s window per press would parry every blow.
+- **Consequences:** hold, release and tap on time parries; a second tap 0.2 s after one that parried nothing still
+  waits (0.3 s apart parries); a mash 0.1 s apart parries nothing. The tap's own hold no longer adds to the wait
+  (presses are a few frames more forgiving than before). Checked by duel `parryrearm`; the strings' minimum gap
+  (`minHitGap` 0.45 s) is unchanged.
+  - **Open:** woke `pace` seed 99 phase 2 fails its longest-gap band (4.08 s against 3.5 s). Its steady defender
+    raises the guard on each flash and lets go 0.2 s after the blow; its re-press now counts, so it perfect-parries
+    4 of Xin Yi's shots (main: 1) and sends them back, and his cues pause. It is the hero's answer measured as his
+    pace. Two bot changes (holding the guard 0.35 s, for every blow or only for shots) moved the phase-2 cue ratio
+    under its 0.82 floor instead, so they were not kept. main fails the same suite on seeds 1, 2, 3 and 5.

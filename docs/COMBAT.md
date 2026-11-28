@@ -50,7 +50,7 @@ each actor's `tuning`.
    of a blue flare blow) are unchanged and come with a perfect parry too.
    Mashing is prevented: a press counts only `parryRearm` (0.25 s) after the press before it (every
    press restarts the wait; counted from the press, not the release, so a guard held and let go never
-   makes the next press wait: hold, release and tap on time parries; ADR-276) —
+   makes the next press wait: hold, release and tap on time parries; ADR-278) —
    **except right after a successful parry**: a deflect re-arms at once, so the next press counts as
    soon as RMB was released, even when the guard was held between blows (ADR-032). Quick presses that
    parry nothing keep the wait, so mashing still fails. Holding RMB after the press

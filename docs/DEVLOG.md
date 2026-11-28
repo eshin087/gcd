@@ -23,7 +23,16 @@ to cancel it; the streak's flurry teleports gcd with no cue.
   `training` now reseeds it per situation, beside `Math.random`.
 - **Also on main, fixed here:** duel `parryfx`'s "ten in a row: at most 48 sparks" failed on main too (51): it
   reads the live hero's streak through `?parryGrow=a` (cap 104 from tier 1). It now asks for the base spit (`grow: '0'`).
-- **The parry press and the parry sparks:** a second PR (`fix/parry-press`, ADR-275).
+- **The parry press (ADR-278):** the owner: the parry isn't instant like the dodge, it waits for the guard
+  animation. No animation wait; the anti-mash rule counted 0.25 s from the button's RELEASE, so a held guard let go
+  and a tap on time took the hit. Now from the last press (release is free; the owner's pick). Kept 0.25 s, not the
+  0.12 s the option offered: 0.12 s lets a steady mash parry every blow. New duel `parryrearm`.
+- **The parry's sparks:** the owner: not every parry shows the spark. No missing spawn: an audit wrapping the
+  effects over a 60 s fight drew 12 - 19 spark letters on every perfect parry. But since ADR-227 nearly every parry
+  is perfect, and since ADR-264's `?parryClash=c` a perfect parry draws no clash burst, only those one-letter
+  sparks (under 0.6 m, 0.12 - 0.44 s, under the bloom); a plain parry (0.20 - 0.22 s early) still throws the big
+  clash, and the boss's ordinary guard throws 33 glyphs and a ring. The better parry reads as no spark. Next: a look
+  pass with options so the hero's parry, his block, the boss's guard and the boss's deflect each read apart.
 - **Checked:** duel `deathblow` (new (g), (h)), `moments`, `clash`, `training`; fox `training`; asc `bare`; the full
   `npm test`.
 - **Open / next:** the flurry's opening blink. The owner means the START: right after the perfect dodge he vanishes
