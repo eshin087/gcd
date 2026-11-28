@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'The deathblow is not cut short',
+        notes: [
+          'Pressing guard during a deathblow no longer stops it. The guard comes up once the finisher lands.',
+          'A perfect parry of a blue blow now always earns the deathblow. It no longer turns into a blade lock.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
         notes: [
           'On a phone, one tap on a world, BEGIN HERE or BOSS RUSH now starts it: no more second tap.',

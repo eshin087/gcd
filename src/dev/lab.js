@@ -16,7 +16,7 @@ import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
 import { DB_FX, getDbFx, setDbFx } from '../combat/deathblowFx.js';
-import { DB_READ, dbReadMode, setDbRead } from '../entities/player/deathblow.js';
+import { DB_READ, dbReadMode, setDbRead, DB_LOCK, dbLockMode, setDbLock } from '../entities/player/deathblow.js';
 import { STRIKE_GAP, strikeGapMode, setStrikeGap } from '../entities/enemies/duelist/strikeGap.js';
 import { PARRY_CLASH, parryClashMode, setParryClash } from '../combat/perfectFx.js';
 import { BLUE_TELL_LOOK, blueTellMode, setBlueTell } from '../entities/enemies/duelist/fx.js';
@@ -1359,6 +1359,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.dbreadBtn.title = "the parry -> deathblow exchange made readable (?dbread=; ADR-264): a the break (he is thrown open, reeling, and the hero holds a beat before he steps in), b space (the hero strikes from 1.3 m and every blow drives him back), c a clean contact (the contact's flash smaller and off the wound, the exit burst thinner, his white hurt flash dim), all the three, 0 as before. Read at the parry";
+    this.ui.dbLockBtn = button(stkGrid, `dbLock ${dbLockMode()}`, () => {
+      const M = DB_LOCK.opts;
+      setDbLock(M[(M.indexOf(dbLockMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbLockBtn.title = "a perfect parry of a blue blow that would cross the blades (?dbLock=; ADR-274): combo, the deathblow combo takes it (he recoils, the combo follows); lock, the blade lock as before. Read at the parry";
     this.ui.strikeGapBtn = button(stkGrid, `strikeGap ${strikeGapMode()}`, () => {
       const M = STRIKE_GAP.opts;
       setStrikeGap(M[(M.indexOf(strikeGapMode()) + 1) % M.length]);
@@ -1658,6 +1664,7 @@ export class Lab {
     if (this.ui.riposteBtn) this.ui.riposteBtn.textContent = `riposte ${riposteMode()}`;
     if (this.ui.dbfxBtn) this.ui.dbfxBtn.textContent = `dbfx ${getDbFx()}`;
     if (this.ui.dbreadBtn) this.ui.dbreadBtn.textContent = `dbread ${dbReadMode()}`;
+    if (this.ui.dbLockBtn) this.ui.dbLockBtn.textContent = `dbLock ${dbLockMode()}`;
     if (this.ui.strikeGapBtn) this.ui.strikeGapBtn.textContent = `strikeGap ${strikeGapMode()}`;
     if (this.ui.parryClashBtn) this.ui.parryClashBtn.textContent = `parryClash ${parryClashMode()}`;
     if (this.ui.blueTellBtn) this.ui.blueTellBtn.textContent = `blueTell ${blueTellMode()}`;

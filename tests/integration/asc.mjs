@@ -4033,7 +4033,16 @@ const S = {
   timing: scenarioTiming,
   forms: scenarioForms,
   flare: scenarioFlare,
-  bare: scenarioBare,
+  // (its lock check: ?dbLock=lock, the deathblow does not take the perfect blue parry from the blade lock; ADR-274)
+  bare: async () => {
+    const M = await imp('src/entities/player/deathblow.js'), m0 = M.dbLockMode();
+    M.setDbLock('lock');
+    try {
+      return await scenarioBare();
+    } finally {
+      M.setDbLock(m0);
+    }
+  },
   engine: scenarioEngine,
   pace: scenarioPace,
   bounds: scenarioBounds,

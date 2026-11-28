@@ -51,6 +51,20 @@ const readHas = (k) => DB_READ.mode === 'all' || DB_READ.mode === k;
 /** The read's pieces on now: { beat (a), space (b), clean (c) }. */
 export const dbRead = () => ({ beat: readHas('a'), space: readHas('b'), clean: readHas('c') });
 
+// THE LOCK (`?dbLock=`, the Lab's `dbLock`; ADR-274): a PERFECT parry of a blue blow marked `lock` arms the combo
+// AND would cross the blades. 'combo' (the owner's pick, 2026-11-28): the combo has it, he recoils as from any blue
+// parry and the combo follows; 'lock': the blade lock as before (the combo is dropped once the hero locks).
+const LOCK_OPTS = ['combo', 'lock'];
+export const DBLOCK_DEFAULT = 'combo';
+export const DB_LOCK = { opts: LOCK_OPTS, mode: LOCK_OPTS.includes(q('dbLock')) ? q('dbLock') : DBLOCK_DEFAULT };
+export const dbLockMode = () => DB_LOCK.mode;
+export const setDbLock = (m) => (DB_LOCK.mode = LOCK_OPTS.includes(m) ? m : DBLOCK_DEFAULT);
+/** Does the combo the hero's parry just armed take this parry from `att`'s blade lock? (player.deathblowClaims) */
+export function deathblowClaims(P, att) {
+  const S = P?.db;
+  return DB_LOCK.mode === 'combo' && !!att && S?.phase === 'watch' && S.blue === true && S.att === att;
+}
+
 const PATH_MAX = 16; // the blade tip's world points kept for the hit effect (`path`)
 const SAMPLES = 8; // the blade tip's screen samples kept (a ring), for the swing's angles
 

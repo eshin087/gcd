@@ -4459,6 +4459,8 @@ async function scenarioDeathblow() {
         if (p.flurry?.on) t.flurry = true;
         if (p.quickUntil > game.time) t.quick = true;
         if (o.press && t.quick && !pressedAtk && p.quickUntil > game.time && p.state !== 'attack') { pressedAtk = true; input.click(0); }
+        // (the guard mashed through the combo: a press every third frame)
+        if (o.guard && p.db.phase === 'combo' && ((game.realTime * 60) | 0) % 3 === 0) { input.up(1); input.click(1); t.guarded = (t.guarded | 0) + 1; }
         if (p.atk?.quick) t.atk = true;
         if (p.atk && p.atk !== lastAtk && p.atk.rip?.db) { lastAtk = p.atk; t.winds.push(p.atk.def.windup); }
         if (d.broken) t.brokenAny = true;
@@ -4564,6 +4566,28 @@ async function scenarioDeathblow() {
     out(`   (e) ${mode}: streak events ${t.streaks.join(',')} · parryRun ${t.runAfter} · art ${t.ev?.art}`);
     assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(e) ${mode}: the parry counts in the streak, no deathblow`);
     if (mode === 'planted') assert(t.ghost < 0.05, '(e) planted: the single cut takes no cold cast (' + t.ghost.toFixed(2) + ')');
+  }
+  // (g) the guard mashed through the combo (ADR-274): it never cuts the combo short (it ended it at once, nothing dealt)
+  {
+    const t = take('deathblow', { near: true, run: 2, guard: true });
+    out(`   (g) guard mashed: presses ${t.guarded | 0} · hits ${t.hits.length} · states ${[...t.states].join(',')}`);
+    assert((t.guarded | 0) >= 5, `(g) the guard was pressed through the combo (${t.guarded | 0} presses)`);
+    combo('(g) guard mashed', t, 3);
+  }
+  // (h) a PERFECT parry of a blue blow marked `lock` (Falling Ash): the combo takes it from the blade lock (?dbLock=combo,
+  // ADR-274); ?dbLock=lock: the lock as before, no combo
+  {
+    const DBM = await imp('src/entities/player/deathblow.js');
+    const t = take('deathblow', { move: 'fallingAsh', run: 3, secs: 6, posture: 20 });
+    out(`   (h) blue lock blow, perfect: parry ${JSON.stringify({ tell: t.parry?.tell, perfect: t.parry?.perfect })} · states ${[...t.states].join(',')} · hits ${t.hits.length}`);
+    assert(t.parry?.perfect === true && t.parry.tell === 'blue', '(h) a perfect parry of a blue blow');
+    assert(!t.states.has('lock') && !!t.ev, `(h) no blade lock: the combo came (states ${[...t.states].join(',')})`);
+    if (t.ev) combo('(h) blue lock blow', t, 4);
+    DBM.setDbLock('lock');
+    const L = take('deathblow', { move: 'fallingAsh', run: 3, secs: 2.5, posture: 20, until: () => false });
+    DBM.setDbLock(DBM.DBLOCK_DEFAULT);
+    out(`   (h) dbLock=lock: states ${[...L.states].join(',')} · combo ${L.ev?.art ?? 'none'}`);
+    assert(L.parry?.perfect === true && L.states.has('lock') && !L.ev, `(h) dbLock=lock: the blades lock, no combo (states ${[...L.states].join(',')})`);
   }
   // (f) THE READ (?dbread=, ADR-264): a the break, b space, c a clean contact, all. The same blows and damage as today
   // (combo's own checks less the disc and the spacing, which a and b change on purpose), and each piece does its one thing
@@ -5869,7 +5893,16 @@ const SCENARIOS = {
   fxlooks: scenarioFxLooks,
   telemetry: scenarioTelemetry,
   heavy: scenarioHeavy,
-  moments: scenarioMoments,
+  // (the blade lock's own checks: ?dbLock=lock, the deathblow does not take the perfect blue parry from it; ADR-274)
+  moments: async () => {
+    const M = await imp('src/entities/player/deathblow.js'), m0 = M.dbLockMode();
+    M.setDbLock('lock');
+    try {
+      return await scenarioMoments();
+    } finally {
+      M.setDbLock(m0);
+    }
+  },
   // (a boss-AI check, measured with the flurry before the dodge looks: the Thunder Thrust's held lunge
   // keeps the hero by him longer, and the seeded fight runs another way)
   pressure: async () => {
