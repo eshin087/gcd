@@ -28,6 +28,19 @@ strike, unrealistic attacks; every attack readable; his spell effects are the ba
 **Picked** (2026-11-27, from the films): both switches `a`, the default; his windups stay PBZ-fast. Open: Hand to Hand's opening jab's lead foot
 jumps 0.43 m in a frame (on main too; `anim.js _feetClip`, the hero session's file). His windups stay PBZ-fast
 (0.42 s first blows), under the audit brief's 0.7 s floor: the owner kept it.
+## 2026-11-27 — The clash dance is the default (ADR-247; branch `claude/combat-clash-dance-default`)
+
+**Owner:** watched the three films of PR 175 (today against the dance: Shen Hui, the Starless Lord, Xin Yi) and said
+"Make it default".
+
+**What changed:** `DEFAULT_CLASH` is 'dance' (combat/clashDance.js): the game plays the clash dance with no switch;
+`?clash=0` and the Lab's `clash` row `old` give the numbers before. As the flash chain does, the headless sims keep it
+off unless a scenario sets it (their posture checks were written for the old numbers); duel `clashdance` now also
+checks the default. CHANGELOG / WHAT'S NEW: the entry moved to the top as a change; COMBAT, ARCHITECTURE, ROADMAP,
+ADR-247 (an update) say so.
+
+**Open:** the ring by ear on the owner's devices (the films had no sound).
+
 ## 2026-11-27 — Blows land on what they strike (ADR-259; branch `claude/contact-motion-246eeb`)
 
 **Goal:** the owner's contact pass: every hit, deflect, guard, parry and deadly blow should look like it strikes the

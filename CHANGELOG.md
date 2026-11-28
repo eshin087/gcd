@@ -12,6 +12,12 @@ One hundred and thirty-seven pieces of work since 0.4.0:
   or both fists come down short so the heel and fists land on you, not him. Paper Rain ends on a backfist, so the
   uppercut is only ever the blue flare. Timings, tells and numbers unchanged. `?foxLimbs=0` / `?foxCues=0` play him as
   before.
+- **The clash dance: parries in a row break him faster** (2026-11-27, ADR-247). *Changed (the owner's pick from the
+  film):* against the human bosses, parries in a row inside one of his strings pay more posture each (x1, x1.25,
+  x1.5, then x1.75); the run starts over when his string ends, when a blow lands on you, or after a pause. The
+  parry's ring rises a little with the run, and his posture recovers more slowly as his health drops (full speed
+  above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin Yi this
+  replaces their own curve, never faster than before). `?clash=0` (the Lab's `clash` row) plays as before.
 - **Shen Hui fights with better form** (2026-11-26, ADR-250). *Changed (the owner's pick; `?ashForm=0` as before):* his thrusts
   land on a straight arm with the point on its line, out of a real lunge (front knee bent, back leg long); his
   overheads come down one-handed on a diagonal across you instead of straight down; his low sweeps turn on his feet
@@ -94,12 +100,6 @@ One hundred and thirty-seven pieces of work since 0.4.0:
   his meteor's landing send a crisp ring of air racing out with the dust shoved ahead of it (`?halShock=0` the dust
   front before, `b` a dome of pressure). *Added, not the default:* `?halPace=a`, COMBAT rule 10's slower pace (the owner
   kept his fast one). The Lab's LOOKS rows for all four.
-- **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
-  `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
-  x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a
-  pause; the parry's ring rises a little with the run; and his posture recovers more slowly as his health drops
-  (full speed above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin
-  Yi this replaces their own curve, never faster than before). `?clash=0` or no switch: as before.
 - **Bai Wuji glides: quicker, one-handed, and his barrier opens easier** (2026-11-27, ADR-250). *Changed:* Bai Wuji's kicks and punches are
   rebuilt by hand: his legs land straight, his hands stay in his pockets for most of phase 1 (one comes out in
   phase 2, both in phase 3), normal blows snap out of the stance, blue and red ones hold a pose you can read, and

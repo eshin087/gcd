@@ -1031,7 +1031,7 @@ the clang); each parry slides him `TUNE.deflectPush` 0.16 m back (×1.6 for blue
 the guard lingers (`guardHold` eases 1 → 0 over `TUNE.guardLinger` [0.32, 0.6] s after the last one).
 `player:parry.chain` is the hero's own rhythm count and can run across two strings; the HUD's
 "DEFLECT ×N" uses the attacker's `combat:deflectChain` (one string).
-**The clash dance** (`?clash=dance`, `combat/clashDance.js`, ADR-247; off by default): a duelist keeps the run of
+**The clash dance** (`combat/clashDance.js`, ADR-247; the game's default, `?clash=0` off; the headless sims keep it off unless a scenario sets it): a duelist keeps the run of
 parries inside one of his moves on `_clash {act, n, t, hurt}`. `clashPeek()` gives the run a parry would make now
 (0: off) and the hero reads it in `_parry` for `player:parry {clash}` (audio.js rings it a little higher and
 louder: `clashRing`); `onParried` (and Halcyon's crash) counts it in `_clashMult()` and multiplies the parry's
@@ -6409,7 +6409,7 @@ Player → hud/audio/fx/flow:
   light, sweep, point, slam, cleave or execute; the plunge's has neither; shards = true when only the slam's ground
   shards hit (the blade is in the ground: weight null, no cut drawn, no blade sound)), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
-  `player:block {damage, tell}`, `player:parry {tell, attack, chain, clash, light, perfect, last, flare}` (clash = the clash dance's run this parry makes on a duelist, 0 with `?clash=dance` off or no duelist's blade / body, ADR-247; flare = the blow was a parry moment, a blue flare blow: the counter follows; last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
+  `player:block {damage, tell}`, `player:parry {tell, attack, chain, clash, light, perfect, last, flare}` (clash = the clash dance's run this parry makes on a duelist, 0 with the dance off (`?clash=0`) or no duelist's blade / body, ADR-247; flare = the blow was a parry moment, a blue flare blow: the counter follows; last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
   `player:guardOpen {attack, black}` (black = a black, charged, blow met on the guard or a parry: the whole meter at once, ADR-118; else the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a

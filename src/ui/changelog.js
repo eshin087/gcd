@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: 'The clash dance: parries in a row break him faster',
+        notes: [
+          'Against the human bosses, every parry in a row inside one of his strings breaks his posture faster than the last, and the clash of steel rings a little higher with each one.',
+          'His posture also recovers more slowly the more you have cut his health, so a near break stays near.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'Blows land on what they strike',
         notes: [
           'Every hit, block and guard now lands on what it strikes: the blade bites in, a fist lands on the body, held through the freeze, then the swing carries on, with the sparks where the two met and the struck part flinching by where it was hit.',
@@ -106,14 +114,6 @@ export const RELEASES = [
           'The Ash Disciple thrusts on a straight arm out of a real lunge, brings his overheads down one-handed on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quiet and lands his front foot with the blade. Same timings, same cues.',
           'Heaven-Splitting Fall is a real jump now: he tucks high with the blade raised, reaches his legs down and lands into the cut.',
           'Ember Whirl raises a cyclone of fire round him, and Heaven-Splitting Fall splits the floor in fire ahead of and behind him.',
-        ],
-      },
-      {
-        date: '2026-11-26',
-        title: 'The clash dance, to try',
-        notes: [
-          'Add ?clash=dance to the address to try it against the human bosses: parries in a row inside one of his strings break his posture faster, and the clash of steel rings a little higher with each one.',
-          'His posture also recovers more slowly the more you have cut his health, so a near break stays near.',
         ],
       },
       {
