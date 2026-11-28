@@ -25,6 +25,7 @@ export const RELEASES = [
           'Your free hand stays out in front of you, where you can see it, instead of hiding behind your back.',
           'The fourth hit is a level thrust straight at the foe, not a stab at the sky.',
           'The slash each swing leaves now runs the way your blade went from every side, comes right after the cut, is softer, and never lies across you: the heavy and the charged cleave no longer draw theirs over your back.',
+          'On the last hit of the combo the cloak no longer flicks out at your sides, and your free hand moves smoothly onto the grip.',
         ],
       },
       {

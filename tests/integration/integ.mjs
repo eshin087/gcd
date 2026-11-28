@@ -6354,12 +6354,28 @@ async function scenarioPlanted() {
     const Fl = new THREE.Vector3(), Fr = new THREE.Vector3(), Fl0 = new THREE.Vector3(), Fr0 = new THREE.Vector3();
     const hits = [], starts = [], leads = [];
     let feet = 0, lift = 0, have = false, seen = 0, n14 = 0, pokeEl = 0, pokeN = 0, prevCombo = 0;
+    // (the cloth: what a frozen frame (dt 0, a hit-stop's first) moved of it; the front skirt panels' swing out
+    // and the free wrist's fastest frame in hit 5)
+    let frozenMove = 0, frozenN = 0, panelOut = 0, wrist5 = 0;
+    const Wl = new THREE.Vector3(), Wl0 = new THREE.Vector3();
+    const clothOf = () => A.streamState.flatMap((q) => q.segs.flatMap((c) => [c.x, c.z])).concat(A.coatState.flatMap((q) => q.flatMap((c) => [c.x, c.z])));
     G.watch = (nn) => { if (nn === 'player:hitDragon') hits.push(p.atk?.def?.combo); };
     const plan = [0, 0.42, 0.84, 1.26, 1.68];
     for (let i = 0, N = Math.round(2.9 / DT); i < N; i++) {
       if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
+      const cl0 = clothOf();
+      r.root.worldToLocal(Wl0.setFromMatrixPosition(r.arms.L.wrist.matrixWorld)); // (in his own frame: not his step in)
       G.tick(DT);
       const combo = p.state === 'attack' ? p.atk?.def?.combo ?? 0 : 0;
+      if (A.frameDt === 0) {
+        const cl1 = clothOf();
+        frozenN++;
+        for (let j = 0; j < cl1.length; j++) frozenMove = Math.max(frozenMove, Math.abs(cl1[j] - cl0[j]));
+      }
+      if (combo === 5) {
+        panelOut = Math.max(panelOut, -A.coatState[0][0].x, -A.coatState[1][0].x);
+        if (p.atk.t < p.atk.def.windup) wrist5 = Math.max(wrist5, r.root.worldToLocal(Wl.setFromMatrixPosition(r.arms.L.wrist.matrixWorld)).distanceTo(Wl0) / (p.drawScale || 1));
+      }
       inv.copy(r.root.matrixWorld).invert();
       const sc = 1 / (p.drawScale || 1);
       if (combo && combo !== prevCombo) {
@@ -6389,8 +6405,18 @@ async function scenarioPlanted() {
       }
     }
     G.watch = null;
+    {
+      // a frozen frame (dt 0: a hit-stop's first comes so in the game) leaves the cloth where it is: the
+      // cloth's passes with dt 0 outside a reset
+      const c0 = clothOf();
+      A._coat(0);
+      A._streamers(0);
+      const c1 = clothOf();
+      frozenN++;
+      for (let j = 0; j < c1.length; j++) frozenMove = Math.max(frozenMove, Math.abs(c1[j] - c0[j]));
+    }
     const legs = starts.slice(1).map((s, i) => Math.hypot(s[1] - starts[i][1], s[2] - starts[i][2]));
-    return { hits: [...new Set(hits)], legs, feet, lift, leads, seen: n14 ? seen / n14 : 0, pokeEl, pokeN, lunge: CB.LIGHT.map((x) => x.lunge) };
+    return { hits: [...new Set(hits)], legs, feet, lift, leads, seen: n14 ? seen / n14 : 0, pokeEl, pokeN, lunge: CB.LIGHT.map((x) => x.lunge), frozenMove, frozenN, panelOut, wrist5 };
   };
   try {
     const nw = play('1', '1', 'auto'), old = play('0', '0', 'back');
@@ -6401,6 +6427,9 @@ async function scenarioPlanted() {
     assert(nw.feet <= 0.45 * old.feet, `planted, his feet travel ${nw.feet.toFixed(2)} m through hits 1-4 (<= 45 % of before, ${old.feet.toFixed(2)} m)`);
     assert(nw.leads.length >= 5 && nw.leads.every((x) => x === nw.leads[0]) && nw.lift <= 0.13, `planted, the lead foot stays the lead foot (${nw.leads.join('')}; before ${old.leads.join('')}) and no foot lifts past ${(nw.lift * 100).toFixed(1)} cm (<= 13 cm, the ankle's own height included)`);
     assert(nw.pokeN > 4 && nw.pokeEl <= 10 && old.pokeEl >= 25, `hit 4 is a level poke: the blade within ${nw.pokeEl.toFixed(1)} deg of level through its cut (<= 10; the rising thrust ${old.pokeEl.toFixed(1)})`);
+    // (the owner, 2026-11-27: on hit 5 the cloak's outer pieces "makes it seem like its the left hand")
+    assert(nw.frozenN >= 1 && nw.frozenMove === 0, `a frozen frame (a hit-stop's first, dt 0; ${nw.frozenN} of them) moves no cloth: at most ${nw.frozenMove.toFixed(3)} rad (it snapped every cape sheet onto its target)`);
+    assert(nw.panelOut <= 0.7 && nw.wrist5 <= 0.18, `hit 5: the front skirt panels swing out at most ${nw.panelOut.toFixed(2)} rad (<= 0.7: the front knee threw one out to 1.0), the free hand onto the grip at most ${(nw.wrist5 * 100).toFixed(1)} cm a frame in his frame (<= 18; 29 without TWO_IN)`);
     assert(nw.seen >= 0.5 && old.seen <= 0.2, `from behind, the free hand stands clear of his body in ${(nw.seen * 100).toFixed(0)} % of hits 1-4 (>= 50 %; behind his back ${(old.seen * 100).toFixed(0)} %)`);
   } finally {
     CO.setPlant(plant0);

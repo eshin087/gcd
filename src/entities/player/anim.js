@@ -984,6 +984,13 @@ function swingPose(p, A, k, t, W, Ac, R) {
       if (g !== 1) p[T.ch] *= 1 + (g - 1) * gIn;
     }
   }
+  // (planted, combos.js `plant`: the clips' sinks were keyed for a long stride; on the stance he keeps, the
+  // same drop folds the knees far forward (the front knee pushed the front skirt panel out 57 degrees in hit
+  // 5) and bobs him up and down hit to hit. Past PLANT.sink[0] m down, only PLANT.sink[1] of the rest)
+  if (k.feet === 'plant') {
+    const y = p[P.bodyY], d0 = PLANT.sink[0];
+    if (y < -d0) p[P.bodyY] = -d0 + (y + d0) * PLANT.sink[1];
+  }
   const H = C.hand;
   if (H && u < H.U[1]) {
     // the sword hand's way to the coil comes round in FRONT of his chest: a straight line from one
@@ -1147,6 +1154,13 @@ function attackPose(p, A) {
   if (k.kind === 'clip' && A.freeHand) {
     const L = offHandLook();
     if (L && !swingClip(k.clip)?.two) sideHand(p, 0, p, L);
+    // (a two-handed blow out of a hand held at its look's rest: the second hand reaches the grip over
+    // TWO_IN s at least. The snap feel's early windup put half the way from the guard to the grip into one
+    // frame, 31 cm, and the sleeve on that arm whipped after it)
+    else if (L && swingClip(k.clip)?.two) {
+      const e = clamp(t / TWO_IN, 0, 1);
+      p[P.twoHand] *= e * e * (3 - 2 * e);
+    }
   }
 }
 
@@ -1179,6 +1193,7 @@ function sideHand(p, b, D, L) {
 // the blade that bit it holds (× bite), the grip's pull (m), the hips' drop (m), the chest's fold
 // and the head's nod (rad). × the def's `bite` (combat.js; default 1)
 const BITE = { dur: 0.08, drag: 0.6, grip: 0.03, sink: 0.045, lean: 0.1, nod: 0.08 };
+const TWO_IN = 0.2; // s: the least a second hand takes from a look's rest to the grip (attackPose)
 const ATK_INERTIA = 0.35; // × A.leanF (rad): the chest's pitch from the root's step in an attack
 /** Turn the whole pose `yaw` rad about the root (+ = to his left). The feet are planted: they pivot
  *  on their balls where they stand, the heels up as the turn grows. (Their spots used to turn round
@@ -1341,7 +1356,7 @@ const HOME_WAY = { d: -3, ok: false }; // dirLerp memory: the recovery's way hom
  *  same over PLANT.follow s (送り足, the following foot); each keeps its yaw. Nothing crosses, and the lead foot
  *  stays the lead foot hit after hit. Where the step in is long (the assist reaching for a foe out of reach,
  *  past PLANT.max m) it is a real stride: lungeFeet (plantedNow decides that once per swing). */
-const PLANT = { max: 0.45, lift: 0.12, liftMax: 0.045, follow: 0.12, lag: 0.02, flat: 0.55 };
+const PLANT = { max: Infinity, lift: 0.12, liftMax: 0.1, follow: 0.12, lag: 0.02, flat: 0.55, sink: [0.17, 0.45] };
 /** Plant this swing's feet? Decided once, as soon as the swing's step in is known (player.js atk.lunge). */
 function plantedNow(A) {
   if (A.planted === 1) return true;
@@ -2898,6 +2913,12 @@ const STRIP_A = [-1.5, 0.8], STRIP_B = 0.8, STRIP_FLOOR = 0.03;
 // sleeve streamers: two-segment springs that stream back almost horizontally when running
 const STREAM_K = [55, 40], STREAM_C = [6, 4.5], STREAM_LAG = [0.3, 0.4], STREAM_OUT = 0.36;
 const STREAM_A = 2.6, STREAM_B = 1.3;
+// THE CLOTH IN AN ATTACK (the hero only, `freeHand`; the owner, 2026-11-27: on hit 5 "the left and right most
+// hanging piece of the cloak movement and animation makes it seem like its the left hand"): the sleeve
+// streamers (an `arm` streamer) trail the arm's speed `armLag` as much and swing at most `armMax` rad from
+// hanging, the cape sheets trail `lag` as much; eased in and out at `rate` /s. Their whip through a
+// two-handed blow stood them out from his sides like limbs.
+const CLOTH_CALM = { rate: 10, armLag: 0.3, armMax: 1.0, lag: 0.7 };
 // a streamer with `floor` (a head ribbon, a long scarf) keeps its segments' ends this high (m, world)
 // while he rolls or falls: the forward roll puts his crown at the grass
 const STREAM_FLOOR = 0.02;
@@ -3144,6 +3165,8 @@ export class HeroAnimator {
     // radius about the root (a, r: right, left; model)
     this.hop = { set: false, yaw: 0, a: new Float32Array(2), r: new Float32Array(2) };
     this.plantAt = { x: 0, z: 0, ok: false }; // lungeFeet: the front spot the stepping foot planted on
+    this.clothCalm = 0; // _streamers: 0..1, how far the hero's cloth is calmed for an attack (CLOTH_CALM)
+    this.clothSnap = false; // reset(): the cloth's springs snap onto their targets (never on a frozen frame)
     this.planted = -1; // plantFeet: this swing's feet planted (1), a real stride (0), not decided yet (−1)
     this.holdOff = { x: 0, z: 0 }; // lungeFeet: how far the holding foot has been dragged (model)
     this.footDrag = 0; // lungeFeet (tests read it): bit 1 = the right toe drags, 2 = the left
@@ -3324,9 +3347,13 @@ export class HeroAnimator {
     this.frameDt = 0;
     this.elbowR.ok = this.elbowL.ok = false;
     this.apply(this.cur);
+    // (a reset snaps the cloth onto its rest: clothSnap. A hit-stop's first frame also comes with dt 0, and
+    // snapped every cape sheet and torn strip to its target in one frame: 58 cm on a heavy blow)
+    this.clothSnap = true;
     this._coat(0);
     this._hair(0);
     this._streamers(0);
+    this.clothSnap = false;
     this.rig.root.updateMatrixWorld(true);
   }
 
@@ -4907,7 +4934,8 @@ export class HeroAnimator {
     const r = this.rig;
     const steps = dt > 0 ? Math.min(8, Math.ceil(dt / (1 / 120))) : 0;
     const h = steps ? dt / steps : 0;
-    const dtk = dt > 0 ? dt * 60 : 100; // frames this step (rate limits); a reset snaps
+    // frames this step (rate limits); a reset snaps (clothSnap), a frozen frame (a hit-stop's first, dt 0) moves nothing
+    const dtk = dt > 0 ? dt * 60 : this.clothSnap ? 100 : 0;
     r.pelvis.getWorldQuaternion(_qPelvis);
     _qInv.copy(_qPelvis).invert();
     _g.set(0, -1, 0).applyQuaternion(_qInv); // gravity in pelvis space
@@ -5171,7 +5199,7 @@ export class HeroAnimator {
         c.x += c.vx * h;
         c.z += c.vz * h;
       }
-      if (!Number.isFinite(c.x + c.z + c.vx + c.vz) || h === 0) {
+      if (!Number.isFinite(c.x + c.z + c.vx + c.vz) || (h === 0 && this.clothSnap)) {
         c.x = tA;
         c.z = tB;
         c.vx = c.vz = 0;
@@ -5228,6 +5256,10 @@ export class HeroAnimator {
     // how far the torso is from upright (0 standing … 1 at 70° or more)
     const tumble = smoothstep(0.75, 0.3, _e.set(0, 1, 0).applyQuaternion(r.chest.getWorldQuaternion(_q1)).y);
     const lying = tumble >= 1 && LYING_KEYS.has(this.key);
+    // (the hero's cloth in an attack, CLOTH_CALM: eased in and out, never a step)
+    const atk = this.freeHand && this.key === 'attack' ? 1 : 0;
+    this.clothCalm += (atk - this.clothCalm) * (dt > 0 ? 1 - Math.exp(-CLOTH_CALM.rate * dt) : 0);
+    const cm = clamp(fin(this.clothCalm, 0), 0, 1);
     for (let i = 0; i < r.streamers.length; i++) {
       const S = r.streamers[i], st = this.streamState[i];
       const j0 = S.segs[0];
@@ -5256,10 +5288,10 @@ export class HeroAnimator {
       const so = (S.out ?? STREAM_OUT) + this.updraft * UPDRAFT_STREAM[0] * lerp(UPDRAFT_STREAM[1], 1, right) + (bz ? bz[0] * bw * (0.5 + 0.5 * Math.sin(this.time * bz[1] + i * 1.3)) : 0);
       // a sheet's own weight: `lag` < 1 trails less (the heavy cloak hangs ~40° back at a run, where
       // a light ribbon streams out level)
-      const lg = S.lag ?? 1;
+      const lg = (S.lag ?? 1) * lerp(1, S.arm ? CLOTH_CALM.armLag : CLOTH_CALM.lag, cm);
       // … and its own swing limit: `max` rad from hanging (a ribbon may whip up past level, 2.6;
       // the cloak stops near level, so a whirl or a lunge never stands a sheet up over his head)
-      const mA = S.max ?? STREAM_A;
+      const mA0 = S.max ?? STREAM_A, mA = S.arm && cm > 0 ? lerp(mA0, Math.min(mA0, CLOTH_CALM.armMax), cm) : mA0;
       _so.copy(_w); // this segment's root (world)
       // `floor`: rolling or falling (not lying: _layFlat), the segments' ends stay over the grass. In
       // drawn metres (the root's world scale: the hero is drawn larger than his model)
@@ -5301,7 +5333,7 @@ export class HeroAnimator {
           c.x += c.vx * h;
           c.z += c.vz * h;
         }
-        if (!Number.isFinite(c.x + c.z + c.vx + c.vz) || h === 0) {
+        if (!Number.isFinite(c.x + c.z + c.vx + c.vz) || (h === 0 && this.clothSnap)) {
           c.x = tA;
           c.z = tB;
           c.vx = c.vz = 0;
