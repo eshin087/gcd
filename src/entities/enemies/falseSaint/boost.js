@@ -438,7 +438,12 @@ export class FsBoost {
       p.y = Math.max(0, p.y - dt * 4);
     }
     if (pl) pl.fsHoverK = k ? Math.min(1, fin(pl.fsHoverK) + dt * 5) : Math.max(0, fin(pl.fsHoverK) - dt * 6);
-    d.fsThrustK = Math.max(pl?.fsHoverK ?? 0, this.step ? 1 : 0, p.y > 0.4 ? 1 : 0);
+    const J = this.jets;
+    d.fsThrustK = Math.max(pl?.fsHoverK ?? 0, this.step ? 1 : 0, p.y > 0.4 ? 1 : 0, J.back || 0, J.calfR || 0, J.calfL || 0);
+    // the body reads one value per side for the elbow boosters (look.js FS_WEAPON_KEYS) and the core
+    d.fsJetR = J.elbowR || 0;
+    d.fsJetL = J.elbowL || 0;
+    d.fsCoreK = Math.max(d.fsCoreK || 0, J.core || 0);
   }
 
   /** A beat of this move holds him in the air (a lift, the dive, a pass). */
