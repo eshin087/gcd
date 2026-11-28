@@ -686,13 +686,13 @@ export class PlayerFx {
    * (combat.js), C = player._cut (the blade's travel and direction there) or null (the cut's line
    * then falls back across the blade), crit, k = the charge. Returns the spawn count.
    */
-  contact(p, tier, C, crit = false, k = 0) {
+  contact(p, tier, C, crit = false, k = 0, lite = false) {
     if (!p || !this.add) return 0;
     const o = this._co ?? (this._co = { tier, cut: { x: 0, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 0 }, hilt: null, crit, power: 0, low: false, target: null });
     o.tier = tier;
     o.crit = !!crit;
     o.power = k;
-    o.low = this.game.settings?.quality === 0;
+    o.low = this.game.settings?.quality === 0 || lite === true; // (lite: the low quality's lighter burst; the deathblow's clean contact)
     if (C) {
       o.cut.x = C.cx; o.cut.y = C.cy; o.cut.z = C.cz;
       o.edge.x = C.ex; o.edge.y = C.ey; o.edge.z = C.ez;

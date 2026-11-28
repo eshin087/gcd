@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: 'The parry and the deathblow, readable',
+        notes: [
+          'Three ways to see what happens between your parry and the deathblow it starts, to try before one becomes the default: ?dbread=a, the boss is thrown open and you hold a beat before you step in; ?dbread=b, you strike from further and every blow drives him back; ?dbread=c, the flash at each cut no longer covers the wound; ?dbread=all, the three.',
+          'The blows and their damage are the same in every one.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'The clash dance: parries in a row break him faster',
         notes: [
           'Against the human bosses, every parry in a row inside one of his strings breaks his posture faster than the last, and the clash of steel rings a little higher with each one.',

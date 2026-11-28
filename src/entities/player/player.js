@@ -3609,7 +3609,8 @@ export class Player {
         // the long cyan streak behind the driving point
         if (t >= W && prevT <= end + 0.02) {
           sw.point(1, this._tip);
-          this.fx.thrustStreak(this._tipPrev, this._tip, a.charge, crit);
+          // (the deathblow's clean contact, ?dbread=c: its finisher's thrust draws no white streak over him; Shatter Web draws the line)
+          if (!(a.rip?.db && this.db.rc)) this.fx.thrustStreak(this._tipPrev, this._tip, a.charge, crit);
           this._tipPrev.copy(this._tip);
         }
       } else if (d.kind === 'slam' && !a.impact && t >= end - 0.02) {
@@ -3881,7 +3882,7 @@ export class Player {
     if (pm > 0) this.game.punch?.(pm);
     const km = feel(d.kick, k) * (crit ? HF.kick : 1);
     if (km > 0 && C) this.game.kick?.(C.cx, C.cy, C.cz, km);
-    if (!viaShards) this.fx.contact(point, d.contact ?? 'light', C, crit || dr.broken === true, k);
+    if (!viaShards) this.fx.contact(point, d.contact ?? 'light', C, crit || dr.broken === true, k, !!(a.rip?.db && this.db.rc)); // (the deathblow's clean contact: the light burst)
     if (C) this._edgeFlash(C, heavy, crit, d.glint === 'ridge');
     if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);    if (a.rip) (a.rip.db ? deathblowLanded : riposteCutLanded)(this, dealt);
   }

@@ -80,6 +80,11 @@ export const DBFX_TUNE = Object.freeze({
   stroke: 0.35,
   tick: 0.12,
   flash: Object.freeze({ budget: 280, life: 0.08, lifeLast: 0.1, px: 12, pull: 2.5, minY: 0.6, hero: Object.freeze({ rx: 0.24, foot: 0.05, head: 1.7, pad: 0.04 }) }),
+  // the deathblow's read c (`?dbread=c|all`, ADR-264; o.clean): the flash `flash` x as wide, moved `offset` m out of
+  // his far side along the blow (the wound itself left in sight) and aged on the real clock (gone in the hit-pause's
+  // first frames, not held through it); the exit burst's spray `burst` x as many, its tip streak `tip` x as long and held
+  // `tipHold` x as long
+  clean: Object.freeze({ flash: 0.45, offset: 0.7, burst: 0.4, tip: 0.6, tipHold: 0.5 }),
   blood: Object.freeze({ spray: 14, sprayMax: 24, sprayLast: 40, slow: 0.15, streak: 0.6, streakLast: 0.8, pools: 480, poolSoft: 0.08, poolLift: 0.08 }),
   ramps: Object.freeze([
     Object.freeze([[0, 0.55, 0.27, 0.06], [0.3, 0.52, 0.17, 0.025], [0.65, 0.32, 0.07, 0.012], [1, 0.13, 0.02, 0.005]].map(Object.freeze)),
@@ -94,7 +99,7 @@ export const DBFX_TUNE = Object.freeze({
 /** What the effect did (tests read it; reused). */
 export const DBFX_LAST = {
   hits: 0, mode: 'a', spawned: 0, alive: 0, peak: 0, flash: 0, heatCells: 0, maxCh: 0, white: 0, bad: 0, drawn: 0, snapped: 0,
-  blood: 0, pools: 0, ts: 1, src: '', slash: [0, 0, 0, 0, 0, 0], pathS: [0, 0], looksSpawned: 0,
+  blood: 0, pools: 0, ts: 1, src: '', slash: [0, 0, 0, 0, 0, 0], pathS: [0, 0], looksSpawned: 0, clean: false,
 };
 
 // ---- the letters' pool: one record of F floats
@@ -176,7 +181,8 @@ const stepAlong = (ang, cellM, rowM) => 1 / Math.max(Math.abs(Math.cos(ang)) / c
 
 // ---- the heat flashes (the body of a blow): pooled, one copy of each alive per frame
 const NF = 4;
-const flashes = Array.from({ length: NF }, () => ({ alive: false, x: 0, y: 0, z: 0, mpp0: 0.025, age: 0, life: 0.08, shape: 0, rad: 2, heat: 0.7, rim: 0.4, kind: 0 }));
+const flashes = Array.from({ length: NF }, () => ({ alive: false, x: 0, y: 0, z: 0, mpp0: 0.025, age: 0, life: 0.08, shape: 0, rad: 2, heat: 0.7, rim: 0.4, kind: 0, real: false }));
+let clean = false, cleanDx = 0, cleanDz = 0; // (this blow's read c: o.clean, the blow's direction on the floor)
 let fxNow = 0, deadline = -1;
 const copyLife = (d) => Math.max(0.021, d * 1.6);
 const B = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0.02, size: 0.3, sizeEnd: 0.3, heat: 1, heatEnd: 1, kind: 0, drag: 0, gravity: 0 };
@@ -276,6 +282,12 @@ function drawFlash(game, Fl, life) {
 
 function startFlash(game, x, y, z, shape, rad, heat, rim, kind, last) {
   const T = DBFX_TUNE.flash;
+  if (clean) { // (the read's clean contact: smaller, out of his far side)
+    const C = DBFX_TUNE.clean;
+    rad *= C.flash;
+    x += cleanDx * C.offset;
+    z += cleanDz * C.offset;
+  }
   let S = flashes[0];
   for (const f of flashes) {
     if (!f.alive) {
@@ -299,7 +311,7 @@ function startFlash(game, x, y, z, shape, rad, heat, rim, kind, last) {
   S.x = ax; S.y = ay; S.z = az;
   S.age = 0;
   S.life = last ? T.lifeLast : T.life;
-  S.shape = shape; S.rad = rad; S.heat = heat; S.rim = rim; S.kind = kind;
+  S.shape = shape; S.rad = rad; S.heat = heat; S.rim = rim; S.kind = kind; S.real = clean;
   const dt = Math.max(0, fin(game.fxDt) ? game.fxDt : 1 / 60);
   let life;
   if (deadline > fxNow + dt) life = deadline - fxNow;
@@ -674,14 +686,15 @@ function exitBurst(game, o, mode, ang, i, last, floor) {
   const thrust = o.thrust === true;
   // the tip: a straight streak out of his back along the blow, on the screen's cell grid
   const S = screen(game, x, y, z), cellM = S.cw * S.mpp, rowM = S.ch * S.mpp;
-  const g = strokeOf(ang), len = (thrust ? 1.7 : 1.05) + (last ? 0.6 : 0), step = stepAlong(ang, cellM, rowM), nt = Math.max(3, Math.min(16, Math.floor(len / step)));
-  const hold = thrust ? 0.14 : last ? 0.12 : 0.09;
+  const C = clean ? DBFX_TUNE.clean : null;
+  const g = strokeOf(ang), len = ((thrust ? 1.7 : 1.05) + (last ? 0.6 : 0)) * (C ? C.tip : 1), step = stepAlong(ang, cellM, rowM), nt = Math.max(3, Math.min(16, Math.floor(len / step)));
+  const hold = (thrust ? 0.14 : last ? 0.12 : 0.09) * (C ? C.tipHold : 1);
   for (let k = 0; k < nt; k++) {
     const u = k / (nt - 1), t = u * len;
     add(x + dx * t, y + R(-0.03, 0.03), z + dz * t, 0, 0, 0, hold * (1 - 0.4 * u), 0, 0, g, ramp, 0.9 - 0.4 * u, 5, u * 0.02, -1e9, 0.35);
   }
   // the spray: letters thrown out of his back (the far side), fanned across the blow's direction
-  const ns = last ? 46 : Math.min(26, 9 + 3 * i);
+  const ns = Math.round((last ? 46 : Math.min(26, 9 + 3 * i)) * (C ? C.burst : 1));
   for (let k = 0; k < ns; k++) {
     const sp = R(3.5, 8) * (last ? 1.25 : 1), fan = R(-0.5, 0.5), c = Math.cos(fan), sn = Math.sin(fan);
     const vx = (dx * c - dz * sn) * sp, vz = (dx * sn + dz * c) * sp, vy = R(-0.4, 2.4);
@@ -714,6 +727,11 @@ export function deathblowHit(game, o) {
     if (!fin(ang)) ang = fin(o.a1) ? o.a1 : 0.5;
     const S = screen(game, x, y, z);
     const cellM = S.cw * S.mpp, rowM = S.ch * S.mpp;
+    const bd0 = exitBurstDir(o);
+    clean = o.clean === true;
+    cleanDx = bd0.dx;
+    cleanDz = bd0.dz;
+    P.clean = clean;
     const py = game.player?.position?.y;
     const floor = fin(py) ? Math.min(py, y - 0.05) : y - 1.2;
     const s0 = P.spawned;
@@ -886,7 +904,7 @@ export function deathblowFxUpdate(game, realDt) {
     let any = false;
     for (const S of flashes) {
       if (!S.alive) continue;
-      S.age += sdt;
+      S.age += S.real ? realDt : sdt;
       if (S.age >= S.life) S.alive = false;
       else any = true;
     }

@@ -16,6 +16,7 @@ import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
 import { DB_FX, getDbFx, setDbFx } from '../combat/deathblowFx.js';
+import { DB_READ, dbReadMode, setDbRead } from '../entities/player/deathblow.js';
 import { DB_MATRIX, getDbMatrix, setDbMatrix } from '../combat/deathblowMatrix.js';
 import { DB_SFX, getDbSfx, setDbSfx } from '../audio/deathblowSfx.js';
 import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
@@ -1349,6 +1350,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.dbfxBtn.title = "the deathblow's hit effect (?dbfx=): a Steel Bloom (orange heat bloom, sparks, embers), b Shatter Web (long cut-lines through him that snap on the finisher), c Storm Crack (lightning crawling over him, a bolt on the finisher), d Gold Crescent (gold arcs along each swing)";
+    this.ui.dbreadBtn = button(stkGrid, `dbread ${dbReadMode()}`, () => {
+      const M = DB_READ.opts;
+      setDbRead(M[(M.indexOf(dbReadMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbreadBtn.title = "the parry -> deathblow exchange made readable (?dbread=; ADR-264): a the break (he is thrown open, reeling, and the hero holds a beat before he steps in), b space (the hero strikes from 1.3 m and every blow drives him back), c a clean contact (the contact's flash smaller and off the wound, the exit burst thinner, his white hurt flash dim), all the three, 0 as before. Read at the parry";
     this.ui.dbmatrixBtn = button(stkGrid, `dbmatrix ${getDbMatrix()}`, () => {
       const M = DB_MATRIX.opts;
       setDbMatrix(M[(M.indexOf(getDbMatrix()) + 1) % M.length]);
@@ -1629,6 +1636,7 @@ export class Lab {
     if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;
     if (this.ui.riposteBtn) this.ui.riposteBtn.textContent = `riposte ${riposteMode()}`;
     if (this.ui.dbfxBtn) this.ui.dbfxBtn.textContent = `dbfx ${getDbFx()}`;
+    if (this.ui.dbreadBtn) this.ui.dbreadBtn.textContent = `dbread ${dbReadMode()}`;
     if (this.ui.dbmatrixBtn) this.ui.dbmatrixBtn.textContent = `dbmatrix ${getDbMatrix()}`;
     if (this.ui.dbsfxBtn) this.ui.dbsfxBtn.textContent = `dbsfx ${getDbSfx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
