@@ -123,8 +123,8 @@ export const FS_SOUNDS = Object.freeze([
 
 /** The look's numbers (data): the jets, the sensors, the death, the servo. */
 export const FS_FX_BODY = Object.freeze({
-  jet: { len: [0.35, 1.1], width: [0.07, 0.17], rate: 40, light: 1.2 },
-  sensor: { size: 0.13, light: 0.9 },
+  jet: { len: [0.4, 1.25], width: [0.09, 0.22], rate: 45, light: 1.5 },
+  sensor: { size: 0.13, light: 0.45 },
   death: { out: [0.45, 1.05, 1.65] }, // s into his death each sensor goes out (the last lit first)
   servo: { stride: 1.05, from: 3 }, // m between two servo sounds; the phase they start in
   metal: 0.5, // a part's exposure from which a cut on it rings as metal
@@ -137,11 +137,11 @@ const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 // glyph colours
 const SKIN = [1.0, 0.82, 0.66], SKIN_END = [0.32, 0.25, 0.2];
 const CLOTH = [0.32, 0.32, 0.34], CLOTH_END = [0.1, 0.1, 0.11];
-const CYAN = [1.3, 2.7, 3.2], CYAN_END = [0.08, 0.35, 0.55], CYAN_DIM = [0.4, 0.85, 1.0];
+const CYAN = [1.3, 2.7, 3.2], CYAN_END = [0.08, 0.35, 0.55], SENSOR = [0.55, 1.35, 1.6], CYAN_DIM = [0.25, 0.6, 0.72];
 const WHITE = [3.3, 3.3, 3.1];
 const HOT = [3.4, 2.1, 0.8], HOT_END = [0.6, 0.1, 0.02];
 const PALE = [1.15, 1.12, 1.05], PALE_END = [0.25, 0.24, 0.22];
-const GRIT = [0.32, 0.3, 0.28], GRIT_END = [0.12, 0.11, 0.1];
+const GRIT = [0.32, 0.3, 0.28], GRIT_END = [0.12, 0.11, 0.1], DUSTG = [0.5, 0.47, 0.43];
 const PLATE = [0.52, 0.52, 0.55], PLATE_END = [0.16, 0.16, 0.17];
 const L_HEAT = ARSENAL_FX.L_HEAT, L_SENSOR = [0.55, 0.88, 1.0], L_WHITE = [1.0, 0.95, 0.88], L_FIRE = [1.0, 0.52, 0.18];
 // (AscFx's gold, met in the inherited beam: turned to his warm white)
@@ -358,7 +358,7 @@ export class FsFx extends AscFx {
     if (!d || !this.fire) return 0;
     const lf = Math.max(0.15, Math.min(2, fin(life, 0.6)));
     const ddx = fin(dx, 0), ddz = fin(dz, 0), mx = fin(ox, 0), mz = fin(oz, 0);
-    let spent = this.ghost(d, this._ghostOpt(ddx * 0.6, ddz * 0.6, lf, 0, mx, mz, 0, 0, 0));
+    let spent = this.ghost(d, this._ghostOpt(ddx * 0.6, ddz * 0.6, lf, 1, mx, mz, 0, 0, 0));
     // a hot edge: every fifth of the figure's points, a small blob of his palette (his jets' heat)
     const n = this._bodyPts(d), P = this._gp;
     for (let i = 0; i < n; i += 5) {
@@ -438,7 +438,7 @@ export class FsFx extends AscFx {
       // (one tiny cyan letter a sensor: a glyph particle held one frame, pulled toward the camera so his
       // head does not hide it; never heat, so it can never read as a cue)
       const C = this._toCamera(P.x, P.y, P.z);
-      const o = this._rec(C.x, C.y, C.z, life, Q.size, Q.size, '*', kk > 0.55 ? CYAN : CYAN_DIM, null);
+      const o = this._rec(C.x, C.y, C.z, life, Q.size, Q.size, '*', kk > 0.55 ? SENSOR : CYAN_DIM, null);
       o.alphaEnd = 1;
       this._spawn(this.add, o);
       lit++;
@@ -568,9 +568,9 @@ export class FsFx extends AscFx {
     if (!Number.isFinite(x + y + z + dx + dz + k)) return;
     k = Math.max(0.4, Math.min(2, k));
     const l = Math.hypot(dx, dz), ux = l > 1e-3 ? dx / l : 0, uz = l > 1e-3 ? dz / l : 0;
-    for (let i = 0; i < Math.round(7 * k); i++) {
+    for (let i = 0; i < Math.round(10 * k); i++) {
       const sp = this.lrand(2.5, 6) * k;
-      const o = this._rec(x, y, z, this.lrand(0.12, 0.26), 0.09, 0.03, "'+.", WHITE, HOT_END);
+      const o = this._rec(x, y, z, this.lrand(0.16, 0.34), 0.12, 0.03, "'+.", WHITE, HOT_END);
       o.vx = ux * sp + this.lrand(-1.8, 1.8);
       o.vy = this.lrand(-0.5, 2);
       o.vz = uz * sp + this.lrand(-1.8, 1.8);
@@ -578,7 +578,7 @@ export class FsFx extends AscFx {
       this._spawn(this.add, o);
     }
     for (let i = 0; i < Math.round(4 * k); i++) {
-      const o = this._rec(x + this.lrand(-0.12, 0.12), y + this.lrand(-0.1, 0.12), z + this.lrand(-0.12, 0.12), this.lrand(0.35, 0.6), 0.1, 0.07, ".:'", PALE, PALE_END);
+      const o = this._rec(x + this.lrand(-0.12, 0.12), y + this.lrand(-0.1, 0.12), z + this.lrand(-0.12, 0.12), this.lrand(0.4, 0.7), 0.12, 0.08, ".:'", PALE, PALE_END);
       o.vx = ux * this.lrand(0.3, 1) + this.lrand(-0.3, 0.3);
       o.vy = this.lrand(0.1, 0.6);
       o.vz = uz * this.lrand(0.3, 1) + this.lrand(-0.3, 0.3);
@@ -586,6 +586,8 @@ export class FsFx extends AscFx {
       this._spawn(this.alpha, o);
     }
     if (this.fire) {
+      // (a small hot point where the hand met: a quarter of the cue's glint, under it in heat and size)
+      this._blob(x, y, z, 0, 0, 0, 0.07, 0.22, 0.3, 0.75, 0, K_STEEL);
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * TAU, ca = Math.cos(a), sa = Math.sin(a);
         this._blob(x, y + sa * 0.2, z, (ux * 2 - uz * ca * 2.5) * k, sa * 2.5 * k, (uz * 2 + ux * ca * 2.5) * k, 0.12, 0.26, 0.4, 0.3, 0, K_SMOKE, 4);
@@ -601,10 +603,10 @@ export class FsFx extends AscFx {
     if (!Number.isFinite(x + z + dx + dz + len + k)) return;
     k = Math.max(0.3, Math.min(2, k));
     const l = Math.hypot(dx, dz), ux = l > 1e-3 ? dx / l : 0, uz = l > 1e-3 ? dz / l : 0, L = Math.max(0.1, Math.min(3, len));
-    if (this.fire && l > 1e-3) this._ink(x - ux * L, 0.42, z - uz * L, x, 0.42, z, 0.5, 0.4 * k, 0, 0.55 * k, 0, K_SMOKE);
-    for (let i = 0; i < Math.round(9 * k); i++) {
+    if (this.fire && l > 1e-3) this._ink(x - ux * L, 0.42, z - uz * L, x, 0.42, z, 0.8, 0.75 * k, 0, 0.9 * k, 0, K_SMOKE);
+    for (let i = 0; i < Math.round(14 * k); i++) {
       const sp = this.lrand(1, 3.5) * k;
-      const o = this._rec(x, 0.1, z, this.lrand(0.3, 0.6), 0.12, 0.05, ",.'`", GRIT, GRIT_END);
+      const o = this._rec(x, 0.1, z, this.lrand(0.35, 0.7), 0.15, 0.06, ",.'`", DUSTG, GRIT_END);
       o.vx = ux * sp + this.lrand(-1, 1);
       o.vy = this.lrand(0.4, 1.8);
       o.vz = uz * sp + this.lrand(-1, 1);
@@ -612,7 +614,7 @@ export class FsFx extends AscFx {
       o.gravity = -7;
       this._spawn(this.alpha, o);
     }
-    this.dust(x, z, 0.5 * k);
+    this.dust(x, z, 0.9 * k);
     if (fin(this.d?.dressPhase, 1) >= 3) {
       for (let i = 0; i < 4; i++) {
         const o = this._rec(x, 0.15, z, this.lrand(0.15, 0.3), 0.09, 0.03, "'+", HOT, HOT_END);
@@ -684,7 +686,7 @@ export class FsFx extends AscFx {
         }
       }
     }
-    this._keep('fsCore', x, y, z, L_HEAT, 0.8 + 3.5 * k, 3 + 3 * k, 0.15);
+    this._keep('fsCore', x, y, z, L_HEAT, 0.5 + 2 * k, 2.5 + 2 * k, 0.15);
   }
 
   coreVent(k) {

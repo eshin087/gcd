@@ -48,8 +48,8 @@ const L_WHITE = [1.0, 0.95, 0.88], L_FIRE = [1.0, 0.52, 0.18], L_RED = [1.0, 0.1
 /** The look's numbers (data, not logic): sizes in metres, heats as the fire field reads them. */
 export const FS_FX_ARSENAL = Object.freeze({
   sight: { heat: 0.34, blink: 9, dash: 0.55 }, // the sight line: its heat at k 1, its blink (Hz) in the last 0.2 of k, dash period m
-  laser: { core: 1.12, sheath: 0.5, sparks: 60, smoke: 12, light: 2.6 },
-  scar: { life: 6.5, step: 0.32, heat: 0.3, steel: 0.5, smoke: 6, embers: 9 }, // life s at k 1; heat per blob (x GROUND_GAIN)
+  laser: { core: 1.12, sheath: 0.42, sparks: 60, smoke: 12, light: 2.6 },
+  scar: { life: 6.5, step: 0.32, heat: 0.24, steel: 0.5, smoke: 6, embers: 9 }, // life s at k 1; heat per blob (x GROUND_GAIN)
   trench: { life: 9, rows: 2, heat: 0.22 },
   cannon: { lick: 70, foot: 1.2, light: 4.5 },
   mark: { step: 0.34, heat: 0.36, rise: 0.2, fill: 0.2, blink: 7, disc: [0.05, 0.09] }, // disc: the 'disc' style's fill heat at k 0 / added by k 1
@@ -199,8 +199,9 @@ export const heldFor = (F, S, key) => {
 /**
  * The sight line before a cut (k 0..1 to the fire; every frame). (ax, az) → (bx, bz) the line on the
  * floor the cut will draw (a == b: one spot); `fromEye` (default true): a thin line from his eye to b too.
- * RED strokes on the letter grid (the fire kind at a low heat, as every dodge cue: the cut is a red-tell
- * move; never cyan or blue, which mean a parry): dashed and faint early, solid and brighter late, blinking in
+ * Thin PALE WHITE strokes on the letter grid (steel: crisp, it does not climb as the fire kind would off a
+ * line in the air) with a small RED cross where it will cut (the fire kind at a low heat, as every dodge
+ * cue); never cyan or blue, which mean a parry. Dashed and faint early, solid and brighter late, blinking in
  * the last fifth. ~2 lines of ink cells.
  */
 export function sightLine(F, S, ax, az, bx, bz, k, fromEye = true) {
@@ -208,7 +209,7 @@ export function sightLine(F, S, ax, az, bx, bz, k, fromEye = true) {
   k = clamp01(k);
   const Q = A_.sight, t = now(F);
   const blink = k > 0.8 ? (Math.sin(t * Q.blink * TAU) > -0.2 ? 1 : 0.45) : 1;
-  const h = (0.4 + Q.heat * k) * blink, y = 0.42;
+  const h = (0.45 + Q.heat * k) * blink, y = 0.42;
   const L = Math.hypot(bx - ax, bz - az);
   if (L > 0.3) {
     if (k < 0.55) {
@@ -216,23 +217,24 @@ export function sightLine(F, S, ax, az, bx, bz, k, fromEye = true) {
       const n = Math.min(40, Math.ceil(L / Q.dash)), ph = (t * 3) % 1;
       for (let i = 0; i < n; i += 2) {
         const u0 = Math.min(1, (i + ph) / n), u1 = Math.min(1, (i + ph + 1) / n);
-        F._ink(ax + (bx - ax) * u0, y, az + (bz - az) * u0, ax + (bx - ax) * u1, y, az + (bz - az) * u1, 0, h, 0, h, 0, K_FIRE);
+        F._ink(ax + (bx - ax) * u0, y, az + (bz - az) * u0, ax + (bx - ax) * u1, y, az + (bz - az) * u1, 0, h, 0, h, 0, K_STEEL);
       }
-    } else F._ink(ax, y, az, bx, y, bz, 0, h, 0, h, 0, K_FIRE);
+    } else F._ink(ax, y, az, bx, y, bz, 0, h, 0, h, 0, K_STEEL);
   }
   if (fromEye && F.d?.eyePoint) {
     const E = F.d.eyePoint(F._eyeV);
-    if (E && Number.isFinite(E.x + E.y + E.z)) F._ink(E.x, E.y, E.z, bx, y, bz, 0, h * 0.8, 0, h, 0, K_FIRE);
+    if (E && Number.isFinite(E.x + E.y + E.z)) F._ink(E.x, E.y, E.z, bx, y, bz, 0, h * 0.8, 0, h, 0, K_STEEL);
   }
   // the spot it picks: a small red cross
   const c = 0.28 + 0.2 * k;
-  F._ink(bx - c, y, bz, bx + c, y, bz, 0, h * 1.1, 0, h * 1.1, 0, K_FIRE);
-  F._ink(bx, y, bz - c, bx, y, bz + c, 0, h * 1.1, 0, h * 1.1, 0, K_FIRE);
+  const hc = (0.42 + 0.2 * k) * blink;
+  F._ink(bx - c, y, bz, bx + c, y, bz, 0, hc, 0, hc, 0, K_FIRE);
+  F._ink(bx, y, bz - c, bx, y, bz + c, 0, hc, 0, hc, 0, K_FIRE);
   if (fresh(F, S, 'sight', bx, bz, 30)) F._say('fsSight', bx, bz, 0);
 }
 
 /** The white-hot cutting line, his eye (a) → where it meets the floor (b), k its strength (every frame).
- *  A white core, an orange sheath either side (fire), the foot molten, sparks spat back, smoke. */
+ *  A white core, a fainter steel stroke either side, the foot molten (fire), sparks spat back, smoke. */
 export function laser(F, S, ax, ay, az, bx, by, bz, k) {
   if (!F.fire || !Number.isFinite(ax + ay + az + bx + by + bz + k) || !(k > 0.01)) return;
   k = clamp01(k);
@@ -243,7 +245,7 @@ export function laser(F, S, ax, ay, az, bx, by, bz, k) {
   const fl = 0.88 + 0.12 * Math.sin(t * 53) * Math.sin(t * 17);
   F._ink(ax, ay, az, bx, by, bz, 0, Q.core * fl * (0.6 + 0.4 * k), 0, Q.core * fl * (0.6 + 0.4 * k), 0, k > 0.6 ? K_STEEL : K_FIRE);
   const off = 0.07;
-  for (const sd of [-1, 1]) F._ink(ax + C.x * off * sd * 0.4, ay + C.y * off * sd * 0.4, az + C.z * off * sd * 0.4, bx + C.x * off * sd, by + C.y * off * sd, bz + C.z * off * sd, 0, Q.sheath * fl * k, 0, Q.sheath * fl * k, 0, K_FIRE);
+  for (const sd of [-1, 1]) F._ink(ax + C.x * off * sd * 0.4, ay + C.y * off * sd * 0.4, az + C.z * off * sd * 0.4, bx + C.x * off * sd, by + C.y * off * sd, bz + C.z * off * sd, 0, Q.sheath * fl * k, 0, Q.sheath * fl * k, 0, K_STEEL);
   const life = F._frame();
   const fy = Math.max(0.12, Math.min(by, 0.5));
   if (life > 0) {
@@ -298,7 +300,7 @@ function hotLine(F, ax, az, bx, bz, w, life, heat, rows, steel) {
     }
     if (steel > 0 && i % 2 === 0) {
       F._blob(x, GROUND_Y + 0.05, z, 0, 0, 0, 0.45 + 0.3 * F.lr(), 0.3, 0.2, steel * GROUND_GAIN, 0, K_STEEL);
-      F._blob(x, GROUND_Y, z, 0, 0, 0, 0.35 + 0.2 * F.lr(), 0.3, 0.2, 0.5 * GROUND_GAIN, 0, K_FIRE);
+      F._blob(x, GROUND_Y, z, 0, 0, 0, 0.35 + 0.2 * F.lr(), 0.3, 0.2, 0.3 * GROUND_GAIN, 0, K_FIRE);
       spent += 2;
     }
     if (sc?.burnCircle && i % 2 === 0) sc.burnCircle(x, z, Math.max(0.35, w * 0.6), 0.35, 0.9);
