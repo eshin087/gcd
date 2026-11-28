@@ -15,7 +15,7 @@ import { counterChainOn } from '../../../combat/flashChain.js';
 import { impactK } from '../../../combat/impact.js';
 import { calmBossFlash } from '../../../combat/impactCalm.js';
 import { HitReact } from './react.js';
-import { CONTACT as STRIKE, ContactBody, contactOn, contactReach, findContact } from '../../../combat/contact.js';
+import { CONTACT as STRIKE, ContactBody, contactOn, contactReach, contactStep, findContact } from '../../../combat/contact.js';
 import { clashNext, clashMult, clashRegenK } from '../../../combat/clashDance.js';
 
 // A duelist: a human boss on the hero's skeleton and animator (the Ash Disciple; the Starless Lord).
@@ -790,9 +790,10 @@ export class Duelist {
           this._hiltPrev.copy(sv[2]);
           this._tipPrev.copy(sv[3]);
           const need = g - bite;
-          if (need > K.min && g < K.max + STRIKE.near && gl > 1e-3) {
-            // (the horizontal part of the line that closes it, `need` of its length; at most K.max m)
-            const k = need / gl, hl = Math.hypot(gx, gz) * k, c = hl > K.max ? K.max / hl : 1;
+          const most = K.max + (contactStep() ? STRIKE.step : 0);
+          if (need > K.min && g < most + STRIKE.near && gl > 1e-3) {
+            // (the horizontal part of the line that closes it, `need` of its length; at most `most` m)
+            const k = need / gl, hl = Math.hypot(gx, gz) * k, c = hl > most ? most / hl : 1;
             R.tx = gx * k * c;
             R.tz = gz * k * c;
           } else R.tx = R.tz = 0;
@@ -816,8 +817,13 @@ export class Duelist {
     R.x += (R.tx - R.x) * u;
     R.z += (R.tz - R.z) * u;
     if (Math.abs(R.x) + Math.abs(R.z) < 1e-4 && back) R.x = R.z = 0;
+    // (up to K.max with his feet planted; past it, `c`, his whole drawn body steps: R.sx / sz, the lean's offset)
+    const rl = Math.hypot(R.x, R.z), pk = rl > K.max ? K.max / rl : 1;
+    R.sx = R.x * (1 - pk);
+    R.sz = R.z * (1 - pk);
+    const px = R.x * pk, pz = R.z * pk;
     const S = this.drawScale || 1, cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
-    this.hitReact.setReach((R.x * cy - R.z * sy) / S, 0, (R.x * sy + R.z * cy) / S);
+    this.hitReact.setReach((px * cy - pz * sy) / S, 0, (px * sy + pz * cy) / S);
   }
 
   /** CONTACT (combat/contact.js): his guard nudged onto the hero's blade where it was stopped (pilot.guardNudge,
@@ -1222,6 +1228,11 @@ export class Duelist {
     this.yaw = wrapAngle(fin(this.yaw));
     this.object3d.rotation.y = this.yaw;
     this._updateLean();
+    // (CONTACT `c`: the reach's step, drawn only, on top of the shudder's offset)
+    if (this._reach && (this._reach.sx || this._reach.sz)) {
+      this.lean.ox += fin(this._reach.sx, 0);
+      this.lean.oz += fin(this._reach.sz, 0);
+    }
     // the animator poses the plain upright body (as the hero's): gameplay points come from it
     this.lean.on = false;
     // the sword motion pass (ADR-226; kit.motion: the boss's numbers while its switch is on, else null):
