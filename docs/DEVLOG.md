@@ -19,7 +19,11 @@ left hand as an option and swipe to dodge" to test first.
 - **Checked:** `integ.mjs . touch` green with new checks (off by default, a flick left / down rolls that way, the
   left half, a pinch); the browser at 852 x 393 with `?swipe=1&pad=split` (a flick rolls the hero the way it went,
   the streak shows).
-- **Open:** the owner on the iPhone; the distance / time numbers; default on? a touch timing allowance next.
+- **The owner tried it:** liked the swipe → ON by default. GUARD moved against the stick's ring and given its own
+  padlock (one lock with the pad's: open, GUARD drags too; kept as `goff`, RESET puts it back). Touch suite: new
+  checks (GUARD against the ring, its padlock, the drag, kept, RESET); browser at 852 x 393 and 393 x 852.
+- **Open:** the distance / time numbers on the phone; whether GUARD should be the default layout; a touch timing
+  allowance if parries are still late.
 
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
 

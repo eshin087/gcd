@@ -7907,7 +7907,11 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   frame; the player keeps it with the buffered roll (`rollAim`) and rolls that way over the stick (so a swipe can
   dodge sideways while the stick runs forward). A slow drag and a two-finger pinch never dodge; the DODGE tile
   stays. Its mark is a short ASCII streak of chevrons that fades in 0.3 s.
-- **Consequences:** off by default until the owner tries it on the phone (then it may become the default). The
+- **The owner's verdict (same day):** "i like the swipe dodge": ON BY DEFAULT (saved under a new key, `sw`, so
+  everyone gets it); and the left GUARD "more closer to the dpad" and "locked/unlocked": GUARD now stands against
+  the stick's ring (`split.guard.gap` 14 → -6 px, upright `lift` 14 → 4), with a padlock of its own over its
+  corner; the two padlocks are one lock, open both the pad and GUARD drag, GUARD's place is kept (`goff`).
+- **Consequences:** first shipped off, then on after the owner tried it on the phone. The
   pad itself is not a swipe surface (a flick that starts on ATTACK still slides between tiles); open: a flick
   off the pad, a touch timing allowance (the wider parry / perfect-dodge windows on touch the owner was offered).
 

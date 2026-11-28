@@ -3340,12 +3340,17 @@ default; `?pad=split|classic` and `?hold=1|0` set them for one page load):
   gauge) `pad.split.guard.gap` px right of the stick's ring on the cluster's bottom line; held upright
   it stands above the ring (`pad.split.guardPortrait`). `.tc-root.split` shows it and hides the
   BLOCK tile; `padPoint('guard')` / `guardGeo` give its place (null in `classic`). Changing the layout
-  releases every held control.
+  releases every held control. ADR-274: GUARD stands against the ring (`gap` -6 px, its edge just over the
+  ring's glyphs; upright `lift` 4 px) and has a padlock of its own (`.tc-guardlock`, over its top-right corner,
+  shown in `split` only). The two padlocks are one lock (`editing`): open, a drag on GUARD moves it
+  (`guardOff`, px at fit 1, + right / + up, kept on the left half, saved as `goff`) and raises no guard;
+  RESET (`resetPadOffset()`) puts GUARD back too.
 - SWIPE DODGE (ADR-274; `swipeDodge`, `cyclePad('swipe')`, `?swipe=1|0`; `CONFIG.touch.swipe`): a finger that
   touches the bare screen right of `swipe.from` (half the width) during play and travels `dist` px (30, × the
   fit) within `time` s (0.2) dodges the way it went (`input.dodgeToward`), once per touch, at that moment (not
   on the lift); a slower drag and a second bare finger (a pinch) are no swipe. A short ASCII streak (`.tc-swipe`)
-  fades where it went. The DODGE tile stays. Off by default until the owner has tried it.
+  fades where it went. The DODGE tile stays. On by default (the owner's pick); kept as `sw` in `gcd.touchPad`
+  (a new key, so the default reaches a player who saved the pad before).
 - HOLD ATTACK (`holdAttack`, `cyclePad('hold')`; `CONFIG.touch.hold`). While a finger rests on ATTACK
   the layer sends one press edge of the attack action (`input.pulse('@attack')`) `after` s into the
   hold and then every `every` s: the player reads each as a tap. No repeat while BLOCK / GUARD is
