@@ -5,6 +5,24 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — The deathblow is not cut short: the guard press, the blade lock (ADR-274; `fix/deathblow-guard-lock`)
+
+**Owner:** on the wyrm a perfect parry shows the perfect-dodge streak's effect; mashing attack during the deathblow seems
+to cancel it; the streak's flurry teleports gcd with no cue.
+
+- **The wyrm:** by design (ADR-211: the wyrm keeps the flurry riposte; its parries count in the dodge streak). The
+  owner: leave it.
+- **The cancel:** sims mashing each button through a combo on the Ash Disciple. Attack, heavy and dodge were already
+  ignored. Guard (the middle click) ended it at once with 0 damage, and a perfect parry of a blue `lock` blow became
+  the blade lock instead of the combo. Both fixed (ADR-274): no guard inside the combo; `player.deathblowClaims`
+  keeps the lock away from a combo the parry armed (`?dbLock=lock` as before; Lab `dbLock`).
+- **Checked:** duel `deathblow` (new (g), (h)), `moments`; asc `bare`; the full `npm test`.
+- **Open / next:** the flurry's opening blink. The owner means the START: right after the perfect dodge he vanishes
+  and pops up by the boss. In the sims the jump is small (0.2 - 1.2 m, 3 - 4 frames hidden); it needs filming at the
+  game camera, then options to pick from. The riposte's end also snaps 2.4 - 3.5 m back to where he parried.
+
+---
+
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
 
 **Owner:** one tap on the path or BEGIN HERE must start; BOSS RUSH and BEGIN HERE looked bad, the menus should look

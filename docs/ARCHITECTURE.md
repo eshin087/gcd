@@ -822,6 +822,9 @@ onGuarded({ deflect, heavy, attacker })
                                        // 0.28 s), 'player:bounced'.
 // cancels (ADR-080): a guard press or a dodge cancels a swing at ANY point (windup, the cut, the
 // recovery; not the execution's thrust). A flask still waits for 35 % of the recovery.
+deathblowClaims(att): boolean            // a duelist asks it before it crosses the blades on a perfect parry of a
+                                       // `lock` blow (duelist.onParried): true when the deathblow combo that parry
+                                       // armed takes it instead (a blue blow, ?dbLock=combo, the default; ADR-274)
 startBladeLock(att, { start, push, decay, dur, hold, dist }): boolean
                                        // a duelist's perfectly parried `lock` blow (ADR-062): state 'lock', every press
                                        // of attack / guard pushes the meter +push, it falls decay / s; 1 wins, 0 loses,

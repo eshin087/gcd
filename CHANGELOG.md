@@ -4,7 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-one pieces of work since 0.4.0:
+One hundred and forty-two pieces of work since 0.4.0:
+- **The deathblow is not cut short** (2026-11-28, ADR-274). *Fixed:* pressing guard during a deathblow ended it at
+  once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
+  boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of
+  the blade lock (`?dbLock=lock` as before; the Lab's `dbLock`). Tian Lei's beam locks are unchanged.
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s
