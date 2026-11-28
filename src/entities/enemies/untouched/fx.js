@@ -33,7 +33,7 @@ import { createStrikes, strikeStart, strikeUpdate } from './fxStrike.js';
 //   barrierIdle(d, dt)              C  (barrier.frame) the shell up (?wjShell), its cracks, the open sign,
 //                                      the knit-back cue in the last 0.5 s
 //   barrierStop(point, dir, heavy)  1  the blade stopped on the shell at point {x,y,z}, dir {x,z} its way in
-//                                      (?wjStrike=a|b|c: the shell's silhouette lit from it, fxStrike.js)
+//                                      (?wjStrike=a, the default: only a faint patch of the shell where it landed; fxStrike.js)
 //   barrierCrack(n, of)             1  an ordinary parry added a crack: n of `of` (drawn on until it opens/fades)
 //   barrierOpen(d)                  1  it breaks open: shards of strokes falling, a flash of the whole shell
 //   barrierClose(d)                 1  it knits back whole
@@ -406,7 +406,8 @@ export class WjFx extends AscFx {
       }
       this._cracksDraw(d, B, t);
     } else {
-      this._openSign(d, B, t);
+      // (the ring on the floor counting the opening down: off, the owner's call, 2026-11-28; ?wjSign=1 draws it)
+      if (lookOf('wjSign', '0') !== '0') this._openSign(d, B, t);
     }
   }
 
@@ -507,12 +508,12 @@ export class WjFx extends AscFx {
       }
       if (q.t > r.t) r = q;
     }
-    // (?wjStrike=a|b|c: the shell's silhouette lit from the point takes the place of the ripple's rings)
-    const silhouette = strikeStart(this, this._strikes, d, point, heavy);
+    // (?wjStrike=a, the owner's: a faint patch of the shell where the cut landed, and only that)
+    if (strikeStart(this, this._strikes, d, point, heavy)) return;
     const Q = this._onShell(point.x, point.y, point.z);
     // (a point inside the outline stays where it is; one outside is brought onto it)
     const l = Math.hypot(Q.x, Q.y);
-    r.alive = !silhouette;
+    r.alive = true;
     r.t = 0;
     r.s = l > 0.95 ? (Q.x / l) * 0.95 : Q.x;
     r.u = l > 0.95 ? (Q.y / l) * 0.95 : Q.y;
