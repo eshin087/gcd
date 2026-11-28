@@ -6402,9 +6402,10 @@ async function scenarioSlice() {
   out('\n== scenario SLICE (a seam of digits on the blade\'s own path) ==');
   const SX = await imp('src/entities/player/slashFx.js');
   const { DIM: MD } = await imp('src/entities/player/model.js');
-  const m0 = [SX.slashMode(), SX.sliceMode(), SX.sliceWhenMode(), SX.sliceFormMode(), SX.placeMode()];
-  // the owner's pick (2026-11-27): the digit slash, steel, is what plays with no parameter, laid on the swing's path
-  assert(m0[0] === 'dline' && m0[1] === 'steel' && m0[3] === 'curve' && m0[4] === 'path', `the default slash is the digit slash in steel on the swing's path (${m0[0]}, ${m0[1]}, ${m0[4]}; the slice ${m0[3]})`);
+  const m0 = [SX.slashMode(), SX.sliceMode(), SX.sliceWhenMode(), SX.sliceFormMode(), SX.placeMode(), SX.slashToneMode()];
+  // the owner's call (2026-11-27, ADR-265): production's instant slash (the line in strokes), laid on the swing's path, in
+  // its full tone until the owner picks a subtler one
+  assert(m0[0] === 'line' && m0[4] === 'path' && m0[5] === 'full' && m0[3] === 'curve', `the default slash is the instant slash line on the swing's path, full tone (${m0[0]}, ${m0[4]}, ${m0[5]}; the slice ${m0[3]})`);
   let last = null;
   const run1 = (yaw, plan, when, col, boss, form = 'curve', look = 'slice', place = 'path') => {
     SX.setSlash(look);
@@ -6591,6 +6592,56 @@ async function scenarioSlice() {
       }
       assert(!bad.length, `the sharp slices print each swing as straight cuts meeting at corners, on the blade's path (${bad.join('; ') || sum.join('; ')})`);
     }
+    // the slash's tones (`?slashtone=`, ADR-265; the owner: "variations of the slash effect being more subtle and not so
+    // bright"): the light combo facing the camera's way, each tone: every swing still drawn (its strokes), each subtler
+    // tone's brightest stroke (colour × opacity) and largest stroke under full's, no flash (the 0.05 s blades of light)
+    // and, for faint and thin, no hairline; thin's strokes the finest
+    {
+      SX.setSlash('line');
+      SX.setPlace('path');
+      const res = {};
+      for (const tone of SX.SLASH_TONE_IDS) {
+        SX.setSlashTone(tone);
+        const G = (last = build());
+        fightSetup(G);
+        settle(G);
+        const { game, input } = G, d = game.dragon, p = game.player;
+        p.debug.god = true;
+        p.debug.teleport(d.position.x + 40, d.position.z + 40);
+        game.mouseGround.set(p.position.x, 0, p.position.z - 6);
+        for (let i = 0; i < 20; i++) G.tick(DT);
+        const r = { n: 0, hi: 0, size: 0, flash: 0, hair: 0, lines: 0 };
+        const sp = game.fx.add.spawn.bind(game.fx.add);
+        game.fx.add.spawn = (o) => {
+          if (o === p.slashFx._o) {
+            r.n++;
+            r.hi = Math.max(r.hi, Math.max(...o.color) * o.alpha);
+            r.size = Math.max(r.size, o.size);
+            if (o.life <= 0.051) r.flash++;
+            if (o.life > 0.5) r.hair++;
+          }
+          return sp(o);
+        };
+        const l0 = p.slashFx.lines;
+        for (let i = 0, N = Math.round(2.4 / DT); i < N; i++) {
+          for (const t of [0, 0.42, 0.84, 1.26]) if (i === Math.round(t / DT)) input.click(0);
+          G.tick(DT);
+        }
+        r.lines = p.slashFx.lines - l0;
+        res[tone] = r;
+      }
+      SX.setSlashTone('full');
+      const F = res.full, bad = [];
+      for (const t of SX.SLASH_TONE_IDS) {
+        const r = res[t];
+        if (r.lines < 4 || r.n < 20) bad.push(`${t}: ${r.lines} lines, ${r.n} strokes`);
+        if (t === 'full') continue;
+        if (!(r.hi < F.hi * 0.7 && r.size < F.size) || r.flash) bad.push(`${t}: brightest ${r.hi.toFixed(2)} (full ${F.hi.toFixed(2)}), largest ${r.size.toFixed(3)} (full ${F.size.toFixed(3)}), ${r.flash} flash strokes`);
+        if ((t === 'faint' || t === 'thin') && r.hair) bad.push(`${t}: ${r.hair} hairline strokes`);
+      }
+      if (!(res.thin.size < res.faint.size && res.faint.hi < res.soft.hi)) bad.push(`thin not the finest (${res.thin.size.toFixed(3)}) or faint not dimmer than soft (${res.faint.hi.toFixed(2)} / ${res.soft.hi.toFixed(2)})`);
+      assert(!bad.length, `the slash's tones: each subtler than full, every swing still drawn (${bad.join('; ') || SX.SLASH_TONE_IDS.map((t) => `${t} ${res[t].lines} lines, brightest ${res[t].hi.toFixed(2)}, largest ${res[t].size.toFixed(3)}`).join('; ')})`);
+    }
     // ?slash=dline (the owner, 2026-11-27): the ending line printed in the slice's digits, no strokes, no crescent
     {
       SX.setSliceForm('curve');
@@ -6622,6 +6673,7 @@ async function scenarioSlice() {
     SX.setSliceWhen(m0[2]);
     SX.setSliceForm(m0[3]);
     SX.setPlace(m0[4]);
+    SX.setSlashTone(m0[5]);
   }
   return last;
 }

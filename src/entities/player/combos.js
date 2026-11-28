@@ -148,9 +148,10 @@ export function setCombo(m) {
   comboNow = id;
   return true;
 }
-// (in the game the owner's baseline, combo A (2026-11-26: "lets use this as the baseline"), unless `?combo=` picks
-// another ('0' production's); the headless sims keep production's defs, which their checks are written for)
-export const DEFAULT_COMBO = 'a';
+// (in the game production's combo again (the owner, 2026-11-27, ADR-265: "use the existing production auto attack combo
+// and animation"; combo A had been the baseline since 2026-11-26), unless `?combo=` picks another; the headless sims
+// keep production's defs too)
+export const DEFAULT_COMBO = '0';
 setA45('0');
 {
   const a = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('a45') : null;

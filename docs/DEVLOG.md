@@ -5,6 +5,23 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — Production's combo and instant slash on the swing, the belt hand, the slash's subtler tones (ADR-265; branch `claude/hero-attack-feel`, held)
+
+**Owner:** "i dont like any of this. lets just incorporate the new left hand animation and use the existing production auto
+attack combo and animation and instant slash effect but make sure the slashes look good in every angle and also give me
+variations of the slash effect being more subtle and not so bright".
+
+**Done:** in the game the light combo is production's again, the slash production's instant slash line in strokes laid
+on the swing's path (ADR-263's `path`: 0.04-0.17 m off the point's path on the screen facing four ways), and the free
+hand the belt with any combo (browser only; the sims keep `auto`). `?slashtone=soft|faint|thin` (the Lab's `slashtone`
+row): dimmer and thinner without the flash; fainter without the hairline or the smear; one fine stroke. Filmed the four
+tones facing four ways with production's combo and the belt. Combo A, its hits 4-5 options, the digit slash and the
+slices stay behind their switches.
+
+**Tests:** `slice` checks the default (line, path, full) and each tone against full.
+
+**Next / open:** the owner's pick of the tone.
+
 ## 2026-11-27 — The digit slash on the swing, the belt hand seen from behind, combo A's hits 4-5 without the thrust (ADR-263; branch `claude/hero-attack-feel`, held)
 
 **Owner:** "go with belt and we decided on digit slash steel. i also want to improve or change the 4th and 5th attack as

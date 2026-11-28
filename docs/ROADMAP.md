@@ -234,7 +234,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       6 rides on the seeds
 - [ ] The real renderer lays ~30 % more floor marks than headless
 
-## M1.97 — The digit slash; the free hand out of his body (2026-11-26, `claude/hero-attack-feel`, ADR-262, ADR-263)
+## M1.97 — The digit slash; the free hand out of his body (2026-11-26, `claude/hero-attack-feel`, ADR-262, ADR-263, ADR-265)
 - [x] The free hand never inside his torso (`SIDE_KEEP`), the grip's blend after the side hand (hit 5 reaches round his side)
 - [x] The slice: a seam of digits on the blade's own path, ~0.2 s, from every side (scenario `slice`)
 - [x] Both colours (steel, green) and both timings (trace, end) to pick from
@@ -247,7 +247,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The digit slash laid on the swing's own path, from every side (`?endslash=path`, the default; scenario `slice`)
 - [x] Combo A's hits 4-5 without the thrust or the pause, three options to compare (`?a45=a|b|c`; scenario `offhand`)
 - [x] The sharp slices to compare (`?sliceform=facet|jag`)
-- [ ] The owner's pick of combo A's hits 4-5 and of the slice's shape
+- [x] The owner's call (2026-11-27, ADR-265): production's combo and instant slash again (on the swing), the belt hand
+- [x] The slash's subtler tones to compare (`?slashtone=soft|faint|thin`; scenario `slice`)
+- [ ] The owner's pick of the slash's tone
 - [ ] Combo A's hit 1 snaps his chest ~60° in its first frame out of the fight hold (found, not changed)
 
 ## M1.95 — The impact pass (2026-11-26, `claude/hero-attack-feel`, ADR-244)

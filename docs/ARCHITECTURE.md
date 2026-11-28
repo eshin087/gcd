@@ -1251,7 +1251,12 @@ line to it until it is that far ahead (the same place on the picture), or, side-
 `_flush` draws what is due each frame. The direction (every place but `blade`): the blade's point `END.at` along
 it, projected by the camera each buffered frame, its steps weighted by the point's speed² (`_swing`), laid in the
 screen's plane (`_screen`); the line is queued in `END.reveal` pieces `END.step` apart from the swing's start
-side. The swing's end waits out a landed blow's bite (`SWING.bite`). Defaults: `path` (ADR-263; `enemy` before), `0`. The impact pass (ADR-244): `END.front` (no part of a line nearer than that ahead of him), `END.carry` (a
+side. The swing's end waits out a landed blow's bite (`SWING.bite`). Defaults: `path` (ADR-263; `enemy` before), `0`.
+The slash's tone (ADR-265, `SLASH_TONE`, `setSlashTone` / `slashToneMode`, `?slashtone=full|soft|faint|thin`, the Lab's
+`slashtone` row): under `line`, `_draw` scales the strokes' colours (`TCOL`, built when the tone is picked), size, life and
+opacity, drops the flash pass and the hairline where the tone has none; `_burst` and `_smear` scale by its `burst` /
+`smear`. In the game the defaults are production's combo (`combos.js` `DEFAULT_COMBO` '0'), the `line` slash and the
+`belt` free hand (`offHand.js` `DEFAULT_OFFHAND`, set only where there is a `location`: the sims keep `auto`). The impact pass (ADR-244): `END.front` (no part of a line nearer than that ahead of him), `END.carry` (a
 whiff's strokes move at his ground speed, slowing), `IMPACT` (on a landed blow: `game.kick` along the slash, a shake,
 `_burst`: glyph sparks along it and steel heat in the fire field), `SMEAR` (`_smear`: steel heat over the blade's sweep
 in fast frames), and `player:slash` for the audio (`slashRing`). **The slice** (ADR-262, `?slash=slice`; `SLICE`, `SLICE_COL`, `setSlice` / `sliceMode` (`?slice=steel|green`), `setSliceWhen` / `sliceWhenMode`

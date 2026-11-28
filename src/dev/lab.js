@@ -26,7 +26,7 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
-import { SLASH_IDS, slashMode, setSlash, SLICE_IDS, sliceMode, setSlice, SLICE_WHEN_IDS, sliceWhenMode, setSliceWhen, SLICE_FORM_IDS, sliceFormMode, setSliceForm } from '../entities/player/slashFx.js';
+import { SLASH_IDS, slashMode, setSlash, SLICE_IDS, sliceMode, setSlice, SLICE_WHEN_IDS, sliceWhenMode, setSliceWhen, SLICE_FORM_IDS, sliceFormMode, setSliceForm, SLASH_TONE_IDS, slashToneMode, setSlashTone } from '../entities/player/slashFx.js';
 import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
 import { COMBO_IDS, COMBOS, comboMode, setCombo, A45_IDS, a45Mode, setA45 } from '../entities/player/combos.js';
@@ -1482,9 +1482,10 @@ export class Lab {
     // every swing's mark (slashFx.js, ?slash=arc) and the free hand in a one-handed swing (offHand.js,
     // ?offhand=side|back|quiet), live
     for (const [lbl, ids, set, key, tip, name] of [
-      ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: dline = the ending slash in the slice's thin digits (the default), slice = a seam of digits along the blade's path, line = the ending slash line in strokes, arc = the curved crescent as before (?slash=)", (m) => m],
+      ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: line = the instant slash line on the swing (the default), dline = the same in the slice's thin digits, slice = a seam of digits along the blade's path, arc = the curved crescent as before (?slash=)", (m) => m],
       ['slice', SLICE_IDS, setSlice, 'sliceBtns', "the slice's colour: steel = white-blue, green = the matrix (?slice=)", (m) => m],
       ['slicewhen', SLICE_WHEN_IDS, setSliceWhen, 'sliceWhenBtns', 'when the slice is laid: trace = as the blade passes, end = the whole cut at once as the swing ends (?slicewhen=)', (m) => m],
+      ['slashtone', SLASH_TONE_IDS, setSlashTone, 'slashToneBtns', 'how loud the instant slash line is: full = as it is, soft = dimmer, thinner, no flash, faint = much dimmer, no flash or hairline, thin = one fine stroke (?slashtone=)', (m) => m],
       ['sliceform', SLICE_FORM_IDS, setSliceForm, 'sliceFormBtns', "the slice's shape: curve = the path as the point swept it, facet = straight cuts meeting at sharp corners, jag = fewer, longer cuts crossing in points at the corners (?sliceform=)", (m) => m],
       ['combo', COMBO_IDS, setCombo, 'comboBtns', 'four light combos for the ending slash: prod = as it ships, a Iai, b Tempest, c Mountain, d Dancer (each with its feel and its free hand) (?combo=)', (m) => (m === '0' ? 'prod' : `${m} ${COMBOS[m].name}`)],
       ['a45', A45_IDS, setA45, 'a45Btns', "combo A's hits 4 and 5: 0 = the thrust and Mountain Splitter as before, a = falling backhand + a two-handed falling cut from over the right shoulder, b = falling backhand + a two-handed full turn, c = rising backhand + a two-handed falling diagonal into a low lunge (?a45=)", (m) => m],
@@ -1623,6 +1624,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.sliceBtns ?? []) setClass(b, 'on', sliceMode() === m);
     for (const { m, el: b } of this.ui.sliceWhenBtns ?? []) setClass(b, 'on', sliceWhenMode() === m);
     for (const { m, el: b } of this.ui.sliceFormBtns ?? []) setClass(b, 'on', sliceFormMode() === m);
+    for (const { m, el: b } of this.ui.slashToneBtns ?? []) setClass(b, 'on', slashToneMode() === m);
     for (const { m, el: b } of this.ui.a45Btns ?? []) setClass(b, 'on', a45Mode() === m);
     for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
     for (const { m, el: b } of this.ui.feelBtns ?? []) setClass(b, 'on', feelMode() === m);

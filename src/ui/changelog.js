@@ -101,10 +101,10 @@ export const RELEASES = [
       },
       {
         date: '2026-11-27',
-        title: 'A slash of fine digits on your swing, and your free hand at your hip',
+        title: 'The instant slash on your swing from every side, and your free hand at your hip',
         notes: [
-          'Every sword slash is now a thin straight line of small steel-blue digits laid on the swing itself, as if your blade cut open the code of the world: it follows your sword from every side, facing the camera or side-on, and is gone in about a fifth of a second.',
-          'A landed blow throws the camera along the blade. In the light combo your free hand rests at the front of your left hip with the elbow out, where you can see it from behind, and on the finisher it joins the other on the grip.',
+          'The light combo is back to its first moves. Each swing\'s straight slash is now laid on the swing itself, so it follows your sword from every side: facing the camera, side-on or away.',
+          'Your free hand rests at the front of your left hip with the elbow out, where you can see it from behind, instead of being flung about. A landed blow throws the camera along the blade.',
         ],
       },
       {

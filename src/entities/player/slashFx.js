@@ -33,11 +33,12 @@ import * as THREE from 'three';
 
 const _pv = new THREE.Vector3(), _OUT = [0, 0, 0];
 
-/** 'dline' (the default, the owner's pick): the ending slash printed as the slice's thin seam of digits (its colour
- *  `?slice=`, steel by default); 'slice': the seam of digits along the blade's path (SLICE); 'line': the instant
- *  (ending) slash line in strokes; 'arc': the curved crescent as before. */
-export const SLASH_IDS = ['dline', 'slice', 'line', 'arc'];
-let slashNow = 'dline';
+/** 'line' (the default: production's instant slash, the owner's call 2026-11-27, ADR-265): the ending slash line in
+ *  strokes, laid on the swing (`path`), in its tone (`?slashtone=`); 'dline': the same line printed as the slice's thin
+ *  seam of digits (its colour `?slice=`); 'slice': the seam of digits along the blade's path (SLICE); 'arc': the
+ *  curved crescent as before. */
+export const SLASH_IDS = ['line', 'dline', 'slice', 'arc'];
+let slashNow = 'line';
 export const slashMode = () => slashNow;
 /** Pick the look of every swing's mark; false for an unknown id. */
 export function setSlash(m) {
@@ -217,6 +218,49 @@ export const SLASH = {
   ring: 3,
 };
 const LOOKS = ['light', 'heavy'];
+/** THE SLASH'S TONE (`?slashtone=`, ADR-265; the owner, 2026-11-27: "give me variations of the slash effect being more
+ *  subtle and not so bright"): how loud the instant slash line (`line`) and its landed blow are drawn.
+ *    full   as it is (the default until the owner picks)
+ *    soft   dimmer (`col` × its colours), a little thinner, no white flash, a short faint hairline; half the sparks
+ *    faint  much dimmer and thinner, no flash, no hairline, shorter; a few sparks, no smear
+ *    thin   one fine stroke: a hairline of the core colour, a quick fade; no flash, a few sparks, no smear
+ *  `col` × the strokes' colours (the hot middle and the outer rows too), `size` × their size, `life` × how long they
+ *  last, `flash` the flash drawn, `hair` × the hairline's life (0: none) and `hairA` × its opacity, `alpha` × the
+ *  strokes' opacity, `burst` × a landed blow's sparks and heat, `smear` × the blade's blur (0: none). */
+export const SLASH_TONE_IDS = ['full', 'soft', 'faint', 'thin'];
+export const SLASH_TONE = {
+  full: { col: 1, size: 1, life: 1, flash: true, hair: 1, hairA: 1, alpha: 1, burst: 1, smear: 1 },
+  soft: { col: 0.55, size: 0.8, life: 0.85, flash: false, hair: 0.45, hairA: 0.55, alpha: 0.85, burst: 0.5, smear: 0.5 },
+  faint: { col: 0.33, size: 0.6, life: 0.7, flash: false, hair: 0, hairA: 0, alpha: 0.7, burst: 0.3, smear: 0 },
+  thin: { col: 0.5, size: 0.35, life: 0.55, flash: false, hair: 0, hairA: 0, alpha: 0.9, burst: 0.3, smear: 0 },
+};
+let toneNow = 'full';
+export const slashToneMode = () => toneNow;
+// (the tone's colours, built when it is picked: no allocation a frame)
+const TCOL = { light: {}, heavy: {} };
+const _scale = (c, k) => (c ? [c[0] * k, c[1] * k, c[2] * k] : null);
+function buildTone() {
+  const k = SLASH_TONE[toneNow].col;
+  for (const L of LOOKS) {
+    const S = SLASH[L], o = TCOL[L];
+    o.hot = _scale(S.hot, k);
+    o.core = _scale(S.core, k);
+    o.end = _scale(S.end, k);
+    o.edge = _scale(S.edge ?? S.core, k);
+  }
+}
+/** Pick the tone; false for an unknown id. */
+export function setSlashTone(m) {
+  if (!SLASH_TONE_IDS.includes(m)) return false;
+  toneNow = m;
+  buildTone();
+  return true;
+}
+buildTone();
+{
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('slashtone') : null;
+  if (q) setSlashTone(q);
+}
 /** When the line is drawn: the swing is followed from `from` × the windup; its fastest frame is looked for
  *  from `peakFrom` × the windup (the active window on); the swing has ended on the first frame after it whose point moves under `end`
  *  of that (the line is drawn then, with the blade); the line starts where the point was just before the
@@ -653,13 +697,13 @@ export class SlashFx {
   /** The blade's blur: steel heat over what it swept since last frame, while it moves fast (SMEAR). */
   _smear() {
     const T = this.T, H = this.H, pT = this.pT, pH = this.pH, S = SMEAR, fire = this.game?.fx?.fire;
-    const sc = this.p.drawScale || 1;
-    if (this.hasPrevBlade && fire?.spawn && Math.hypot(T[0] - pT[0], T[1] - pT[1], T[2] - pT[2]) >= S.min * sc) {
+    const sc = this.p.drawScale || 1, tk = slashNow === 'line' ? SLASH_TONE[toneNow].smear : 1;
+    if (tk > 0 && this.hasPrevBlade && fire?.spawn && Math.hypot(T[0] - pT[0], T[1] - pT[1], T[2] - pT[2]) >= S.min * sc) {
       const f = this._f;
       f.life = S.life;
       f.size = S.size * sc;
       f.sizeEnd = S.size * 0.4 * sc;
-      f.heat = S.heat;
+      f.heat = S.heat * tk;
       f.heatEnd = 0;
       f.kind = 'steel';
       f.vx = f.vy = f.vz = 0;
@@ -685,7 +729,8 @@ export class SlashFx {
   /** A landed blow's burst along its line (IMPACT): glyph sparks thrown both ways along the cut and a little
    *  across it from the line's middle, and a bright scar of steel heat down the line. */
   _burst(ax, ay, az, bx, by, bz, dx, dy, dz, hv, k = 1) {
-    const fx = this.p.fx?.add, fire = this.game?.fx?.fire, I = IMPACT, Lk = SLASH[LOOKS[hv]];
+    const fx = this.p.fx?.add, fire = this.game?.fx?.fire, I = IMPACT, Lk = slashNow === 'line' ? TCOL[LOOKS[hv]] : SLASH[LOOKS[hv]];
+    if (slashNow === 'line') k *= SLASH_TONE[toneNow].burst;
     const cx = (ax + bx) / 2, cy = (ay + by) / 2, cz = (az + bz) / 2, len = Math.hypot(bx - ax, by - ay, bz - az);
     this.bursts++;
     // (across the line, roughly in the screen's plane: the camera's back axis × the line)
@@ -1185,22 +1230,24 @@ export class SlashFx {
         pz = qz / ql;
       }
     }
-    // (a thrust's streak: fewer strokes, thinner, sharp toward its far end)
+    // (a thrust's streak: fewer strokes, thinner, sharp toward its far end; the tone's size, colours and life)
+    const TN = SLASH_TONE[toneNow], TC = TCOL[LOOKS[look]];
     const n = thrust ? Math.max(10, Math.round(Lk.n * 0.4)) : Lk.n;
-    const o = this._o, seg = len / n, k0 = thrust ? 0.75 : 1;
+    const o = this._o, seg = len / n, k0 = (thrust ? 0.75 : 1) * TN.size;
     o.vx = this._cvx || 0;
     o.vy = 0;
     o.vz = this._cvz || 0;
     o.drag = o.vx || o.vz ? END.carry : 0;
     const rows = thrust ? 1 : Math.max(1, Lk.rows | 0);
     o.rot = rot;
-    o.colorEnd = Lk.end;
+    o.colorEnd = TC.end;
     for (let r = 0; r < rows; r++) {
       // (the middle row is the line; the rows beside it thinner, shorter, no flash, no hairline)
       const mid = (rows - 1) / 2, off = rows > 1 ? (r - mid) * Lk.gap : 0, side = off !== 0, k = side ? k0 * Lk.outer : k0;
       const wMin = side ? 0.3 + (0.25 * Math.abs(r - mid)) / mid : 0;
       for (let pass = 0; pass < 3; pass++) {
         if (side && pass > 0) break;
+        if ((pass === 2 && !TN.flash) || (pass === 1 && !(TN.hair > 0))) continue;
         for (let i = 0; i < n; i++) {
           const f = (i + 0.5) / n, s = (f - 0.5) * len;
           if (f < f0 || f >= f1) continue;
@@ -1217,10 +1264,10 @@ export class SlashFx {
             o.size = size;
             o.sizeEnd = size * Lk.hold;
             o.stretch = Math.min(30, (seg / size) * 1.8);
-            o.life = (Lk.life[0] + (Lk.life[1] - Lk.life[0]) * w) * (side ? 0.9 : 1);
+            o.life = (Lk.life[0] + (Lk.life[1] - Lk.life[0]) * w) * (side ? 0.9 : 1) * TN.life;
             o.alphaEnd = Lk.fade;
-            o.color = side ? Lk.edge ?? Lk.core : w > 0.92 ? Lk.hot : Lk.core;
-            o.alpha = (0.55 + 0.45 * w) * (side ? 0.7 : 1);
+            o.color = side ? TC.edge : w > 0.92 ? TC.hot : TC.core;
+            o.alpha = (0.55 + 0.45 * w) * (side ? 0.7 : 1) * TN.alpha;
           } else if (pass === 2) {
             // the flash: for a few frames the middle of the line is a blade of light
             if (w < 0.55) continue;
@@ -1236,9 +1283,9 @@ export class SlashFx {
             o.size = Lk.hair.size * k;
             o.sizeEnd = Lk.hair.size * k * 0.5;
             o.stretch = Math.min(40, (seg / o.size) * 1.6);
-            o.life = Lk.hair.life * (0.6 + 0.4 * w);
-            o.color = Lk.core;
-            o.alpha = Lk.hair.alpha * w;
+            o.life = Lk.hair.life * (0.6 + 0.4 * w) * TN.hair;
+            o.color = TC.core;
+            o.alpha = Lk.hair.alpha * w * TN.hairA;
             o.alphaEnd = 0;
           }
           fx.spawn(o);

@@ -84,7 +84,12 @@ export function setOffHand(m) {
   offNow = id;
   return true;
 }
+// (in the game the owner's pick, `belt`, with whatever combo plays (2026-11-27, ADR-265: "incorporate the new left hand
+// animation and use the existing production auto attack combo"); the headless sims keep 'auto', which their checks
+// are written for; `?offhand=auto` gives each combo's feel its own hand back)
+export const DEFAULT_OFFHAND = 'belt';
 {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('offhand') : null;
   if (q) setOffHand(q);
+  else if (typeof location !== 'undefined') setOffHand(DEFAULT_OFFHAND);
 }

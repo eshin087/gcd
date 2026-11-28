@@ -5,25 +5,20 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and thirty-six pieces of work since 0.4.0:
-- **A slash of fine digits on your swing, and your free hand at your hip** (2026-11-27, ADR-262, ADR-263). *Changed (the owner's picks from the films):*
-  every sword attack's slash is a thin straight line of small steel-blue digits, as if the blade cut the world's code
-  open, gone in about 0.2 s with a few digits dripping out of the cut; it is laid on the swing itself (the straight line
-  that best fits the path the sword's point swept, as the camera sees it), so it matches the sword from every side:
-  facing the camera, side-on or away (before, it was drawn across what it hit and crossed the swing from the side and
-  the front). A landed blow throws the camera along the blade's way and sprays a small burst of sparks. In combo A
-  your free hand rests at the front of the left hip with the elbow out to the side, so from behind the arm shows past
-  the coat (before, it was behind his back, then on the front of the belt where the body hid it); on the finisher it
-  joins the grip. *Added, to compare (not the default):* combo A's hits 4 and 5 without the thrust and without the
-  pause before the finisher, `?a45=a` (a falling backhand, then a two-handed falling cut from over the right
-  shoulder), `?a45=b` (a falling backhand, then a two-handed full turn) and `?a45=c` (a rising backhand, then a
-  two-handed falling diagonal into a low lunge); `?sliceform=facet` and `?sliceform=jag` (with `?slash=slice`: the
-  traced slice in straight cuts meeting at sharp corners, jag's crossing in points); `?slice=green` (the matrix-green
-  digits); `?slash=slice` the digits along the exact path the blade's point swept (`?slicewhen=trace` as the blade
-  passes, `end` all at once as the swing ends); `?endslash=enemy` the line across what it hit as before;
-  `?slash=line` the straight ending line in strokes; `?slash=arc` the crescent; `?offhand=guard` (the sword fingers
-  raised before his chest) and `?offhand=side` (the Lab's `slash`, `slice`, `slicewhen`, `sliceform`, `a45`,
-  `endslash` and `offhand` rows). *Fixed:* the free hand no longer passes through his body (the yellow fist that
-  flashed through his coat in the light combo).
+- **The instant slash on your swing from every side, and your free hand at your hip** (2026-11-27, ADR-262, ADR-263, ADR-265). *Changed (the owner's call
+  after the films):* the light combo is production's again (its moves and timing; combo A stays behind `?combo=a`) and the
+  slash is production's straight instant slash, now laid on the swing itself (the straight line that best fits the path
+  the sword's point swept, as the camera sees it), so it matches the sword from every side: facing the camera, side-on or
+  away (before, it was drawn across what it hit and crossed the swing from the side and the front); no part of it behind
+  you. Your free hand rests at the side-front of the left hip with the elbow out, so from behind the arm shows past the
+  coat, instead of production's gestures. A landed blow throws the camera along the blade's way and sprays a small burst
+  of sparks. *Added, to compare (not the default):* `?slashtone=soft|faint|thin` (the slash dimmer and thinner without its
+  white flash; fainter still without its hairline; one fine stroke); `?slash=dline` the slash printed in thin steel
+  digits, `?slash=slice` the digits along the blade's exact path (`?slice=green`, `?slicewhen=end`,
+  `?sliceform=facet|jag`), `?slash=arc` the crescent; `?combo=a` with `?a45=a|b|c` (combo A's hits 4-5 without the
+  thrust); `?endslash=enemy` the slash across what it hit as before; `?offhand=guard|side|auto` (the Lab's `slash`,
+  `slashtone`, `slice`, `slicewhen`, `sliceform`, `combo`, `a45`, `endslash` and `offhand` rows). *Fixed:* the free hand
+  no longer passes through his body.
 - **Harder-hitting swings, and slashes that stay in front of you** (2026-11-26, ADR-244). *Changed:* a heavy's
   slash no longer appears behind you as you dash: no part of any ending slash is drawn behind you, and a slash
   that cuts only air moves on with you. Landed blows hit harder: a longer freeze, the screen thrown along the slash,

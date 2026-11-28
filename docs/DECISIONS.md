@@ -7700,3 +7700,20 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   from the knuckles' side. `fistBlade()` now rolls the fist so the forearm comes in opposite the thumb, turned
   `twist` 30° toward −X: (−0.32, −0.60, 0.74), between the two approved poses; the flat shows to the game camera
   (|n·cam| ≥ 0.63; edge-on under ~0.3 vanishes). `g2`'s wrist cap is 26° (the point 8-35° below level).
+
+## ADR-265 — Production's combo and instant slash again, on the swing; the belt hand; the slash's subtler tones (2026-11-27)
+
+- **Context:** the owner, of ADR-263's films: "i dont like any of this. lets just incorporate the new left hand animation
+  and use the existing production auto attack combo and animation and instant slash effect but make sure the slashes look
+  good in every angle and also give me variations of the slash effect being more subtle and not so bright".
+- **Decision:** in the game the light combo is production's (`DEFAULT_COMBO` '0'; combo A and its hits 4-5 options stay
+  behind `?combo=a`, `?a45=`), the slash is production's instant slash line in strokes (`line`, ADR-240) laid on the
+  swing's own path (`path`, ADR-263: matches the sword facing four ways, nothing behind him), and the free hand is the
+  `belt` with any combo (`DEFAULT_OFFHAND`, browser only: the sims keep `auto`). The impact pass (ADR-244: the kick and
+  sparks on a landed blow, the smear) stays. `?slashtone=` gives three subtler looks to pick from: `soft` (colours × 0.55,
+  thinner, no flash, a short faint hairline, half the sparks), `faint` (× 0.33, thinner, no flash or hairline, no smear),
+  `thin` (one fine stroke × 0.5, short-lived); `full` stays the default until the owner picks. The digit slash, the
+  slice and its shapes stay behind `?slash=`.
+- **Consequences:** the default slash is a stroke line again (the `slice` scenario checks the default and each tone:
+  every swing drawn, each subtler tone's brightest and largest stroke under full's, no flash). The sims are unchanged
+  (production's defs and `auto` hand).
