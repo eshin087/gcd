@@ -56,6 +56,10 @@ export function moves(X) {
   });
   const D = S.draw, Y = S.yank, C = S.cast, P = S.palm, Wk = S.wreck, Nl = S.null, LN = S.lastNull;
   const yankFist = punch('cross', B, Y.windup, Y.damage, { flare: true, cock: 0.86 });
+  // (ADR-255, `?wjPolish=a`: the fist he pulls the hero onto lands on the line to the hero's chest: the
+  // cross's contact hand moved back toward his centreline; moves.js realise plays `wjKeysP` under the polish)
+  const YANK_AIM = -0.14;
+  const yankKeys = (aim) => [[0.12, REACH], [0.4, REACH], [0.62, REACH_IN], ...yankFist.keys.filter(([u]) => u >= 0.8).map(([u, p]) => (aim && u >= 1 - 1e-6 && Array.isArray(p.rH) ? [u, { ...p, rH: [p.rH[0] + aim, p.rH[1], p.rH[2]] }] : [u, p]))];
   return {
     // ================================================================ phase 1 on
     /** Azure Draw: one finger lifted; a blue knot opens beyond the hero and drags him (and the loose
@@ -70,7 +74,7 @@ export function moves(X) {
       label: 'The Yank', phase: 1, weight: [1.5, 1.1, 1.1], cooldown: 6, band: [2.8, Y.max], recovery: 0.5, cat: 'spell',
       beats: [{
         ...yankFist, knockback: Y.knockback, close: 0, track: 1, wjYank: true,
-        keys: [[0.12, REACH], [0.4, REACH], [0.62, REACH_IN], ...yankFist.keys.filter(([u]) => u >= 0.8)],
+        keys: yankKeys(0), wjKeysP: yankKeys(YANK_AIM),
       }],
     },
     // ================================================================ phase 2 on

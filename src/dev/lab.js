@@ -31,6 +31,7 @@ import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
 import { COMBO_IDS, COMBOS, comboMode, setCombo, A45_IDS, a45Mode, setA45 } from '../entities/player/combos.js';
 import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.js';
+import { CONTACT_IDS, contactMode, setContactMode } from '../combat/contact.js';
 import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
@@ -1419,9 +1420,9 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
-    // the free arm on the run (player/runArms.js, ADR-187, ADR-204; ?runArm=a|b|c|d|old), live
+    // the free arm on the run (player/runArms.js, ADR-187, ADR-204, ADR-229; ?runArm=a|b|c|d|e|f|old), live
     const rar = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint; full pump = a runner's pump, the fist before the belly and the elbow high behind him; dash = swept back behind him; by speed = natural, the dash at a sprint; before = the swing before";
+    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint; full pump = a runner's pump, the fist before the belly and the elbow high behind him; dash = swept back behind him; by speed = natural, the dash at a sprint; open (the default, the owner's pick) / wider = the full pump opened out from his side, so from behind the arm shows past the coat; before = the swing before";
     const raGrid = el('div', 'lab-grid', null, rar);
     raGrid.style.flex = '1';
     this.ui.runArmBtns = RUN_ARM_IDS.map((m) => {
@@ -1432,9 +1433,9 @@ export class Lab {
       b.title = `?runArm=${m}: ${RUN_ARM_NAMES[m]}`;
       return { m, el: b };
     });
-    // the sword arm on the run (player/runSword.js, ADR-204; ?runSword=hip|old), live
+    // the sword arm on the run (player/runSword.js, ADR-204, ADR-229; ?runSword=g2 (default)|g1|g3|nat|n1|n3|flail|b15..b45|a1..a4|hip|trail|swept|side|old), live
     const rsr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'run sword', rsr).title = "the sword arm on the run (?runSword=): forward at the hip = the blade points ahead, low at the right hip, and rocks with the forearm; before = the carry before (the blade trailing back)";
+    el('span', 'lab-lbl', 'run sword', rsr).title = "the sword arm on the run (?runSword=): forward at the hip = the blade points ahead, low at the right hip, and rocks with the forearm; trailing (the default, the owner's pick: the arm relaxed out at his side, the blade down and out to his right) / swept back / out to the side = the owner's sketch: the blade going on from the forearm's line, behind and down; before = the carry before (the blade trailing back on a cocked wrist)";
     const rsGrid = el('div', 'lab-grid', null, rsr);
     rsGrid.style.flex = '1';
     this.ui.runSwordBtns = RUN_SWORD_IDS.map((m) => {
@@ -1493,6 +1494,7 @@ export class Lab {
       ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
       ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', "the free hand in a one-handed swing: auto = the feel's own, prod = as it ships, side = loose at his side, belt = at the front of the left hip, the elbow out (combo A's), guard = the sword fingers raised before his chest, back = behind his back, quiet = its gestures pulled in (?offhand=)", (m) => (m === '0' ? 'prod' : m)],
       ['clash', CLASH_IDS, setClashMode, 'clashBtns', "the clash dance against the duelists (?clash=): dance = parries in a row inside one of his moves pay more posture each (x1, x1.25, x1.5, x1.75), their ring rises a little, and his posture recovers more slowly as his health drops; old = today's numbers. Read at each parry", (m) => (m === '0' ? 'old' : m)],
+      ['contact', CONTACT_IDS, setContactMode, 'contactBtns', "where blows meet (?contact=, ADR-259): a = every hit, block and guard is drawn ON what it strikes (the edge bites in, a fist lands on the body; held through the freeze, a heavy longer, then the swing carries on), the sparks at the meeting, and the body hit answers by where it was struck; b = a, and a boss's blow that would fall short is reached into (his drawn body eases into it, feet planted): the default, the owner's pick; c = b, and past the reach his whole drawn body steps in; old = as before. Read at each contact", (m) => (m === '0' ? 'old' : m === 'b' ? 'b reach' : m === 'c' ? 'c step' : m)],
     ]) {
       const r = el('div', 'lab-row', null, body);
       el('span', 'lab-lbl', lbl, r).title = tip;
@@ -1629,6 +1631,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.placeBtns ?? []) setClass(b, 'on', placeMode() === m);
     for (const { m, el: b } of this.ui.beatBtns ?? []) setClass(b, 'on', beatMode() === m);
     for (const { m, el: b } of this.ui.clashBtns ?? []) setClass(b, 'on', clashMode() === m);
+    for (const { m, el: b } of this.ui.contactBtns ?? []) setClass(b, 'on', contactMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
     if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;

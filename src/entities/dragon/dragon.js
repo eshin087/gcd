@@ -18,6 +18,7 @@ import { Terrain } from './terrain.js';
 import { Ablaze, ablazeLook, setAblazeLook } from './ablaze.js';
 import { wallWind } from './wallReach.js';
 import { WyrmReact } from './react.js';
+import { CONTACT, contactOn } from '../../combat/contact.js';
 import { Incantation } from './incantation.js';
 import { Brood } from './brood.js';
 import { wyrmTopKnobs } from './faces.js';
@@ -644,6 +645,29 @@ export class Dragon {
   }
 
   /**
+   * CONTACT (combat/contact.js, ADR-260; ?contact=): a bite that lands with its snout short of the hero: the head is
+   * drawn onto him (pose.headContact: an offset on the solved neck's goal, never the head's own chase), held through
+   * the freeze, then let go. `meet(a, b, r, out)`: his drawn body's signed gap. Only a bite (this._biting, set by
+   * hitPlayer); returns the meeting point or null.
+   */
+  strikeContact(meet) {
+    if (!contactOn() || !this._biting || typeof meet !== 'function') return null;
+    const W = CONTACT.wyrm, pt = this._hitPt, P = (this._meetAt ??= new THREE.Vector3());
+    const g = meet(pt, pt, W.r, P);
+    if (!Number.isFinite(g) || g > W.max) return null;
+    const H = (this.pose.headContact ??= new THREE.Vector3());
+    if (g > 0.02) {
+      // the snout carried onto the body: the head moves by the gap along snout -> body
+      const dx = P.x - pt.x, dy = P.y - pt.y, dz = P.z - pt.z, l = Math.hypot(dx, dy, dz) || 1, k = (g + W.r * 0.5) / l;
+      H.set(dx * k, dy * k, dz * k);
+      H.k = 0;
+      this._headIn = true; // (eased in on real time: _step)
+      this._headHold = W.hold;
+    }
+    return P;
+  }
+
+  /**
    * Deal damage to the player with the hit's tell data (from `o`, else the action's current beat,
    * else the attack's tuning). Returns the player's RESULT. A parry triggers onParried().
    */
@@ -664,6 +688,7 @@ export class Dragon {
     if (pt && Number.isFinite(pt.x + (pt.y ?? 0) + pt.z)) this._hitPt.set(pt.x, pt.y ?? 1, pt.z);
     else this._hitPt.set(this.position.x, 1.5 * S, this.position.z);
     let r;
+    this._biting = o.kind === 'bite';
     try {
       r = p.takeHit({
         // bullets carry their final damage (tuningBullets.js); every other hit x TUNING.damageScale
@@ -688,6 +713,7 @@ export class Dragon {
         last: !(a?.def?.string && (cur?.hit ?? 0) < (a.beats?.length ?? 1) - 1) || (!!cur?.flare && tell === TELL.BLUE),
         flare: !!cur?.flare && !o.bullet,
         melee: !!a && !o.bullet && (MELEE.has(a.name) || !!a.def?.melee),
+        point: this._hitPt, // (what struck: the snout, the toe, the tail's tip; the hero's contact pass draws the hurt there)
       });
     } catch (err) {
       console.error('[dragon] player.takeHit failed', err);
@@ -901,6 +927,15 @@ export class Dragon {
     this.time += dt;
     this.flash = Math.max(0, this.flash - dt * TUNING.flashDecay);
     this.flinch = Math.max(0, this.flinch - dt * 4);
+    // (CONTACT: a bite drawn onto the hero, strikeContact: held, then let go on game time)
+    const hc = this.pose?.headContact;
+    if (this._headIn && hc) {
+      hc.k = Math.min(1, hc.k + (Number.isFinite(this.game.realDt) ? this.game.realDt : 1 / 60) / CONTACT.wyrm.in);
+      if (hc.k >= 1) this._headIn = false;
+    } else if (hc?.k > 0) {
+      if (this._headHold > 0) this._headHold -= dt;
+      else hc.k = Math.max(0, hc.k - dt / CONTACT.wyrm.follow);
+    }
     this._updatePosture(dt);
 
     if (this.state === 'dead') {
