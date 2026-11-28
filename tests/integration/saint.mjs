@@ -3130,7 +3130,7 @@ function v04Play(name, form, dist, each) {
   const a = d.brain.act;
   let after = 0;
   run(G, 9, () => {}, () => {
-    d.rig?.root?.updateMatrixWorld?.(true);
+    (d.object3d ?? d.rig?.root)?.updateMatrixWorld?.(true);
     each(G, d.brain.act === a ? a : null);
     // (to the end of whatever the move led into: the grab's lift is an act of its own)
     if (d.brain.act !== a && (d.mode !== 'act' || !d.brain.act)) after++;
@@ -3285,7 +3285,7 @@ async function scenarioV04Motion() {
   let popWorst = 0, slideWorst = 0;
   for (const [name, form, dist] of V04_PLAY) {
     let prev = null, pv = null, hand = 0, foot = 0, head = 0, slide = 0, jolt = 0, gapMin = Infinity, n = 0, hT = 0, fT = 0;
-    const seen = new Set();
+    const seen = new Set(), anchors = [];
     v04Play(name, form, dist, (G, a) => {
       const d = G.game.dragon, R = d.rig;
       if (!a || !R) return;
@@ -3316,11 +3316,15 @@ async function scenarioV04Motion() {
         const h = b.def.part === 'fistL' ? cur.hL : cur.hR;
         // (the gap seen from above: the hand from the chest's axis, in the ground plane)
         gapMin = Math.min(gapMin, Math.hypot(h[0] - cur.ch[0], h[2] - cur.ch[2]));
+        // (where the palm is drawn at the contact, in his frame: + his left, + forward, up; the hero's line is x 0)
+        d.handPoint(b.def.part === 'fistL' ? 'L' : 'R', v);
+        R.root.worldToLocal(v);
+        anchors.push(`B${b.index + 1} ${b.def.part} [${v.x.toFixed(2)} ${v.z.toFixed(2)} ${v.y.toFixed(2)}]`);
       }
     });
     popWorst = Math.max(popWorst, hand, foot, head);
     slideWorst = Math.max(slideWorst, slide);
-    rows.push(`${name} P${form}: hand ${hand.toFixed(3)} (t ${hT.toFixed(2)}) foot ${foot.toFixed(3)} (t ${fT.toFixed(2)}) head ${head.toFixed(3)} m/frame; planted slide ${slide.toFixed(2)} m/s; root jolt ${jolt.toFixed(1)} m/s/frame; palm gap ${Number.isFinite(gapMin) ? gapMin.toFixed(2) : '-'} m (${n} frames)`);
+    rows.push(`${name} P${form}: hand ${hand.toFixed(3)} (t ${hT.toFixed(2)}) foot ${foot.toFixed(3)} (t ${fT.toFixed(2)}) head ${head.toFixed(3)} m/frame; planted slide ${slide.toFixed(2)} m/s; root jolt ${jolt.toFixed(1)} m/s/frame; palm gap ${Number.isFinite(gapMin) ? gapMin.toFixed(2) : '-'} m (${n} frames)${anchors.length ? '; palm at the contact (left, fwd, up) ' + anchors.join(' ') : ''}`);
   }
   for (const r of rows) out(`     ${r}`);
   out(`     worst one-frame jump ${popWorst.toFixed(3)} m, worst planted slide ${slideWorst.toFixed(2)} m/s`);
