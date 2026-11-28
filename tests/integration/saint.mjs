@@ -718,6 +718,235 @@ async function scenarioEvents() {
   assert(CATALOGUE.size > 20, `the catalogue is read (${CATALOGUE.size} names)`);
 }
 
+// ================================================================== melee (the melee agent's: moves/melee.js, links.js)
+/** The melee moves, the phase each is tried in, the hero's distance in reach (a string's beats step in). */
+const ML_MOVES = [['benediction', 1, 1.8], ['genuflect', 1, 1.8], ['longWalk', 1, 6], ['rebuke', 1, 1.6], ['interdict', 2, 1.8], ['castOut', 2, 1.9], ['penance', 2, 1.5], ['lauds', 3, 1.8], ['anathema', 3, 1.6], ['requiem', 4, 1.6]];
+/** A build in phase `form` with his AI off, the hero `dist` m before him, and a counter on world.groundBlow. */
+function mlDuel(form, dist = 3) {
+  const G = build();
+  duel(G, { dist, form });
+  const w = G.game.world;
+  G.ground = [];
+  w.groundBlow = (x, z, o) => { if (!Number.isFinite(x + z)) throw new Error('NaN groundBlow'); G.ground.push(o?.kind); };
+  return G;
+}
+/** The hero's results for attack `name` since index i0 of G.hits. */
+const mlHits = (G, name, i0 = 0) => G.hits.slice(i0).filter((h) => h.attack === name);
+const mlStanding = (G) => G.game.world.destructibles.list.filter((b) => !b.floor && b.state === 0 && b.hpMax < Infinity).length; // (destructibles.js STATE.INTACT)
+
+async function scenarioMlReach() {
+  out('\n== scenario MLREACH (each melee move: its beats land on a hero who stands still, none on one out of reach; tells as declared) ==');
+  for (const [name, form, dist] of ML_MOVES) {
+    const G = mlDuel(form, 4);
+    const d = G.game.dragon, def = MOVES[name];
+    const want = def.beats.filter((b) => !b.feint).map((b) => b.tell);
+    const flashes = [];
+    G.defend = { onEvent(n, e) { if (n === 'combat:flash' && e?.source === 'dragon' && e.attack === name) flashes.push(e.tell); } };
+    const i0 = G.hits.length;
+    const ok = blowAnd(G, name, 'none', { dist });
+    const got = mlHits(G, name, i0);
+    G.defend = null;
+    const landed = got.filter((h) => h.r === RESULT.HIT || h.r === RESULT.BLOCKED).length;
+    out(`     ${name} P${form}: ${landed}/${want.length} beats landed on a hero standing at ${dist} m; tells ${got.map((h) => h.tell).join(' ')} (declared ${want.join(' ')}; flashed ${flashes.join(' ')})`);
+    assert(ok && landed === want.length, `${name} (phase ${form}): every beat lands on a hero who stands still (${landed}/${want.length})`);
+    assert(flashes.join(',') === want.join(','), `${name}: each beat is cued with its declared tell (${flashes.join(' ')})`);
+    // out of reach: 12 m away (the walk: 16 m), with his mind on (it breaks a string off at a beat that
+    // cannot reach: brain.js "a string's next hit" and the reach watch), nothing lands
+    settle(G);
+    const far = name === 'longWalk' ? 16 : 12;
+    const i1 = G.hits.length;
+    d.debug.setAI(true);
+    blowAnd(G, name, 'none', { dist: far });
+    d.debug.setAI(false);
+    const miss = mlHits(G, name, i1).filter((h) => h.r === RESULT.HIT || h.r === RESULT.BLOCKED).length;
+    assert(miss === 0, `${name}: nothing lands on a hero ${far} m away (${miss})`);
+  }
+}
+
+async function scenarioMlGrab() {
+  out('\n== scenario MLGRAB (Laying On of Hands: caught, held, lifted, thrown through a standing piece, never the last HP; dodged: open) ==');
+  const G = mlDuel(1, 3);
+  const { game } = G;
+  const d = game.dragon, p = game.player, M = d.parts.melee, DS = game.world.destructibles;
+  // (him near the west line of unfinished frames, facing it: the nearest standing pieces are behind the hero)
+  d.position.set(-11, 0, 0);
+  d.yaw = -Math.PI / 2;
+  run(G, 0.2);
+  place(G, 1.8);
+  p.debug.god = false;
+  p.hp = 2;
+  const pieces0 = mlStanding(G);
+  const ok = d.brain.trigger('layHands');
+  let caughtAt = NaN, thrownAt = NaN, freeAt = NaN, maxY = 0, minHp = p.hp, crashN = 0;
+  run(G, 5, () => {
+    if (M.grip && !Number.isFinite(caughtAt)) caughtAt = game.time;
+    if (Number.isFinite(caughtAt)) maxY = Math.max(maxY, p.position.y);
+    if (M.lastThrow && !Number.isFinite(thrownAt)) thrownAt = game.time;
+    if (p.crash?.on) crashN = Math.max(crashN, p.crash.n);
+    minHp = Math.min(minHp, p.hp);
+    if (Number.isFinite(thrownAt) && !Number.isFinite(freeAt) && ['idle', 'run'].includes(p.state)) freeAt = game.time;
+  }, () => Number.isFinite(freeAt) && d.mode === 'foot');
+  const T = M.lastThrow;
+  const tgt = T?.target;
+  out(`     caught ${Number.isFinite(caughtAt)}, lifted ${maxY.toFixed(2)} m, thrown ${(thrownAt - caughtAt).toFixed(2)} s after the catch at ${tgt ? `${tgt.kind} ${Math.hypot(tgt.x - T.x, tgt.z - T.z).toFixed(1)} m off` : 'no piece'} (knockback ${T?.kb?.toFixed(1)} m), ${crashN} pieces met on the way, standing pieces ${pieces0} -> ${mlStanding(G)}; the hero ${minHp} hp at the least, his own again ${(freeAt - caughtAt).toFixed(2)} s after the catch`);
+  assert(ok && Number.isFinite(caughtAt) && M.stats.caught === 1, 'the reach catches a hero who stands still (red: no guard holds it)');
+  assert(maxY > 0.3 && Number.isFinite(thrownAt) && M.stats.throws === 1, `he lifts the hero (${maxY.toFixed(2)} m) and throws him`);
+  assert(!!tgt && T.slammed && M.stats.thrownThrough === 1 && mlStanding(G) < pieces0, `the throw goes at the nearest standing piece and through it (${crashN} met on the way, ${pieces0 - mlStanding(G)} broken)`);
+  assert(p.alive && minHp >= 1, `never the last HP (the hero at 2 hp: ${minHp} at the least)`);
+  assert(freeAt - caughtAt <= TUNING.melee.layHands.cap + 0.35, `the hero's whole loss of control ${(freeAt - caughtAt).toFixed(2)} s <= cap ${TUNING.melee.layHands.cap} s (+ the get-up's blend)`);
+  assert(p.position.y === 0, 'the hero is back on the floor');
+  // dodged: no catch, he stands open the whole recovery
+  p.debug.heal();
+  p.debug.god = true;
+  settle(G);
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  run(G, 0.3);
+  d.brain.cooldowns.layHands = 0;
+  const c0 = M.stats.caught;
+  let open = 0;
+  blowAnd(G, 'layHands', 'dodge', { dist: 1.8 });
+  void open;
+  assert(M.stats.caught === c0 && !M.grip && p.position.y === 0, 'a hero who rolls through the reach is not caught');
+  // the grab is not picked at a hero who is down
+  assert(d.weigh('layHands', MOVES.layHands, 1, 2) > 0, 'the grab is weighed at a hero on his feet');
+  p.state = 'knockdown';
+  assert(d.weigh('layHands', MOVES.layHands, 1, 2) === 0, '... and never at one who is down');
+  p.state = 'idle';
+}
+
+async function scenarioMlWalk() {
+  out('\n== scenario MLWALK (The Long Walk: light cuts land and do not stop him, a heavy cut does; the straight carries on into the scenery) ==');
+  const G = mlDuel(1, 7);
+  const { game } = G;
+  const d = game.dragon, p = game.player, M = d.parts.melee;
+  p.debug.god = true;
+  place(G, 7);
+  const d0 = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+  d.brain.trigger('longWalk');
+  const a = d.brain.act, b = a?.beats[0];
+  // light cuts through the walk (one before u 0.55, where his guard would have turned it, one after)
+  const hp0 = d.hp;
+  const cut = (heavy) => d.takeHit({ damage: 20, part: 'body', swing: true, heavy, poise: heavy ? 30 : 8, point: new THREE.Vector3(d.position.x, 1.2, d.position.z), dir: { x: 0, z: -1 } });
+  run(G, b.W * 0.3);
+  const dealt1 = cut(false);
+  run(G, b.W * 0.3);
+  const dealt2 = cut(false);
+  const still = d.mode === 'act' && d.brain.act === a;
+  const walked = d0 - Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+  out(`     two light cuts through the walk: ${dealt1} + ${dealt2} damage (hp ${hp0} -> ${d.hp}), still walking ${still}, ${walked.toFixed(2)} m walked so far`);
+  assert(dealt1 > 0 && dealt2 > 0 && still && M.stats.shrugs === 2, 'light cuts land through the walk (his guard does not turn them) and he walks on');
+  run(G, 4, null, () => d.mode === 'foot');
+  const hit = mlHits(G, 'longWalk').filter((h) => h.r === RESULT.HIT || h.r === RESULT.BLOCKED).length;
+  assert(hit === 1 && M.stats.carries === 1, `then the straight lands (${hit}) and carries on into the scenery (${M.stats.carries})`);
+  // a heavy cut stops him
+  settle(G);
+  d.brain.cooldowns.longWalk = 0;
+  place(G, 7);
+  d.brain.trigger('longWalk');
+  run(G, d.brain.act.beats[0].W * 0.5);
+  cut(true);
+  assert(d.mode === 'react' && d.brain.react?.kind === 'stagger' && M.stats.walkStops === 1, `a heavy cut stops the walk: a stagger (${d.mode} ${d.brain.react?.kind})`);
+  // the straight goes on through what stands behind the hero: a frame of the west line 3.5 m behind him
+  settle(G);
+  d.brain.cooldowns.longWalk = 0;
+  const DS = game.world.destructibles;
+  const fr = DS.list.filter((q) => q.kind === 'frame' && !q.floor && q.hpMax < Infinity).sort((x, y) => Math.abs(x.z) - Math.abs(y.z))[0];
+  d.position.set(fr.x + 8.5, 0, fr.z);
+  d.yaw = -Math.PI / 2; // (facing the line: blowAnd places the hero 4.6 m before him, 3.9 m short of the frame)
+  const hpF = fr.hp, st0 = fr.state;
+  const c0 = M.stats.carried;
+  blowAnd(G, 'longWalk', 'none', { dist: 4.6 });
+  out(`     a frame of the line 3.9 m behind where the hero stood: hp ${hpF} -> ${fr.hp}, state ${st0} -> ${fr.state}; the carry-on struck ${M.stats.carried - c0} pieces`);
+  assert(fr.hp < hpF || fr.state !== st0, 'the straight (the throw and the carry-on) bites the piece behind the hero');
+}
+
+async function scenarioMlWorld() {
+  out('\n== scenario MLWORLD (every melee blow strikes the world at its limb\'s height; the gavel craters; the double palm shoves through cover; floor marks) ==');
+  const G = mlDuel(2, 3);
+  const { game } = G;
+  const d = game.dragon, M = d.parts.melee, DS = game.world.destructibles;
+  game.player.debug.god = true;
+  const ys = [];
+  const strike = DS.strike.bind(DS), sweep = DS.sweep.bind(DS);
+  DS.strike = (x, z, r, pw, o) => { if (o?.by === 'boss') ys.push(o.y); return strike(x, z, r, pw, o); };
+  DS.sweep = (ax, az, bx, bz, r, pw, o) => { if (o?.by === 'boss') ys.push(o.y); return sweep(ax, az, bx, bz, r, pw, o); };
+  for (const name of ['benediction', 'genuflect', 'interdict', 'castOut']) {
+    settle(G);
+    d.brain.cooldowns[name] = 0;
+    blowAnd(G, name, 'none', { dist: 1.8 });
+  }
+  const real = ['benediction', 'genuflect', 'interdict', 'castOut'].reduce((s, n) => s + MOVES[n].beats.filter((b) => !b.feint).length, 0);
+  const ylo = Math.min(...ys), yhi = Math.max(...ys);
+  out(`     ${M.stats.blows} blows, ${M.stats.world} world blows (${M.stats.struck} pieces struck), heights ${ylo.toFixed(2)} .. ${yhi.toFixed(2)} m; craters ${M.stats.quakes}, shoves ${M.stats.shoves}; floor marks: ${G.ground.join(', ')}`);
+  assert(M.stats.blows === real && M.stats.world === real, `every blow struck the world (${M.stats.world} of ${real})`);
+  assert(ylo < 0.6 && yhi > 1.0, `at the limb's own height (the sweep low, the palms high: ${ylo.toFixed(2)} .. ${yhi.toFixed(2)})`);
+  assert(M.stats.quakes === 1 && G.ground.includes('slam') && G.ground.includes('dash'), `the gavel craters (${M.stats.quakes}); the floor keeps the gavel's slam and the sweep's scuff (${G.ground.join(', ')})`);
+  assert(M.stats.shoves === 1, 'the double palm sweeps the line ahead');
+  // the crater breaks plates
+  settle(G);
+  const plates = DS.list.filter((q) => q.kind === 'plate');
+  const s0 = plates.filter((q) => q.state === 0 && q.hp === q.hpMax).length;
+  d.brain.cooldowns.interdict = 0;
+  blowAnd(G, 'interdict', 'none', { dist: 1.8 });
+  const s1 = plates.filter((q) => q.hp < q.hpMax || q.state !== 0).length - (plates.length - s0);
+  out(`     plates struck by one more gavel: ${s1} (of ${s0} whole before the fight's blows)`);
+  assert(s1 > 0, 'the gavel bites the plates');
+}
+
+async function scenarioMlLinks() {
+  out('\n== scenario MLLINKS (the links of the whole table: a link to a move not built yet is passed over; he chains in every phase) ==');
+  const { LINKS, LINK_TABLE } = await imp('src/entities/enemies/falseSaint/links.js');
+  const all = new Set(Object.values(LINK_TABLE).flat().map((L) => L.to));
+  const missing = [...all].filter((n) => !MOVES[n]);
+  out(`     ${Object.keys(LINKS).length} moves with links, ${all.size} targets; not built (yet): ${missing.join(', ') || 'none'}`);
+  assert(Object.values(LINKS).every((l) => l.every((L) => typeof L.to === 'string' && ['near', 'mid', 'far', 'away', 'guarding', 'any', 'front', 'side', 'behind'].includes(L.when) && (typeof L.chance === 'number' || L.chance.length === 4))), 'every link is { to, when, chance [P1..P4] }');
+  assert(Object.keys(MOVES).filter((n) => !MOVES[n].transition && !MOVES[n].hidden && (MOVES[n].weight.some((w) => w > 0) || MOVES[n].counter) && TUNING.melee[n]).every((n) => n in LINK_TABLE), 'every melee move has its row');
+  // a link to a move not built is passed over, the next usable one taken (the rolls all pass: Math.random 0)
+  const { linkFor } = await imp('src/entities/enemies/duelist/director.js');
+  {
+    const G = build();
+    const d = G.game.dragon;
+    duel(G, { dist: 5, ai: false, form: 2 });
+    place(G, 6);
+    d.debug.setAI(true);
+    const s = d.brain._sense();
+    const R0 = Math.random;
+    Math.random = () => 0;
+    d.brain.cooldowns.longWalk = 0;
+    let L = null, err = null;
+    try { L = linkFor(d.brain, { name: 'castOut' }, s); } catch (e) { err = e; }
+    Math.random = R0;
+    assert(!err && LINKS.castOut[0].to === 'votiveFist' && L?.to === 'longWalk', `castOut's links at ${s.dist.toFixed(1)} m in phase 2: votiveFist (not built here) passed over, ${L?.to} taken${err ? ` (${err.message})` : ''}`);
+  }
+  // his flow in each phase with only these moves (a hero who never parries, god mode, the guard held every
+  // other 5 s, walking back in when thrown off): no throw, and he goes on from move to move
+  let total = 0;
+  for (const form of [1, 2, 3, 4]) {
+    const G = build();
+    const d = G.game.dragon;
+    duel(G, { dist: 3, ai: true, form });
+    const p = G.game.player;
+    p.debug.god = true;
+    const st0 = { ...d.brain.stats };
+    const names = new Set();
+    G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon') names.add(e.attack); };
+    run(G, 40, () => {
+      const g = G.game, dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, dist = Math.hypot(dx, dz);
+      g.mouseGround.set(d.position.x, 0, d.position.z);
+      G.input.axis = dist > 2.6 ? { x: dx / dist, y: -dz / dist } : { x: 0, y: 0 };
+      if (Math.floor(g.time / 5) % 2) G.input.press(1); else G.input.up(1);
+    }, () => d.mode === 'dead');
+    G.watch = null;
+    G.input.up(1);
+    const k = (f) => d.brain.stats[f] - st0[f];
+    total += k('links') + k('chains');
+    out(`     phase ${form}: ${k('picks')} picks, ${k('links')} links, ${k('chains')} chains in 40 s (${k('rests')} breathers, ${k('stops')} break-offs: the hero thrown out of a string's reach), cued: ${[...names].join(', ')}`);
+    assert(k('picks') >= 10 && names.size >= 4, `phase ${form}: he fights on (${k('picks')} picks, ${names.size} moves cued)`);
+  }
+  assert(total >= 4, `he goes from move to move without footwork (${total} links and chains in 160 s; with the boosters' gap closers built, more)`);
+}
+
 // ================================================================== THE SCENARIOS (one entry per line, each agent in its block)
 const S = {
   // --- core
@@ -733,6 +962,11 @@ const S = {
   // --- body
   // --- fx
   // --- melee
+  mlreach: scenarioMlReach,
+  mlgrab: scenarioMlGrab,
+  mlwalk: scenarioMlWalk,
+  mlworld: scenarioMlWorld,
+  mllinks: scenarioMlLinks,
   // --- boost
   // --- arsenal
   // --- terrain

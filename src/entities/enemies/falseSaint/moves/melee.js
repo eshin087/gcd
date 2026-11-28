@@ -135,7 +135,7 @@ export function moves(X) {
      *  (held, a bait delay), the long open-palm lunge that throws the hero through what stands behind
      *  him (n, n, blue), the heel planted and the hands caught back into the guard (the recovery). */
     benediction: {
-      label: 'Benediction', phase: 1, weight: [2.2, 1.5, 1.0, 0.8], cooldown: 3.5, band: [0, 3.6], recovery: 0.8, cat: 'string',
+      label: 'Benediction', phase: 1, weight: [2.2, 1.5, 1.0, 0.8], cooldown: 3.5, band: [0, 5], recovery: 0.8, cat: 'string',
       recoveryKeys: [[0.3, { ...S(fr('mlCatch')), e: 'o' }], [0.85, S({})]],
       beats: [
         palmL(N, BN.windup[0], BN.damage[0], BN.knockback[0]),
@@ -150,7 +150,7 @@ export function moves(X) {
     /** Genuflect: a low sweep at the ankles (it scuffs the plates), then both open hands on the head and
      *  a rising knee (n, blue). */
     genuflect: {
-      label: 'Genuflect', phase: 1, weight: [1.6, 1.2, 0.9, 0.7], cooldown: 4.5, band: [0, 3.2], recovery: 0.75, cat: 'string',
+      label: 'Genuflect', phase: 1, weight: [1.6, 1.2, 0.9, 0.7], cooldown: 4.5, band: [0, 4.5], recovery: 0.75, cat: 'string',
       beats: [
         blow({
           tell: N, windup: GN.windup[0], damage: GN.damage[0], knockback: GN.knockback[0], zone: { kind: 'sector', r: 2.2, ang: 1.0 }, part: 'footL', cock: 0.7, track: 0.7,
@@ -206,7 +206,7 @@ export function moves(X) {
     /** Interdict: the lead palm to stop the hero, then the plated arm comes down like a gavel onto the
      *  plates before him (n, red): a crater, a slam mark. */
     interdict: {
-      label: 'Interdict', phase: 2, weight: [0, 1.3, 1.0, 0.8], cooldown: 6, band: [0, 3.4], recovery: 0.9, cat: 'string',
+      label: 'Interdict', phase: 2, weight: [0, 1.3, 1.0, 0.8], cooldown: 6, band: [0, 5], recovery: 0.9, cat: 'string',
       beats: [
         palmL(N, IN.windup[0], IN.damage[0], IN.knockback[0]),
         follows(gavel(IN.windup[1], IN.damage[1], IN.knockback[1]), { close: 3.0 }),
@@ -215,7 +215,7 @@ export function moves(X) {
     /** Cast Out: both palms drawn to the ribs (held), then thrust together through whatever stands between
      *  them and the hero, who goes 8 m through the scenery (blue). */
     castOut: {
-      label: 'Cast Out', phase: 2, weight: [0, 1.0, 0.9, 0.8], cooldown: 7, band: [0, 3.6], recovery: 0.8, cat: 'single',
+      label: 'Cast Out', phase: 2, weight: [0, 1.0, 0.9, 0.8], cooldown: 7, band: [0, 5.2], recovery: 0.8, cat: 'single',
       beats: [doublePalm(CO.windup, CO.damage, CO.knockback)],
     },
     /** Penance (his counter, phase 2): sunk, the plated hand-heel driven up under the chin (blue). */
@@ -231,7 +231,7 @@ export function moves(X) {
     /** Lauds: a low kick at the knee (it scuffs the plates), then the overhand hand-heel down on the
      *  collarbone (n, blue). */
     lauds: {
-      label: 'Lauds', phase: 3, weight: [0, 0, 1.1, 0.9], cooldown: 5.5, band: [0, 3.4], recovery: 0.75, cat: 'string',
+      label: 'Lauds', phase: 3, weight: [0, 0, 1.1, 0.9], cooldown: 5.5, band: [0, 4.6], recovery: 0.75, cat: 'string',
       beats: [
         blow({
           tell: N, windup: LD.windup[0], damage: LD.damage[0], knockback: LD.knockback[0], zone: { kind: 'sector', r: 2.0, ang: 0.7, fwd: 0.2 }, part: 'footR', cock: 0.7,
@@ -282,12 +282,14 @@ export class FsMelee {
     this._near = [];
     this.grip = null;
     this.carry = null;
+    this.flung = null;
     this.reset();
   }
 
   reset() {
     this._release();
     this.carry = null;
+    this.flung = null;
     this.lastThrow = null;
     this.stats = { blows: 0, landed: 0, blocked: 0, world: 0, struck: 0, caught: 0, throws: 0, thrownThrough: 0, shrugs: 0, walkStops: 0, carries: 0, carried: 0, quakes: 0, shoves: 0 };
   }
@@ -325,6 +327,7 @@ export class FsMelee {
       }
     }
     if (this.grip) this._gripFrame(dt);
+    if (this.flung) this._flungFrame(dt);
   }
 
   // ---------------------------------------------------------------- Laying On of Hands
@@ -347,7 +350,8 @@ export class FsMelee {
   }
 
   /** The standing piece to throw the hero at: the nearest within `seek` m of him that is not back through
-   *  the saint (whole pieces and raised ones left out: the crash only meets what stands on the floor). */
+   *  the saint (whole pieces and raised ones left out: the crash only meets what stands on the floor); one
+   *  the throw breaks counts `tough` m nearer than one it cannot. */
   _aim(px, pz) {
     const W = this.game.world?.destructibles, LH = this.T.layHands, d = this.d;
     const n = W?.around?.(px, pz, LH.seek, this._near, 64) ?? 0;
@@ -360,7 +364,8 @@ export class FsMelee {
       if (dist < 0.8) continue;
       const cos = (dx * ox + dz * oz) / (dist * ol);
       if (cos < -0.2) continue;
-      const sc = dist - cos * 1.5;
+      // (a piece the throw will break goes first: the hero goes THROUGH it; one it cannot, he is slammed against)
+      const sc = dist - cos * 1.5 + (fin(q.hp, q.hpMax) > LH.crash * fin(q.M?.take?.blunt, 1) ? LH.tough : 0);
       if (sc < bs) {
         bs = sc;
         best = q;
@@ -421,8 +426,8 @@ export class FsMelee {
       damage: dmg, knockback: kb, knockdown: true, kind: 'crush', tell: RULE_TELL.RED, attack: 'layHands', from: { x: pos.x - dx * 2, z: pos.z - dz * 2 },
       parryable: false, blockable: false, beat: b, extra: { wjCrash: LH.crash, wjCrashDamage: this.T.crash.damage, perfect: false },
     });
-    this.lastThrow = { x: pos.x, z: pos.z, kb, target: q, result: r };
-    if (r === RESULT.HIT && q) this.stats.thrownThrough++;
+    this.lastThrow = { x: pos.x, z: pos.z, kb, target: q, result: r, slammed: false };
+    if (r === RESULT.HIT && q) this.flung = { q, t: 0, T: this.lastThrow };
     // the get-up comes so the hero's whole loss of control is at most `cap` s
     if (p.state === 'knockdown') {
       const dur = fin(HERO_TUNE.knockdownDur, 1.3), left = Math.max(0.5, LH.cap - G.t);
@@ -430,6 +435,38 @@ export class FsMelee {
     }
     this.game.shake?.(0.45);
     this.grip = null;
+  }
+
+  /** The thrown hero reaches the piece he was thrown at (or his slide dies against it): it takes the slam
+   *  (`slam` power at his height, BLUNT), whatever the crash's own step met on the way (a conveyor's wide
+   *  bed in front of the frame on it). */
+  _flungFrame(dt) {
+    const F = this.flung, p = this.game.player, pos = p?.position, LH = this.T.layHands;
+    F.t += dt;
+    if (!pos || !p.alive || F.t > 1.4) {
+      this.flung = null;
+      return;
+    }
+    const q = F.q, gap = Math.hypot(q.x - pos.x, q.z - pos.z) - fin(q.r, 0.5) - fin(p.radius, 0.45);
+    const sp = Math.hypot(fin(p.kb?.x), fin(p.kb?.z));
+    if (gap > 0.35 && sp > 1.5) return;
+    this.flung = null;
+    if (gap > 2.2) return; // (his slide died short of it: nothing met)
+    const W = this.game.world, DS = W?.destructibles;
+    const o = this._o;
+    o.kind = 'blunt';
+    const l = Math.hypot(q.x - pos.x, q.z - pos.z) || 1;
+    o.dx = (q.x - pos.x) / l;
+    o.dz = (q.z - pos.z) / l;
+    o.y = 0.9;
+    o.falloff = 0;
+    o.scar = true;
+    o.src = DS?.swing?.() ?? -1;
+    const n = DS?.strike?.(q.x, q.z, Math.max(0.5, fin(q.r, 0.5)), LH.slam, o) ?? 0;
+    W?.impact?.(pos.x + o.dx * 0.4, pos.z + o.dz * 0.4, 1.0, LH.slam * 0.5, o);
+    this.game.shake?.(0.4);
+    F.T.slammed = n > 0;
+    if (n > 0) this.stats.thrownThrough++;
   }
 
   // ---------------------------------------------------------------- his blows on the world

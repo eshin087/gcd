@@ -22,10 +22,11 @@ export const TUNING_MELEE = {
   genuflect: { windup: [0.56, 0.52], damage: [12, 20], knockback: [2.2, 4.5] },
   // ---- LAYING ON OF HANDS (the red grab): the reach (`windup`, a line `reach` m, `close` m of step-in);
   // caught: `catch` damage, held (player.hold) while he lifts the hero `lift` m (the lift move's
-  // `liftWindup`), then thrown at the nearest standing piece within `seek` m (knockback its distance +
-  // `over`, `kbMin` .. `kbMax`), `throwDamage`, through the world at `crash` power. Never the last HP.
+  // `liftWindup`), then thrown at the nearest standing piece within `seek` m (one the throw breaks counts `tough` m nearer
+  // than one it cannot; knockback its distance +
+  // `over`, `kbMin` .. `kbMax`), `throwDamage`, through the world at `crash` power; the piece he reaches takes the `slam`. Never the last HP.
   // `cap`: the hero's whole loss of control (the hold + the knockdown), s at most (Halcyon's carry: 1.6).
-  layHands: { windup: 0.64, reach: 1.9, close: 2.4, catch: 6, lift: 0.5, liftWindup: 0.62, throwDamage: 22, seek: 9, over: 1.4, kbMin: 4, kbMax: 10, crash: 3.0, cap: 1.9, hold: 0.9 },
+  layHands: { windup: 0.64, reach: 1.9, close: 2.4, catch: 6, lift: 0.5, liftWindup: 0.62, throwDamage: 22, seek: 9, over: 1.4, kbMin: 4, kbMax: 10, crash: 3.0, slam: 4, tough: 4, cap: 1.9, hold: 0.9 },
   // ---- THE LONG WALK: one beat; the walk is its windup (`windup` s, fixed: unhurried in every phase,
   // `close` m of walking), light cuts do not stop it, heavy ones do; then ONE straight. A straight that is
   // not parried carries on into the scenery: a sweep `carry` m on along its line, `carryW` m half-wide, at

@@ -31,6 +31,18 @@ const away = (to, chance, o) => ({ to, when: 'away', chance, ...o });
 const mid = (to, chance, o) => ({ to, when: 'mid', chance, ...o });
 const near = (to, chance, o) => ({ to, when: 'near', chance, ...o });
 const guarding = (to, chance, o) => ({ to, when: 'guarding', chance, ...o });
+const any = (to, chance, o) => ({ to, when: 'any', chance, ...o });
+
+/** After a blow that THROWS the hero (a knockback of 4.5 - 10 m, a block push of 3.4 - 5.2): the plan is
+ *  made as the recovery starts, while the hero is still sliding (3 - 4 m off), and the link starts at its
+ *  cut (half the recovery later), when he has come to rest 6 - 9 m off. So these links are `any`: the gap
+ *  closers whose band reaches both (the booster punch P2+, the dive P3+, the overclock P4, the walk). */
+const THROWN = [
+  any('votiveFist', [0, 0.5, 0.45, 0.4]),
+  any('descent', [0, 0, 0.3, 0.3]),
+  any('vespers', [0, 0, 0, 0.25]),
+  any('longWalk', [0.6, 0.35, 0.25, 0.2]),
+];
 
 /** A hero far off or backing away: crossed to, or shot at (by phase: the walk; the booster punch; the dive;
  *  the overclock). */
@@ -53,32 +65,41 @@ const CLOSE = [
   near('genuflect', [0.3, 0.2, 0.15, 0.1]),
   near('benediction', [0.3, 0.2, 0.15, 0.1]),
 ];
-/** Mid range: a step-in string or a gun. */
+/** Mid range (the hero his last blow slid 3 - 6 m off): a jet in, a string that steps in after him (its
+ *  first beat's close-in: TUNING.close.first 3.2 m), a gun. */
 const MID = [
   mid('votiveFist', [0, 0.35, 0.3, 0.3]),
   mid('thurible', [0, 0, 0.3, 0.3]),
+  mid('castOut', [0, 0.3, 0.25, 0.2]),
+  mid('interdict', [0, 0.3, 0.25, 0.2]),
+  mid('lauds', [0, 0, 0.25, 0.2]),
+  mid('benediction', [0.4, 0.25, 0.2, 0.15]),
+  mid('genuflect', [0.3, 0.2, 0.15, 0.1]),
   mid('relic', [0, 0, 0.2, 0.2]),
   mid('longWalk', [0.3, 0.15, 0, 0]),
 ];
 const without = (list, name) => list.filter((L) => L.to !== name);
 /** The usual tail after a blow of move `name` (never into itself). */
 const after = (name, pre = []) => [...pre, ...without(PURSUE, name), ...without(CLOSE, name), ...without(MID, name)];
+/** ... after a blow that throws him: only what reaches where he will have come to rest (a near / mid link
+ *  planned while he slides would fail at its cut, and it would have taken the place of the flow's roll). */
+const thrown = (name, pre = []) => [...pre, ...without(THROWN, name), ...without(PURSUE, name), guarding('castOut', [0, 0.3, 0.25, 0.25])].filter((L) => L.to !== name);
 
 const TABLE = {
   // ================================================================ the melee agent's moves
-  benediction: after('benediction', [near('genuflect', [0.35, 0.25, 0.2, 0.15])]),
-  genuflect: after('genuflect', [near('benediction', [0.35, 0.25, 0.2, 0.15])]),
+  benediction: thrown('benediction'),
+  genuflect: thrown('genuflect'),
   // (a whiffed grab: no link, he stands open for the whole recovery; caught and thrown: the lift's links)
   layHands: [],
-  layHandsLift: [far('longWalk', [0.6, 0.3, 0.1, 0]), far('votiveFist', [0, 0.45, 0.35, 0.3]), far('vigil', [0, 0.2, 0.2, 0.2]), far('crucible', [0, 0, 0.25, 0.2]), far('kyrie', [0, 0, 0, 0.25])],
-  longWalk: after('longWalk', [near('layHands', [0.25, 0.2, 0.15, 0.1])]),
-  interdict: after('interdict', [near('castOut', [0, 0.25, 0.2, 0.2])]),
-  castOut: [far('votiveFist', [0, 0.5, 0.45, 0.4]), far('longWalk', [0, 0.3, 0.15, 0.1]), far('absolution', [0, 0.2, 0.2, 0.15]), far('choir', [0, 0, 0.25, 0.2]), far('descent', [0, 0, 0.25, 0.25])],
-  lauds: after('lauds', [near('thurible', [0, 0, 0.25, 0.25])]),
+  layHandsLift: [...THROWN, far('longWalk', [0.6, 0.3, 0.1, 0]), far('votiveFist', [0, 0.45, 0.35, 0.3]), far('vigil', [0, 0.2, 0.2, 0.2]), far('crucible', [0, 0, 0.25, 0.2]), far('kyrie', [0, 0, 0, 0.25])],
+  longWalk: thrown('longWalk'),
+  interdict: thrown('interdict'),
+  castOut: [...THROWN, far('votiveFist', [0, 0.5, 0.45, 0.4]), far('longWalk', [0, 0.3, 0.15, 0.1]), far('absolution', [0, 0.2, 0.2, 0.15]), far('choir', [0, 0, 0.25, 0.2]), far('descent', [0, 0, 0.25, 0.25])],
+  lauds: thrown('lauds'),
   // (the counters and the flurry: what follows them is decided as for any move that ended on its own)
   rebuke: [near('benediction', [0.3, 0, 0, 0]), far('longWalk', [0.3, 0, 0, 0])],
   penance: [near('interdict', [0, 0.3, 0, 0]), far('votiveFist', [0, 0.4, 0, 0])],
-  anathema: [far('descent', [0, 0, 0.35, 0]), far('votiveFist', [0, 0, 0.35, 0]), near('lauds', [0, 0, 0.3, 0])],
+  anathema: [...without(THROWN, 'anathema'), far('descent', [0, 0, 0.35, 0]), far('votiveFist', [0, 0, 0.35, 0]), near('lauds', [0, 0, 0.3, 0])],
   requiem: [far('vespers', [0, 0, 0, 0.35]), far('votiveFist', [0, 0, 0, 0.35]), near('lauds', [0, 0, 0, 0.3])],
   litany: [near('genuflect', [0.3, 0.2, 0.2, 0.2]), far('longWalk', [0.3, 0.1, 0, 0]), far('votiveFist', [0, 0.35, 0.3, 0.3])],
 
