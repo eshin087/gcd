@@ -5743,6 +5743,13 @@ const SCENARIOS = {
   sfx: scenarioSfx,
   audit: scenarioAudit,
   swordmotion: scenarioSwordMotion,
+  // the contact pass (ADR-259, ?contact=a): the rules unmoved, the blows drawn on what they strike
+  contact: async () => {
+    out('\n== scenario CONTACT (blows drawn ON what they strike; the rules unmoved; ADR-259) ==');
+    const { contactCheck } = await import('./contactCheck.mjs');
+    const moves = ['plumThrust', 'fallingAsh', 'swallow', 'ashRain', 'chaseRain', 'riposte'].filter((n) => MOVES[n]);
+    return await contactCheck({ THREE, imp, build, duel, place, run, settle, home, DT, assert, out, RESULT, moves });
+  },
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer', 'audit']); // run only when named

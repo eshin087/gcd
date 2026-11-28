@@ -688,6 +688,7 @@ export class Dragon {
         last: !(a?.def?.string && (cur?.hit ?? 0) < (a.beats?.length ?? 1) - 1) || (!!cur?.flare && tell === TELL.BLUE),
         flare: !!cur?.flare && !o.bullet,
         melee: !!a && !o.bullet && (MELEE.has(a.name) || !!a.def?.melee),
+        point: this._hitPt, // (what struck: the snout, the toe, the tail's tip; the hero's contact pass draws the hurt there)
       });
     } catch (err) {
       console.error('[dragon] player.takeHit failed', err);

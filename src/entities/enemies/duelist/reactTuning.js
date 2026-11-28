@@ -44,6 +44,10 @@ export const REACT = Object.freeze({
   //   catch   the share of the roll the chest takes back (he keeps his head over his feet)
   //   pitch   the body tips forward over the bent knee   shift  m toward the struck side
   leg: { drop: 0.065, roll: 0.12, catch: 0.7, pitch: 0.06, shift: 0.015 },
+  // an arm (CONTACT, ?contact=a: the struck capsule says so): a body hit on the chest, its twist `twist` x
+  // (the shoulder is far off the spine), that shoulder dropped (`roll`) and back (`pitch`, rad), the head
+  // turned away from it (`head`)
+  arm: { twist: 1.35, roll: 0.1, pitch: -0.05, head: 0.08 },
   // where it answers, by the drawn contact's height on the upright body (m over his feet: the hurt
   // spheres' head 1.3 - 1.7, chest 0.8 - 1.4, hips 0.5 - 1.1, shins 0.1 - 0.5): over `head` the head
   // (over `headPart` when the hit test says head), under `leg` a leg (under `legPart` when it says

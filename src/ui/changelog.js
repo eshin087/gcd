@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: 'Blows land on what they strike',
+        notes: [
+          'Every hit, block and guard now lands on what it strikes: the blade bites in, a fist lands on the body, held through the freeze, then the swing carries on, with the sparks where the two met and the struck part flinching by where it was hit.',
+          'A boss leans into a blow that would have fallen short of you. No change to any timing or damage; ?contact=0 shows it as before.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: "Bai Wuji's blows land where they aim",
         notes: [
           "Bai Wuji's palm, his straight poke, Dark Spark and the fist he pulls you onto now land on the line to your chest instead of crossing past you.",

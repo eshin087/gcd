@@ -1268,6 +1268,13 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       rule 10's pace (`?halPace=a`), two looks each for his eye beams and his shockwaves; draft PR, films sent
   - [x] The owner's picks made the default (2026-11-27: `halMotion` b, his fast pace kept, `halEyes` a, `halShock` a)
 
+- [x] Contact (ADR-259): every hit, block, guard and clash drawn ON what it strikes (the bite and follow-through),
+      the sparks at the meeting, the struck part answering (the hero's HitReact, arms), an optional reach for a boss's
+      short blows; behind `?contact=a|b`, the contact audit, draft PR, films sent
+  - [x] The owner's pick from the films (2026-11-27): `b`, the default
+  - [ ] Next: the wyrm's poses on its blows (its jaws still short when its hit spheres connect), the execution's
+        thrust and the plunge, blows whose hit zone outreaches the drawn limb (move data, the boss sessions')
+
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and
       height, hazards that change by phase, a boss that throws or cuts through the set

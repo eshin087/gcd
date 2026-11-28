@@ -1679,6 +1679,20 @@ function blockPose(p, A) {
   walkLegs(p, A);
 }
 
+/** CONTACT (combat/contact.js, ADR-259; ?contact=a): a guard nudged onto the blow it meets (`G`: the hero's
+ *  guardNudge on a block, a duelist pilot's on his ward: { x, y, z } body axes (x his left, z ahead), model
+ *  m, and k 0..1 easing off): the grip goes there, both hands if both are on it. On the pose as drawn. */
+function gripNudge(p, G) {
+  const gk = G ? smoothstep(0, 1, fin(G.k)) : 0;
+  if (!(gk > 0.001)) return;
+  const two = p[P.twoHand] > 0.5;
+  for (let c = 0; c < 3; c++) {
+    const d = fin(c === 0 ? G.x : c === 1 ? G.y : G.z) * gk;
+    p[P.rH + c] += d;
+    if (two) p[P.lH + c] += d;
+  }
+}
+
 // (the parry clip: deflectPose in the PLUNGE + DEFLECT block below)
 
 /** Ghostep: reappear crouched low behind the attacker, off hand braced on the ground, blade swept
@@ -3447,6 +3461,7 @@ export class HeroAnimator {
         break;
       }
     }
+    gripNudge(this.cur, this.player?.guardNudge); // (CONTACT: a guard nudged onto the blow it meets)
     this.apply(this.cur);
     this._coat(dt);
     this._hair(dt);
