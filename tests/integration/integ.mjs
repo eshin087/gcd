@@ -6265,12 +6265,18 @@ async function scenarioCombos() {
   try {
     CO.setCombo('0');
     const prod = snap(), keep0 = CB.LIGHT.map((d) => KEEP.map((k) => JSON.stringify(d[k])).join());
+    const BASE_LUNGE = CB.LIGHT.map((d) => d.lunge), BASE_REACH = CB.LIGHT.map((d) => d.reach);
     for (const id of CO.COMBO_IDS.slice(1)) {
       CO.setCombo(id);
       const C = CO.COMBOS[id];
-      const worn = CB.LIGHT.every((d, i) => d.anim.clip === C.hits[i].anim.clip && d.windup === C.hits[i].windup && !d.variants.length)
-        && CB.LIGHT.every((d, i) => KEEP.map((k) => JSON.stringify(d[k])).join() === keep0[i]) && FE.feelMode() === C.feel && OH.offHandMode() === 'auto' && OH.offHandLook() === OH.OFFHAND[C.hand];
-      assert(worn, `combo ${id} (${C.name}) wears its five hits, its feel ${FE.feelMode()} and its hand ${C.hand}, every other number production's`);
+      // (a planted combo, combos.js `plant`, steps in its own `lunge` and plays its feet 'plant'; its `poke` hit
+      // the level thrust)
+      const planted = !!C.plant && CO.plantMode() === '1';
+      const clipOf = (i) => (C.poke === i && CO.pokeMode() === '1' ? 'poke' : C.hits[i].anim.clip);
+      const keepOf = (d, i) => KEEP.map((k) => (k === 'lunge' && planted ? JSON.stringify(BASE_LUNGE[i]) : k === 'reach' && planted && Number.isFinite(C.plant.reach?.[i]) ? JSON.stringify(BASE_REACH[i]) : JSON.stringify(d[k]))).join();
+      const worn = CB.LIGHT.every((d, i) => d.anim.clip === clipOf(i) && d.windup === C.hits[i].windup && !d.variants.length && (!planted || (d.anim.feet === 'plant' && d.lunge === C.plant.lunge[i])))
+        && CB.LIGHT.every((d, i) => keepOf(d, i) === keep0[i]) && FE.feelMode() === C.feel && OH.offHandMode() === 'auto' && OH.offHandLook() === OH.OFFHAND[C.hand];
+      assert(worn, `combo ${id} (${C.name}) wears its five hits${planted ? ' (planted, its own steps in)' : ''}, its feel ${FE.feelMode()} and its hand ${C.hand}, every other number production's`);
       const res = [];
       for (let n = 1; n <= 5; n++) {
         const G = (last = build());
@@ -6306,6 +6312,100 @@ async function scenarioCombos() {
     CO.setCombo('0');
     assert(snap() === prod && FE.feelMode() === '0' && OH.offHandLook() === null, 'combo 0 gives production its five defs, its feel and its hand back exactly');
   } finally {
+    CO.setCombo(combo0);
+  }
+  return last;
+}
+
+// PLANTED (the owner, 2026-11-27: "the character forward momentum from the attacks are way too much and his legs
+// are also moving too much. his left hand also doesnt show at all during the light attack combo on the first 4
+// attacks ... the 4th thrust from the combo also needs to be a real thrust poke"; combos.js `plant` / `poke`,
+// anim.js plantFeet, offHand.js `guard`). Combo A against the wyrm 1.6 m ahead, both ways (`?plant=1&poke=1`,
+// the default, against `?plant=0&poke=0` with the hand behind his back as before): planted, every hit lands, he
+// travels at most a little more than his steps in, his feet travel well under half as far, the lead foot stays
+// the lead foot and neither lifts more than a few centimetres; hit 4's blade is within 10 degrees of level
+// through its cut and extension; from behind (the camera never turns) the free hand stands clear of his body's
+// outline in most frames of hits 1-4, where behind his back it never did.
+async function scenarioPlanted() {
+  out('\n== scenario PLANTED (combo A planted: small steps, the stance kept, a level poke, the free hand seen) ==');
+  const CO = await imp('src/entities/player/combos.js');
+  const OH = await imp('src/entities/player/offHand.js');
+  const CB = await imp('src/entities/player/combat.js');
+  const { P } = await imp('src/entities/player/anim.js');
+  const combo0 = CO.comboMode(), plant0 = CO.plantMode(), poke0 = CO.pokeMode(), off0 = OH.offHandMode();
+  let last = null;
+  const play = (plant, poke, hand) => {
+    CO.setCombo('a');
+    CO.setPlant(plant);
+    CO.setPoke(poke);
+    OH.setOffHand(hand);
+    const G = (last = build());
+    fightSetup(G);
+    settle(G);
+    const { game, input } = G, d = game.dragon, p = game.player, r = p.rig, A = p.anim;
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    const c = d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+    p.debug.teleport(c.x + fx * (c.r + 1.6), c.z + fz * (c.r + 1.6));
+    p.debug.god = true;
+    p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+    aimAt(G);
+    for (let i = 0; i < 20; i++) G.tick(DT);
+    const inv = new THREE.Matrix4(), V = new THREE.Vector3(), Ch = new THREE.Vector3();
+    const Fl = new THREE.Vector3(), Fr = new THREE.Vector3(), Fl0 = new THREE.Vector3(), Fr0 = new THREE.Vector3();
+    const hits = [], starts = [], leads = [];
+    let feet = 0, lift = 0, have = false, seen = 0, n14 = 0, pokeEl = 0, pokeN = 0, prevCombo = 0;
+    G.watch = (nn) => { if (nn === 'player:hitDragon') hits.push(p.atk?.def?.combo); };
+    const plan = [0, 0.42, 0.84, 1.26, 1.68];
+    for (let i = 0, N = Math.round(2.9 / DT); i < N; i++) {
+      if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
+      G.tick(DT);
+      const combo = p.state === 'attack' ? p.atk?.def?.combo ?? 0 : 0;
+      inv.copy(r.root.matrixWorld).invert();
+      const sc = 1 / (p.drawScale || 1);
+      if (combo && combo !== prevCombo) {
+        starts.push([combo, p.position.x, p.position.z]);
+        // (the lead foot: the one further ahead along his facing, in his own frame)
+        const lz = V.setFromMatrixPosition(r.legs.L.foot.matrixWorld).applyMatrix4(inv).z, rz = V.setFromMatrixPosition(r.legs.R.foot.matrixWorld).applyMatrix4(inv).z;
+        leads.push(lz > rz ? 'L' : 'R');
+      }
+      prevCombo = combo;
+      Fl.setFromMatrixPosition(r.legs.L.foot.matrixWorld);
+      Fr.setFromMatrixPosition(r.legs.R.foot.matrixWorld);
+      if (combo >= 1 && combo <= 4) {
+        if (have) feet += Fl.distanceTo(Fl0) + Fr.distanceTo(Fr0);
+        lift = Math.max(lift, Fl.y - p.position.y, Fr.y - p.position.y);
+        // the free wrist across from his chest's middle, in his own frame (from behind, what sticks out sideways shows)
+        Ch.setFromMatrixPosition(r.chest.matrixWorld).applyMatrix4(inv);
+        V.setFromMatrixPosition(r.arms.L.wrist.matrixWorld).applyMatrix4(inv);
+        n14++;
+        if (Math.abs(V.x - Ch.x) * sc >= 0.26) seen++;
+      }
+      have = combo >= 1 && combo <= 4;
+      Fl0.copy(Fl);
+      Fr0.copy(Fr);
+      if (combo === 4 && p.atk.t > p.atk.def.windup * 0.8 && p.atk.t < p.atk.def.windup + p.atk.def.active + p.atk.def.recovery * 0.4) {
+        pokeEl = Math.max(pokeEl, Math.abs(Math.asin(Math.max(-1, Math.min(1, A.cur[P.swD + 1])))) * 57.2958);
+        pokeN++;
+      }
+    }
+    G.watch = null;
+    const legs = starts.slice(1).map((s, i) => Math.hypot(s[1] - starts[i][1], s[2] - starts[i][2]));
+    return { hits: [...new Set(hits)], legs, feet, lift, leads, seen: n14 ? seen / n14 : 0, pokeEl, pokeN, lunge: CB.LIGHT.map((x) => x.lunge) };
+  };
+  try {
+    const nw = play('1', '1', 'auto'), old = play('0', '0', 'back');
+    out(`   planted: steps ${nw.legs.map((x) => x.toFixed(2)).join(' ')} m, feet ${nw.feet.toFixed(2)} m, lift ${(nw.lift * 100).toFixed(1)} cm, leads ${nw.leads.join('')}, hand seen ${(nw.seen * 100).toFixed(0)} %, poke at most ${nw.pokeEl.toFixed(1)} deg`);
+    out(`   before:  steps ${old.legs.map((x) => x.toFixed(2)).join(' ')} m, feet ${old.feet.toFixed(2)} m, lift ${(old.lift * 100).toFixed(1)} cm, leads ${old.leads.join('')}, hand seen ${(old.seen * 100).toFixed(0)} %, rising thrust at most ${old.pokeEl.toFixed(1)} deg`);
+    assert([1, 2, 3, 4, 5].every((k) => nw.hits.includes(k)), `planted, every hit of combo A still lands on the wyrm (${nw.hits.join(', ')})`);
+    assert(nw.legs.length === 4 && nw.legs.every((x, i) => x <= nw.lunge[i] + 0.12), `planted, each hit carries him at most ~its step in (${nw.legs.map((x, i) => `${x.toFixed(2)} <= ${(nw.lunge[i] + 0.12).toFixed(2)}`).join(', ')} m; before ${old.legs.map((x) => x.toFixed(2)).join(' ')})`);
+    assert(nw.feet <= 0.45 * old.feet, `planted, his feet travel ${nw.feet.toFixed(2)} m through hits 1-4 (<= 45 % of before, ${old.feet.toFixed(2)} m)`);
+    assert(nw.leads.length >= 5 && nw.leads.every((x) => x === nw.leads[0]) && nw.lift <= 0.13, `planted, the lead foot stays the lead foot (${nw.leads.join('')}; before ${old.leads.join('')}) and no foot lifts past ${(nw.lift * 100).toFixed(1)} cm (<= 13 cm, the ankle's own height included)`);
+    assert(nw.pokeN > 4 && nw.pokeEl <= 10 && old.pokeEl >= 25, `hit 4 is a level poke: the blade within ${nw.pokeEl.toFixed(1)} deg of level through its cut (<= 10; the rising thrust ${old.pokeEl.toFixed(1)})`);
+    assert(nw.seen >= 0.5 && old.seen <= 0.2, `from behind, the free hand stands clear of his body in ${(nw.seen * 100).toFixed(0)} % of hits 1-4 (>= 50 %; behind his back ${(old.seen * 100).toFixed(0)} %)`);
+  } finally {
+    CO.setPlant(plant0);
+    CO.setPoke(poke0);
+    OH.setOffHand(off0);
     CO.setCombo(combo0);
   }
   return last;
@@ -6397,7 +6497,7 @@ async function scenarioOffHand() {
   const off0 = OH.offHandMode();
   let last = null, prodStep = 0;
   try {
-    for (const mode of ['0', 'side', 'back', 'quiet']) {
+    for (const mode of ['0', 'side', 'back', 'quiet', 'guard', 'out']) {
       OH.setOffHand(mode);
       const G = (last = build());
       fightSetup(G);
@@ -6409,7 +6509,7 @@ async function scenarioOffHand() {
       for (let i = 0; i < 40; i++) G.tick(DT);
       A.forceVariant = 0;
       const W = new THREE.Vector3(), S = new THREE.Vector3(), Wp = new THREE.Vector3(), inv = new THREE.Matrix4();
-      let sdIn = 0, sdSlam = 0, twoSlam = 0, far = 0, step = 0, nan = false, have = false, sdAfter = 0;
+      let sdIn = 0, sdSlam = 0, twoSlam = 0, far = 0, step = 0, nan = false, have = false, sdAfter = 0, stepAt = '';
       const plan = [0, 0.42, 0.84, 1.26, 1.68];
       for (let i = 0, N = Math.round(3.6 / DT); i < N; i++) {
         if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
@@ -6420,7 +6520,7 @@ async function scenarioOffHand() {
         if (!Number.isFinite(W.x + W.y + W.z)) nan = true;
         const sd = A.cur[P.sd], combo = p.state === 'attack' ? p.atk?.def?.combo : 0;
         // (hits 1-4 and their way home: the slam is two-handed, both hands ride the blade there)
-        if (have && !(combo >= 5)) step = Math.max(step, W.distanceTo(Wp));
+        if (have && !(combo >= 5) && W.distanceTo(Wp) > step) { step = W.distanceTo(Wp); stepAt = `${p.state} ${p.atk?.def?.name ?? ''} t ${(p.atk?.t ?? 0).toFixed(3)}`; }
         Wp.copy(W);
         have = true;
         if (combo >= 1 && combo <= 4 && p.atk.t > p.atk.def.windup) sdIn = Math.max(sdIn, sd);
@@ -6432,7 +6532,7 @@ async function scenarioOffHand() {
       if (mode === '0') prodStep = step;
       if (mode === '0') assert(sdIn === 0 && sdSlam === 0 && !nan, `offhand 0 (production) never hangs the free hand (sd ${sdIn}; its free wrist at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4)`);
       else assert(!nan && sdIn > 0.95 && sdSlam < 0.05 && twoSlam > 0.9 && far <= 0.6 && step <= 0.7 * prodStep && sdAfter < 0.02,
-        `offhand ${mode}: at its rest through hits 1-4 (sd ${sdIn.toFixed(2)}), the slam two-handed (sd ${sdSlam.toFixed(2)}, two ${twoSlam.toFixed(2)}), the wrist at most ${far.toFixed(2)} m from its shoulder, at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4 (production ${(prodStep * 100).toFixed(1)}), home after (sd ${sdAfter.toFixed(2)})${nan ? ', NaN' : ''}`);
+        `offhand ${mode}: at its rest through hits 1-4 (sd ${sdIn.toFixed(2)}), the slam two-handed (sd ${sdSlam.toFixed(2)}, two ${twoSlam.toFixed(2)}), the wrist at most ${far.toFixed(2)} m from its shoulder, at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4 (${stepAt}; production ${(prodStep * 100).toFixed(1)}), home after (sd ${sdAfter.toFixed(2)})${nan ? ', NaN' : ''}`);
     }
   } finally {
     OH.setOffHand(off0);
@@ -6718,8 +6818,12 @@ async function scenarioHeroLife() {
     } finally {
       fxa.spawn = spawn0;
     }
-    const thrusts = Object.entries(SWINGS).filter(([, C]) => C.line === 'point').map(([n, C]) => [n, Math.max(...C.keys.filter((k) => k.u > 1.5 && k.u <= 2.001).map((k) => k.a[1]))]);
-    assert(thrusts.length >= 2 && thrusts.every(([, el]) => el >= 30), `the thrusts drive upward: the point ≥ 30° above level at full reach (${thrusts.map(([n, el]) => `${n} ${el}°`).join(', ')})`);
+    const thrusts = Object.entries(SWINGS).filter(([, C]) => C.line === 'point').map(([n, C]) => [n, Math.max(...C.keys.filter((k) => k.u > 1.5 && k.u <= 2.001).map((k) => k.a[1])), !!C.level]);
+    // (a `level` thrust, the poke of combo A's hit 4 (the owner, 2026-11-27: "a real thrust poke"), stays
+    // within 8° of level through the whole clip instead)
+    const pokes = Object.entries(SWINGS).filter(([, C]) => C.line === 'point' && C.level).map(([n, C]) => [n, Math.max(...C.keys.filter((k) => Array.isArray(k.a)).map((k) => Math.abs(k.a[1])))]);
+    assert(thrusts.filter((r) => !r[2]).length >= 2 && thrusts.every(([, el, lv]) => lv || el >= 30), `the thrusts drive upward: the point ≥ 30° above level at full reach (${thrusts.filter((r) => !r[2]).map(([n, el]) => `${n} ${el}°`).join(', ')})`);
+    assert(pokes.length >= 1 && pokes.every(([, el]) => el <= 8), `a level thrust stays level: its point within 8° of level in every key (${pokes.map(([n, el]) => `${n} ${el}°`).join(', ')})`);
   }
 
   // (1e1) a cut that lands (combat/cutFx.js, fx.contact): a tapered line across the body along the
@@ -15506,6 +15610,7 @@ const SCENARIOS = {
   herolife: pinAdr186(scenarioHeroLife),
   instantslash: scenarioInstantSlash,
   combos: scenarioCombos,
+  planted: scenarioPlanted,
   feel: scenarioFeel,
   offhand: scenarioOffHand,
   streakfx: scenarioStreakFx,

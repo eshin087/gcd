@@ -1047,9 +1047,13 @@ function attackPose(p, A) {
   else if (k.feet === 'dash') dashFeet(p, A, k.dashW ? W : 0.04);
   else {
     const C = swingClip(k.clip), st = C?.step;
-    // (a whirl that hops round its turn takes its own last step: no follow step)
-    const follow = !(k.spin && (k.spinFeet ?? 'carry') === 'hop');
-    lungeFeet(p, A, st ? phaseTime(st[0], W, Ac, R) : 0.03, st ? phaseTime(st[1], W, Ac, R) : W + Ac * 0.45, C?.drag ?? 0.22, true, follow);
+    const t0 = st ? phaseTime(st[0], W, Ac, R) : 0.03, t1 = st ? phaseTime(st[1], W, Ac, R) : W + Ac * 0.45;
+    if (k.feet === 'plant' && plantedNow(A)) plantFeet(p, A, t0, t1);
+    else {
+      // (a whirl that hops round its turn takes its own last step: no follow step)
+      const follow = !(k.spin && (k.spinFeet ?? 'carry') === 'hop');
+      lungeFeet(p, A, t0, t1, C?.drag ?? 0.22, true, follow);
+    }
     if (C) A.pathCh = C.chFeet;
   }
   if (k.spin) spinTurn(p, A, k.spin, t, W, Ac, k.spinFeet ?? 'carry');
@@ -1077,6 +1081,9 @@ function attackPose(p, A) {
   // as fast as the cut)
   const home = k.kind === 'clip' ? swingClip(k.clip)?.home ?? SW_HOME : 0.315;
   if (rec > home) {
+    // (planted, plantFeet: the feet stay where the slide left them; the foot planner settles them onto the
+    // stance once he walks or the chain ends)
+    const keepFeet = k.feet === 'plant' && A.planted === 1;
     // back toward the ready stance: the rear foot stays planted, the foot that stepped draws back
     // home in a recovery step (the foot planner settles the rest), and the sword hand comes round in
     // FRONT of the chest (a straight blend of the shoulder offsets ran it through the torso)
@@ -1098,10 +1105,12 @@ function attackPose(p, A) {
     const sL = k.feet === 'dash' || k.kind === 'thrust' || A.stepL !== false, fI = sL ? P.lF : P.rF, fY = sL ? P.lFy : P.rFy;
     // (it gets there while still lifted: landing, it no longer slides the last few centimetres)
     const uh = Math.min(1, u / 0.9);
-    p[fI] = lerp(p[fI], SCRATCH[fI], uh);
-    p[fI + 2] = lerp(p[fI + 2], SCRATCH[fI + 2], uh);
-    p[fI + 1] = lerp(p[fI + 1], ANK, u) + 0.07 * Math.sin(Math.PI * u);
-    p[fY] = lerp(p[fY], SCRATCH[fY], uh);
+    if (!keepFeet) {
+      p[fI] = lerp(p[fI], SCRATCH[fI], uh);
+      p[fI + 2] = lerp(p[fI + 2], SCRATCH[fI + 2], uh);
+      p[fI + 1] = lerp(p[fI + 1], ANK, u) + 0.07 * Math.sin(Math.PI * u);
+      p[fY] = lerp(p[fY], SCRATCH[fY], uh);
+    }
   }
   // inertia: the root's push-off leaves the chest behind the hips; its brake pitches it on over the
   // planted foot (A.leanF: the smoothed root acceleration, the loco's lean spring, set in update()
@@ -1326,6 +1335,47 @@ const HOME_WAY = { d: -3, ok: false }; // dirLerp memory: the recovery's way hom
  *  stance line (A.follow; not with `follow` false: a whirl that hops round its turn). While a held
  *  light waits at the coil the stepping foot rests on the grass (A.coilHold: an empty stance, 虚步).
  *  (Session 25, owner: "his legs and feet do the same thing every hit".) */
+/** THE PLANTED FEET (combos.js `plant`, `anim.feet: 'plant'`; the owner, 2026-11-27: "his legs are also moving
+ *  too much"): the stance he is in is kept through the swing. The FRONT foot slides on with the body's step in
+ *  over t0..t1 (barely off the grass, PLANT.lift per m of slide), and the rear one is drawn up after it by the
+ *  same over PLANT.follow s (送り足, the following foot); each keeps its yaw. Nothing crosses, and the lead foot
+ *  stays the lead foot hit after hit. Where the step in is long (the assist reaching for a foe out of reach,
+ *  past PLANT.max m) it is a real stride: lungeFeet (plantedNow decides that once per swing). */
+const PLANT = { max: 0.45, lift: 0.12, liftMax: 0.045, follow: 0.12, lag: 0.02, flat: 0.55 };
+/** Plant this swing's feet? Decided once, as soon as the swing's step in is known (player.js atk.lunge). */
+function plantedNow(A) {
+  if (A.planted === 1) return true;
+  if (A.planted === 0) return false;
+  const l = A.player?.atk?.lunge;
+  if (l == null || !Number.isFinite(l)) return true; // (not known yet: the feet are planted either way)
+  A.planted = l <= PLANT.max ? 1 : 0;
+  return A.planted === 1;
+}
+function plantFeet(p, A, t0, t1) {
+  const t = A.t, E = A.entry, tr = A.trav;
+  const frontL = E[5] > E[2]; // the foot ahead along his facing leads, and goes on leading
+  const fE = frontL ? 3 : 0, rE = frontL ? 0 : 3, fI = frontL ? P.lF : P.rF, rI = frontL ? P.rF : P.lF;
+  const fY = frontL ? P.lFy : P.rFy, rY = frontL ? P.rFy : P.lFy, fF = frontL ? P.lFf : P.rFf, rF = frontL ? P.rFf : P.lFf;
+  // the front foot: on with the body over t0..t1 (the travel then, A.mark slot 1), planted after
+  const m1 = A.mark(1, t1), u = clamp((t - t0) / Math.max(0.02, t1 - t0), 0, 1), e = u * u * (3 - 2 * u);
+  const s1 = Math.hypot(m1.x, m1.z), lift1 = Math.min(PLANT.liftMax, PLANT.lift * s1) * Math.sin(Math.PI * u);
+  p[fI] = E[fE] + e * m1.x - tr.x;
+  p[fI + 1] = Math.max(ANK, lerp(E[fE + 1], ANK, e)) + lift1;
+  p[fI + 2] = E[fE + 2] + e * m1.z - tr.z;
+  p[fY] = E[frontL ? 7 : 6];
+  p[fF] = lerp(1, PLANT.flat, Math.sin(Math.PI * u) * clamp(s1 / 0.1, 0, 1));
+  // the rear foot: drawn up after it by the same, once the front one is down
+  const r0 = t1 - PLANT.lag, r1 = r0 + PLANT.follow, m2 = A.mark(2, r1);
+  const v = clamp((t - r0) / PLANT.follow, 0, 1), e2 = v * v * (3 - 2 * v);
+  const s2 = Math.hypot(m2.x, m2.z), lift2 = Math.min(PLANT.liftMax, PLANT.lift * s2) * Math.sin(Math.PI * v);
+  p[rI] = E[rE] + e2 * m2.x - tr.x;
+  p[rI + 1] = Math.max(ANK, lerp(E[rE + 1], ANK, smoothstep(0, 0.05, t))) + lift2;
+  p[rI + 2] = E[rE + 2] + e2 * m2.z - tr.z;
+  p[rY] = E[frontL ? 6 : 7];
+  // (its heel peels as the body goes on over the front foot, settling as it is drawn up)
+  p[rF] = lerp(1, 0.6, smoothstep(t0, t1, t) * (1 - e2));
+  A.footDrag = 0;
+}
 function lungeFeet(p, A, t0, t1, drag, plant, follow = true) {
   const t = A.t, E = A.entry, tr = A.trav;
   // the stepping foot: the one further back along his facing (the left from the ready stance; play())
@@ -2906,6 +2956,7 @@ export const OFF_SNAP = [0.035, 0.05, 0.08];
 // elbow of ~155°), eased in from SIDE_FOLD (a hand held folded at the chest is not thrown out in a frame);
 // its lag on the way in (no limit: it falls from wherever it was). The nearest: the look's `near`
 const SIDE_HZ = 240, SIDE_SNAP = 0.1, SIDE_REACH = 0.58, SIDE_FOLD = 0.25, SIDE_FREE = 1.5;
+const SIDE_TUCK = 6; // /s: how fast a look held out (offHand.js `tuck`) draws in for a turn of the whole body, and back
 const _shR = new THREE.Vector3(), _shO = new THREE.Vector3(), _shQ = new THREE.Vector3(), _shG = new THREE.Vector3(), _shA = new THREE.Vector3(), _shB = new THREE.Vector3(), _shC = new THREE.Vector3();
 // × the arm's length: the free elbow on the grip keeps ≥ 23° of bend (the cleave locked it at 176°)
 const LOCK_REACH = 0.98;
@@ -2998,7 +3049,7 @@ export class HeroAnimator {
     // (c), last frame's hand (last), the way's ease (e), the way (mode: 1 to the side, -1 home, 0 off), p[sd]
     // last frame (pw); after a one-handed swing how long it still lingers (lg), how much it still holds
     // (hold), whether what plays now needs the hand back quickly (quick); the look it hangs in (L)
-    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false, lg: 0, hold: 0, quick: false, L: null };
+    this.sideH = { x: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), c: new THREE.Vector3(), last: new THREE.Vector3(), e: 0, mode: 0, pw: 0, ok: false, lg: 0, hold: 0, quick: false, L: null, tk: 0 };
     this.gripGap = 1;
     this.rig = rig;
     this.player = player;
@@ -3093,6 +3144,7 @@ export class HeroAnimator {
     // radius about the root (a, r: right, left; model)
     this.hop = { set: false, yaw: 0, a: new Float32Array(2), r: new Float32Array(2) };
     this.plantAt = { x: 0, z: 0, ok: false }; // lungeFeet: the front spot the stepping foot planted on
+    this.planted = -1; // plantFeet: this swing's feet planted (1), a real stride (0), not decided yet (−1)
     this.holdOff = { x: 0, z: 0 }; // lungeFeet: how far the holding foot has been dragged (model)
     this.footDrag = 0; // lungeFeet (tests read it): bit 1 = the right toe drags, 2 = the left
     this.toeK = 0; // lungeFeet: the holding foot's sole on its toe (1 while it drags, settling back after)
@@ -3164,6 +3216,7 @@ export class HeroAnimator {
     this.follow.on = -1;
     this.footDrag = 0;
     this.plantAt.ok = false;
+    this.planted = -1;
     this.holdOff.x = this.holdOff.z = 0;
     this.hop.set = false;
     this.toeK = 0;
@@ -3227,6 +3280,7 @@ export class HeroAnimator {
     this.follow.on = -1;
     this.footDrag = 0;
     this.plantAt.ok = false;
+    this.planted = -1;
     this.holdOff.x = this.holdOff.z = 0;
     this.hop.set = false;
     this.toeK = 0;
@@ -4216,13 +4270,20 @@ export class HeroAnimator {
       return;
     }
     const e = ch.matrixWorld.elements, sc = Math.hypot(e[0], e[1], e[2]) || 1;
-    // the anchor: under the shoulder (the chest's yaw), drawn toward beside the hip (the pelvis's)
+    // the anchor: under the shoulder (the chest's yaw), drawn toward beside the hip (the pelvis's). A look
+    // held out from the body (`tuck`: guard, out) draws it in close through a turn of the whole body (a
+    // swing's `spin`: arms in through the turns), eased in and out at SIDE_TUCK /s: held out, the hand was
+    // swept round at a wide radius, 22 cm a frame in the whirl
     {
-      const yc = Math.atan2(e[8], e[10]), H = SIDE.hang, c = Math.cos(yc), s = Math.sin(yc);
+      const ka = this.atkDef && this.atkAnim ? this.atkAnim : this.def?.anim, spinning = !!(SIDE.tuck && ka?.spin && this.key === 'attack');
+      S.tk = clamp(S.tk + (spinning ? 1 : -1) * SIDE_TUCK * dt, 0, 1);
+      const tk = S.tk * S.tk * (3 - 2 * S.tk), Hh = SIDE.hang, Tt = SIDE.tuck ?? Hh;
+      const h0 = lerp(Hh[0], Tt[0], tk), h1 = lerp(Hh[1], Tt[1], tk), h2 = lerp(Hh[2], Tt[2], tk);
+      const yc = Math.atan2(e[8], e[10]), c = Math.cos(yc), s = Math.sin(yc);
       _shA.setFromMatrixPosition(r.arms.L.upper.matrixWorld).sub(_shO);
-      _shA.x += sc * (H[0] * c + H[2] * s);
-      _shA.y += sc * H[1];
-      _shA.z += sc * (-H[0] * s + H[2] * c);
+      _shA.x += sc * (h0 * c + h2 * s);
+      _shA.y += sc * h1;
+      _shA.z += sc * (-h0 * s + h2 * c);
       const Lg = r.legs?.L, k = SIDE.hip;
       if (Lg && k > 0) {
         const pe = r.pelvis.matrixWorld.elements, yp = Math.atan2(pe[8], pe[10]), T = SIDE.thigh, cp = Math.cos(yp), sp = Math.sin(yp);

@@ -15,6 +15,7 @@
 //
 // A look's fields (body axes: +x his left, +y up, +z ahead; m):
 //   hang   the wrist's rest from the left shoulder, turned with the chest
+//   tuck   (optional) its rest through a turn of the whole body (a swing's `spin`), drawn in close
 //   thigh, hip  … the same rest from the left hip joint (turned with the pelvis), and how far toward it
 //   near   the nearest the hand hangs to the shoulder (× the model's scale; the arm's reach is 0.55)
 //   w, z   the pendulum's spring (rad/s, damping ratio): under-damped, so it sways once and settles
@@ -36,12 +37,27 @@ export const OFFHAND = {
     ...COMMON, hang: [-0.1, -0.42, -0.21], thigh: [0, 0, 0], hip: 0, near: 0.3, w: 12, z: 0.55, k: 0.25, sway: 0.04, thighR: 0,
     pole: [0.85, -0.15, -0.5], ld: [-0.9, -0.25, -0.2], ln: [0, 0, -1], lw: 0.8, hs: 0, keep: 0,
   },
+  // (the owner, 2026-11-27, of combo A's `back`: "his left hand also doesnt show at all during the light attack
+  // combo on the first 4 attacks and looks like his left arm and hand are completely gone": the camera sits
+  // behind him, so a hand on the small of his back is inside his body on screen. Two that stand clear of the
+  // body's outline from behind, after the reference's free arm, which stays bent before him the whole combo)
+  //   guard  held before him: the elbow out to his left and down, the forearm forward, the sword fingers at
+  //          the foe at the height of his lower chest, a hand's breadth outside his left side
+  //   out    the counterweight: loose, out from his left hip, the elbow a little bent, swinging the most
+  guard: {
+    ...COMMON, hang: [0.1, -0.3, 0.27], tuck: [0.0, -0.36, 0.16], thigh: [0, 0, 0], hip: 0, near: 0.3, w: 11, z: 0.5, k: 0.3, sway: 0.06,
+    pole: [0.7, -0.6, -0.4], ld: [0.05, 0.25, 0.97], ln: [-0.7, -0.6, 0], lw: 0.85, hs: 1, keep: 0,
+  },
+  out: {
+    ...COMMON, hang: [0.24, -0.4, 0.05], tuck: [0.04, -0.4, 0.08], thigh: [0, 0, 0], hip: 0, near: 0.35, w: 9.5, z: 0.4, k: 0.4, sway: 0.09,
+    pole: [0.3, -0.3, -0.9], ld: [0.35, -0.9, 0.2], ln: [-0.9, 0, 0.3], lw: 0.85, hs: 0, keep: 0,
+  },
   quiet: {
     ...COMMON, hang: [0.1, -0.5, 0.1], thigh: [0.14, -0.02, 0.08], hip: 0.4, near: 0.3, w: 11, z: 0.5, k: 0.3, sway: 0.05,
     pole: null, ld: null, ln: null, lw: 0, hs: null, keep: 0.35,
   },
 };
-export const OFFHAND_IDS = ['auto', '0', 'side', 'back', 'quiet'];
+export const OFFHAND_IDS = ['auto', '0', 'side', 'back', 'quiet', 'guard', 'out'];
 let offNow = 'auto';
 /** The free hand's look now ('auto': the swings' feel's own hand, feel.js, or production's without a feel; '0'
  *  production's; or an OFFHAND key). */

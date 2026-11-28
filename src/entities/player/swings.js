@@ -277,6 +277,25 @@ export const SWINGS = {
       { u: 2.45, h: [0.14, 0.08, 0.44], a: [0, 33], by: -0.25, bz: 0.12, hip: 0.22, sy: 0.3, sx: 0.37, fh: 'tail', bx: 0.03 },
     ],
   },
+  /** The poke (combo A's hit 4, `?poke=1`; the owner, 2026-11-27: "the 4th thrust from the combo also needs
+   *  to be a real thrust poke. right now its awkwardly attacking the sky"): a level thrust. The hand draws
+   *  back to the right ribs with the point already on the foe, then drives straight out along that line
+   *  to the arm's full reach at chest height, the hips and the chest turning in behind it; the blade stays
+   *  within a few degrees of level the whole way (`level`: the thrust test holds it there). */
+  poke: {
+    line: 'point',
+    level: true,
+    rF: [-0.17, -0.46], fy: [0.15, -0.8], drag: 0.12,
+    lF: [0.14, 0.5],
+    keys: [
+      { u: 0.6, by: -0.17, bz: -0.1, bx: -0.05, hip: -0.44, sy: -0.58, sx: 0.04 },
+      { u: 1.0, h: [-0.04, -0.2, -0.08], a: [3, 3], by: -0.19, bz: -0.08, bx: -0.04, hip: -0.36, sy: -0.5, sx: 0.08 },
+      { u: 1.4, h: [0.05, -0.15, 0.24], a: [1, 1], by: -0.23, bz: 0.06, bx: 0.0, hip: -0.04, sy: -0.06, sx: 0.2 },
+      { u: 1.8, h: [0.13, -0.11, 0.5], a: [0, -2], by: -0.26, bz: 0.14, bx: 0.04, hip: 0.24, sy: 0.32, sx: 0.3 },
+      { u: 2.1, by: -0.28, bz: 0.16, bx: 0.04, hip: 0.27, sy: 0.36, sx: 0.33 },
+      { u: 2.45, h: [0.12, -0.12, 0.45], a: [0, -2], by: -0.25, bz: 0.12, bx: 0.03, hip: 0.22, sy: 0.3, sx: 0.29 },
+    ],
+  },
   /** The rising thrust: out of a crouch, the whole body rising behind the point as it drives up
    *  steeply into the target. */
   risingThrust: {
