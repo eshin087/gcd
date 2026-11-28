@@ -62,16 +62,29 @@ export const PICKED = Object.freeze({
   halCape: '3', // his cape and colours: the wide red cape that billows (the owner's pick, 2026-11-23, of four steps; ADR-164)
   halLetters: 'a', // his letters follow his size, the hero's cell (the owner's pick, 2026-11-23, of two; ADR-166)
   halPrint: 'a', // the hero's quieter print (the owner's pick, 2026-11-23, of three; ADR-166)
-  halMotion: 'a', // his motion: a flier's legs, blows aimed at the hero, the held windups, the snap blows (the owner's pick, 2026-11-26, of two; ADR-225)
+  halMotion: 'b', // his motion: a's flier's limbs, straight punches on the line, straight kicks, long trailing legs, a level fly-by (the owner's pick, 2026-11-27, ADR-254; was a, 2026-11-26, ADR-225: a flier's legs, blows aimed at the hero, the held windups, the snap blows)
+  halPace: '0', // his pace: the fast one he shipped with (the owner's pick, 2026-11-27, over a, rule 10's floor; ADR-254)
+  halEyes: 'a', // his eye beams: heat vision, twin threads, a shimmer, a molten spot (the owner's pick, 2026-11-27, of three; ADR-254)
+  halShock: 'a', // Applause / Meteor's landing: the thunderclap ring of air (the owner's pick, 2026-11-27, of three; ADR-254)
   halCapeSize: 'b', // the cape at about 65 %, past his knees (the owner's pick, 2026-11-23, of four; ADR-166)
   // the Hall of Falling Script and Xin Yi, the One Who Woke
   oneLetters: 'a', // his letters: the hero's size (the owner's pick, 2026-11-23, "Print a", ADR-170; 0 the bosses' fine cell)
   onePrint: 'a', // his print: the hero's quiet print and the simpler shapes (the owner's pick, 2026-11-23, "Print a", ADR-170; b one cell bolder on a phone, 0 as he shipped)
   oneBody: 'b', // his figure: the open coat, printed like the hero on a man's build, one coat (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped, a closed, c the duster)
-  oneMoves: 'a', // his moves: straight kicks, long punches, held blue / red windups, the side-on aim, two fast strings (the owner's pick, 2026-11-26, ADR-221; 0 as he shipped)
+  oneMoves: 'b', // his moves: a (straight kicks, long punches, held blue / red windups, the side-on aim, two fast strings; ADR-221) with the limbs on the line and the guns on the line of fire (the owner's pick, 2026-11-27, ADR-253; a before that, 0 as he shipped)
+  oneGunFx: 'b', // his gun shots: the script, a curtain of falling digits behind each slug (the owner's pick, 2026-11-27, ADR-253; 0 as before, a the tracer)
+  oneBoltFx: 'a', // his palm bolts: the seed, a hot core in turning rings of digits (the owner's pick, 2026-11-27, ADR-253; 0 as before, b the fold)
   // the sword motion pass (ADR-226; the owner's pick, 2026-11-26, from the before / after films)
   ashMotion: 'a', // Shen Hui: the jian in line with the arm, held blue / red windups (Piercing Ash keeps its thrust), quick blows
+  ashForm: 'a', // Shen Hui's form: thrusts in a lunge, overheads on a diagonal, sweeps on his feet, the Fall a jump (ADR-250; the owner's pick)
+  whirlFx: 'b', // Ember Whirl: the cyclone (ADR-250; the owner's pick)
+  fallFx: 'b', // Heaven-Splitting Fall: the split (ADR-250; the owner's pick)
   lordMotion: 'a', // Varr Nihil: the same, and the end-of-string shake for the twirl
+  // the Starless Lord's audit (ADR-251; the owner's picks, 2026-11-27, from the before / after and option films)
+  lordForm: 'a', // thrusts on the arm's line out of a real lunge, diagonal overheads, sweeps on the feet, the step on the blow
+  lordPace: 'a', // COMBAT rule 10's floor as a held cock (0: his fast pace before)
+  boltFx: 'c', // Void Lightning: the storm (the floor answers, the bolt grounds three times)
+  igniteFx: 'a', // a form's ignition: the cocoon (a column of letters, bursting out flat)
   // every human boss
   bossPrint: 'b', // printed the hero's way, in his own colours (the owner's pick, 2026-11-24, of three: 0 as before, a the hero's greys; ADR-194)
   // the motion pass (ADR-223; the owner's picks, 2026-11-26, from the films: A for all three, every quick blow)
@@ -79,8 +92,14 @@ export const PICKED = Object.freeze({
   foxMotion: 'a', // Wen Yao's, the same, and his lifted feet eased off their spot
   wyrmMotion: 'a', // the wyrm's string hits held, blue rearing its head, red sunk with the tail up
   sheathQuick: 'a', // Before the Word
+  // Lu Wusheng's audit (ADR-252; the owner's picks, 2026-11-27, from the before / after films)
+  sheathForm: 'a', // the fist on the hilt, the scabbard drawn back, the draw's lunge, thrusts in line, the diagonal overhead, the sweep's feet
+  sheathPace: '0', // his fast pace kept (a: COMBAT rule 10's floor as held cocks)
+  drawFx: '0', // the draw's one white line kept (a the drawn breath, b hanging leaves, c the late sound)
   foxQuick: 'a', // Fox Snap, Fox Knee
   wyrmQuick: 'a', // Snap swipe
+  wyrmHead: 'a', // the meteors' roar: the head up and forward, never tipped back past upright (the owner asked, 2026-11-27; ADR-258)
+  wyrmStrike: 'a', // the wyrm's bites: the body surges first, the head snaps onto the beat (the owner's pick, 2026-11-27, from the films; ADR-257)
   // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
   ashHero: 'c', // Shen Hui: the hero's shading and his outline (a the shading, b the outline)
   lordHero: 'c', // Varr Nihil: the hero's shading and his outline
@@ -96,6 +115,9 @@ export const PICKED = Object.freeze({
   wjShell: 'a', // the barrier: all but invisible until a blade nears it
   wjNull: 'a', // the Violet Null: a hard-edged slab
   wjVoid: 'b', // the void: the stars and one great pale ring on the floor
+  wjMotion: 'b', // his melee motion: glide (the owner's pick of three takes, 2026-11-27; '0' = as first shipped)
+  wjPolish: 'a', // his motion audit's fixes: kick returns, straight blows on the line (the owner's pick, 2026-11-27, ADR-255)
+  wjCastHand: 'a', // phase 1's casting hand out of its pocket for the whole cast (the owner's pick, 2026-11-27, ADR-255; 0 / b the others)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS

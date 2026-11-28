@@ -18,6 +18,105 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'Blows land on what they strike',
+        notes: [
+          'Every hit, block and guard now lands on what it strikes: the blade bites in, a fist lands on the body, held through the freeze, then the swing carries on, with the sparks where the two met and the struck part flinching by where it was hit.',
+          'A boss leans into a blow that would have fallen short of you. No change to any timing or damage; ?contact=0 shows it as before.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: "Bai Wuji's blows land where they aim",
+        notes: [
+          "Bai Wuji's palm, his straight poke, Dark Spark and the fist he pulls you onto now land on the line to your chest instead of crossing past you.",
+          'His kicks ease back after they land instead of snapping back off a dead stop.',
+          'In his first phase his right hand comes out of its pocket to cast Azure Draw and the Yank, so the blue fist he pulls you onto is a fist you can see.',
+          'Fixed: a spell or a thrown piece of his no longer knocks you down again the moment you stand up from a knockdown.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The performance readout measures by itself',
+        notes: ['With ?perf in the address, BENCH now runs on its own during a fight, at the slow moments too. Just play, then tap REPORT.'],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Starless Lord fights with better form',
+        notes: [
+          'Varr Nihil thrusts on a long straight arm out of a real lunge, brings his two-handed overheads down on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quieter and lands his front foot with the blade, in all four forms.',
+          'He is easier to read: every attack holds its windup longer before it lands, and the glint comes earlier.',
+          'His Void Lightning now grounds along its line with the floor crackling round his feet, and each new form rises out of a column of violet letters.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Cinder Wyrm raises its head naturally to rain fire',
+        notes: [
+          'When the wyrm rears up to roar its meteors into the sky, its head now rises up and forward instead of twisting back over its own neck.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: "Xin Yi's limbs on the line",
+        notes: [
+          'Xin Yi moves more cleanly: his punches land straight at you, his kicks stay straight through the hit, his elbows and spinning kicks reach you instead of striking short, and his low sweep passes right through you. The timing of every attack is unchanged.',
+          'His guns now point where they fire, each shot leaving the muzzle with a kick of his arm and a curtain of falling code behind it. His palm bolts in the last phase are a hot core in turning rings of digits.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Lu Wusheng draws like a swordsman',
+        notes: [
+          'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',
+          'To try: ?sheathPace=a (his scabbard blows wind up longer) and ?drawFx=a, b or c (three looks for the draw).',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Bai Wuji glides: quicker, one-handed, and his barrier opens easier',
+        notes: [
+          "Bai Wuji fights with his hands in his pockets now: short, sharp kicks that land straight, a hand coming out in his second phase and both in his last. His blue and red blows hold a pose you can read; every later blow of a string comes out of a short blink around you.",
+          'His barrier opens easier: two ordinary parries crack it open, a perfect parry or dodge opens it for longer, and your cuts hit two and a half times as hard while it is open. He has less health, and he loses patience after 20 seconds instead of 30.',
+          'Fixed: a falling piece no longer lands on you while you are down, and a quick string of his can no longer hold you longer than it should.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Cinder Wyrm bites with its whole body',
+        notes: [
+          'The wyrm drives its body into a bite first, the head hanging back, then snaps onto the beat of its warning, its jaws reaching you as the hit lands.',
+          'No change to any warning, timing or damage.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap',
+        notes: [
+          'Halcyon fights like a flier now: his punches go straight at you with the arm long, his kicks land straight, his legs trail long behind him instead of folding under him, and Fly-By comes through your chest instead of over your head.',
+          'His eye beams are heat vision: two threads meeting in one hard crimson line, a shimmer rising off it, the ground molten and spitting sparks where it lands.',
+          'His clap and his meteor landing send a ring of air racing out across the plaza, shoving the dust ahead of it.',
+          'Being tried out: add ?halPace=a to the address for a slower, easier-to-read pace.',
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'Shen Hui fights with better form',
+        notes: [
+          'The Ash Disciple thrusts on a straight arm out of a real lunge, brings his overheads down one-handed on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quiet and lands his front foot with the blade. Same timings, same cues.',
+          'Heaven-Splitting Fall is a real jump now: he tucks high with the blade raised, reaches his legs down and lands into the cut.',
+          'Ember Whirl raises a cyclone of fire round him, and Heaven-Splitting Fall splits the floor in fire ahead of and behind him.',
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'The clash dance, to try',
+        notes: [
+          'Add ?clash=dance to the address to try it against the human bosses: parries in a row inside one of his strings break his posture faster, and the clash of steel rings a little higher with each one.',
+          'His posture also recovers more slowly the more you have cut his health, so a near break stays near.',
+        ],
+      },
+      {
         date: '2026-11-26',
         title: 'Tian Lei audited: straight limbs, a readable pace and two ki blasts to choose',
         notes: ['Tian Lei, to try before it becomes the default: ?ascMotion=b lands his punches with the arm long and straight down his centre, his kicks with the leg straight, and his low sweep from a drop stance; ?ascPace=a gives every blow a longer, held windup and the glint earlier; ?ascShot=a or b redraws his ki blasts (a sun, or a comet). All three are in the Lab: LOOKS.'],
@@ -30,6 +129,14 @@ export const RELEASES = [
           'Break his posture with a parry, or parry one of his blue warning blows, and the hero answers with a DEATHBLOW for every perfect parry banked: up to seven blows where he stands, each a different cut, each freezing for a beat in him.',
           'Every deathblow leaves a cut across him that shatters on the last, sprays blood that pools on the floor, and sounds like a blade through flesh.',
           'Parry the last blow of a string and he recoils: strike back in that moment with your own counter cut. Parries no longer count toward the perfect-dodge streak.',
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'The hero runs with his sword held low, its point down beside his leg, gripped as a hand grips it',
+        notes: [
+          'On the run he grips his sword the way a hand does: its point hangs down beside his right leg, a little ahead, and rides with his arm as it swings, clear of his coat. His fist sits on the handle the way a hand grips one, and his free arm swings naturally with his stride. ?runSword=hip and ?runArm=d give the run before.',
+          'Out of a run with the blade trailing behind him, blocking no longer flips the sword round in one frame.',
         ],
       },
       {

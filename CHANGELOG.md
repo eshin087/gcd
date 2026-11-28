@@ -4,13 +4,109 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-four pieces of work since 0.4.0:
 - **Tian Lei audited: straight limbs, a readable pace and two ki blasts to choose** (2026-11-26, ADR-248). *Added, to choose (not the default yet):* `?ascMotion=b`
   lands Tian Lei's straight punches with the arm long and in one line down his centre (they crossed it, elbows at
   ~150°), his kicks with the leg straight (the roundhouses at ~100°), and his sweep from a drop stance, turning on a
   planted foot (the tuck's knee flipped and the planted foot slid a metre). `?ascPace=a` puts every blow at the
   fairness floor: a move's first blow 0.7 s, its blows 0.45 s apart, the glint 0.35 s before, the extra time a
   held pose. `?ascShot=a` (the sun) or `b` (the comet) redraws his ki blasts. The Lab's LOOKS rows for each.
+One hundred and thirty-seven pieces of work since 0.4.0:
+- **Shen Hui fights with better form** (2026-11-26, ADR-250). *Changed (the owner's pick; `?ashForm=0` as before):* his thrusts
+  land on a straight arm with the point on its line, out of a real lunge (front knee bent, back leg long); his
+  overheads come down one-handed on a diagonal across you instead of straight down; his low sweeps turn on his feet
+  instead of winding his legs round each other; his free hand stays quiet through a string; and the front foot comes
+  down as the blade lands; Heaven-Splitting Fall is a real jump (he tucks with the blade raised, reaches his legs
+  down and lands into the cut) instead of flying in a crouch. The same timings and cues. *Added:* Ember Whirl
+  raises a cyclone of fire round him, and Heaven-Splitting Fall splits the floor in fire ahead and behind
+  (the owner's picks; `?whirlFx=` / `?fallFx=` a, c or 0 for the others).
+- **Blows land on what they strike** (2026-11-27, ADR-259). *Changed (the owner's pick from the films, `b`, the
+  default):* every hit, block and guard is drawn ON what it strikes in the frozen frame (a blade's edge bites a
+  few cm in, a fist lands on the body; it used to stop 10 - 75 cm short or show 10 - 40 cm through), held there
+  through the freeze, a heavy blow a beat longer, then the swing carries on; a blocked blow stops on your blade with
+  your guard nudged onto it, a cut on a boss's guard stops on his steel; the sparks sit where the two met; and the
+  struck part answers (your head snaps away, your body twists or folds, a shoulder knocked back, a leg buckles;
+  a boss's reaction now knows the arm too), and a boss's blow that would fall short of you is reached into (his
+  body eases into it, feet planted). The execution's and the plunge's bursts sit where your blade enters, and the
+  wyrm's bite lunges its head onto you as it lands. `?contact=0` as before, `?contact=a` without the reach,
+  `?contact=c` with a longer step-in reach. Nothing of any result, damage, window or timing moves
+  (the duel and asc `contact` scenarios play one exchange three ways and compare every result). The Lab's
+  `contact` row. *Added:* the contact audit (the duel / asc `contact` scenarios).
+- **The hero runs with his sword held low, its point down beside his leg, gripped as a hand grips it** (2026-11-26, ADR-229).
+  *Changed:* on the run and the sprint he holds his sword the way a hand grips one, the thumb ahead: its point
+  hangs down beside his right leg, a little ahead and out, and it rides with his arm as it swings with his stride,
+  clear of his legs and his coat (before: the blade forward at his hip, level). His fist sits on his forearm as a hand closes on a grip (the thumb
+  away from the wrist), and his free arm swings naturally with his stride. *Added:* the other carries tried on the way stay behind switches: `?runSword=g1|g3|nat|n1|n3|flail|b15|b25|b35|b45|a1|a2|a3|a4|trail|swept|side|hip|old`, `?runArm=e|f|g|h|d` (the Lab's
+  `run sword` and `run arm` rows). *Fixed:* out of a run with the blade trailing behind him, a block, a parry, the
+  flask or a charge no longer flips the sword round in one frame (nor whips it up from a blade held low).
+- **The performance readout measures by itself** (2026-11-27, ADR-261). *Changed:* with `?perf`, BENCH now runs on its own
+  during a fight (once early, then at the slow moments, four times at most); play, then tap REPORT. `?perf=manual`
+  keeps it to the button.
+- **The Starless Lord fights with better form** (2026-11-27, ADR-251). *Changed (the owner's picks from the films;
+  `?lordForm=0` / `?lordPace=0` / `?boltFx=0` / `?igniteFx=0` as before):* in all four forms his thrusts land on a
+  long arm with the point on its line, out of a real lunge (front knee bent, back leg long; before, both knees
+  locked); his two-handed overheads (Falling Star, Grasp and Sever, Severance, every string's held chop) come down on
+  a diagonal across you instead of straight down; his low sweeps (Reaping Arc, Red Meridian, every red sweep) turn
+  on his feet instead of crossing his legs; his free hand stays quieter through a string; the front foot comes down
+  as the blade lands. He also fights at a readable pace (COMBAT rule 10): every move's first blow at least 0.7 s (a
+  little less each form), his blows at least 0.45 s apart, the glint 0.35 s before, the extra time a held windup.
+  Void Lightning grounds three times along its line, the floor crackling round his feet through the cast
+  (`?boltFx=c`); each form's ignition raises a column of violet letters round him that bursts out flat
+  (`?igniteFx=a`). The other options stay behind their switches.
+- **The Cinder Wyrm raises its head naturally to rain fire** (2026-11-27, ADR-258). *Fixed:* rearing up to roar
+  the meteors into the sky, the wyrm's head no longer tips back past upright and rolls over on its neck: the neck
+  rises up and forward over its forelegs and the head points up at the sky. `?wyrmHead=0` (the Lab's LOOKS row) as
+  before. *Added:* integ `wyrmhead` (opt-in): every fire move's head angle.
+- **Xin Yi's limbs on the line** (2026-11-27, ADR-253). *Changed (the owner's picks, the default):* his punches land straight down the line to you with the arm long, his kicks stay
+  straight through the hit instead of folding as it lands, his elbow, knee and spin kick reach you instead of
+  striking short, the low sweep passes through you, and his guns point down the line of fire, each shot leaving
+  the muzzle with a kick of the arm (`?oneMoves=a`: as before). Every timing is as before. His gun shots now leave a
+  curtain of falling code (`?oneGunFx=b`; `a` a tracer, `0` as before) and his palm bolts in the Source are a hot core
+  in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
+- **Bai Wuji's blows land where they aim** (2026-11-27, ADR-255). *Changed:* his palm, his straight poke, Dark
+  Spark's fist and the fist he pulls you onto now land on the line to your chest (they crossed past you by up to
+  30 degrees); his kicks ease back after the contact instead of snapping off a dead stop; in his first phase his
+  right hand comes out of its pocket to cast Azure Draw and the Yank, so the Yank's blue fist is a fist you can
+  see (`?wjPolish=0` and `?wjCastHand=0` as before; `?wjCastHand=b` the hand out only at the end of the cast).
+  *Fixed:* a spell or a thrown piece of his no longer knocks you down again the moment you stand up from a
+  knockdown (his kicks and punches already held back there).
+- **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
+  level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
+  the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the
+  two-handed overhead comes down across him on a diagonal; Sweeping the Road turns on his feet; the free hand in the
+  scabbard cuts moves half as far. Poses only: every windup, cue and window is as before; `?sheathForm=0` gives
+  the old poses. *Added, kept as options (the owner kept today's):* `?sheathPace=a`: COMBAT rule 10's slower floor for his scabbard blows (first blows 0.7 s, blows 0.45 s apart, the cue 0.35 s before, the
+  draws unchanged). `?drawFx=a|b|c`: three looks for the draw (the drawn breath, hanging leaves, the late sound).
+- **The Cinder Wyrm bites with its whole body** (2026-11-27, ADR-257). *Changed (the owner's pick from the films):*
+  in every bite the wyrm's body surges first (the chest drops
+  and pitches in off the hind feet, the body lunging a little toward you) while the head hangs back, then the head
+  snaps onto the impact the flash promised, its jaws now reaching you on the beat. Every windup, cue, impact, hit
+  sphere and number is as before; `?wyrmStrike=0` (the Lab's LOOKS row `wyrmStrike`) bites as before. *Added:* the wyrm's anatomy audit (integ `wyrmanatomy`, opt-in: each blow's gap
+  to the hero at the impact, a foreleg's elbow and reach, the chain's order, the tail's tip, skating feet, pops).
+- **Halcyon fights like a flier: straight blows, long legs, heat vision and a thunderclap** (2026-11-27, ADR-254).
+  *Changed (the owner's picks from the films):* his straight punches go along the line to you (they ran 35 - 66° off
+  to the side), the arm long (elbow 161 - 171°); his kicks land straight (173°) with the other leg hanging long; his
+  legs trail long behind him in every blow and hang long under his hover, the toes pointed (they sat folded under him,
+  knees 67 - 135°, as if kneeling on air); Fly-By and Through the Tower fly level, the fist out, through your chest
+  instead of over your head (every timing unchanged; `?halMotion=a` plays the motion before). His eye beams are heat
+  vision (twin threads meeting in one hard crimson line, a shimmer rising off it, a molten spot spitting sparks where it
+  lands, red motes drawn into his eyes as he charges; `?halEyes=0` the beam before, `b` a crimson pulse); his clap and
+  his meteor's landing send a crisp ring of air racing out with the dust shoved ahead of it (`?halShock=0` the dust
+  front before, `b` a dome of pressure). *Added, not the default:* `?halPace=a`, COMBAT rule 10's slower pace (the owner
+  kept his fast one). The Lab's LOOKS rows for all four.
+- **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
+  `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
+  x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a
+  pause; the parry's ring rises a little with the run; and his posture recovers more slowly as his health drops
+  (full speed above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin
+  Yi this replaces their own curve, never faster than before). `?clash=0` or no switch: as before.
+- **Bai Wuji glides: quicker, one-handed, and his barrier opens easier** (2026-11-27, ADR-250). *Changed:* Bai Wuji's kicks and punches are
+  rebuilt by hand: his legs land straight, his hands stay in his pockets for most of phase 1 (one comes out in
+  phase 2, both in phase 3), normal blows snap out of the stance, blue and red ones hold a pose you can read, and
+  every later blow of a string comes out of a short blink round you (`?wjMotion=0` as before; `a`, `c` the other
+  takes). His barrier opens easier: two ordinary parries crack it open, it stays open longer (6 / 5 / 4.2 s after a
+  perfect answer), your cuts deal x2.5 through it, and his health is 20000 (was 26000); his patience runs out
+  after 20 s. *Fixed:* a falling piece no longer lands on you while you are down, and his mercy counts the time
+  you are held in real time, so a quick string cannot hold you past the cap through hit freezes.
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
   longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
   bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and

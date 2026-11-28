@@ -639,7 +639,11 @@ Render helpers for creature modules:
   with each pipeline step left out (shadows, world, hero see-through, fire field, letters, effects, glow: the
   step's draws skipped by wrapping `renderer.render`), the still shadow map redrawn every frame, then at ~0.7x
   the device pixels and back through `applyQuality`; the results go in the report. A new pipeline pass gets a
-  line in its `is` table.
+  line in its `is` table. AUTO BENCH (ADR-261,
+  `AUTO_BENCH`; `?perf=manual` turns it off): in a fight (`game.state === 'boss'`) BENCH runs by itself
+  `firstAt` (8) s in, then on a slow burst (6 of the last 30 frames over 20 ms), 10 s apart, 4 in all, a
+  lighter one (k 3, 2 readings); each bench records why it ran, AUTO's step and whether the lite world is
+  on, and the frame after it (its freeze) is not recorded.
   BENCH also reads the LIVING WORLD in one extra reading (ADR-245): every batch `ship` has marked
   `userData.lifeBatch`, the wind (`uWind` 0), the step flash and the wake left out together; the report
   prints it as its own line (it overlaps the steps above) and everything is put back. The lamps' flames
@@ -829,7 +833,14 @@ streamBlock(cost, push, dx, dz): boolean
                                        // which the player's own block answers: the guard opens). God mode pays nothing.
 isSwinging(): boolean                  // a light / heavy swing's active frames (the dragon's bullets are cut on it)
 takeHit({ damage, from:{x,z}, knockback=0, knockdown=false, kind='hit', burn=0,
-          tell='normal', parryable, blockable, attack, attacker, plunge, perfect, light, flare }): RESULT   // see COMBAT.md
+          tell='normal', parryable, blockable, attack, attacker, plunge, perfect, light, flare, point }): RESULT   // see COMBAT.md
+                                       // CONTACT (ADR-259, combat/contact.js, ?contact=a|b): a hit from an attacker
+                                       // with strikeContact (every duelist) is posed where it meets his drawn body,
+                                       // a block where it meets his blade (the guard nudged onto it: guardNudge), the
+                                       // hurt / block drawn there and his body's HitReact answering by the part
+                                       // (player.hitReact, player.struck); `point` (the wyrm's snout / toe / tail
+                                       // tip, with melee) puts the hurt on him nearest it. Nothing of the result,
+                                       // the damage or the windows moves
                                        // tell 'black' (a charged blow, ADR-118): a held guard or a parry press in
                                        // its way returns 'blocked' with no damage, the guard meter emptied and the
                                        // guard knocked open (GUARD.black; player:guardOpen {black})
@@ -1014,6 +1025,14 @@ the clang); each parry slides him `TUNE.deflectPush` 0.16 m back (×1.6 for blue
 the guard lingers (`guardHold` eases 1 → 0 over `TUNE.guardLinger` [0.32, 0.6] s after the last one).
 `player:parry.chain` is the hero's own rhythm count and can run across two strings; the HUD's
 "DEFLECT ×N" uses the attacker's `combat:deflectChain` (one string).
+**The clash dance** (`?clash=dance`, `combat/clashDance.js`, ADR-247; off by default): a duelist keeps the run of
+parries inside one of his moves on `_clash {act, n, t, hurt}`. `clashPeek()` gives the run a parry would make now
+(0: off) and the hero reads it in `_parry` for `player:parry {clash}` (audio.js rings it a little higher and
+louder: `clashRing`); `onParried` (and Halcyon's crash) counts it in `_clashMult()` and multiplies the parry's
+posture by `DEFENSE.clashDance.mult[n - 1]`. The run starts over on a new move (`brain.act`), when
+`player.hurtN` moved (every blow that lands on the hero or breaks his guard; not a contact stream's chip), or
+after `gap` s. Thrown things are no part of it. `_updatePosture` multiplies the recovery by `clashRegenK(hp
+fraction)`; the Lord, Tian Lei and Xin Yi use it in place of their `posture.regenByHp` curve.
 **Perfect parry** (ADR-051): a parry whose RMB press came ≤ `DEFENSE.perfectParryWindow` (0.08 s)
 before the impact is perfect: `_parry(tell, attack, sx, sz, light, perfect)` stores it on
 `deflect.perfect` and adds `perfect` to `player:parry`. It is computed for every parry; only bullets
@@ -1354,8 +1373,9 @@ on the move (`FIGHT_RUN`; a sprint trails the blade); a roll and a backstep ease
 of the pose they began in (`swordFromEntry`, `SWORD_ENTRY` 0.16 s) and the loco clip settles the
 blade into the stance over `LOCO_SETTLE` (0.24 s).
 **The run's free arm** (ADR-187, `runArms.js`): in the hero's `loco()` the free (left) arm is
-`runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of three carries (`?runArm=a|b|c|old`,
-`runArmMode()` / `setRunArm(id)`, default `d`, the owner's pick, ADR-204; `d` the full pump), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
+`runArm(p, P, A, phase, armF, sprint, runK, moveW, mz)`'s: one of its carries (`?runArm=a|b|c|d|e|f|old`,
+`runArmMode()` / `setRunArm(id)`, default `e`, the owner's pick, ADR-229; `d` the full pump, ADR-204; `e` / `f` the pump
+opened out from his side), written as joint angles (`RUN_ARMS`: the shoulder's swing, how
 far the arm stands off his side, the elbow, the forearm's cross) and posed by forward kinematics into `lH`, `lP`,
 `lD`, `lN` and `hs`, with weight `moveW`. `a` swings like a runner (a pump at a sprint), `b` holds the dash (swept
 back behind him; forward only: a strafe or a backpedal swings as `a`), `c` is `a` on the run blending into `b` as
@@ -1363,9 +1383,16 @@ the sprint builds. The dash's weight eases on `A.time` (`A.runArmS`), so `loco()
 `old` returns false and `loco()` writes the swing before ADR-187. A duelist's footwork never calls it.
 **The run's sword arm** (ADR-204, `runSword.js`): `runSword(OUT, phase, armF, sprint, tilt)` fills the sword
 hand's targets on the run (`OUT.h` → `rH`, `OUT.p` → `rP`, `OUT.d` the blade, `OUT.f` its flat → `swF`) from joint
-angles (`RUN_SWORDS`) posed by forward kinematics against the torso's line, turned by its lean `tilt`; `?runSword=hip|old`,
-`runSwordMode()` / `setRunSword(id)`, default `hip` (the blade forward at the hip). `old` returns false and `loco()`
-keeps the carry before. `loco()` blends the backpedal, the fight carry and the sprint over it.
+angles (`RUN_SWORDS`) posed by forward kinematics against the torso's line, turned by its lean `tilt`;
+`?runSword=hip|trail|swept|side|old`, `runSwordMode()` / `setRunSword(id)`, default `trail` (the owner's pick, ADR-229; `hip` the blade forward at the
+hip, ADR-204); `trail`, `swept`, `side` carry the blade on from the forearm's line behind him and down (`trailing()`:
+lifted `tilt` off the line, turned `yaw` out, its slant held in `down`). `old` returns false and `loco()` keeps the
+carry before. `loco()` blends the backpedal, the fight carry and the sprint over it. A block, a parry, the flask or a
+charge entered from loco with the blade pointing behind him (`from[swD].z < -0.35`) cross-fades over `IDLES.cutFade`
+at least (`_idleLife`, as out of the old trailing rest). `OUT.open` (0..1, `trail`: 1) asks the solver for the sword
+arm's full reach: `loco()` sets `A.reachT` (only for the clip's own pose, `p === A.target`; × the carry's share;
+`locoGuard` × (1 − guardHold)), `HeroAnimator._swordOpen()` cross-fades it across clip changes (`reachFrom`), and
+`_arm` reaches `max(lock, open)` of the way past the soft reach for the hero's sword arm.
 **Idle life** (ADR-047): in the loco clip, standing still in the `idle` state, at ease (not locked
 on, not in the fight stance: `fightW` ≤ 0.05), with no guard held, for `IDLE_LIFE.after` (2.5 s), `HeroAnimator._idleLife` starts an action from `FIDGETS`
 every `IDLE_LIFE.gap` (2–4.5 s after the last one ends), picked with the animator's own noise (never
@@ -5181,7 +5208,11 @@ data and a subclass with a few hooks.
   **The body answers where it was hit** (ADR-149; `react.js` `class HitReact`, numbers `reactTuning.js`
   `REACT`): `d.hitReact.hit(R)` from `takeHit` for a sword cut only (`o.swing || reel > 0`, at
   `impactK('react', 'duelist')` > 0; R = { k, part, point, cut, dir, thrust, heavy, crit, reel, skid,
-  moved }) and from `onExecute` (a heavy thrust fold). `_animate` order: `hitReact.restore()` →
+  moved, limb }) and from `onExecute` (a heavy thrust fold). `limb` (CONTACT, ADR-259: the capsule the hero's steel
+  met) overrides the part read from the height, and adds the arm: a body hit on the chest with `REACT.arm`'s
+  stronger twist, that shoulder dropped and back, the head turned from it. The HERO wears the same layer
+  (`player.hitReact`, ×`CONTACT.react.hero` 1.2): restored before his animator, applied after `_combat` (his
+  sweep never sees it), from `_reactTo` on a hit that met him. `_animate` order: `hitReact.restore()` →
   jolt, pilot → `anim.update` → `_gameplayPoints()` → `hitReact.apply(dt)` → lean on →
   `updateMatrixWorld` → `_drawnPoints()`; `reset()` calls `hitReact.reset()`, `_poseAt` restores it
   before posing. Gameplay points never see it; up to 3 slots add.
@@ -5242,6 +5273,25 @@ data and a subclass with a few hooks.
   away: `player.onGuarded({ deflect })` bounces the hero, and the counter move starts as the 0.24 s
   beat ends). `brain._evade(s)`: once per 3 s he may step out of a heavy blow (`TUNING.guard.evade`),
   from footwork or a late recovery.
+- **CONTACT** (ADR-259, `combat/contact.js`, `?contact=0|a|b`, the Lab's `contact` row): `d.strikeContact(meet,
+  heavy, biteAt?)` → the meeting point (drawn, world) or null. `meet(a, b, r, out)` is the struck thing's signed gap
+  (m, − inside) to a striker a → b of radius r (the hero's `ContactBody` for a hit; his blade, then the shell 0.12 m
+  before his body, for a block). The strike is searched along his clip from the frame the blow was decided
+  (`findContact`: back ≤ 0.16 s where it had gone through, on ≤ 0.075 s where it fell short, steps of 1/120 s and
+  three halvings) to where the edge bites `CONTACT.bite` 0.035 m in (a thin part at most 0.4 of its radius) or a
+  fist / foot (`_part`) touches; `brain.pinAt(tc, hold, follow)` holds the DRAWN pose at that clip time
+  (`brain.pin`, `pinStep`: through the freeze, `hold` s more (a heavy blow `holdHeavy` 0.06), then it catches up
+  with the clip over `follow` 0.07 s). `_animate` poses the clip's own time first (`_gameplayPoints`: his hurt
+  spheres never see the pin), then the pinned time with `anim.update(0)` for the frame drawn. `setBack` and a new
+  clip clear the pin. `d._wardOnto(p)`: his guard nudged onto the hero's stopped blade (`pilot.guardNudge`, the
+  animator's `gripNudge`, eased off over 0.3 s). `d._reachStep(dt)` (`b` only, top of `_animate`): a blow coming
+  within `CONTACT.reach.lead` 0.14 s with the hero in its zone is probed at its impact pose once a frame and his
+  drawn body eased toward the hero to close the gap (`hitReact.setReach`, ≤ 0.3 m, the legs solved to the planted
+  feet), held through the pin, eased back over 0.22 s. The hero's side: `player._cutContact(dr, dx, dy, dz, heavy,
+  guard)` searches his swing's clock the same way (`atk.pin`, `atk.show`: `animT` = `atk.t − atk.show`), from
+  `_applyHit` (his drawn steel on the boss's drawn body: `ContactBody.fromRig` on a duelist, `fromSpheres` on the
+  wyrm) and from `d._guardClash` (on the boss's blade, before the crossing is read); `player._limbNear(dr)`
+  names the part for the boss's HitReact (`takeHit({ limb })`: 'head' | 'body' | 'armR' | 'armL' | 'legR' | 'legL').
 - A parried blow is HELD at the contact (ADR-079): `d.parryContact(chest, last, blade?)` steps his pose back
   along the strike (≤ 0.06 s of clip time) to the last pose before the blade crossed the hero's
   centre line in which it is still 0.34 m clear, or sets a thrust 0.4 m aside; `brain.back.off` keeps
@@ -6200,13 +6250,14 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
 - **The rules are objects on the actor**, stepped from `brainFrame`:
   `d.barrier` (THE UNREACHED: `takeHit` asks `barrier.stops(o)` first, every result of `d.hitPlayer` goes to
   `barrier.answer(r, o)`, a posture break and `onCounter` open it; its hurt spheres grow by `wjBarrier.shell`
-  while up; surface `up`, `cracks`, `openT`, `openDur`, `why`, `stats`, `open(why, dur)`, `close()`, `crack()`),
+  while up; surface `up`, `cracks`, `openT`, `openDur`, `why`, `stats`, `open(why, dur)`, `close()`, `crack()`,
+  `scaled(o)`: the hero's cut with `wjBarrier.openDamage` on it while open, `takeHit` after the stops; ADR-250),
   `d.pull` (Draw's knots: `add({ x, z, strength, r, life, falloff })` → a knot record the caller may move or end,
   `drift(x, z, out)`, `live`, `knots`; the drift is added to `player.kb`; nothing drags a hero who is down, rolling,
   held or in a move of his own), `d.domain` (the P2 → P3 transition: `state` 'off' | 'sign' | 'closing' | 'held' |
   'inside', `inVoid`, `holding`, `escape()`, `caught()`, `toVoid()`, `breakVoid()`), `d.patience` (patience.js,
   ADR-243: `idle` s since a cut of the hero's reached him, `impatient`, `cueK`, `stats { turns, touches }`;
-  `takeHit` calls `touch()`; after `TUNING.wjPatience.after` 30 s it turns once (his eyes through `fx.eyes` for
+  `takeHit` calls `touch()`; after `TUNING.wjPatience.after` 20 s it turns once (his eyes through `fx.eyes` for
   `cue` s, the sound `dragon:spell` 'wjUnveil'; no event of its own) and `_weighted` makes every blocked blow cost
   at least `guardCost` of the meter until a cut reaches him; the clock stops in a transition, a break, the
   domain's hold, or with the hero down), `d.fx` (`WjFx`; its head lists every method, per frame or once).
@@ -6220,6 +6271,11 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
   `weigh(name, def, w, dist) → w`, `onActStart(A) → false` (refused); every handler `frame(dt)`,
   `afterPose(dt, a)`, `stop()` (a reaction, a break, his death), `reset()`. A new move goes in its file, never in
   `moves.js`.
+- **THE MOTION TAKES** (`motion.js`, ADR-250; `?wjMotion=0|a|b|c`, PICKED b): `moves/melee.js` makes every melee
+  move's `beats` / `recovery` live getters over `liveTakes(name, def)`; the take's beats carry `wjHands` ('R' /
+  'L' / 'RL': the hands the blow uses) and `wjBlink.near` (a later beat blinks only when the hero is further). `WjMelee`
+  eases `pilot.wjPin { R, L }` (0..1, the hands kept in his pockets) and `poses.js` `wjHandsLayer` puts them there
+  over the duel clip. `wjMotionNow()` reads the switch. `WjMelee` also counts THE MERCY's stretch in `game.realDt`.
 - **Core's beat fields** (untouched.js): `wjBlink` (`{ behind: m } | { at: rad, r } | { side: ±1, r }` [, `u`]:
   he vanishes and is there late in the windup; a blow out of a blink holds from any side, `around`), `wjCrash`
   (`false | power`: by default every throw of `wjCrash.minKb` 3 m or more crashes), `wjMoment` ('unveil': the
@@ -6348,7 +6404,7 @@ Player → hud/audio/fx/flow:
   light, sweep, point, slam, cleave or execute; the plunge's has neither; shards = true when only the slam's ground
   shards hit (the blade is in the ground: weight null, no cut drawn, no blade sound)), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
-  `player:block {damage, tell}`, `player:parry {tell, attack, chain, light, perfect, last, flare}` (flare = the blow was a parry moment, a blue flare blow: the counter follows; last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
+  `player:block {damage, tell}`, `player:parry {tell, attack, chain, clash, light, perfect, last, flare}` (clash = the clash dance's run this parry makes on a duelist, 0 with `?clash=dance` off or no duelist's blade / body, ADR-247; flare = the blow was a parry moment, a blue flare blow: the counter follows; last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
   `player:guardOpen {attack, black}` (black = a black, charged, blow met on the guard or a parry: the whole meter at once, ADR-118; else the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a

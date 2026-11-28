@@ -7004,3 +7004,701 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   longer roundhouse leg (Thousand Shadows 275 → 424 mm/f², under the 450 the suite allows). Not done: the
   transformations' kneel-to-stand (jolts ~600), Thousand Hands' last palm (671, as before), the dash thrusts'
   feet (the audit leaves dashes out).
+
+## ADR-250 — Shen Hui's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps that turn on the feet, the step that lands with the blow; looks for Ember Whirl and Heaven-Splitting Fall (2026-11-26)
+
+- **Context:** the owner's motion audit of every boss (2026-11-26): "weird looking arm angles and sword positioning
+  and attacks that look unrealistic", every attack readable, the special moves' effects at the bar of Wen Yao's and
+  Bai Wuji's. ADR-226 already put his jian in line with his forearm (wrist ≤ 40 - 50°) and held his blue / red
+  windups. Measured what was still off (`tests/integration/swordAudit.mjs`, new opt-in `GCD_AUDIT_IMPACT=1`: at each
+  blow's impact the sword elbow, the wrist, both knees, the front foot down or not, the blade's elevation, the cut's
+  tilt (the point's path off level), a thrust's arm line (shoulder → grip against the blade) and a kick's knee; and
+  when the free hand peaks and the elbow folds):
+  - **Thrusts** landed on a bent arm (elbow 135 - 150°) with the point 21 - 26° off the line of the arm; the long
+    lunges (Plum Thrust, Piercing Ash, the perilous ends) on two locked knees (176° / 176°): the feet set 1.5 - 1.7 m
+    apart, wider than his legs reach at that depth.
+  - **Overheads** (Falling Ash, the strings' held overhead, the leaping two-handed chops) cut straight down: the
+    point's path 75 - 81° off level, one upright bar at the game camera; in the strings the free hand flew from the
+    held pose (out at the foe) onto the hilt in the 0.1 s strike: 17 - 19 m/s, the fastest thing he did.
+  - **The low sweeps** (Lotus Sweep, Twin Embers' second, Ember Whirl's last, Ash Lotus's, Ash on the Wind) turned
+    his hips a full circle over feet that stayed put: the legs crossed (-0.73 m) and the knee popped (630 mm a frame²).
+  - **The front foot was still in the air at most impacts** (15 - 18 cm): the foot planner steps a keyed foot only
+    once its key has drifted 14 cm, then takes ~0.1 s, so in a 0.34 s string windup it landed after the blade.
+  - Fine already: his kicks are straight at contact (176°, the support leg bent), the blade stays off his head and
+    body, his chest faces the hero at every impact.
+- **Decision** (`?ashForm=a`, the owner's pick, 2026-11-27, `0` = as before; Lab LOOKS `ashForm`): every beat gets
+  `formKeys` (and, for the blows ADR-226 holds, `formMotionKeys`), its move a `formRecovery`, played through the
+  realiser's `keysOf` / `recoveryKeysOf`: the windups, impacts, zones, cues and root motion are the move's own, only
+  the poses change. His data only (moves.js; the shared engine untouched: `keysOf`, `recoveryKeysOf`, `animOpts`
+  and `kit.motion` are kit options that already existed).
+  - **The thrust**: the sword hand keyed on the blade's own line out of the shoulder, past full reach, with his own
+    soft reach `TUNING.formMotion.armSoft` [0.9, 0.99] (ADR-226's 0.985 held a thrust at 145°; 1.0 locked a cut's arm
+    at 176°): elbow ~160°, the point 2° off the arm. The lunge's feet set where the legs reach: the front shin
+    upright over its foot, the back leg long (`lungeFeet`): knees ~70 - 100° front, ~155 - 176° back.
+  - **The overhead** as a ONE-handed steep diagonal (the jian is a one-handed sword): from high over the sword
+    shoulder down through the opponent to low at his left hip, the free hand drawn back in opposition; the blue HIGH
+    hold for these blows a little further out over the shoulder (world az -1.1, not -0.42) and ended at 0.7 of the
+    windup (not 0.8), so the strike comes ACROSS him; the leaping two-handed chops keep both hands, on the same
+    diagonal. Tilt 55 - 61° (the other diagonals ~43°: still its own shape).
+  - **The low sweep**: the feet go round with him (the right leg sweeping the stones, the left turning on its ball),
+    keyed just off the floor so the clip carries them.
+  - **The free hand** through a cut gathered by the sternum and split to his left in opposition: half the travel,
+    so a string no longer pumps it back and forth; Flicking Willow keeps the raised sword-finger up through the
+    flick (it fell 0.66 m in 0.09 s).
+  - **The step lands with the blow** (ki-ken-tai-ichi): where a beat steps its front foot in, the foot is keyed off
+    the stones halfway through the step and down at 0.86 of the strike, not left to the planner; outside dashes,
+    leaps, flits and the courtyard's moves. A planted foot its clip lifts eases off its spot over
+    `TUNING.formMotion.liftEase` 0.05 s (the others' 0.12 s dragged his feet 1.2 m through Rain of Ashes).
+  - **Effects to pick** (the owner's bar: the fox's and Bai Wuji's spells), `ashDisciple/specialFx.js`, heat in the
+    fire field and one-cell embers at the blade, his body or the landing spot, no hit and no cue of their own:
+    `?whirlFx=` Ember Whirl (a the wheel: the point leaves a burning ring; b the cyclone: fire whirling up round him,
+    embers off the point; c the disc: the swept width burns an instant) and `?fallFx=` Heaven-Splitting Fall (a the
+    comet: a tail of fire down, a column where he lands; b the split: a seam of fire down the cut, the floor split in
+    fire ahead and behind, out past the burning ring; c fire raining on the locked ring). `0` = as they ship. The
+    owner's picks (2026-11-27): `whirlFx=b` the cyclone, `fallFx=b` the split. The Kindling keeps its picked look
+    (ADR-118's three, `kindle=a`).
+  - **The Fall as a jump** (the owner, picking: it "doesn't look natural in his motion"): ADR-226's held red coil
+    spans 0.36 - 0.72 of its windup, which is his whole flight, so he flew 3.6 m up in a ground crouch (feet set in a
+    lunge, the blade trailing behind him) and whipped the blade over in the last 0.3 s. In the form it has its own
+    keys: he loads (sinks, the blade swung low behind his right hip), drives up off both feet as the arms swing the
+    blade up, tucks his knees at the top with the blade raised over his sword shoulder (held through the ring's
+    lock, where the red reads), reaches his legs down as the blade starts over, and lands into the cut (the root's
+    arc ends at the impact), sinking on through the active frames; his recovery rises where he landed. The arms (the owner: "awkward and
+    stiff"): the hands lift the blade up his right side in one rising arc (no swing forward under him and back),
+    and it keeps cocking slowly back behind his head through the lock (the arms never freeze), turning over into
+    the cut as he drops with the hands leading the steel. Then (the owner: the arms "barely visible" in the air,
+    the low backswing "a complete circle", the swing "way too late", "lands on top of the character like
+    kamikaze"): no backswing, the arms leave his guard straight up, the hands high in FRONT of his face; the cut
+    starts in the air past the top, the blade level in front of him before his feet touch; and he lands 1.6 m
+    short of the hero (the leap's new opt-in `short`, duelist/brain.js `_leap`; the form only) so the steel, not
+    his body, meets him (the 2.6 m ring still takes the hero in).
+- **Kept:** his pace (the owner's PBZ-fast openers ~0.46 s and strings 0.34 s apart, his TUNING floors 0.42 / 0.32 s:
+  the brief's 0.7 / 0.45 s floor would slow every move of his, which the owner chose fast; asked, not changed);
+  his colours and hat; Piercing Ash's old drawn-back windup (the owner's call in ADR-226; its lunge gets the new legs
+  and arm); the riposte's first blow a meetable diagonal cut (the flash chain's strike-back, ADR-246).
+- **Consequences** (the audit, every move, the form on): thrust elbows 156 - 161° (from 135 - 150), arm line 2 - 3°
+  (from 21 - 26), lunge knees front 69 - 98° / back 140 - 176° (from 176 / 176 on the long ones); overhead tilt
+  55 - 61° (from 75 - 81); the free hand's peak 4.5 - 10 m/s in every string (from 17 - 19); the front foot down at
+  every cut's impact (from up 15 - 18 cm in most); the sweeps' legs no longer cross (+0.3 m), the knee pop gone. The
+  duel suite with the form on: green, two checks read the engine on the poses they were tuned on (`ashForm=0`, as
+  `ashMotion=0` already: MOTION's two-handed overhead, REACT's layer under the raised blade). Open: the sweeping
+  foot counts as sliding in the audit (it is the sweep); feet still slide 0.15 - 0.5 m over a long string where the
+  close-in carries his root under a planted foot.
+
+## ADR-247 — The clash dance: parries in a row pay more posture, the ring rises, his recovery slows with his health (`?clash=dance`) (2026-11-26)
+
+- **Context:** research into Sekiro, Phantom Blade Zero and Onimusha: Way of the Sword proposed five combat additions
+  (ROADMAP P4); the owner picked the flash chain first (ADR-246), then "the clash dance". In Sekiro deflects close
+  together deal more posture damage than the same deflects spread out, the deflect's ring is the fight's rhythm,
+  and a boss's posture recovers more slowly as his health drops, so cutting his health makes a break stick. Here
+  every parry paid the same posture, and only the Lord, Tian Lei and Xin Yi scaled their recovery by HP (a curve).
+  PR 145 (the deathblow, ADR-211; merged while this was built) counts perfect parries across strings for the deathblow's
+  length and answers any parried blue blow with the deathblow; the owner
+  asked what the clash dance is and approved building it standing on its own, a small ring and the steps for every
+  duelist.
+- **Decision:** behind `?clash=dance` (`combat/clashDance.js`, `DEFENSE.clashDance`; the Lab's `clash` row), off by
+  default until the owner picks from film. (1) A duelist keeps the run of parries inside one of his moves; the
+  run's n-th parry's posture x `mult` [1, 1.25, 1.5, 1.75] (the cap); it starts over on a new move, a blow landing
+  on the hero (`player.hurtN`), or a 1.5 s gap. Bodies and blades only, not thrown things. (2) The recorded parry
+  rises half a semitone and 0.8 dB a parry of the run (2 semitones / 2.4 dB at most) on top of the deflect chain's
+  weight; `player:parry` carries the run as `clash` (the hero asks the duelist's `clashPeek()` as he parries, since
+  the sound plays before the duelist counts it). (3) His posture recovery x a step by HP: 1 from 75 %, 0.85 from
+  66 %, 0.75 from 33 %, 0.5 from 10 %, 0.25 below; for the three with a curve the steps replace it.
+- **Why this way:** the run lives on his move, beside the deflect chain's own count (`act.chain`, the "DEFLECT
+  xN" call-out), so "his string ends" needs no extra state and the call-out keeps its meaning; a hurt counter on the
+  hero (not an event listener) keeps the duelist free of subscriptions. It never reads PR 145's `parryRun`, so
+  either can land first. For the Lord's family the first try kept their x1.5 full-bar rate under the steps, but that
+  made them recover FASTER than today at 50 - 70 % HP (x1.28 against x1.2): replacing the curve outright is never
+  faster at any HP, and is what the owner approved.
+- **Not taken:** a bigger ladder (the owner asked for about x1.25 steps; a 7-blow string from an empty bar already
+  breaks Shen Hui through the full deflect, so the dance mostly shortens the 3 - 4 blow strings that make up most
+  of a kit); a pitch climb on the bell or a new layer (the owner turned a climbing parry down before: "sounds like
+  its for kids").
+- **Consequences / open:** the film (a plain-parry bot on all-white strings, the same strings both ways):
+  Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The ring is not on the film (no sound): it is the owner's to judge by ear in
+  the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
+  shorter. Tests: duel `clashdance`, lord `clashdance`.
+
+## ADR-250 — Bai Wuji round 3: the glide (his melee motion, the owner's pick of three takes), the barrier opens easier, cuts x2.5 through it; his mercy counted in real time (2026-11-27)
+
+- **Context:** the owner after playing the shipped fight (ADR-241 - 243): "the fight is pretty hard right now
+  and takes forever to do damage to him"; his kicks and punches "do not look natural and look off"; "faster and
+  cooler", effortless and invincible. Their answers: the barrier opens easier (two ordinary parries crack it
+  open, it stays open longer, the hero's cuts hit harder while it is open, hp near 20000, a good player wins in
+  about three minutes); effortless and one-handed (hands in his pockets most of phase 1, one out in phase 2,
+  both in phase 3; fast snaps, held poses only on blue / red); film 2 - 3 takes, they pick. They picked **b,
+  the glide**. Why his melee looked off: his realiser had no `keysOf`, so ADR-225's motion layer (held blue /
+  red windups, released feet) never reached him; his knees were 96 - 131 deg at the contact, his fists Tian
+  Lei's boxer guard, his strings lunged.
+- **Decision:**
+  1. THE TAKES (`untouched/motion.js`, `?wjMotion=0|a|b|c`; PICKED `b`; `0` = as first shipped): each melee
+     move's `beats` / `recovery` are live getters over the take; a take rebuilds the pose keys (hand-keyed,
+     ADR-236), retimes the windups (normal blows cut toward the engine's floors, blue / red keep most of theirs:
+     the held pose is the read; the cock moves late, a snap), recoveries x 0.66 (b), a string's later beat out
+     of a short blink round the hero (`wjBlink.near`; b blinks every later beat, flank / behind / other flank),
+     and `wjHands` (the hands a blow uses). THE HAND LAYER (`poses.js` `wjHandsLayer`, `pilot.wjPin` eased by
+     `WjMelee`) keeps the others in his pockets. Tells, zones, damage, knockback and the engine's minimums do
+     not move (veil.mjs DATA, MOTION, MOTIONAUDIT).
+  2. THE BARRIER OPENS EASIER (`wjBarrier`): `cracks` 4 -> 2; open after a perfect answer 4.0 / 3.2 / 2.6 ->
+     6 / 5 / 4.2 s; by cracks 2.4 / 2.0 / 1.6 -> 5 / 4.2 / 3.4 s; `openDamage` 2.5 (new; `barrier.scaled(o)`):
+     every cut that is not `exact` deals x2.5 while it is open. No new mark: the open ring and the numbers read
+     it. hp 26000 -> 20000. Patience after 30 -> 20 s.
+  3. THE BENCH WITH THE GLIDE (six seeds, god mode off): openDamage 2.2 gave the good bot 2 wins in 6, 2.35 4
+     in 6, **2.5 6 in 6 in 147 / 166 / 191 s** (2.8 min mean); the perfect bot 6 in 6 in 106 - 119 s, untouched;
+     fencing 3 in 6; roller 4 in 6 in 167 - 191 s; blocker dead at 39 s; the pace defender dead in all six at
+     patience 20 (95 - 553 s; at 30 and 25 one seed lived out 600 s). Longer openings by cracks changed nothing:
+     the good bot opens him by cracks 1 - 3 times a fight (ADR-227's parry windows leave the ordinary-parry band
+     about a frame wide).
+  4. THE PERFECT BOT'S HITS were the bot's, not his: it rolled out of falling pieces too late for the next red,
+     tapped one parry for two cues 0.08 s apart, and rolled away facing off him. The bench's bots now roll out
+     of a falling piece as its cue comes (late once to cover a red that follows within 0.3 s), roll the way that
+     keeps him in front, and hold the guard for two guard cues within 0.3 s: 0 hits on 12 seeds.
+  5. MERCY IN REAL TIME (`WjMelee`): a hit's freeze holds the hero as long as it holds the clock, so the stretch
+     out of his own hands is counted in `game.realDt` (three quick Five Sides blows measured 1.19 s of game time
+     while the hero was held 1.52 s); a blocked blow that would empty the guard meter adds `GUARD.openDur`, not a
+     plain stagger. A falling piece never lands on a hero who is down (`destructibles.js`).
+- **Consequences:** a good player beats him in about three minutes; a pure defender still dies. Open: the
+  ledger forgets a red once it has landed, so the fairness guard never holds a blow that lands while the hero is
+  still in the roll that answered a falling piece (shared duelist code, left); patience is slow against a pure
+  defender because his next blow lands in the knocked-open guard about one time in ten.
+
+## ADR-255 — Bai Wuji's motion audit: straight blows on the line to the hero, a kick's return without the snap, phase 1's casting hand out of its pocket (2026-11-27)
+
+- **Context:** the owner's motion audit of every boss (2026-11-26: "weird looking arm angles", "attacks that look
+  unrealistic", kicks "still bended", every attack readable; Bai Wuji's spell effects are the bar, kept). His
+  melee motion had just been rebuilt and picked (ADR-250, the glide), so this pass audits the glide, built on it
+  (PR 176), and changes only what the measures found. A new opt-in scenario `veil.mjs . anatomy` measures every
+  move of his in every phase on the rig: the striking limb at each contact, an arm's line to the hero (degrees
+  off the line from his shoulder to the hero's chest, flat and up / down, at the contact and at the release),
+  the largest one-frame jump and when. Two traps in measuring a line: the duelists' rig root carries a
+  world-fixed tilt toward the camera on a non-uniform scale (x -0.24 rad; 1.21 / 1.38 / 1.21), so the hero is
+  placed in an UNTILTED frame (his position, yaw and scale), and the hero's place is taken the frame before the
+  contact (the blow's own throw moves him inside the hit frame).
+- **Found:** the glide's kicks land straight (knee 166 - 175 deg; 107 - 132 before ADR-250) and its straight hand
+  blows open (152 - 169 deg); every blow faces the hero at its contact. But (1) the palm, the poke, Dark Spark's
+  fist and the Yank's fist crossed past his centreline, 12 - 31 deg off the line to the hero's chest (Dark Spark's
+  fist passed him by most of a metre); (2) inside a string a kick's contact pose was held dead still (u 1.0 -
+  1.22) and the leg snapped back to the chamber in the last frames of a ~0.15 s follow-through: a 0.4 - 0.57 m
+  one-frame jump (Three Count, Four Sides, Too Slow, Everywhere); (3) ADR-250's hand layer pins the right hand in
+  its pocket through any phase-1 move whose beat names no `wjHands`, so phase 1's Azure Draw lost its finger and
+  the Yank's BLUE fist (a parry cue) glinted inside a pocket (elbow 112 deg, the arm 81 deg down).
+- **Decision:**
+  1. `?wjPolish=0|a` (PICKED `a`, the owner's pick from the films; `untouched/motion.js` POLISH, built into a second set of takes,
+     read live): (1) each straight hand blow's contact hand moved back toward his centreline by AIM (palm -0.12,
+     poke -0.1, Dark Spark -0.2 m; the Yank's fist -0.14 through its own `wjKeysP`, played by his realiser's
+     `keysOf`): now 1 - 10 deg off; (2) a kick's follow-through is a moving hold (12 % back toward the chamber by
+     u 1.14) that eases into the chamber at u 1.7: Three Count's worst jump 0.51 -> 0.34 m, Everywhere's 0.48 ->
+     0.25. What is left is the snap of the strike itself (the owner's fast glide). A follow-through past the
+     contact was tried and dropped (it drove the axe heel into the road: 0.50 m).
+  2. `?wjCastHand=0|a|b` (PICKED `a`, the owner's pick from the films; `WjMelee._motionFrame`): a phase-1 beat of Azure Draw or the
+     Yank uses the right hand: `a` for the whole cast, `b` from 0.55 of its windup (the pull and the flick), `0`
+     round 3's pocket. Curb Pull keeps both hands in (its own design).
+  3. No effect is upgraded: his spells are the owner's bar for the game, and no special of his reads weaker than
+     the rest of his set on film.
+  4. Tests: `veil.mjs . polish` (default) asserts the lines, the return and the casting hand; `anatomy` (opt-in)
+     prints the table. No tell, windup, zone, damage or timing moves.
+  5. THE MERCY FOR SPELLS AND PIECES: the full run's DOWNTIME (seed 7, on the fight path these poses gave it) found
+     Crimson Cast's burst landing 0.05 s after the hero stood up from Overhead's knockdown: 2.92 s out of his own
+     hands (the cap 1.5). His melee beats spare such a blow (`WjMelee._spare`), his spells and thrown pieces only
+     spared a hero who was still down. Now `WjMelee.chainsLock(knockdown)` asks the same rule, and the spells'
+     `_strike` and terrain's `_heroDown` pass a blow over a hero it would chain (the blow still flies, cued; it
+     only does not land).
+- **Consequences:** the owner picked `a` and `a` from the films (2026-11-27): the defaults. Left for the hero
+  session: one-frame jumps of a SUPPORT foot after a blink (Five Sides 0.47 m, Passing Through 0.55 m) come from
+  the hero animator's `_feetClip`.
+
+## ADR-251 — The Starless Lord's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps on the feet, the step on the blow; a readable pace and looks for two specials, to pick (`?lordForm` / `?lordPace` / `?boltFx` / `?igniteFx`) (2026-11-27)
+
+- **Context:** the owner's motion audit of every boss ("weird looking arm angles and sword positioning and attacks
+  that look unrealistic ... clear tells ... make all the special moves and effects very cool"), one session and one
+  draft PR per fighter, judged on films. Batch 1 (ADR-248 Tian Lei, ADR-249 Wen Yao, ADR-250 Shen Hui) set the
+  method. The Lord had ADR-226's grip and held tells (`?lordMotion=a`, the default). Measured first, every move in
+  every form it is used in (`lord.mjs . formaudit`, new; the shared sword audit's impact table, ADR-250's, plus a
+  true slide of the feet on the floor and the off-hand blade's arm), because a move compiled round another form's
+  guard is not the move he plays there:
+  - thrusts landed on a bent arm (121 - 140°) with the point 18 - 23° off the arm's line; the long lunges (Starless
+    Lunge, the Dirge's opener, Push Opening, Hunting Wings, Cyclone, Crimson Eclipse) on two locked knees (176 / 176°);
+  - the two-handed overheads (Falling Star, Grasp and Sever's chop, Severance, every string's held chop, Judgment,
+    the Void Waltz, Thunder Verse) came straight down: the point's path 71 - 80° off level, one upright bar at the
+    game camera;
+  - the low sweeps (Reaping Arc, Red Meridian's second blow, every red sweep that ends a string) turned his hips a
+    full circle over feet that stayed put: the legs crossed by 0.73 - 0.85 m, the knee popped 630 - 645 mm a frame²;
+  - the front foot was still in the air (15 - 25 cm) at about half of all impacts;
+  - fine already: the wrist on the blade (≤ 40 - 59°, ADR-226), the blade clear of his body, the form-2 off-hand
+    blade at its own blows (elbow 161 - 166°, the blade 25 - 60° off the forearm).
+- **Decision** (`?lordForm=a`, `0` = as before; Lab LOOKS `lordForm`; the owner's pick, 2026-11-27, from the before /
+  after films, with the readable pace, `?boltFx=c` and `?igniteFx=a`; all four in `PICKED`): ADR-250's recipe
+  in his own move data, every beat's `formKeys` / `formMotionKeys` and the moves' `formRecovery`, played through his
+  realisers' `keysOf` / `recoveryKeysOf`; the same windups, impacts, zones, cues and root motion (LORDFORM: 187
+  realisations to the frame):
+  - **thrusts**: the sword hand keyed past full reach on the blade's own line, the arm opening further (his
+    `formMotion.armSoft` [0.9, 0.99]), out of a lunge with the front shin upright and the back leg long (forms 3 - 4
+    keep both hands on the hilt);
+  - **overheads**: still two-handed (his, unlike Shen Hui's jian), raised over the sword shoulder and brought down
+    across him to low at his left; the blue HIGH hold widened over the sword shoulder for those blows (az -1.1) and
+    ended at 0.7 of the windup; the somersault's landing chop the same, its turn kept;
+  - **low sweeps**: the feet go round with him (the right leg sweeping the floor, the left turning on its ball);
+  - **the step on the blow**: where a beat steps a foot in (the right, or the left in a string's left-foot cuts) it
+    is keyed off the floor halfway through the step and down at 0.86 of the strike (not in a dash, a leap, a flit, a
+    blink or a lift); a planted foot the clip lifts eases off its spot over 0.05 s (`animOpts.liftEase`);
+  - **the free hand** in one-handed cuts: gathered at the sternum and split in opposition, half the travel.
+  - Measured after: thrusts 154 - 157° at the elbow and 2 - 5° off the line; the lunge's front knee 95°; the
+    sweeps' feet never cross (+0.38 - 0.48 m); the overheads 43 - 61° off level; the front foot down at all but a
+    few cuts.
+- **The readable pace** (`?lordPace=a`, `starlessLord/pace.js`, Tian Lei's ADR-248 recipe): his shipped pace is the
+  owner's ("faster than Shen Hui and ramping": a string's blows ~0.34 s apart in form 1, ~0.3 s in form 4, first
+  blows from 0.4 s), under COMBAT rule 10's floor. Under `a`: a move's first blow >= 0.7 s × the form's windup
+  scale, blows >= 0.45 s apart, the cue 0.35 s before, the time added a hold of the cocked pose (a fixed delay); his
+  quick blows, counters, flurry and ignitions keep their timings, and so do his spells (a beat that casts, throws,
+  releases or reaches out with the Void: rule 10 is the melee's floor, and each cues itself; a hazard or a move of
+  the crater's pieces is left alone). Offered, and the owner took it (2026-11-27). Tests that asserted the fast pace
+  read it now (lord DATA: the gaps at the floor and the first blows sooner form by form; TIMING: a blow 0.35 s after
+  its glint, a spell 0.26 s; FLARE's parry bot). Known: the shared cue ledger's flash-fed entries and the Training
+  room's answer time read `TUNING.flashLead` (0.26 s), so they place a paced blade blow 0.09 s early (the ledger also
+  reads the running move's beats exactly; Training's 122 situations still pass). Fixing them is shared code.
+- **Two specials' looks** (`starlessLord/specialFx.js`; heat in the fire field and one-cell glyph particles at his
+  hand, arm, the bolt's line or round his feet, on the looks' own stream; no hit, cue or floor mark of their own):
+  - `?boltFx=` Void Lightning: `a` the thread (motes spiral into a white heart at his fingers, the bolt braided with
+    two violet strands, a ring punched out at the hand), `b` the tear (arcs crawl up the casting arm, the bolt leaves
+    a dark seam with violet lips that comes apart upward), `c` the storm (arcs creep along the floor round his feet,
+    the bolt grounds three times along its line); a chosen look draws the windup at his hand in place of the shipped
+    gather (the two together were one white flare);
+  - `?igniteFx=` a form's ignition, over the shipped `?ignite=a`: `a` the cocoon (a column of letters rises round
+    him and bursts out flat), `b` the writ (the new steel written in light where it will stand), `c` the eclipse (a
+    ring of dark spreads round him, its red rim stands up as a wall).
+  - Cost: at most ~200 blobs over today's peak (the field holds 6000; LORDFORM).
+- **Why** the same method as batch 1: it measured and fixed the same faults on Shen Hui, whom the Lord's move data
+  was built from; hand-keyed poses judged on film, no footage (ADR-236).
+- **Consequences / open:**
+  - The owner's picks (2026-11-27): the form `a`, the pace `a`, Void Lightning `c` (the storm), the ignitions `a`
+    (the cocoon); in `PICKED`, the losing options behind their switches.
+  - Found, not changed: Grasp and Sever's chop closes in with the shared step-in (`close`) over planted feet, so a
+    hero who rolls the pull clear watches him skate 3.4 m (every form); the fix (a dash like Severance's) changes the
+    beat's root motion, so it waits for the owner. The strings' close-in between blows still slides the feet
+    0.5 - 2 m per string (as before); the planner's lag is the hero animator's (`anim.js` `_feetClip`). In form 2
+    the off-hand blade points back along the left forearm (up to 157°) through the two-handed chops, where that hand
+    also holds the main hilt. The free hand flies 15 - 20 m/s in form 1 where it closes on the hilt for a chop or
+    snaps a cast (Grasp's pull, Drawn to the Blade).
+  - Shared code: none changed. `swordAudit.mjs` is ADR-250's (fields only); `duelist/*`, `player/*`, `tellPose.js`
+    are untouched.
+## ADR-253 — Xin Yi's limbs on the line, his guns on the line of fire; two redrawn shots and bolts to pick (`?oneMoves=b`, `?oneGunFx=`, `?oneBoltFx=`) (2026-11-27)
+
+- **Context:** the boss motion audit (the owner: weird arm angles, unrealistic attacks, "kicks aren't straight during
+  the attack and still bended"; every attack readable; special effects to pick in the style of the fox and Bai
+  Wuji). Xin Yi's rebuild (ADR-221, `?oneMoves=a`, the default) already carried the animator kit the other bosses now
+  copy. Measured on `a` (woke.mjs AUDIT, the new GUNS and PROBE scenarios, the hero still in front of him; films at the
+  game camera and close from the side):
+  1. Straight punches landed 22 - 25 degrees off the line from the shoulder to the hero, the fist 0.17 m across his
+     centre line; the back-fist 63 degrees off, 0.6 m to the side and 0.6 m short; the palm 0.33 m short.
+  2. Kicks reached straight for two or three frames and folded at once. On Sky Turns' first tornado (phase 1) the leg
+     was already folding on the frame the hit-stop froze (118 degrees at the knee); the butterfly 131, the flash kick
+     in phase 3 120; a spin kick's leg went from straight to 91 degrees two frames after its contact.
+  3. The elbow struck 0.73 m short of the hero, the spin back kick 0.46, the flying knee 0.44, the hook 0.37: the
+     zone hit from where the limb never reached (his stand-off is the zone's, brain._ideal).
+  4. The low sweep's foot was 94 degrees round from the hero and 1 m short at its impact, the knee at 106 - 134 and
+     flailing 46 - 163 through the turn. Two causes: its foot keys were a third of a turn apart, so the foot cut
+     across the circle to half its reach between them; and the foot, keyed on the floor, was the feet planner's
+     (anim.js _feetClip holds a foot within 3.5 cm of the floor until its key is 14 cm away), a tenth of a second late.
+  5. The mirrored palm (deja vu in phase 3) struck with the left hand while its glint, trail and the parry's contact
+     stayed on the right, hanging at the hip (41 degrees at the elbow).
+  6. The guns: the right gun's barrel runs along the knuckles of the fist joint, and in every aim they faced
+     sideways: it pointed 55 - 113 degrees off the line its shots flew (Two Thunders' side-on aim 144), the left 24 -
+     36, the other hand's 55 - 90 off the hero; each shot left 0.2 - 0.3 m below the drawn gun (the shots' height is
+     held to 0.9 - 1.4 m; in Iron in the Air 0.7 - 0.9 m below it); Turning Wheel's shots were drawn along the floor
+     with nothing at the guns; nothing moved when he fired.
+  7. The palm bolts (the Source) drew as a ball of soft glowing heat a third of a metre wide with a white heart: a
+     glow, where STYLE.md asks for letters.
+- **Decision:** a third option of his moves, `?oneMoves=b` = `a` and two passes, the timings identical to `a` (no
+  windup, cue or impact moves); `a` stays the default until the owner picks.
+  - `limbs.js` (on each beat's keys, before the held tell's re-timing): a straight blow's hand put on the line from its
+    shoulder to his centre line 0.95 m ahead, 1.12 x the arm out (the double palms 0.1 m either side; the
+    point-blank shot's arm aimed 2.4 m out); a kick's contact pose repeated 0.35 of the follow-through later (the leg
+    held long, then drawn back) with the striking foot carried out to the contact's length through it; the sweep
+    turned so its leg crosses the hero's line at the impact, its turn keyed every 0.5 rad, its foot skimming 6 cm
+    off the floor from the tuck on (out of the planner), the planted foot near his pivot, the knee pole up and out;
+    a short blow's zone fitted to its drawn reach (`motion.fit`, measured: he steps in until the limb meets the hero,
+    and the hit reaches no further than the limb); the mirrored palm's part the left fist; Iron Rain's aim reached
+    by 0.6 of its windup and held (its first slugs leave a flight early).
+  - `gunAim.js` (drawn only, after the animator; no gameplay point moves): each gun turned in its hand so its barrel
+    runs down its forearm, onto the hero's chest when the forearm is within 0.8 rad of it; a shot kicks its arm (the
+    upper arm raised 0.15 rad round the shoulder, the gun climbing 0.3 rad and pulled back 5 cm, halflife 0.05 s;
+    worked in his root's own space, as his drawn matrices carry the camera lean's shear), the right gun's joint
+    turned with the arm (it is posed in the body's space); `muzzlePoint` gives the drawn muzzle. iron.js fires from
+    it on `b`, the shot falling along its way from the muzzle to chest height (the blasts' `yTo`; its flight and hit
+    flat, as before); Turning Wheel flashes at both muzzles.
+  - Two effect switches for the owner's pick (default '0', as shipped; `fxIron.js`): `?oneGunFx=a` the tracer (a hot
+    cone and side vents at the muzzle, a spent casing kicked out; a thin line of strokes behind each slug and small
+    rings of stilled air where it passed) or `b` the script (binary digits fanned from the muzzle; each slug leaving
+    a curtain of tiny falling digits); `?oneBoltFx=a` the seed (a hot core in three thin turning rings of digits) or
+    `b` the fold (a core of four hot cells like a falling column, rings of stilled air across its way).
+- **Consequences:** on `b` (woke AUDIT / LINE, the hero still): straight blows 1 - 7 degrees off the line, elbows
+  164 - 169, every one meeting the hero (-0.08 to 0.0 m); every kick 173 at contact and held (Sky Turns' first tornado
+  170 for six frames); the elbow, spin kick and knee within 0.06 m of the hero; the sweep 14 degrees off and touching
+  him at its impact, its knee 121 there and 160 - 170 through the turn; the mirrored palm on the left hand; every gun
+  shot from the drawn muzzle (at most 0.28 m from the fist) with its barrel at most 14 degrees off its line, elbows
+  164 - 170 through the kick. The jolt total rises 5 % (1.04 M -> 1.10 M mm/f2; the worst 993 -> 871), sliding feet
+  107 -> 102 m. The short blows' zones are smaller (the elbow's line 2.2 -> 1.1 m, the spin kick's 2.5 -> 1.76): a
+  hero who backs off out of his step-in is no longer hit from where the limb never reached. Not done: the hooks
+  still meet the hero from the side (0.17 m off), the drop heel lands 0.68 m short (its ring is the blow), the
+  sweep's knee at the very contact (121), Iron Rain's two arms are mirror twins between shots. Shared code
+  untouched (no `duelist/*`, `player/*`, `ascendant/*` change).
+- **The owner's answer (2026-11-27, from the films):** the motion `b` as his default, the shots `b` (the script) and the
+  bolts `a` (the seed): `oneMoves: 'b'`, `oneGunFx: 'b'`, `oneBoltFx: 'a'` in PICKED (`?oneMoves=a` the rebuild before
+  this pass, `?oneGunFx=0` / `?oneBoltFx=0` the shots and bolts as before, the other option behind its switch).
+  With `b` the default, the pace meter's phase-3 longest gap was re-pinned 3.9 -> 4.7 s: seed 4242 now rolls Pushing
+  Hands then Unwriting (its bricks held before the first is thrown), 4.52 s; on five fresh seeds `b`'s worst phase-3
+  gap is 2.91 s (`a`'s 2.67), and `a` itself fails the phase-2 cap on one of them (4.02 s).
+
+## ADR-252 — Lu Wusheng audited: the draw's hands and lunge, thrusts in line, a diagonal overhead, the readable pace, three looks for the draw (`?sheathForm=` `?sheathPace=` `?drawFx=`) (2026-11-27)
+
+- **Context:** the owner asked for every boss's motion to be audited against `docs/ANIMATION.md` and the Sekiro /
+  Phantom Blade Zero / Onimusha lessons ("weird arm angles and sword positioning", "attacks that look unrealistic"),
+  every attack to read, and the special moves' effects at the fox / Bai Wuji bar, as one draft PR per boss with
+  films. The audit (`sheath.mjs form`, `tests/integration/sheathAudit.mjs`: the limbs and the weapon at every
+  impact, the draw's hands through the windup) measured on Lu Wusheng: thrusts on a bent arm (elbow 121 - 124°)
+  with the scabbard 24° off the arm's line; every draw ending in a split with both knees locked (176 / 176°), the
+  cut's arm short (129 - 141°), the right fist 11 - 13 cm off the hilt at the cock and the scabbard hand going
+  FORWARD 26 - 51 cm as he drew (the hips' turn carrying it; an iai draw pulls the scabbard back, saya-biki); the
+  two-handed overhead an upright bar at the game camera (the point's path 75 - 87° off level); Sweeping the Road's
+  legs crossed (-0.86 m) and a knee pop; the free hand in the scabbard cuts swung 0.5 m inside the strike (the
+  ROADMAP's open item). His blunt blows' windups (0.46 s, strings 0.34 s apart) sit under COMBAT rule 10's floor.
+- **Decision:** three switches, `0` (today) the default until the owner picks from the films:
+  - `?sheathForm=a` (`sheathed/form.js`, the form's keys built beside the authored ones in `moves.js`, played through
+    the realiser's `keysOf` / `recoveryKeysOf`; his arms' soft reach `TUNING.form.armSoft` through `kit.motion`): the
+    fist closed on the hilt in the settle and the cock (2 - 3 cm), the scabbard drawn back level behind him as the
+    blade leaves, the cut's end a lunge (the front knee ~110°, the back leg ~143°), the arm open (145 - 162°); thrusts
+    on the scabbard's line (157°, 2° off) out of a lunge; the overhead raised over his sword shoulder and brought
+    down across him (62° off level); the sweep's feet carried round with him; the free hand gathered by the sternum
+    and split back in opposition, half the travel (Shen Hui's ADR-250 fragments: the same rig, the same values).
+    Poses only: every impact, cue, end and recovery identical (`sheath.mjs formpace`).
+  - `?sheathPace=a` (`sheathed/pace.js`, Tian Lei's ADR-248 method): a move's first blow >= 0.7 s (x windupScale),
+    blows >= 0.45 s apart, the cue 0.35 s before, the time added as a held cock (the larger of it and the held
+    tells' hold); the draws, Before the Word, the transitions and the hanging cuts keep their own timing.
+  - `?drawFx=a|b|c` (`sheathed/fx.js`): the draw's look, one idea each, pale steel letters and heat at the cut's line
+    (never blue: the blue flare stays the one cue): a the drawn breath (the air drawn into the scabbard's mouth
+    through the stillness, thrown out along the cut, a ripple where it ended); b hanging leaves (the blade's arc for
+    an instant, letters left hanging along the line that drop on the click); c the late sound (a quiet cut; on the
+    re-sheathe's click a white seam along the line, the air split to both sides, two ripples).
+- **Why this way:** the kit already had every hook (`keysOf`, `recoveryKeysOf`, `kit.motion`), so no shared engine
+  code changed; the form recognises a pose by the fragment it was spread from (shared arrays) instead of copying
+  every move; the time a slower pace adds is a still cocked pose, the house pattern for a readable tell (ADR-223).
+  One Breath's timing (the hero's technique, ADR-146) and the draw's rule are untouched; the flash chain's answer
+  (ADR-246) still opens on a meetable scabbard cut.
+- **Not taken:** keying the draw's hand off the blade instead of `arm: 1` (the arm would lose the chest's turn with
+  the cut); a coloured draw effect (a second colour at the cue would muddy the blue flare); restyling his look.
+- **The owner's picks (2026-11-27, from the films and the preview):** the form `a`, the default; the pace as shipped
+  (`sheathPace` 0: his fast openers stay); the draw's look as shipped (`drawFx` 0: the one white line). The other
+  options stay behind their switches.
+- **Consequences / open:** The planted foot's one-frame jumps live in the hero's animator (`_feetClip`; the hero session's).
+  PR 170 (draft) also names an ADR-252 for the hero's slice; the batch's brief reserves 252 for Lu Wusheng.
+## ADR-254 — Halcyon audited: a flier's limbs, the readable pace, two looks for his eyes and his shockwaves (`?halMotion=b`, `?halPace=a`, `?halEyes`, `?halShock`) (2026-11-27)
+
+- **Context:** the boss motion audit (the owner: "weird looking arm angles ... kicks aren't straight during the
+  attack and still bended"; every attack readable; special effects to the Fox's and Bai Wuji's bar, 2 - 3 looks to
+  pick from). Halcyon is a flier on Tian Lei's builders (ADR-160, ADR-225's `a`: a flier's legs, the blow aimed down,
+  the held windups, the snap blows). Measured on the rig at each blow's contact (city.mjs `audit`, now with
+  `GCD_AUDIT_IMPACT=1`): his straight blows ran 35 - 66° across the line to the hero (the builders' sideways lines,
+  made for a fighter on the floor beside him, not one hovering over him); his legs sat folded under him (knees 67 -
+  135°: a man kneeling on air); the round kick landed at 105°, the side kick at 130°, the other leg folded at ~92°;
+  the pass flew pitched 54° with the knees at 54° and the fist at 2.56 m, over the hero's head. His pace is Tian
+  Lei's (first blows from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s), under COMBAT rule 10.
+- **Decision:** four switches, filmed, then the owner's picks (2026-11-27) made the defaults: `halMotion` b, `halPace` 0 (his fast pace kept), `halEyes` a, `halShock` a (lookSwitch.js PICKED):
+  1. `?halMotion=b` (`halcyon/limbs.js`, through `motion.js` halKeys, his realiser's `keysOf`): `a`'s keys, then a
+     straight blow's hand 1.08 x the arm on the line from its shoulder to the hero's upper chest (his model space at
+     the dip, `motion.b.aim`), the keys after it moved with it; a kick's foot 1.05 x the leg along its own line;
+     hooks and uppercuts their bend; THE FLIER'S LEGS on every key (each foot 0.9 - 0.985 x the leg from its hip,
+     trailing back from straight down by a set angle plus the body's pitch, one a little more bent than the other,
+     the knees forward, the toes pointed), the same hung under his hover (`poses.js` hoverLegs); a kick's other leg
+     hangs long; his own beats (the eyes, the car, the clap ...) the same legs; THE PASS level (`FLY_B`: the body at 1.35 rad, the lead fist straight out, the legs long behind) and
+     his root through it at `motion.b.passY` 0.3 m (`flight.js` go), so the fist meets the hero's chest. His
+     animator opened (`armSoft` [0.96, 0.998], `legSoft` [0.95, 0.998]) and Xin Yi's `kickStretch` set only
+     through a kick (halcyon.js brainFrame: a flier's trailing feet are off the floor too, and it locked them).
+  2. `?halPace=a` (`halcyon/pace.js`): rule 10's floor as Tian Lei's ADR-248 (`ascPace`), his own copy: a move's
+     first real blow >= 0.7 s x windupScale, later blows >= 0.45 s apart, the cue 0.35 s before; the time is a
+     held cock (the realiser's `hold`); the snap blows and the transitions keep theirs.
+  3. `?halEyes=a|b` (`halcyon/fxEyes.js`, HalFx.beam / beamSplash / eyes): a heat vision (two white-hot threads
+     out of his eyes meeting into one hard line, a flickering crimson sheath, tiny faint letters shimmering up off
+     it, the floor molten where it lands, sparks spat back, smoke; red motes drawn into his eyes through the
+     windup); b the crimson pulse (a thicker body, rings racing down it, a scorch ring opening on the beat at its
+     foot, ash; a ring tightening round his eyes). '0' Tian Lei's beam in his crimson.
+  4. `?halShock=a|b` (`halcyon/fxShock.js`, HalFx.shockwave, Applause and Meteor's landing): a a thunderclap (a
+     crisp ring of air racing out at chest / knee height, a fainter twin on the floor, dust shoved ahead); b a dome
+     of pressure (rings at five heights, the air in it shimmering, grit lifted; the landing's lower and wider). '0'
+     the engine's dust front.
+- **Why this way:** his blows are Tian Lei's builders, and Tian Lei's own straight-limb pass (PR 174,
+  `ascMotion=b`) is not merged and sits behind that boss's realiser; Halcyon is fixed in `halcyon/` only, his
+  numbers in his tuning. The audit measures in his UPRIGHT frame: the duelist draws the body sheared toward the
+  camera (`duelist.js` lean), and world points read a straight punch 20 - 40° off the hero (a measuring error,
+  not his arm). The legs could not simply hang: the animator keeps a foot over the root's floor (`anim.js`
+  FOOT_FLOOR, the hero's code), and he hovers 0.2 - 0.5 m up, so a hip sunk low takes its leg further back instead
+  of shorter. Effects are heat in the fire field and one-cell glyph particles (STYLE.md), jitter from the looks'
+  stream; nothing of a beam's or a blow's gameplay moves.
+- **Not taken:** changing `anim.js` (the hero session's) to let a flier's feet below his root; raising his body
+  and lowering his root (it moves gameplay heights the flight tests hold); a pace change without the owner's pick.
+- **Consequences / open:** the owner kept his Phantom Blade Zero-fast openers under COMBAT rule 10 (as Tian Lei's and the Fox's); `?halPace=a` stays behind its switch. Under `b` every straight blow lands within 9° of the line (elbow 161 - 171°), the knees
+  141 - 156° at every punch, a kick 173° with the other leg at 154°, the pass level (77°) with the fist at 1.55 m;
+  a longer limb snaps harder at the contact (the largest frame jolt: Faster Than Sound's kick 282 → 424 mm/f², the
+  riposte's palm 174 → 236). His own beats (the eyes, the car, the clap, the grab, the statue's arm, the falling
+  sky) keep their arms and take the flier's legs (Applause's knees 77 / 114° → 144 / 154°); the transitions' kneel
+  and the meteor's landing stay on the floor, and its tuck is a deliberate ball. Tests: city `limbs`, `readable`,
+  `audit` (`GCD_AUDIT_IMPACT=1`).
+## ADR-257 — The Cinder Wyrm's bites: the body surges first, the head snaps onto the beat (`?wyrmStrike=`) (2026-11-27)
+
+- **Context:** the owner asked for a motion audit of every boss and the hero with the animation guide
+  (`docs/ANIMATION.md`): weird limb angles, unrealistic attacks, everything readable. The wyrm already had its
+  held blue / red windups and its quick blow (ADR-223, picked). This pass measured what the wyrm's blows do at
+  their contact (`tests/integration/wyrmAnatomy.mjs`, integ `wyrmanatomy`, opt-in): per blow the striking part's
+  gap to the hero at the announced impact, a foreleg's elbow and reach, a bite's neck, the order its chain reaches
+  top speed (hips, chest, neck base, head; shoulder, elbow, wrist, paw; wing root to tip), the tail's tip against
+  its middle, the planted feet's skating and the worst one-frame change of speed (hit-stop frames left out).
+  Found:
+  - **Every bite moved hips, chest, neck and head on the same frame** (lags 0 - 17 ms: the front of the wyrm one
+    block), its jaws 0.8 - 3.1 m short of the hero's chest when the flash's impact came, closest only 0.07 - 0.27 s
+    later (the head's exponential chase is fastest on its first frame and slowest as it arrives).
+  - The forelegs rake at full reach (elbow 177°: the paw's path lies beyond the leg's reach). The strike at
+    extension is right, but the leg stays a locked rod through the whole sweep.
+  - The wing blows flap as one rigid wing about its root.
+  - Planted feet skate 0.4 - 1.0 m through some strings (the gait's re-step under a turning, lunging body).
+  - The tail blows already overlap: the tip trails the tail's middle by 44 - 123° through the turn and runs past
+    it as the body stops (a softer tip was tried and changed nothing a film could show: dropped).
+- **Decision** (behind `?wyrmStrike=0|a`, `dragon/strike.js`, `tuningMotion.js` `WYRM_STRIKE.bite`; `a` the default,
+  the owner's pick from the before / after films, 2026-11-27; '0' as shipped; the Lab's LOOKS row `wyrmStrike`), for every bite (the bite, a string's
+  bite, the lunge bite, the rear bite): over the windup's last 0.1 s the chest drops and pitches into the strike off
+  the locked hind feet, a little past the strike's own body, and the whole body surges 0.4 model units toward the
+  hero (not when it is already within 4 units: a lunge reads from the high camera where a neck reaching at the
+  lens does not), while the head HANGS where it was (its goal frozen in the world: the neck compresses under it).
+  The snap then runs the head from there to the bite's goal on a fast-in path (0.35 linear + 0.65 quadratic) that
+  arrives ON the impact, and the body settles back over 0.12 s. It replaces `strikeLead` (the shown head easing in
+  over the last three frames) while on. The hit spheres, the goals, the windups, the cue and the impacts are the
+  same code; the surge brings the jaws 0.75 m nearer.
+- **Not taken (yet):** the forelegs' rod-straight sweep (bringing the sweep's end within reach would bend the elbow
+  but move the paw's hit spheres: the AI's ranges are sim-measured coverage); the wing blows' fingers trailing the
+  arm (the wing's hit spheres ride the finger tips); the feet's skating (the gait's re-step). Listed in the ROADMAP.
+- **Consequences:** measured with `a` (wyrmanatomy), every bite: the body (hips, chest) reaches top speed 50 - 117 ms
+  before the head (was 0 - 17 ms); the jaws' gap at the impact 0.17 - 2.07 m (was 0.79 - 3.10; the single bite 1.77
+  -> 0.99, the claw combo's lunge bite 3.10 -> 2.07, the Hesitant Maw's rear bite 2.33 -> 1.16, the sky hammer's
+  bite 1.38 -> 0.45). The bite's hit sphere (1.05 x SCALE) still meets the hero a frame before the drawn jaws touch.
+  At the game camera the change reads mostly as the surge; the head's hang and snap show best from the side.
+
+## ADR-258 — The meteors' roar with the head held naturally (`?wyrmHead=`) (2026-11-27)
+
+- **Context:** the owner: "The dragon's head twists too far back and looks unnatural when it raises its head up
+  to shoot fire." That is Meteor Rain's rear-up (the apocalypse, look a): its neck was keyed to swing back past
+  upright as it rose (the head goal 0.9 units ahead of the root, behind the neck's base at 1.7) and the head looked
+  at a point 40 m up just ahead of the root. Measured (integ `wyrmhead`, opt-in: every fire move's snout against
+  the body): the snout 90° up in the chest's frame and **15° past vertical toward the tail**, the head 0.43 units
+  **behind** the neck's base, the brow rolled 149° about the snout (the head over on its back). Every other
+  ground fire move stays under 56° up and never past vertical.
+- **Decision** (`?wyrmHead=a`, the default; `0` as before; the Lab's LOOKS row `wyrmHead`): through the rear-up and
+  the cast the head rises up and forward over the forelegs (root frame (0, 7.6, 2.3): ahead of the neck's base),
+  and the roar's look point is 40 m straight above it. The rig's head limits do the rest: the snout ends 66° up
+  in the chest's frame (the reared body leans back, so it is near vertical in the world), never past upright, the
+  head 0.81 units ahead of the neck's base. The sky fire, the bolts, the timing and the tell are unchanged.
+- **Consequences:** at the game camera the fire column now rises from a head held over the forelegs and leans a
+  little toward the hero instead of over the wyrm's own back. The flights' head (skyStrafe's recovery, the
+  cataclysm's wheel) also measures past vertical in a banked body; not changed here (the owner named the head
+  raised to shoot fire).
+
+## ADR-259 — Blows land on what they strike: the bite and follow-through, the guard met, the struck part answering, an optional reach (`?contact=0|a|b`) (2026-11-27)
+- **Context:** the owner: "make every hit, deflect, guard, parry, deadly blow etc any hit against a bosses's weapon,
+  fist, body, etc look like its actually hitting that part and clean. There are some moments it looks like the
+  weapon is just going through the boss or player unrealistically. We don't need to be perfect but make sure every
+  hit or clash looks good from the players camera perspective. The player or boss should also have a flinch or
+  reaction on how they're hit." Their picks before the work: the blade bites then follows through (heavies hold
+  longer), both ways; reactions by where and how hard; shared code only (the boss motion sessions own every move's
+  data and the hero's swings); a draft PR with before / after films, behind a switch with a Lab row.
+- **Measured first** (an in-page audit at every contact of every duelist: his every move on the hero standing,
+  blocking and parrying, and the hero's cuts on him staggered and on his guard; the drawn striker (steel guard → tip,
+  or the striking limb's end as a ball) against capsules on the struck rig's joints, in every frozen frame):
+  the drawn striker was as often 10 - 75 cm SHORT of what it struck as 10 - 40 cm
+  THROUGH it, the hit-stop holding that frame: a boss's blow through the hero in 20 % of hits and through his guard
+  into his body in 24 % of blocks (the blades 0.38 m apart), the hero's cut through the boss in 50 % (short in 18 %)
+  and through his ward in 58 %; the hurt sparks 0.56 m from the meeting (on the hero's chest), the block's 0.61 m
+  (mid-blade). 56 % of the bosses' hits were 10 cm+ short (the fist bosses 60 - 86 %). Parries met (ADR-079: 1 cm).
+- **Decision** (`combat/contact.js`, `CONTACT`; behind `?contact=`; `b` the default, the owner's pick from the
+  before | a | b films of every boss, 2026-11-27; `0` as before, `a` without the reach):
+  - `a`: the striker is posed where it meets the struck surface for the frame the freeze holds, found along its own
+    clip (back ≤ 0.16 s where it went through, on ≤ 0.075 s where it fell short; steps of 1/120 s and three
+    halvings): a blade's edge 3.5 cm in (a thin part at most 0.4 of its radius), a fist or foot on the surface. The
+    pose shown is pinned there (a duelist's `brain.pin`, the hero's `atk.pin` / `atk.show`) through the freeze, a
+    heavy blow 0.06 - 0.07 s longer, then catches up with its clock over 0.06 - 0.07 s. A duelist's gameplay points
+    (his hurt spheres) are taken on the clip's own time before the pinned pose is drawn. A block stops on the
+    hero's blade or 12 cm before his body, the guard nudged onto the blow (`guardNudge`, the animator's
+    `gripNudge`, ≤ 0.3 m, 0.3 s); a cut on a boss's guard the same way on his steel (`_wardOnto`). The hurt, block
+    and cut effects are drawn at the meeting; a blow that never comes within 0.16 m has its hurt drawn on the hero
+    where it points (the wyrm's snout, toe or tail tip the same: `takeHit({ point })`). The hero wears the duelists'
+    `HitReact` (×1.2, drawn after his sweep is read); a boss's reaction is told the capsule the steel met (`limb`), and
+    the layer gains the arm (that shoulder knocked back).
+  - `b`: `a`, and a boss's blow that would fall short of the hero in its zone is reached into: 0.14 s before its
+    impact his drawn body eases toward the hero along the gap (≤ 0.3 m, feet planted, legs solved again), held through
+    the bite, eased back over 0.22 s.
+  - Presentation only, proven: duel / asc `contact` play one scripted exchange with `0`, `a` and `b` and compare every
+    result, damage, health, guard, posture and the clip time each blow landed on.
+- **After** (the same audit): with `a`, hits through the hero 6 %, blocks through the guard 4 % (blades 0.12 m
+  apart), the hero's cut short 3 %, through his ward 3 %; the sparks 0.02 - 0.11 m from the meeting. With `b`, short
+  hits 56 → 47 % (Tian Lei 71 → 37, Halcyon 58 → 15), blocks short 43 → 26 %. Headless (duel / asc `contact`):
+  through the hero 41 / 33 % → 0 %, Tian Lei's short hits 64 → 32 % with `b`; every result identical.
+- **The second round** (2026-11-27, the owner: "work on not covered stuff next"): the execution's and the plunge's
+  bursts at the steel's entry (`player._plungeEntry`); the wyrm's short bite drawn onto the hero (`dragon.strikeContact`,
+  `pose.headContact`, eased in on real time, its neck's reach the limit: 1.27 → 1.06 m); `?contact=c` (a drawn step past
+  the reach, `CONTACT.step`), measured as closing little and kept as an option. What stays short is move data: a
+  string's later blows hitting a hero knocked a metre back, the wyrm's bite sphere 1 - 1.8 m past its jaws.
+- **Not taken (yet):** the wyrm's poses (its own clock; its jaws are still 0.3 - 1.5 m short when its hit spheres
+  connect, ADR-257's finding); the execution's thrust, the plunge and the flurry's cuts (each its own drawing, filmed
+  for the owner); blows whose hit zone reaches past the drawn limb by more than the reach (kicks such as Tian Lei's
+  Comet Heel, 0.8 - 1.3 m): their move data, the boss sessions'.
+- **Consequences:** a hit costs a few extra animator poses on its frame (the search: ≤ ~14 for a duelist, ≤ ~12 for
+  the hero), and a pinned duelist one more pose a frame for ~10 frames; `b` one probe pose a frame for the last
+  0.14 s of each blow's windup. Nothing per frame allocates; nothing new is drawn.
+## ADR-261 — AUTO BENCH: the readout benches by itself in a fight (2026-11-27)
+
+- **Context:** the owner asked not to have to tap BENCH at the laggy moment: "make it so i can just press a
+  button or it captures the required data moment i load the link and press it to give the results".
+- **Decision:** with `?perf`, BENCH runs by itself in a fight: once 8 s in (a typical frame), then on each
+  slow burst (6 of the last 30 frames over 20 ms: the heavy moment, measured as it is on screen), 10 s apart,
+  4 in all, each a lighter bench (~1 - 2 s of hold on a phone). The owner loads the link, plays, and taps
+  REPORT. `?perf=manual` leaves it to the button. Each bench says why it ran, AUTO's step and the lite world.
+- **Consequences:** the game holds still for a moment up to 4 times in a fight with `?perf` (only then); the
+  frame after a bench is left out of the frame statistics. Not tried on the phone yet.
+
+## ADR-229 — The run from the owner's sketch: the blade trailing in the forearm's line, the free arm opened out (2026-11-26)
+
+- **Context:** the owner (2026-11-25): "modify the running animation. from the back the left arm seems way too
+  pressed in and makes it seem like he has no left arm during the run. also have the sword be in this angle when
+  he's running instead of it being held in the front", with a sketch: an arm coming down to the fist, a long
+  straight blade going on in the forearm's line, slanting down ~35-40° below level, the point well past the hand.
+  Measured on the drawn frame from behind at the game camera's pitch (the hero alone rendered as is, without the
+  free forearm, without the arm, without him: image masks, so the camera lean's shear is what is measured): the
+  default free arm (`d`, ADR-204) stood clear of the coat's outline on 10-40 % of a stride's rows, its median gap
+  to the coat -0.5 … 0.4 cm (it hugged the coat's edge). The sketch does not say which way the point faces nor how
+  far the arm hangs back; "instead of it being held in the front" says the point is not ahead.
+- **Decision (options; the defaults unchanged until the owner picks):**
+  1. **The free arm `e`, open** (`runArms.js` `RUN_ARMS.open`, `?runArm=e`): `d`'s pump with the upper arm ~20°
+     off his side (+6° more on the back swing), the forearm hardly crossing in front (10 - 16°), keeping most of
+     the stand-off (`side` 0.95). From behind its forearm is clear of the coat on 90-100 % of the stride (a 9 - 12
+     cm median gap); in the body frame the hand stands 32 - 39 cm out from his centre line (d: 13 - 26), the
+     elbow flares 0.48 - 0.54 (d: 0.26 - 0.30) and still works 31° a stride. **`f`, wider** (`RUN_ARMS.wide`): a
+     step further (28 - 30°, no cross): clear on all of the stride (15 - 18 cm), flare 0.63 - 0.68.
+  2. **Three trailing sword carries** (`runSword.js`, `?runSword=trail|swept|side`): the arm by forward
+     kinematics as in `hip`, the blade going on from the forearm's line behind him (lifted `tilt` off it, turned
+     `yaw` out to his right, its slant held in `down`), rocking with the arm's swing. `trail`: the arm hanging a
+     little back, the blade 27-45° below level on the run (22-36° at a sprint); `swept`: the arm swept back, 13-30°;
+     `side`: out to his right and back (azimuth ~128°), 15-41°: from the game camera behind him, the sketch's
+     diagonal. The wrist (forearm vs blade) 15-40° (`old` 57-84°, `hip` 54-77°: a hammer grip). The steel at
+     least 20 cm off the legs, never through the coat's skirt, the point at least 24 cm over the grass.
+  3. **Out of a trailing blade into a block, a parry, the flask or a charge** (`HeroAnimator._idleLife`): the
+     clip's entry takes `IDLES.cutFade` (0.24 s) at least, as out of the old trailing rest: in the block's 0.08 s
+     the blade turned 75° in a frame, the point 1.2 m a frame² (`old` did the same). Now 15-23 cm (hip: 26).
+- **Not changed:** the fight carry (`FIGHT_RUN`), the backpedal's guard, the sprint's blend over the carry.
+- **Consequences:** HERORUN measures every arm and sword carry (the wrist, the steel vs the legs and the coat
+  newly) and bounds `e` / `f` both ways (out past the coat, never a wing) and the trailing carries (behind him, the
+  slant, in line, clear); HEROARMS's elbow-in check skips an opened free arm, HERORUN holds it. Known: setting
+  off from a rest that holds the blade up (an idle action mid-draw) turns a trailing blade up to 11° a frame (the
+  point 8.6 cm a frame²; hip 5.4); with the aim swung behind him the backpedal guard swings it round at 12-15 cm a
+  frame² (hip 8, `old` 13); out of the opened arm into a block the free wrist jolts 2.7 (e) / 4.2 (f) cm more than
+  `old`.
+- **Amended (2026-11-26), the owner's pick and the straight arm:** "Arm e and trail but the right arm needs to be
+  straight during the trail running animation instead of having an angle. Right now it looks unnatural with the
+  angle." Why it bent: `trail` asked for a 166-170° elbow, but the solver's soft reach (ADR-044, `HERO_SOFT`
+  0.93-0.99 of the arm's length) compresses any near-full reach, so it drew 151° (at most ~163° whatever is
+  asked), and the blade, aimed off the asked forearm, sat 23-36° off the drawn one. Now: `RUN_SWORDS.trail.open`
+  asks the solver for the sword arm's full reach (`OUT.open` → `A.reachT` from the loco clip's own pose, scaled by
+  the carry's share: the sword's lag, the backpedal, the fight carry, a held guard; `_swordOpen()` cross-fades it
+  from where the last clip left it, like a pose channel, without one: the light chain's open PR adds channels;
+  `_arm` takes `max(lock, open)` in the soft reach only). The arm: 36° back (30° at a sprint) ±9-11° with the
+  stride, 22-24° off his side, straight: the hand asked 3 % past the arm's length (`over` 1.03; the solver stops it at
+  176°). Asked at exactly its length it drew 168° (the hand is aimed from the grip shoulder, 8 mm in from the arm's
+  own, and near a full stretch 3 mm of reach is 11° of elbow), a kink the owner still saw from the game camera:
+  "Make the right arm have a smoother angle during the run". The blade 2-3° off the line, 22-24° out: 1-5° off the
+  drawn forearm. Slant 25-45° below level (21-35° at
+  a sprint), the steel 30+ cm off the legs, 13 cm off the coat, 25+ cm over the grass. Setting off, the arm opens
+  out of the stand's 84° elbow over the sword's lag (~0.8 s). **Defaults now `?runArm=e` and `?runSword=trail`**,
+  the variants the owner chose from the films and the preview; `d` / `hip` give the run before. Against main's
+  `d` / `hip`: the block entry gentler (the point 20 cm a frame² vs 26), the run, the sprint, the light, the roll
+  and the flask as smooth; rougher: the aim swung behind him (15 vs 8 cm a frame²) and the stop (4 vs 2); the sword elbow letting go of the
+  straight arm jolts 2.6 cm a frame² at a stop (0.7) and 6.5 into a roll (4.2).
+- **Amended (2026-11-26), out along the owner's arrow, a relaxed arm:** the owner on the preview, with a
+  screenshot from the game camera and a red arrow from his hand down and out to his right at ~45°: "no the right
+  hand now is too straight back. the new angle is too much. the arm angle also looks unnatural too. i want the
+  sword and arm to be more on the red angle direction and ensure the look of his arm, motion, and animation
+  looks good and natural". Measured on the drawn frame at the game camera (the screen angle below the
+  horizontal, toward the screen's right): the straight-back arm 74°, its blade 74-75° (nearly straight down the
+  screen, over his back). Searched live against that: `trail` now hangs the arm out from his side (40-42°
+  off it, the forearm kept out, `side` 1.3), the shoulder 16° back ±10° with the stride, the elbow soft
+  (asked 154-166°, drawn 154-161°; `open` keeps the asked elbow, `over` 1), the blade lifted 44-46° off the
+  forearm's line and turned 62-64° out: azimuth 114-121° (90 is his right, 180 behind), 23-35° below level
+  (13-26° at a sprint). At the game camera: the arm ~57°, the blade ~48° (rocking 45-50°; 42° at a sprint),
+  the owner's arrow. The blade 21-28° off the drawn forearm (a light wrist turn). The steel 47 cm off the legs,
+  31 cm off the coat, 40 cm over the grass. `trailing()` now floors the blade's angle AFTER the lift (floored
+  before it, a forearm swinging past vertical froze the blade). Against main's `d` / `hip` it is smoother than
+  either version before it: the run, the sprint, the start and the strafe at or under main; the block entry 12.5
+  cm a frame² (26); rougher only the aim swung behind him (11.5 vs 8).
+- **Amended (2026-11-26), redone, then the natural hold (`nat`, the default):** after the arrow carry the owner
+  asked for the run redone "with the sword flailing out" (`flail`: the blade hangs from the hand and swings a beat
+  after the arm, `pendulum()`; "looking better but ... the sword angle being too far out"), then for "4 different
+  variations of different sword angles ... a solid back angle running animation" (`b15` / `b25` / `b35` / `b45`:
+  the blade held 15-45° out from straight back, swaying 2-3°), liked A (`b15`) but not its arm ("extending out and
+  above the back"), then four arms brought in (`a1`-`a4`), then: "all of them look unnatural from the user camera
+  perspective. figure it out and make it look good, natural, and anatomy wise correct". **What was wrong with every
+  carry since the sketch:** they put the blade in (or near) the forearm's line. A fist holds a sword's grip across
+  the palm, so the blade leaves the hand at about a right angle to the forearm and the wrist tips it at most ~30-40°
+  toward the forearm's line: a blade 15-40° off a hanging forearm is a grip no hand makes, and from the game camera
+  it read as a pole hanging from his fist. **`nat`:** the arm relaxed at his side (8° back ±8° with the stride, 16°
+  off his side), the elbow soft (asked 156-142°, drawn 138-155°), the fist by his hip, the blade 45-82° off the
+  forearm (a hammer grip; `old` 57-84°), behind him and a little out (azimuth 143-149°), 9-22° below level,
+  swaying ±2-3° (`pendulum()`). At the game camera the blade is a diagonal ~61° down the screen (58-64°). Clear:
+  the legs 22 cm, the coat (no crossing), the grass 46 cm. Against main's `d` / `hip`: the run and the sprint
+  steadier (the blade turns ≤ 1.1° a frame), the block entry gentler (15.5 cm a frame² vs 26); rougher: the aim
+  swung behind him (12.6 vs 8.4) and setting off (the blade turns 5.8° a frame while the stand hands over).
+  Every carry tried stays behind `?runSword=`.
+- **Amended (2026-11-26), the natural hold's arm:** the owner: "something about the arm joint angle looks unnatural
+  from the player view. also the side view doesnt look good". Measured in his body frame: the arm's angles are
+  against the leaning torso (17° running, 31° sprinting), so `phi` -8 hung the upper arm ~30° behind plumb while
+  the forearm hung straight down: the elbow jutted back in a V. Now `phi` is ahead of the torso's line by about the
+  lean: `nat` hangs the upper arm ~3-14° behind plumb (the elbow 151-162°, bending forward about a lateral axis,
+  its tip straight back), the fist at the hip, the blade 67-89° off the forearm; `n1` plumb, the fist ahead of the
+  hip (elbow ~150°); `n3` ~10-24° back, the fist behind it (elbow ~165°).
+- **Amended (2026-11-26), rebuilt from the hand's grip; the owner picked G2:** "all look bad. try again", ticking
+  the sword pointing back, the fist / wrist / grip, a stiff arm and the whole run, "you decide". `fistBlade()`: the
+  blade set in the fist, not in the world: the thumb faces `thumb` degrees round the forearm, the blade leaves the
+  fist on the thumb side `grip` degrees off the forearm's line, the flat lies across the knuckles (square to the
+  forearm and the blade: the fist never twists); the arm swings as a runner's (`RUNNER`: the shoulder 10-13° each
+  way, the elbow 162 → 142°) and the blade rides with the hand; `top` the wrist's cap on the point's rise. A relaxed
+  hammer grip's thumb faces forward, so it carries the blade forward and down; pointing it back needs the forearm
+  wrung round (what every trailing carry read as), or a reverse grip. Three concepts: `g1` low ahead, `g2` the
+  point down, `g3` a reverse grip. The owner: "g2 but make sure the arm and sword doesn't clip with the cloak
+  fabric" (the films showed the steel against the cloth: measured on every coat panel and cape streamer, densely,
+  it passed within 0.3 cm). **`g2`, the default:** the hand 18° off his side, the thumb 55° out, the grip 46-48°,
+  the point held 11-30° below level, azimuth 39-63° (ahead and out): the steel ≥ 12.6 cm off every cloth sheet
+  on every stretch, ≥ 22 cm off the legs, ≥ 33 cm over the grass, the wrist 30-48° (a dropped wrist), the elbow
+  133-159°. The block / parry / flask / charge entry's 0.24 s now also covers a blade pointing down (`swD.y` <
+  −0.15): from `g2` the block swung the point 47 cm a frame² (now 6; main 26). HERORUN measures the cloth gap
+  (`clothGap`) for every carry and bounds `g2`. Against main: the run's point moves more (it rides the arm: 3.8 vs
+  0.8 cm a frame²); the aim swung behind him 13.8 vs 8.4.
+- **Amended (2026-11-26), the free hand on guard (`?runArm=g`, the default):** the owner, of `g2` with the opened free
+  arm: "looking better but i want to make him look cooler when he runs"; four run styles over the posture
+  (`player/runStyle.js`, `?runStyle=hunter|dash|coiled|ghost`: more lean and sink, the free arm swept back, a
+  bladed chest turn, a low glide; the default stays `base`) were turned down; with a photo of a swordsman running,
+  his free fist at his hip: "his left hand is moving around too much, lets make his hand like this pose" (`h`: the
+  fist pinned to the pelvis at the belt, moving ~1 cm against it), turned down ("the angle looks really unnatural
+  and weird"); then "make his left in a pose like hes guarding his face and chest with his left hand and make it
+  look natural during the movement run". **`g`:** the fist placed before his chin, a little left of centre (chest
+  frame (0.07, 0.34, 0.29) m from the chest joint), the elbow's pole down before the ribs, the solver bending the
+  arm; both turned by the spine's and the pelvis's rotation as posed (it leans and twists with the torso); a little
+  give with each landing (1.2 cm) and the stride (1 cm). It moves 0.3 cm a frame² on the run (the swinging arm
+  1.2); into a light, a roll, a block or the flask no rougher than before. From straight behind the guard sits in
+  front of his body, under the cape. HERORUN bounds it (the fist ahead, inside the shoulder line, up, held).
+- **Amended (2026-11-26), the guard turned down:** "lets revert back. i dont like the new guarding pose as it looks
+  really bad from the other angles. lets go back to the left hand variations". The default free arm is `e` again
+  (the opened pump the owner picked); `g` (the guard) and `h` (the fist at the hip) stay behind `?runArm=`.
+- **Amended (2026-11-26), the free arm `a`; the sword hand's grip:** of the free arm's variations the owner picked
+  `a` (natural), "but the right hand and sword looks off and unnatural. review it and figure out the right anatomy
+  to hold the sword on that right hand while running". The sword hand is drawn in two pieces: the back of the hand
+  on the forearm, the curled fingers, the thumb and the knuckle ridge on the sword (`gripFist`: the thumb on the
+  +Y flat, the ridge on the +X edge). Measured where the forearm (elbow → wrist) comes into the fist, in the
+  sword's frame: his stand at ease (−0.27, −0.24, 0.93) and his fight guard (−0.20, −0.62, 0.76), both approved, come
+  in opposite the thumb, a little toward the −X edge, the blade 20-40° off the forearm; `g2` came in at (−0.60,
+  +0.32, 0.73), ON the thumb's side (the thumb wedged between the wrist and the grip: a fist wrung round), `old`
+  from the knuckles' side. `fistBlade()` now rolls the fist so the forearm comes in opposite the thumb, turned
+  `twist` 30° toward −X: (−0.32, −0.60, 0.74), between the two approved poses; the flat shows to the game camera
+  (|n·cam| ≥ 0.63; edge-on under ~0.3 vanishes). `g2`'s wrist cap is 26° (the point 8-35° below level).

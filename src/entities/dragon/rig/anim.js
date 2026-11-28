@@ -822,7 +822,10 @@ export class Rig {
       this.headPos.y += this._dAlt || 0;
       this.headPos.lerp(goal, 1 - Math.exp(-pose.headRate * dt));
     }
-    neck.solve(this.headPos, 3);
+    // (CONTACT: a bite drawn onto the hero, dragon.strikeContact: an offset on the solved head only)
+    const hk = pose.headContact;
+    if (hk && hk.k > 0 && Number.isFinite(hk.x + hk.y + hk.z)) neck.solve((this._hcV ??= V()).copy(this.headPos).addScaledVector(hk, hk.k), 3);
+    else neck.solve(this.headPos, 3);
 
     // the visible chain: at rest, the combat stance's S (REST_POSE.neck: rises up and back over the
     // withers, arches over, head carried lower and forward), solved the same way toward its own end

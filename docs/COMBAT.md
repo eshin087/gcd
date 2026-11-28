@@ -758,6 +758,91 @@ once (rule 4). A red hit inside a string can't be parried or blocked: dodge it (
 the plunge, which cancels the string). Rending flurry parried hit by hit: `dragon:parried` [0, f],
 [1, f], [2, f], [3, true], chain 2 → 3 → 4, +148 posture, no damage (STRINGS scenario).
 
+## The clash dance (2026-11-26, ADR-247; `?clash=dance`, off by default until the owner picks from film)
+From research into Sekiro's deflects: the ring of the steel is the fight's rhythm, and parries close together pay
+more than the same parries spread out. The duelists only (`duelist.js` and every boss built on it; the wyrm keeps
+its own); every number is `DEFENSE.clashDance` (`combat/rules.js`), the logic `combat/clashDance.js`.
+
+- **The run.** Every parry (plain or perfect) of a blow of his body or his blade inside ONE of his moves (a string,
+  his flurry) counts one more. Its posture (`POSTURE.parry` x `POSTURE.perfect`, as before, and a boss's own
+  `gainByHp` after it) is multiplied by `mult`: **x1, x1.25, x1.5, then x1.75** from the 4th on. Thrown things
+  (sword qi, bolts, bullets) neither count nor break it; a red blow dodged does not break it.
+- **It starts over** when his move ends (the next move's first parry is x1 again), when a blow lands on the hero
+  (a hit or a guard broken; a contact stream's chip is no blow), or after `gap` (1.5 s) with no parry.
+- **The ring.** Each parry of the run plays the recorded parry `ring.semis` (half a semitone) higher, two
+  semitones at most, and `ring.db` (0.8 dB) louder, 2.4 dB at most, on top of the deflect chain's weight
+  (`audio/parryChain.js`). The run's first parry sounds as today.
+- **His recovery by his health.** His posture drains back at his rate x the first step he is at or above:
+  **x1 from 75 % HP, x0.85 from 66 %, x0.75 from 33 %, x0.5 from 10 %, x0.25 below**. The Starless Lord, Tian
+  Lei and Xin Yi recovered by a curve of their own (x1.5 on a full bar to x0.5 on an empty one); the steps
+  replace it, never faster than the curve at any HP.
+- **Off** (`?clash=0`, the Lab's `clash` row `old`): every number as before.
+
+Measured with a bot making plain parries of all-white strings (a parried blue blow starts the deathblow either way,
+ADR-211), red blows rolled, the same strings both ways (the film, 2026-11-26): Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. A string of 7 blows
+from an empty bar breaks Shen Hui either way (the full deflect's bonus).
+
+## Where blows meet (2026-11-27, ADR-259; `?contact=0|a|b`, `b` the default: the owner's pick from the films)
+The owner: every hit, deflect, guard, parry and deadly blow should look like it really strikes the part it hits,
+cleanly, from the player's camera, and whoever is hit should react to where and how hard. Measured first (the
+contact audit, every duelist's every move on the hero standing, blocking and parrying, and the hero's cuts): at the
+frame a blow was decided, the drawn steel or fist was as often 10 - 75 cm short of what it struck as 10 - 40 cm
+through it, the hit-stop held that frame, and the sparks sat on the hero's chest or the middle of his blade rather
+than where the two met. Parries already met cleanly (ADR-079). The rules (every result, damage, window and clock)
+are untouched with any setting: the duel and asc `contact` scenarios play one scripted exchange three ways and
+compare every result. The logic is `combat/contact.js`; the numbers `CONTACT` there.
+
+- **It bites, then follows through (`a`).** The striker is posed where it meets the struck surface for the frame the
+  freeze holds: a blade's edge `bite` 3.5 cm in (a thin part, an arm or a shin, at most 0.4 of its radius), a fist
+  or a foot on the surface. The pose is found along the striker's own clip, back where it had already gone through
+  (≤ 0.16 s), on where it fell short (≤ 0.075 s). It stays there through the freeze, a heavy blow (a blue one, a
+  hero's heavy) `holdHeavy` 0.06 s longer, then catches up with its clock over `follow` 0.07 s: the swing carries
+  on. Both ways: the boss's blow on the hero (`duelist.strikeContact`, shown through `brain.pin`; his hurt spheres
+  stay on his clip's own time) and the hero's cut on the boss (`player._cutContact`, his swing's shown clock). A blow
+  that never comes within 0.16 m is the reach band's: not posed, but its hurt is drawn on the hero where it points.
+- **A guard meets the blow.** A blocked blow stops on the hero's blade, or 12 cm before his body where it would
+  get past the blade, and his guard is nudged onto it (≤ 0.3 m, eased off over 0.3 s); the block is drawn on that
+  crossing. A cut on a boss's guard stops on his steel, or before his body, and his ward is nudged onto the hero's
+  blade the same way.
+- **The struck part answers.** The hero now wears the duelists' reaction layer (`react.js`, ×1.2): the head
+  snaps away, a body hit twists or folds the torso along the blow, an arm knocks that shoulder back, a leg buckles,
+  heavy blows larger and slower, from the meeting point and along the blow's travel, over his stagger. A boss's
+  reaction now knows which part the hero's steel met (`takeHit({ limb })`), arms included. Drawn only.
+- **`b`, the reach.** On top of `a`: as a boss's blow comes (0.14 s before its impact) with the hero in its zone,
+  the gap its striker would leave at the impact is read and his drawn body eases toward the hero to close it (≤ 0.3
+  m, his feet planted, the legs solved again), held through the bite, eased back over 0.22 s. A fist or a blade that
+  stopped 10 - 30 cm short now lands; blows whose hit zone reaches past the drawn limb by more stay short (their
+  move data: the boss sessions').
+- **The default is `b`** (the owner's pick from the before | a | b films, 2026-11-27). **Off** (`?contact=0`, the
+  Lab's `contact` row `old`): every pose and effect as before; `?contact=a` without the reach.
+- **The second round** (2026-11-27, the owner: "work on not covered stuff"): the execution's burst is drawn where
+  the drawn steel enters him (it runs him through; 0.23 → 0.01 m off the wound); the plunge's burst where the steel
+  enters the head; a wyrm's bite that connects short (its jaws 1 - 1.8 m off the hero when its hit sphere meets him)
+  lunges its head onto him over 0.06 s of real time through the freeze (`pose.headContact` on the solved neck), held,
+  let go; its neck's reach limits it (the snout 1.27 → 1.06 m off). `?contact=c`: `b`, and past the reach his whole
+  drawn body steps in (≤ 0.45 m more): measured, it closes little (short hits 56 → 55 %, blocks 24 → 21 %).
+- **Still short, move data** (the boss sessions'): a string's later blows that still hit a hero its first blow knocked
+  a metre back (Xin Yi's One Roof and Hundred Hands 0.5 - 1.3 m, Tian Lei's Tiger and Comet Heel 0.7 - 1.3 m); the
+  wyrm's bite hit sphere reaching 1 - 1.8 m past its drawn jaws. Not changed: the parry and the trade clash (they
+  already met), the flurry's cuts. The deathblow's combo cuts land as any cut of the hero's.
+
+Measured (the contact audit, 2026-11-27: every duelist's every move on the hero standing, blocking and parrying
+and the hero's cuts on him, 1 100 contacts a setting; `through` = the striker 6 cm+ inside the struck body in a
+frozen frame, `short` = 10 cm+ off it, `fx off` = the effect's point from the true meeting), all eight duelists:
+
+| contact | through % | short % | blades apart m | fx off m |
+|---|---|---|---|---|
+| his blow lands on the hero | 20 → a 6 → b 6 | 56 → a 56 → b 47 | - | 0.56 → a 0.11 → b 0.06 |
+| his blow on the hero's guard | 24 → a 4 → b 3 | 43 → a 33 → b 26 | 0.38 → a 0.12 → b 0.09 | 0.61 → a 0.02 |
+| the hero's cut lands | 50 → a 31 | 18 → a 3 | - | 0.21 → a 0.05 |
+| the hero's cut on his guard | 58 → a 3 | 16 → a 42 (stopped before him) | 0.48 → a 0.30 | 0.48 → a 0.47 |
+| a parry (already met) | 4 → 3 | 43 → 47 | 0.09 → 0.10 | 0.08 |
+
+`b`'s reach on the short blows: Tian Lei's hits 71 → 37 % short, Halcyon's 58 → 15 %, Wen Yao's 68 → 52 %; what
+stays short is a blow whose hit zone outreaches the drawn limb by more than 0.3 m (kicks such as the Comet Heel,
+0.8 - 1.3 m): move data. The wyrm's jaws, claws and tail are 0.3 - 1.5 m off the hero when its hit spheres connect
+(its hurt is now drawn on him where they pointed).
+
 ## Three phases (2026-11-09, ADR-028; the pressure: 2026-11-15, ADR-119)
 P1 100–66 %, P2 66–33 %, P3 33–0 % of 4500 HP, each threshold a gate until its transition roar
 (always phase-1 timings; the red shock ring, 12 damage, which also clears the hazards). Later phases
@@ -1222,6 +1307,20 @@ out of his guard: **Darting Needle** (the pointed jian drawn a hand's width back
 and **Flicking Willow** (the point flicks up and cuts down across you; a 2.1 m sector). Block or parry them; each runs
 into a string.
 
+**His form** (ADR-250; the owner's pick, `?ashForm=0` as before): the same moves, windups,
+cues and zones, posed better. A thrust lands on a straight arm (~160°) with the point on the arm's line, out of a
+lunge whose front shin stands over its foot and whose back leg is long; an overhead (Falling Ash, the strings' held
+overhead, Three Tolls' last) comes down ONE-handed on a steep diagonal across you from high over his sword shoulder
+(the blue HIGH hold a little wider over the shoulder for it); the leaping two-handed chops come down on the same
+diagonal; a low sweep turns on his feet (the right leg sweeping the stones); his free hand stays near his chest
+and opens to his left as he cuts; and the front foot comes down with the blade. Heaven-Splitting Fall is a jump:
+he loads, drives up, tucks with the blade raised over his shoulder through the ring's lock, reaches his legs down
+and lands into the cut. Two specials have looks (the owner's picks; the others behind their switches): Ember
+Whirl a cyclone of fire round him (`?whirlFx=b`; a a ring, c a disc, 0 none) and Heaven-Splitting Fall a seam of
+fire down the cut and the floor split in fire ahead and behind (`?fallFx=b`; a a comet, c fire rain, 0 none);
+they carry no cue of their own.
+
+
 **Every phase asks for dodges** (the tuning pass): a red blow sits inside eight strings (Drifting
 Cloud's kick, Chasing Rain's glide, Whirling Step's second spin, Brand and Kick's kick, Cinder Cross's
 burning cut, Falling Embers' second leap, the 4th blow of Scattered Petals and of Ten Thousand
@@ -1642,6 +1741,22 @@ the blade round the wrist. Two **quick blows**, normal tells, a fixed 0.30 s win
 0.04 s in), with no draw: **Rising Ember** (forms 1 - 3: the blade hung low at his side cuts straight up through
 you; a 2.3 m sector) and **Vigil's Fall** (form 4: the blade standing upright before his face falls on you, both
 hands; 2.6 m). Block or parry them; each runs into a string.
+
+**His form** (ADR-251, the owner's pick; `?lordForm=0` as before): the same moves, windups,
+cues and zones in all four forms, posed better. A thrust lands on a long arm (~155°) with the point on the arm's
+line, out of a lunge whose front shin stands over its foot and whose back leg is long; a two-handed overhead
+(Falling Star, Grasp and Sever's chop, Severance, the strings' held chops, Judgment's, the Void Waltz's, Thunder
+Verse's last) comes down on a diagonal across you from high over his sword shoulder (the blue HIGH hold a little
+wider over the shoulder for it); a low sweep turns on his feet; his free hand stays near his chest and opens to his
+left as he cuts; and the front foot comes down with the blade. **The readable pace** (the owner's pick; `?lordPace=0`
+his fast pace before, which the windups in the tables below describe): rule 10's floor, a move's first blow >= 0.7
+s × the form's windup scale (0.7 / 0.66 / 0.62 / 0.58 s), blows >= 0.45 s apart, the cue 0.35 s before, the extra
+time a held cock; his quick blows, counters, flurry, ignitions and spells keep theirs. The specials' looks (the owner's
+picks; no cue of their own): Void Lightning `?boltFx=c` (the floor crackles round his feet through the cast, the
+bolt grounds three times along its line; `a` a thread wound into his fingers and a braided bolt, `b` a tear left in
+the air, `0` as before) and a form's ignition `?igniteFx=a` (a column of violet letters rises round him through the
+kneel and bursts out flat; `b` the new steel written in light, `c` a ring of dark whose red rim stands up, `0` as
+before).
 
 **Four forms, four bars, a deathblow each** (the owner's pick):
 | Form | Blades | Reach | A string's follow-up windup | Recovery × |
@@ -2520,6 +2635,27 @@ phase 3 dipped under its phase 2 (0.93), the mean's ramp is 1.09. Slower than Sh
 66 s, block-only 49 / 57 s; the block-only bot is never killed by a draw, mortal too. TIMING: every contact
 within 0 ms of its flash + 0.3 s. Not measured: a human on the phone; the draw's read at the phone's camera
 was judged from stills only.
+### The audit (2026-11-27, ADR-252; the owner's picks: the form `a`, the default; `?sheathPace=a` and `?drawFx=a|b|c` kept as options, `0` the default)
+Measured at every impact (`node tests/integration/sheath.mjs . form`; sheathAudit.mjs) before -> with `?sheathForm=a`:
+
+| | before | form |
+|---|---|---|
+| thrusts' elbow / the scabbard off the arm's line | 121 - 124° / 24° | 157° / 2° |
+| The Walking Staff's knees (front / back) | 176 / 176 | 86 / 176 |
+| a draw's cut end: knees (front / back), the arm | 176 / 176, 129 - 141° | 109 - 115 / 143 - 145, 145 - 162° |
+| the fist off the hilt at the cock | 11 - 13 cm | 2 - 3 cm |
+| the scabbard hand from the cock to the cut | 26 - 51 cm forward | 0 - 17 cm (drawn back level behind him) |
+| the overhead's path off level | 75 - 87° (an upright bar) | 60 - 62° (a diagonal) |
+| Sweeping the Road | the legs crossed (-0.86 m), a knee pop | the feet go round with him |
+| the free hand in the scabbard cuts | 0.5 m in the strike | half the travel |
+
+Every impact, cue, end and recovery is the same with the form (sheath.mjs FORMPACE). His kick (Three Steps' second
+word) was already straight at contact (176°, the support knee bent) and is left. `?sheathPace=a`: COMBAT rule 10's
+floor, a move's first blow >= 0.7 s (x windupScale), blows >= 0.45 s apart, the cue 0.35 s before, the time a held
+cock; the draws, Before the Word, the transitions and the hanging cuts as before. `?drawFx`: the draw's look (a the
+drawn breath, b hanging leaves, c the late sound; pale steel at the cut's line, no cue of their own; +150 - 500
+letters and blobs over a whole draw).
+
 ## The One Who Woke (2026-11-22, ADR-156 – ADR-158; `?level=code`)
 
 Xin Yi, a BARE-HANDED fighter in a long black coat (wokenOne/): a recognizable homage to the hero of the
@@ -2658,6 +2794,26 @@ STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 9
 - **A cued shot is never too fast to answer:** it takes at least `shotCue` 0.26 s from the gun to you (fired close,
   it flies a little slower), so its cue always counts (a shot cued under 0.2 s fizzles, the shots' own rule).
 
+### The limbs on the line (`?oneMoves=b`, 2026-11-27, ADR-253; the owner's pick, the default; `?oneMoves=a` as before)
+`a` and these, every timing as `a` (windups, cues, impacts; the LINE test compares every realisation):
+- **Straight blows on the line**: the cross, jab, palm, double palms and the back-fist land with the hand on the line
+  from its shoulder to his centre line, the arm long (elbows 164 - 169 at contact), reaching the hero (they were 22 -
+  63 degrees off; the back-fist 0.6 m short and to the side). The point-blank shot's arm is aimed at the hero.
+- **Kicks held straight**: the contact pose is held 0.35 of the follow-through before the leg draws back (every kick
+  173 at contact, still straight on the hit-stop's frame; Sky Turns' first tornado folded to 118 there).
+- **Blows that reach**: the elbow, the spin back kick, the hook, the flying knee and the straight blows step in until the
+  limb meets the hero, and their zones reach no further than the limb (the elbow's line 2.2 -> 1.1 m, the spin back
+  kick's 2.5 -> 1.76; the flying knee's dash stops 0.92 m short, not 1.35). The drop heel keeps its ring (it lands
+  0.68 m short; the ring is the blow).
+- **The sweep crosses you**: Low Wind's leg passes through the hero's line at its impact (it was 94 degrees round and 1
+  m short), long through its turn.
+- **The guns** (drawn only): each barrel on the line of fire, every shot from the drawn muzzle falling to chest height
+  along its way, the firing arm kicking; Turning Wheel fires from both guns. Iron Rain's aim is up and held from 0.6 of
+  its windup (the first slugs left while the arms were still rising).
+- **The shots and bolts redrawn** (drawing only): the owner picked the script for the shots (`?oneGunFx=b`: digits fanned
+  from the muzzle, a curtain of falling digits behind each slug) and the seed for the palm bolts (`?oneBoltFx=a`: a hot
+  core in three turning rings of digits); `0` as before, the other option behind its switch.
+
 ## Halcyon (2026-11-22, ADR-160; `?level=city`)
 
 Halcyon, the Last Saviour: a flying strongman from a future that has not happened yet, BARE-HANDED
@@ -2679,6 +2835,29 @@ root dips from the hover to `motion.dip` (0.2 m) through the strike and back up 
 the blow is aimed down at the hero (his fists met the air over the hero's head at 1.9 - 2.0 m; now 1.3 - 1.7 m),
 his legs a flier's (trailing behind him, never a planted stance in the air), his arm opening at the end;
 Tian Lei's held windups for his blue and red blows; the snap blows Flick and Tap (below). Timings unchanged.
+
+**His limbs (2026-11-27, ADR-254; the owner's picks: `b`, his fast pace kept, the eyes `a`, the shock `a`; `?halMotion=a`
+plays ADR-225's motion).** `?halMotion=b` is `a` with a
+flier's limbs, poses only (every timing as `a`; city.mjs `limbs`; `halcyon/limbs.js`). Measured at each blow's
+contact in his upright frame (city.mjs `audit`, `GCD_AUDIT_IMPACT=1`; the drawn body is sheared toward the
+camera, so world points read a straight punch 20 - 40° off). Under `a`: straight blows 35 - 66° across the line
+from the shoulder to the hero's chest (the floor fighter's sideways lines), elbows 148 - 161°; knees folded at
+67 - 135° (kneeling on air); the round kick at 105° and the side kick at 130°, the other leg folded at ~92°; the
+pass pitched 54°, knees 54°, its fist at 2.56 m (over the hero's head). Under `b`: every straight blow within 9°
+of the line, the elbow 161 - 171°; both knees 141 - 156° at every punch (the legs long, trailing, the toes
+pointed; a hip sunk low takes its leg further back, since the animator keeps a foot over his root's floor); a
+kick's knee 173°, the other leg hanging at 154°; the pass level (77°) with the fist at 1.55 m, through the hero's
+chest (`motion.b.passY`). His hover hangs the legs the same way. Hooks and uppercuts keep their bend. A longer
+limb snaps harder at the contact (the largest frame jolt, mm/f²: Faster Than Sound's kick 282 → 424, the riposte's
+palm 174 → 236, Meet and Greet orbited 330 → 369); the other moves' are as `a`'s or lower (Flick 109 → 88).
+`?halPace=a` is COMBAT rule 10's floor (`halcyon/pace.js`, Tian Lei's ADR-248 rule): a move's first real blow
+>= 0.7 s x the phase's windupScale, later blows >= 0.45 s apart, the cue 0.35 s before; the time is a held cock
+(the realiser's `hold`); the snap blows and the transitions keep theirs (city.mjs `readable`). The owner kept '0',
+his shipped pace (a first blow from 0.53 s, blows 0.36 - 0.42 s apart, the cue 0.26 s): his PBZ-fast openers are a
+deliberate exception to rule 10's floor; `a` stays behind its switch. Two effect looks, gameplay untouched:
+`?halEyes` (his beams: a heat vision, the default; b a crimson pulse; 0 Tian Lei's beam; `fxEyes.js`) and
+`?halShock` (Applause's ring and Meteor's landing: a a thunderclap ring, the default; b a dome of pressure; 0 the
+dust front; `fxShock.js`).
 
 **The crash.** A parry of a flying blow (a Fly-By pass, Blink of an Eye's flying cross) or a perfect dodge
 of a red flying blow (Through the Tower, See the World, the last pass of phase 3) throws him off his line
@@ -2793,10 +2972,28 @@ starts; read from the stance, no gather; close range; light; exempt from the fir
 **Found on the way** (the wyrm's seeded fights with the picks on): the sky hunt's crash landing now stays on
 the wyrm's ground; a drakeling's dive released onto a blow after its longest wait is ADR-237's (on `main`).
 
+### The wyrm's bites (2026-11-27, ADR-257; the owner's pick, the default; `?wyrmStrike=0` as shipped)
+The motion audit's second pass on the wyrm measured each blow AT ITS CONTACT (`node tests/integration/integ.mjs .
+wyrmanatomy`; `GCD_LOOKS=wyrmStrike=a` for the pass, `GCD_MOVES=` a list, `GCD_TRACE=1` the frames round a blow):
+
+| Every bite | As shipped | With `a` |
+|---|---|---|
+| the chain (hips, chest, neck base, head reach top speed) | on one frame (the head 0 - 17 ms after) | the body 50 - 117 ms before the head |
+| the jaws' gap to the hero's chest at the impact | 0.79 - 3.10 m | 0.17 - 2.07 m |
+| the single bite / the claw combo's lunge bite / the Hesitant Maw's rear bite | 1.77 / 3.10 / 2.33 m | 0.99 / 2.07 / 1.16 m |
+
+- The last 0.1 s of the windup the chest drops and pitches into the strike off the locked hind feet and the body
+  surges 0.4 units toward the hero (not within 4 units of it) while the head hangs where it was; the snap runs the
+  head to its goal and arrives on the impact; the body settles from just past its strike pose. The windup, the cue,
+  the impact and the hit spheres are as before.
+- **Measured, not changed:** the forelegs rake at full reach (elbow 177°) and stay straight through the sweep; the
+  wing blows flap as one rigid wing; planted feet skate up to ~1 m through some strings; the tail blows already
+  overlap (the tip trails the tail's middle by 44 - 123°).
+
 ## Bai Wuji (2026-11-26, ADR-241; `?level=veil`)
 
 Bai Wuji, the Untouched: a tall, relaxed man in a bone-white coat, his eyes covered, his hands in his pockets,
-BARE-HANDED (untouched/; Tian Lei's strike builders). One health bar (26000), three phases at 66 % (THE
+BARE-HANDED (untouched/; Tian Lei's strike builders). One health bar (20000; 26000 before ADR-250), three phases at 66 % (THE
 BLINDFOLD COMES OFF) and 30 % (THE MEASURELESS). Tian Lei's minimums: `flashLead` 0.26, first windups at
 least 0.40 s, hits 0.34 s apart at least; `windupScale` [1, 0.92, 0.84], `recoveryScale` [0.8, 0.7, 0.64];
 posture [1000, 1150, 1300]; `damageScale` 1.54 (35 - 60 % over Halcyon's for the same kind of blow); the
@@ -2806,10 +3003,12 @@ barrier, never by a blow without a cue.
 **The barrier.** While it stands his hurt spheres grow by 0.14 m and the hero's blade stops there: no health,
 no posture, a short bounce (0.9 m) he may cancel with a guard or a roll at once; a ripple where it stopped.
 The hero's flurry, the flash counter and the execution pass (`exact`). It OPENS:
-- on a PERFECT parry or a PERFECT dodge of any blow of his: at once, 4.0 / 3.2 / 2.6 s by phase;
+- on a PERFECT parry or a PERFECT dodge of any blow of his: at once, 6 / 5 / 4.2 s by phase (ADR-250);
 - on the flash counter, and on a posture break (open through the break);
-- by cracks: each ordinary parry adds one, four open it for 2.4 / 2.0 / 1.6 s; they fade after 9 s without a
+- by cracks: each ordinary parry adds one, two open it for 5 / 4.2 / 3.4 s; they fade after 9 s without a
   new one.
+While it is open every cut of the hero's that is not `exact` deals x2.5 (`wjBarrier.openDamage`,
+`barrier.scaled`; no mark of its own: the open ring and the numbers read it).
 Open, a ring on the floor runs out with the time left and blinks in its last 0.5 s; it closes on the timer,
 never while a cut that landed is still in its active frames. Two strikes on the shell inside 2.2 s bring his
 counter (Not Even Close). The first cut that lands through an open barrier surprises him (once a fight).
@@ -2823,12 +3022,12 @@ puts back 27 between). His strings follow the slide (a step-in of up to 4.6 m or
 windup).
 
 **Patience.** He waits for the hero to come to him (the owner: a defender who never attacks must not outlast
-him). If no cut of the hero's has reached him for 30 s (a cut that lands, one stopped on the barrier, the
+him). If no cut of the hero's has reached him for 20 s (a cut that lands, one stopped on the barrier, the
 flurry), with the fight on and him himself (not in a transition, a break or the domain's hold), he STOPS
 WAITING: one cue, his eyes burning 1.2 s (through the band in phase 1 too) and the unveiling's sound; then,
 until a cut reaches him again, every blocked blow costs the whole guard meter (one block opens the guard).
 Every blow keeps its tell and its windup, a block still costs no health, the mercy rules hold. A hero who
-fights never sees it (`untouched/patience.js`, `TUNING.wjPatience { after 30, cue 1.2, guardCost 1 }`).
+fights never sees it (`untouched/patience.js`, `TUNING.wjPatience { after 20, cue 1.2, guardCost 1 }`; 30 before ADR-250).
 
 **Spells cannot be blocked.** Azure Draw's collapse, Crimson Cast's burst, the Wrecking Knot and the Null are
 RED (roll, or leave the place: each is fixed before it fires); a piece he throws and the Yank's fist are BLUE.
@@ -2845,7 +3044,8 @@ are his weapons), and his death brings the crossing back.
 
 **Mercy.** No blow, spell or falling piece of his reaches a hero who is down: a beat that would becomes a
 silent feint. A beat that would keep the hero out of his own hands longer than 1.2 s in a row is not thrown
-(0.2 s free ends the row). The domain's hold is capped at 1.2 s (`Player.hold`). Nothing else reaches a held
+(0.2 s free ends the row; counted in real time, so a hit's freeze counts; a blocked blow that would empty the
+guard meter counts as the open stagger, `GUARD.openDur`). The domain's hold is capped at 1.2 s (`Player.hold`). Nothing else reaches a held
 hero.
 
 ### His moves (N white, B blue, R red; `+` a flare; windups at phase 1; damage before x1.54)
@@ -2895,6 +3095,36 @@ at least; more likely when the hero is far or has been guarding.
   fixed); the hair falls, the eyes kindle blue; a burst from where he stands throws the hero 7 m (no damage,
   blockable, block push 4) and flattens what stands within 8 m.
 - **The Measureless (30 %)**: the domain, above.
+
+**His motion (ADR-250).** `?wjMotion=b`, the glide (the owner's pick; `0` as first shipped, `a` pocket kicks,
+`c` turned away; `untouched/motion.js`): normal blows snap out of the stance (windups cut toward the engine's
+floors), blue / red ones hold a readable pose from 0.28 of the windup, recoveries x0.66, every later beat of a
+string out of a short blink round the hero (his flank, behind, the other flank). His hands stay in his pockets
+unless the blow uses them: both in phase 1, the left in phase 2, none in phase 3. The table's windups are the
+take '0''s; the take's floors are checked by `veil.mjs` MOTION.
+
+**His motion audit (ADR-255, 2026-11-27).** Measured on the rig (`veil.mjs . anatomy`: every blow's limb at its
+contact, an arm's line to the hero, the largest one-frame jump), over the glide. Kicks land straight (knee 166 -
+175 deg at the contact; 107 - 132 before round 3); straight hand blows land open (elbow 152 - 169 deg). Two
+fixes, `?wjPolish=a` (the owner's pick; `0` = round 3 as built; no tell, timing, zone or damage moves):
+- **On the line.** The palm, the poke, Dark Spark's fist and the Yank's fist crossed past his centreline at the
+  contact, 12 - 31 deg off the line from his shoulder to the hero's chest (Dark Spark's fist passed the hero by
+  most of a metre): now 1 - 10 deg.
+- **The kick's return.** Inside a string the leg held its contact pose dead still, then snapped back to the
+  chamber in the last frames of a ~0.15 s follow-through (a 0.51 m one-frame jump in Three Count): now a moving
+  hold that eases into the chamber (0.34 m; what is left is the snap of the strike itself, the glide's pace).
+- **The casting hand** (`?wjCastHand=0|a|b`; the owner picked `a`): round 3's hand layer kept the right hand in its pocket through
+  phase 1's Azure Draw and the Yank, so the Draw had no gesture and the Yank's BLUE fist (the parry cue) glinted
+  inside a pocket. `a` brings the hand out for the whole cast (the finger raised, the reach, the fist on the line);
+  `b` only for the pull and the flick at the end; `0` keeps it in. Curb Pull stays hands-in-pockets by design.
+Measured, not changed: every blow faces the hero at its contact (0 deg off); the cast poses of phases 2 - 3 point
+at their spell (Crimson Cast 14, Point Blank 13, the Null 6, the Draw's flick 1 deg); a stop on the barrier draws
+no reaction from his body (the shell's ripple and the hero's bounce carry it: he is untouched by design).
+
+### The numbers measured, round 3 (the glide, 2026-11-27, ADR-250)
+Six seeds, god mode off, 600 s cap: the good bot 6 of 6 in 147 / 166 / 191 s (open 51 s a minute); the perfect
+answerer 6 in 106 - 119 s, no hit taken; fencing 3; the roller 4, in 167 - 191 s; the blocker dead at 39 s; the
+pace defender dead in all six, 95 - 553 s. DOWNTIME: the longest stretch out of his hands 1.43 s.
 
 ### The numbers measured (the bench, `veil.mjs . bench`, 2026-11-26, round 2)
 Six seeds, god mode off, 600 s cap (wins of 6): the perfect answerer 6, in 229 - 241 s, no hit taken; the

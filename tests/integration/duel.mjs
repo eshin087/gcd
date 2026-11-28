@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
 import { attachMarks, marksCheck } from './marks.mjs';
-import { swordAudit, printAudit, heldTip } from './swordAudit.mjs';
+import { swordAudit, printAudit, printImpacts, heldTip } from './swordAudit.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -1245,6 +1245,138 @@ async function scenarioFlashChain() {
   } finally {
     setCounterMode('0');
     G.watch = null;
+  }
+  return G;
+}
+
+// ================================================================== scenario: clashdance
+// The clash dance (?clash=dance, combat/clashDance.js, ADR-247): parries in a row inside one of his moves pay
+// more posture each (DEFENSE.clashDance.mult); the run starts over on a new move, a blow landing on the hero,
+// or a gap; the ring rises with the run (player:parry `clash`); his posture recovers more slowly as his health
+// drops (regenByHp). Off: every number as before.
+async function scenarioClashDance() {
+  out('\n== scenario CLASHDANCE (parries in a row pay more posture; resets; slower recovery at low HP; off = today) ==');
+  const { setClashMode, clashMult, clashRing, clashRegenK } = await imp('src/combat/clashDance.js');
+  const CD = DEFENSE.clashDance;
+  const G = build();
+  duel(G, { dist: 3 });
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  // every parry's own posture (the first addPosture after its dragon:parried; the full deflect's comes after)
+  const log = [];
+  let open = null;
+  const add0 = d.addPosture.bind(d);
+  d.addPosture = (amt) => {
+    if (open) {
+      open.amt = amt;
+      log.push(open);
+      open = null;
+    }
+    return add0(amt);
+  };
+  const rings = [];
+  G.watch = (n, e) => {
+    if (n === 'dragon:parried' && !e?.bullet) open = { tell: e.tell, perfect: !!p.deflect.perfect, hit: e.hit };
+    if (n === 'player:parry' && !e?.light) rings.push(e.clash);
+  };
+  /** One move parried by the bot from posture 0: every parry's { amt, base (today's) }. `mid` runs once,
+   *  right after the first parry. */
+  const parryMove = (name, mid) => {
+    settle(G, 8);
+    home(G);
+    place(G, 3);
+    run(G, 0.3);
+    d.posture = 0;
+    d.postureTimer = 0;
+    log.length = 0;
+    rings.length = 0;
+    G.defend = makeDefender(G);
+    d.debug.trigger(name);
+    let did = false;
+    run(G, 6, (GG) => {
+      GG.game.mouseGround.set(d.position.x, 0, d.position.z);
+      GG.input.axis = { x: 0, y: 0 };
+      GG.defend.act();
+      if (mid && !did && log.length === 1) {
+        did = true;
+        mid();
+      }
+    }, () => d.mode === 'foot' && log.length > 0);
+    G.defend = null;
+    const base = (e) => (POSTURE.parry[e.tell] ?? POSTURE.parry.normal) * (e.perfect ? POSTURE.perfect : 1);
+    return log.map((e) => ({ amt: e.amt, base: base(e) }));
+  };
+  const near = (a, b) => Math.abs(a - b) < 0.01;
+  const fmt = (L) => L.map((e) => `${e.amt.toFixed(1)}/${e.base.toFixed(0)}`).join(' ');
+  try {
+    // (0) the table and the ring
+    setClashMode('0');
+    assert([1, 2, 3, 4, 9].every((n) => clashMult(n) === 1) && clashRing(4).join() === '1,1' && clashRegenK(0.05) === 1, 'off: the multiplier, the ring and the recovery factor are all 1');
+    setClashMode('dance');
+    assert([1, 2, 3, 4, 9].map(clashMult).join() === '1,1.25,1.5,1.75,1.75', `on: the run's multiplier x${[1, 2, 3, 4, 9].map(clashMult).join(', x')} (the cap from the 4th)`);
+    const [g2, r2] = clashRing(2), [g9, r9] = clashRing(9);
+    assert(clashRing(1).join() === '1,1' && g2 > 1 && r2 > 1 && r9 <= Math.pow(2, CD.ring.semisMax / 12) + 1e-9 && g9 <= Math.pow(10, CD.ring.dbMax / 20) + 1e-9,
+      `the ring: a run's first parry as today, then a little higher and louder each (run 2: rate x${r2.toFixed(3)}, gain x${g2.toFixed(3)}), capped (x${r9.toFixed(3)} / x${g9.toFixed(3)})`);
+    const ks = [1, 0.8, 0.7, 0.5, 0.2, 0.05].map(clashRegenK);
+    assert(ks.join() === '1,1,0.85,0.75,0.5,0.25', `the recovery by HP: full above 75 %, then steps (100/80/70/50/20/5 % HP: x${ks.join(', x')})`);
+
+    // (1) switch off: today's numbers, no run on player:parry
+    setClashMode('0');
+    let L = parryMove('swallow');
+    assert(L.length === 3 && L.every((e) => near(e.amt, e.base)), `off: Swallow Flicks parried, each parry pays today's posture (${fmt(L)})`);
+    assert(rings.length === 3 && rings.every((c) => c === 0), `off: player:parry carries no run (${rings.join(',')})`);
+
+    // (2) on: the run's multiplier, parry by parry
+    setClashMode('dance');
+    L = parryMove('swallow');
+    const want = L.map((e, i) => e.base * clashMult(i + 1));
+    assert(L.length === 3 && L.every((e, i) => near(e.amt, want[i])), `on: the 1st / 2nd / 3rd parry pay x1 / x1.25 / x1.5 (${fmt(L)}; want ${want.map((v) => v.toFixed(1)).join(' ')})`);
+    assert(rings.join() === '1,2,3', `the ring's run on player:parry counts up with it (${rings.join(',')})`);
+    // (3) a new move starts the run over
+    L = parryMove('swallow');
+    assert(L.length === 3 && near(L[0].amt, L[0].base) && near(L[1].amt, L[1].base * CD.mult[1]), `a new move starts the run over: its first parry x1 again (${fmt(L)})`);
+    // (4) a blow landing on the hero starts it over (hurtN moves on a real blow; mid-string it is moved by hand)
+    settle(G, 8); // (free: a parried blue blow is answered by the deathblow, ADR-211, and blows miss him in it)
+    run(G, 0.5);
+    const n0 = p.hurtN;
+    p.debug.god = false;
+    p.takeHit({ damage: 1, knockback: 1, kind: 'hit', tell: TELL.NORMAL, parryable: false, blockable: false, attack: 'test', sourceX: d.position.x, sourceZ: d.position.z });
+    p.takeHit({ damage: 1, kind: 'hit', tell: TELL.NORMAL, parryable: false, blockable: false, attack: 'stream', sourceX: d.position.x, sourceZ: d.position.z });
+    p.debug.god = true;
+    assert(p.hurtN === n0 + 1,`a blow that lands on the hero counts in player.hurtN (${n0} -> ${p.hurtN}); a contact stream's chip does not`);
+    p.debug.heal?.();
+    L = parryMove('swallow', () => p.hurtN++);
+    assert(L.length === 3 && near(L[1].amt, L[1].base) && near(L[2].amt, L[2].base * CD.mult[1]), `a blow landing on him mid-string starts the run over: the next parry x1, then x1.25 (${fmt(L)})`);
+    // (5) a gap starts it over
+    L = parryMove('swallow', () => {
+      if (d._clash) d._clash.t -= CD.gap + 0.1;
+    });
+    assert(L.length === 3 && near(L[1].amt, L[1].base) && near(L[2].amt, L[2].base * CD.mult[1]), `more than ${CD.gap} s since the last parry starts it over (${fmt(L)})`);
+
+    // (6) the recovery: the same posture drains more slowly at low HP; off, at one rate
+    const drain = (frac) => {
+      settle(G, 8);
+      d.hp = d.maxHp * frac;
+      d.posture = 150;
+      d.postureTimer = TUNING.posture.regenDelay + 0.01;
+      const p0 = d.posture;
+      run(G, 1);
+      return (p0 - d.posture) / TUNING.posture.regenRate;
+    };
+    const fr = [1, 0.7, 0.5, 0.2, 0.05];
+    setClashMode('0');
+    const off = fr.map(drain);
+    setClashMode('dance');
+    const on = fr.map(drain);
+    assert(off.every((v) => Math.abs(v - off[0]) < 0.03), `off: his posture drains at one rate whatever his HP (${off.map((v) => v.toFixed(2)).join(' / ')} x regenRate in 1 s)`);
+    assert(on.every((v, i) => Math.abs(v - clashRegenK(fr[i]) * off[0]) < 0.03), `on: it drains by the steps (${on.map((v) => v.toFixed(2)).join(' / ')} at ${fr.map((f) => f * 100).join(' / ')} % HP)`);
+    d.hp = d.maxHp;
+  } finally {
+    setClashMode('0');
+    d.addPosture = add0;
+    G.watch = null;
+    G.defend = null;
   }
   return G;
 }
@@ -5133,16 +5265,22 @@ async function scenarioMotion() {
   }
   // 3. a beat owns its channels: Rain of Ashes' fourth blow is a two-handed overhead; at the next
   //    cut's impact the left hand is off the hilt again and the head no longer holds the chop's set
+  //    (the engine's rule, read on the overhead as authored: ADR-250's form, `?ashForm`, cuts it one-handed)
   {
-    const a = realise('ashRain', 1, () => 0.5);
+    const { setLook: setLookM, lookOf: lookOfM } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+    const form0 = lookOfM('ashForm', '0');
+    setLookM('ashForm', '0');
+    const a0 = realise('ashRain', 1, () => 0.5);
+    setLookM('ashForm', /ashForm=/.test(process.env.GCD_LOOKS ?? '') ? form0 : null);
     const pose = new Float32Array(64);
-    POSES.evalClip(pose, a.clip, a.beats[3].impact, null);
+    POSES.evalClip(pose, a0.clip, a0.beats[3].impact, null);
     const twoAt = pose[P.twoHand], bowAt = pose[P.hdX];
-    POSES.evalClip(pose, a.clip, a.beats[4].impact, null);
+    POSES.evalClip(pose, a0.clip, a0.beats[4].impact, null);
     assert(twoAt > 0.9 && pose[P.twoHand] < 0.05, `two hands on the hilt in the overhead, one in the cut after it (${twoAt.toFixed(2)} -> ${pose[P.twoHand].toFixed(2)})`);
     assert(bowAt < -0.1 && pose[P.hdX] > -0.03, `the head's set in the chop (a channel no cut keys) is back at the guard's in the cut after it (${bowAt.toFixed(2)} -> ${pose[P.hdX].toFixed(2)})`);
     // 4. the clip itself, stepped at 120 Hz: no channel of the sword hand's target jumps (the blade-driven
-    //    arm over the vertical, the hand-off between a keyed hand and a driven one)
+    //    arm over the vertical, the hand-off between a keyed hand and a driven one), as he plays it
+    const a = realise('ashRain', 1, () => 0.5);
     let worst = 0, when = 0;
     const last = [0, 0, 0];
     for (let t = 0; t <= a.end; t += 1 / 120) {
@@ -5165,6 +5303,7 @@ async function scenarioReact() {
   // thrust jumps 0.077 m in a frame, an open item of that ADR)
   const { setLook: setLookR } = await imp('src/entities/enemies/duelist/lookSwitch.js');
   setLookR('ashMotion', '0');
+  setLookR('ashForm', '0'); // (likewise ADR-250's form: his windup poses as the layer was tuned on)
   out('\n== scenario REACT (the body answers where it was hit: drawn only, from the hit\'s own tick, back at rest) ==');
   const { IMPACT } = await imp('src/combat/impact.js');
   const { REACT } = await imp('src/entities/enemies/duelist/reactTuning.js');
@@ -5301,6 +5440,7 @@ async function scenarioReact() {
   }
   IMPACT.by.react.duelist = byDuel0;
   setLookR('ashMotion', null);
+  setLookR('ashForm', null);
   return { counts: {}, payload: new Set() };
 }
 
@@ -5492,7 +5632,10 @@ async function scenarioSwordMotion() {
   assert(wr <= 62, `the sword in line with the forearm: the wrist at most ${wr}° (≤ 62; the hero ≤ 60; before the pass 85 - 128)`);
   assert(gh >= 0.08 && gb >= 0.08, `the blade clear of him: ${gh.toFixed(2)} m from his head, ${gb.toFixed(2)} m from his body at the closest (≥ 0.08)`);
   assert(el >= 148, `every move opens the arm: the widest elbow at least ${el}° (≥ 148; before 131 - 145)`);
-  const held = [['fallingAsh', 1], ['lotus', 1]].map(([n, f]) => [n, heldTip(H, n, { form: f })]);
+  // (ADR-250's form, `?ashForm`, ends the overhead's hold at 0.7 of the windup: read the hold to there)
+  const { lookOf: lookOfS } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const u1 = lookOfS('ashForm', '0') !== '0' ? { u1: 0.68 } : {};
+  const held = [['fallingAsh', 1], ['lotus', 1]].map(([n, f]) => [n, heldTip(H, n, { form: f, ...u1 })]);
   assert(held.every(([, h]) => !h.fail && h.n >= 6 && h.far < 0.08), `the tell pose is held: the point wanders ${held.map(([n, h]) => `${n} (${h.tell}) ${h.far?.toFixed(3)} m over ${h.n} frames`).join(', ')} (< 0.08)`);
   // the timings: only poses change
   let same = 0, diff = [];
@@ -5525,6 +5668,91 @@ async function scenarioSwordMotion() {
   setLook('ashMotion', null);
   return last;
 }
+/**
+ * ASHFORM (ADR-250): his form behind `?ashForm=a`, measured at each blow's impact (swordAudit.mjs, the impact
+ * table). On: a thrust lands on an open arm (elbow ≥ 150°) with the point on the arm's line (≤ 8°), out of a
+ * lunge (the front knee ≤ 125°, the back ≥ 140°); an overhead cuts on a diagonal (the point's path ≤ 66° off
+ * level; before 75 - 81); the front foot is down at every cut's impact in a string; the free hand never flies
+ * (≤ 12 m/s; before 17 - 19); a low sweep's legs never cross. The windups, impacts and ends of every move as with
+ * it off (only poses change). Ember Whirl's and Heaven-Splitting Fall's looks (`?whirlFx` / `?fallFx`, every
+ * option) cost the fire field less than 300 blobs more than they do today, and finite throughout.
+ */
+async function scenarioAshForm() {
+  out('\n== scenario ASHFORM (his form, ADR-250: the thrust on the arm, the lunge, the diagonal overhead, the step, the sweep; the specials\' looks) ==');
+  const { setLook, lookOf: lookOfF } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const keep = lookOfF('ashForm', '0');
+  setLook('ashForm', 'a');
+  let last = null;
+  const H = { THREE, build: (...a) => (last = build(...a)), duel: (G, o) => duel(G, o), run, DT, MOVES, names: ['plumThrust', 'piercingAsh', 'fallingAsh', 'ashRain', 'crane', 'lotus'], formOf: () => 1, setForm: null };
+  const rows = swordAudit(H);
+  printImpacts(rows, out);
+  const ok = rows.filter((r) => !r.fail);
+  assert(ok.length === H.names.length, `${ok.length} of ${H.names.length} moves audited`);
+  const imps = ok.flatMap((r) => r.impacts.map((x) => ({ ...x, name: r.name })));
+  const th = imps.filter((x) => x.thrust);
+  assert(th.length >= 3 && th.every((x) => x.elbow >= 150 && x.armLine <= 8), `a thrust lands on an open arm, the point on its line: ${th.map((x) => `${x.name} b${x.i} ${x.elbow}° / ${x.armLine}°`).join(', ')} (≥ 150° / ≤ 8°)`);
+  assert(th.every((x) => x.knR <= 125 && x.knL >= 140), `... out of a lunge: front knee / back knee ${th.map((x) => `${x.knR}/${x.knL}`).join(', ')} (≤ 125 / ≥ 140)`);
+  const over = imps.filter((x) => x.bladeEl < -15 && x.tilt != null && x.tilt > 45 && !x.thrust && x.tell === TELL.BLUE);
+  assert(over.length >= 3 && over.every((x) => x.tilt <= 66), `an overhead cuts on a diagonal: ${over.map((x) => `${x.name} b${x.i} ${x.tilt}°`).join(', ')} (≤ 66° off level; before 75 - 81)`);
+  const rain = ok.find((r) => r.name === 'ashRain');
+  const up = rain.impacts.filter((x) => !x.front.endsWith('down'));
+  assert(!up.length, `the front foot down at every impact of Rain of Ashes (${up.map((x) => `b${x.i} ${x.front}`).join(', ') || 'all down'})`);
+  assert(rain.free.v <= 12, `the free hand never flies through Rain of Ashes: ${rain.free.v} m/s at its fastest (≤ 12; before 17.1)`);
+  const lotus = ok.find((r) => r.name === 'lotus');
+  assert(lotus.feet.cross >= 0, `Lotus Sweep turns on its feet: the legs never cross (${lotus.feet.cross} m; before -0.73)`);
+  // the timings: only poses change
+  let same = 0;
+  const diff = [];
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    for (const ph of [1, 2, 3]) {
+      if ((def.phase ?? 1) > ph) continue;
+      setLook('ashForm', 'a');
+      const a = realise(name, ph, () => 0.37);
+      setLook('ashForm', '0');
+      const b = realise(name, ph, () => 0.37);
+      if (!a || !b) continue;
+      const k = (A) => A.beats.map((x) => `${x.start.toFixed(4)}/${x.impact.toFixed(4)}/${x.end.toFixed(4)}`).join(' ') + ` ${A.end.toFixed(4)}`;
+      if (k(a) === k(b)) same++;
+      else diff.push(`${name} P${ph}`);
+    }
+  }
+  assert(!diff.length && same > 60, `${same} realisations time every beat the same on and off (${diff.join(', ') || 'none differ'})`);
+  // the specials' looks: every option draws, finite, and costs the field little more than today
+  setLook('ashForm', 'a');
+  const peaks = [];
+  for (const [move, sw] of [['emberWhirl', 'whirlFx'], ['heavenFall', 'fallFx']]) {
+    const base = [];
+    for (const o of ['0', 'a', 'b', 'c']) {
+      setLook(sw, o);
+      const G = build();
+      duel(G, { dist: move === 'heavenFall' ? 6 : 2.4 });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      d.debug.phase2();
+      settle(G, 8);
+      d.debug.setAI(false);
+      run(G, 0.5);
+      d.debug.trigger(move);
+      let peak = 0, bad = false;
+      run(G, 3, () => {
+        p.hp = p.maxHp;
+        peak = Math.max(peak, game.fx.fire.count);
+        if (!Number.isFinite(d.position.x + d.position.y + d.position.z)) bad = true;
+      });
+      base.push(peak);
+      peaks.push(`${sw}=${o} ${peak}${bad ? ' NaN' : ''}`);
+      assert(!bad, `${sw}=${o}: finite throughout`);
+      last = G;
+    }
+    assert(base.slice(1).every((x) => x - base[0] < 300), `${move}'s looks cost the field < 300 blobs over today's ${base[0]} (${base.slice(1).join(' / ')})`);
+    setLook(sw, null);
+  }
+  out(`     blob peaks: ${peaks.join(' | ')}`);
+  setLook('ashForm', /ashForm=/.test(process.env.GCD_LOOKS ?? '') ? keep : null);
+  return last;
+}
 /** AUDIT (opt-in, ADR-226): every move's sword motion (tests/integration/swordAudit.mjs). */
 async function scenarioAudit() {
   out('\n== scenario AUDIT (every move: the sword wrist, the blade off his body, facing, elbows, the free hand, feet, pops) ==');
@@ -5535,6 +5763,7 @@ async function scenarioAudit() {
     formOf: (n) => Math.min(3, Math.max(1, MOVES[n].phase ?? 1)),
     setForm: (G, f) => { const d = G.game.dragon; if (f >= 2) d.debug.phase2(); if (f >= 3) { settle(G, 8); d.debug.phase3(); } settle(G, 8); d.debug.setAI(false); } });
   printAudit(rows, out);
+  if (process.env.GCD_AUDIT_IMPACT) printImpacts(rows, out);
   if (process.env.GCD_AUDIT_JSON) fs.writeFileSync(process.env.GCD_AUDIT_JSON, JSON.stringify(rows, null, 1));
   return last;
 }
@@ -5579,6 +5808,7 @@ const SCENARIOS = {
   clash: scenarioClash,
   trade: scenarioTrade,
   flashchain: scenarioFlashChain,
+  clashdance: scenarioClashDance,
   deflect: scenarioDeflect,
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
@@ -5610,6 +5840,14 @@ const SCENARIOS = {
   sfx: scenarioSfx,
   audit: scenarioAudit,
   swordmotion: scenarioSwordMotion,
+  ashform: scenarioAshForm,
+  // the contact pass (ADR-259, ?contact=a): the rules unmoved, the blows drawn on what they strike
+  contact: async () => {
+    out('\n== scenario CONTACT (blows drawn ON what they strike; the rules unmoved; ADR-259) ==');
+    const { contactCheck } = await import('./contactCheck.mjs');
+    const moves = ['plumThrust', 'fallingAsh', 'swallow', 'ashRain', 'chaseRain', 'riposte'].filter((n) => MOVES[n]);
+    return await contactCheck({ THREE, imp, build, duel, place, run, settle, home, DT, assert, out, RESULT, moves });
+  },
 };
 const runs = [];
 const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer', 'audit']); // run only when named

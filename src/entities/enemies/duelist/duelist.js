@@ -4,7 +4,8 @@ import { clamp, wrapAngle } from '../../../core/math.js';
 import { markCaster } from '../../../render/pipeline.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { TELL, TELL_STYLE, RESULT, POSTURE, DEFENSE, tellDefaults, dodgeOnly } from '../../../combat/rules.js';
-import { buildHero, setHeroGlyphScale, installLean, LEAN, HERO_SCALE } from '../../player/model.js';
+import { buildHero, setHeroGlyphScale, installLean, LEAN, HERO_SCALE, DIM } from '../../player/model.js';
+import { REACH } from '../../player/combat.js';
 import { HeroAnimator } from '../../player/anim.js';
 import { perPhase } from './realise.js';
 import { DuelBrain } from './brain.js';
@@ -14,6 +15,8 @@ import { counterChainOn } from '../../../combat/flashChain.js';
 import { impactK } from '../../../combat/impact.js';
 import { calmBossFlash } from '../../../combat/impactCalm.js';
 import { HitReact } from './react.js';
+import { CONTACT as STRIKE, ContactBody, contactOn, contactReach, contactStep, findContact } from '../../../combat/contact.js';
+import { clashNext, clashMult, clashRegenK } from '../../../combat/clashDance.js';
 
 // A duelist: a human boss on the hero's skeleton and animator (the Ash Disciple; the Starless Lord).
 // It fills a level's boss slot (game.dragon === game.boss) and offers the Dragon contract's surface
@@ -125,6 +128,8 @@ export class Duelist {
     this.shudderK = 1;
     this._tipOk = false;
     this._lastParry = -9;
+    // the clash dance's run (combat/clashDance.js; ADR-247): { act, n, t (the hero's clock), hurt (his hurtN) }
+    this._clash = null;
     this._lastHurtPt = new THREE.Vector3();
 
     // the animator's view of him (anim.js HeroAnimator reads these)
@@ -367,6 +372,7 @@ export class Duelist {
         R.skid = Math.hypot(mx, mz);
         R.moved.x = mx;
         R.moved.z = mz;
+        R.limb = typeof o.limb === 'string' ? o.limb : null; // (CONTACT: the capsule the hero's steel met)
         this.hitReact.hit(R);
       }
     }
@@ -463,7 +469,7 @@ export class Duelist {
     // (no burst of his own: the hero's parry draws the one clash, on the crossing of the two blades)
     this.flash = Math.max(this.flash, 0.5);
     this.jolt = Math.max(this.jolt, tell === TELL.BLUE ? 0.75 : 0.55); // the turned blow jars him
-    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1));
+    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1) * this._clashMult());
     if (this.mode !== 'act' || !a) return; // the parry broke his posture (broken) or the move is gone
     if (a) a.parried = (a.parried ?? 0) + 1;
     // the blade lock: a PERFECT parry of a blow marked `lock` crosses the blades
@@ -685,6 +691,162 @@ export class Duelist {
     return Number.isFinite(B.ax + B.ay + B.az + B.bx + B.by + B.bz) ? B : null;
   }
 
+  /**
+   * CONTACT (combat/contact.js, ADR-259; ?contact=a): his blow lands ON what it struck. `meet(a, b, r, out)`
+   * is the struck thing's signed gap (m, − inside) to a striker a → b of radius r, its meeting point into
+   * out: the hero's drawn body (a hit), or his blade and body (a block). The strike is searched along its
+   * own clip from the frame the blow was decided (back where it had gone through, on where it fell short),
+   * he is posed at the meeting (the edge biting CONTACT.bite in, a fist or foot on the surface) and held
+   * there through the freeze (brain.pinAt; `heavy`: a beat longer), then the blow carries on. The clip, the
+   * blow's clock and every rule are untouched. `biteAt`: the bite's depth instead (m; a guard: on the steel).
+   * Returns the meeting point (world, drawn) or null (off, not
+   * in a strike, no striker, or one that never reaches within CONTACT.near).
+   */
+  strikeContact(meet, heavy = false, biteAt = null) {
+    if (!contactOn() || typeof meet !== 'function' || this.mode !== 'act' || !this.brain.act || !this._tipOk) return null;
+    const b = this.brain, B = b.back;
+    if (B.off > 0 || B.t > 0) return null; // (a parried blow already held at its contact)
+    const limb = typeof this._part === 'string' && this._part !== 'sword';
+    const r = limb ? (/foot|feet|knee|leg|shin/i.test(this._part) ? STRIKE.foot : STRIKE.fist) : STRIKE.edge;
+    const bite = Number.isFinite(biteAt) ? biteAt : limb ? STRIKE.fistBite : STRIKE.bite;
+    const P = this._meetAt ?? (this._meetAt = new THREE.Vector3());
+    const h = this._hilt, tp = this._tip, t1 = b.clipT;
+    // (his drawn reach, `b`: _poseAt poses the plain body; the striker is where it is drawn, shifted with it)
+    const rx = fin(this._reach?.x, 0), rz = fin(this._reach?.z, 0);
+    const at = (t) => {
+      this._poseAt(t);
+      if (rx !== 0 || rz !== 0) {
+        h.x += rx;
+        h.z += rz;
+        tp.x += rx;
+        tp.z += rz;
+      }
+      return limb ? meet(tp, tp, r, P) : meet(h, tp, r, P);
+    };
+    let tc = NaN;
+    try {
+      tc = findContact(at, t1, bite, STRIKE, 0);
+    } catch (err) {
+      console.error('[duelist] strikeContact failed', err);
+    }
+    if (!Number.isFinite(tc)) {
+      this._poseAt(t1);
+      this._tipPrev.copy(tp);
+      this._hiltPrev.copy(h);
+      return null;
+    }
+    at(tc);
+    b.pinAt(tc, heavy ? STRIKE.holdHeavy : STRIKE.hold, STRIKE.follow);
+    this._tipPrev.copy(tp); // (no sweep stroke for the step)
+    this._hiltPrev.copy(h);
+    return Number.isFinite(P.x + P.y + P.z) ? P : null;
+  }
+
+  /**
+   * CONTACT's reach (combat/contact.js, `?contact=b`): as a blow of his comes (STRIKE.reach.lead s before its
+   * impact) with the hero in its zone, the gap its striker would leave on the hero's drawn body at the impact
+   * is read (posed there once a frame) and his drawn body eases toward the hero to close it (STRIKE.reach.max
+   * m at most), arriving with the impact; held through the blow's pin, then eased back. The shift is drawn
+   * only (react.js setReach: the feet stay planted, the legs are solved again); his gameplay points, the
+   * zone and every rule never see it. Called at the top of _animate (it poses him: the animator then poses
+   * the frame).
+   */
+  _reachStep(dt) {
+    const R = (this._reach ??= { x: 0, z: 0, tx: 0, tz: 0, keep: 0, left: 0 }), K = STRIKE.reach;
+    const b = this.brain, A = b.act, p = this.game.player;
+    let found = false;
+    if (contactReach() && this.mode === 'act' && A && this._tipOk && p?.rig && !(b.back.off > 0) && !(b.back.t > 0)) {
+      let beat = null;
+      for (const x of A.beats) {
+        if (x.done || x.feint || !x.def?.zone || x.def.cast || x.def.projectile) continue;
+        if (x.impact >= A.t - 1e-6 && x.impact - A.t <= K.lead) {
+          beat = x;
+          break;
+        }
+      }
+      const s = beat ? b._sense() : null;
+      if (beat && s && b._inZone(beat.def.zone, s, !!beat.def.air)) {
+        const B = (this._heroBody ??= new ContactBody(THREE));
+        if (B.fromRig(p.rig, p.drawScale || 1)) {
+          const limb = typeof this._part === 'string' && this._part !== 'sword';
+          const r = limb ? (/foot|feet|knee|leg|shin/i.test(this._part) ? STRIKE.foot : STRIKE.fist) : STRIKE.edge;
+          const bite = limb ? STRIKE.fistBite : STRIKE.bite;
+          // (the probe poses him at the impact: his drawn points are kept as they were, so the trails and
+          // the next frame's strokes never see it)
+          const sv = (this._reachSave ??= [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
+          sv[0].copy(this._hilt);
+          sv[1].copy(this._tip);
+          sv[2].copy(this._hiltPrev);
+          sv[3].copy(this._tipPrev);
+          this._poseAt(b.clipT + (beat.impact - A.t));
+          const h = this._hilt, t = this._tip, Q = (this._reachQ ??= new THREE.Vector3()), M = (this._reachM ??= new THREE.Vector3());
+          const g = limb ? B.gap(t, t, r, Q) : B.gap(h, t, r, Q);
+          // (the striker's point nearest the body: the gap is closed along the line from it to the body)
+          if (limb) M.copy(t);
+          else closestOnSegments(h, t, Q, Q, M, this._cp[3]);
+          const gx = Q.x - M.x, gz = Q.z - M.z, gl = Math.hypot(Q.x - M.x, Q.y - M.y, Q.z - M.z);
+          this._hilt.copy(sv[0]);
+          this._tip.copy(sv[1]);
+          this._hiltPrev.copy(sv[2]);
+          this._tipPrev.copy(sv[3]);
+          const need = g - bite;
+          const most = K.max + (contactStep() ? STRIKE.step : 0);
+          if (need > K.min && g < most + STRIKE.near && gl > 1e-3) {
+            // (the horizontal part of the line that closes it, `need` of its length; at most `most` m)
+            const k = need / gl, hl = Math.hypot(gx, gz) * k, c = hl > most ? most / hl : 1;
+            R.tx = gx * k * c;
+            R.tz = gz * k * c;
+          } else R.tx = R.tz = 0;
+          R.left = Math.max(beat.impact - A.t, 0);
+          R.keep = K.after;
+          found = true;
+        }
+      }
+    }
+    if (!found) {
+      // past the impact: held while the blow is pinned on him and a moment after, then let go
+      if (R.keep > 0 && (b.pin.pin || (R.keep -= dt) > 0) && this.mode === 'act') R.left = 0;
+      else {
+        R.keep = 0;
+        R.tx = R.tz = 0;
+      }
+    }
+    // (toward the target in the time left before the impact; back over K.back)
+    const back = R.tx === 0 && R.tz === 0;
+    const u = back ? Math.min(1, dt / K.back) : R.left > dt ? dt / R.left : 1;
+    R.x += (R.tx - R.x) * u;
+    R.z += (R.tz - R.z) * u;
+    if (Math.abs(R.x) + Math.abs(R.z) < 1e-4 && back) R.x = R.z = 0;
+    // (up to K.max with his feet planted; past it, `c`, his whole drawn body steps: R.sx / sz, the lean's offset)
+    const rl = Math.hypot(R.x, R.z), pk = rl > K.max ? K.max / rl : 1;
+    R.sx = R.x * (1 - pk);
+    R.sz = R.z * (1 - pk);
+    const px = R.x * pk, pz = R.z * pk;
+    const S = this.drawScale || 1, cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+    this.hitReact.setReach((px * cy - pz * sy) / S, 0, (px * sy + pz * cy) / S);
+  }
+
+  /** CONTACT (combat/contact.js): his guard nudged onto the hero's blade where it was stopped (pilot.guardNudge,
+   *  the animator's grip; eased off in _animate), and posed now. */
+  _wardOnto(p) {
+    const sw = p?.sweep, h = this._hilt, t = this._tip, C = this._cp;
+    if (!sw?.valid || !this._tipOk) return;
+    const N = (this.pilot.guardNudge ??= { x: 0, y: 0, z: 0, k: 0 }), K = STRIKE.guard;
+    // (the hero's DRAWN steel: the sweep's first 0.93 m; his blade's nearest point to it)
+    const k = (DIM.drawnTip - DIM.bladeBase) / (DIM.bladeTip + REACH.tipExt - DIM.bladeBase);
+    const e = this._cpE ?? (this._cpE = new THREE.Vector3());
+    e.lerpVectors(sw.a, sw.b, k);
+    closestOnSegments(h, t, sw.a, e, C[0], C[1]);
+    const gx = C[1].x - C[0].x, gy = C[1].y - C[0].y, gz = C[1].z - C[0].z, gl = Math.hypot(gx, gy, gz);
+    if (!(gl > 0.04)) return;
+    const f = Math.min(1, K.nudge / gl), S = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+    N.x = ((gx * c - gz * sn) / S) * f;
+    N.y = (gy / S) * f;
+    N.z = ((gx * sn + gz * c) / S) * f;
+    N.k = 1;
+    this._poseAt(this.brain.clipT - this.brain.back.off);
+  }
+
   /** His blade as it is drawn right now ({ a: hilt, b: tip }, live vectors): the blade lock's
    *  crossing is found on it (player.js _lockCross). null without one. */
   bladeSegment() {
@@ -742,6 +904,7 @@ export class Duelist {
     this.maxPosture = perPhase(this.T.posture.max, 1);
     this.posture = 0;
     this.postureTimer = 0;
+    this._clash = null;
     this.broken = false;
     this._streakSet(0);
     this.flash = 0;
@@ -793,11 +956,30 @@ export class Duelist {
     this.emit('dragon:posture', { posture: p, max: this.maxPosture });
   }
 
+  /**
+   * The clash dance (combat/clashDance.js; ADR-247): the run this parry would make now (0: the dance is
+   * off). The hero reads it as he parries (player.js _parry: player:parry's `clash`, the ring), before
+   * onParried counts it.
+   */
+  clashPeek() {
+    const p = this.game.player;
+    return clashNext(this._clash, this.brain.act, fin(p?.time), p?.hurtN ?? 0);
+  }
+
+  /** A parry of his body or blade: count it in the run, the posture multiplier it earns (1: off). */
+  _clashMult() {
+    const n = this.clashPeek();
+    if (n <= 0) return 1;
+    const p = this.game.player;
+    this._clash = { act: this.brain.act, n, t: fin(p?.time), hurt: p?.hurtN ?? 0 };
+    return clashMult(n);
+  }
+
   _updatePosture(dt) {
     this.postureTimer += dt;
     if (this.broken || this.posture <= 0) return;
     if (this.postureTimer > this.T.posture.regenDelay) {
-      this.posture = Math.max(0, this.posture - this.T.posture.regenRate * dt);
+      this.posture = Math.max(0, this.posture - this.T.posture.regenRate * clashRegenK(clamp(this.hp / Math.max(1, this.maxHp), 0, 1)) * dt);
       this.emitPosture();
     }
   }
@@ -895,6 +1077,9 @@ export class Duelist {
     const what = this.broken ? 'armor' : this.brain.onGuarded(heavy, this._wardFor(p));
     const deflect = what === 'deflect';
     if (what !== 'armor' && this.mode === 'react') this._animate(1 / 120);
+    // (CONTACT, ?contact=a: the hero's swing is shown where his steel meets this guard, and the guard is
+    // nudged onto it, before the crossing is read)
+    if (what !== 'armor' && p?._cutContact?.(this, 0, 0, 0, heavy, true)) this._wardOnto(p);
     // the crossing of his blade and the hero's
     const h = this._hilt, t = this._tip, C = this._cp, sw = p?.sweep;
     let x = (h.x + t.x) * 0.5, y = (h.y + t.y) * 0.5, z = (h.z + t.z) * 0.5;
@@ -1029,7 +1214,9 @@ export class Duelist {
   _animate(dt) {
     const pl = this.pilot, b = this.brain;
     this.hitReact.restore(); // (last frame's drawn reaction off the joints: the animator poses the body)
+    if (this._reach || contactReach()) this._reachStep(dt); // (CONTACT `b`: his body eased into a blow that would fall short)
     this.jolt = Math.max(0, this.jolt - dt * this.T.hitStun.joltDecay);
+    if (pl.guardNudge?.k > 0) pl.guardNudge.k = Math.max(0, pl.guardNudge.k - dt / STRIKE.guard.nudgeBack); // (CONTACT: _wardOnto)
     pl.recoil = this.jolt;
     pl.yaw = this.yaw;
     // (a parried blow is shown held back on its strike, where the blades met: brain.back)
@@ -1041,6 +1228,11 @@ export class Duelist {
     this.yaw = wrapAngle(fin(this.yaw));
     this.object3d.rotation.y = this.yaw;
     this._updateLean();
+    // (CONTACT `c`: the reach's step, drawn only, on top of the shudder's offset)
+    if (this._reach && (this._reach.sx || this._reach.sz)) {
+      this.lean.ox += fin(this._reach.sx, 0);
+      this.lean.oz += fin(this._reach.sz, 0);
+    }
     // the animator poses the plain upright body (as the hero's): gameplay points come from it
     this.lean.on = false;
     // the sword motion pass (ADR-226; kit.motion: the boss's numbers while its switch is on, else null):
@@ -1052,6 +1244,12 @@ export class Duelist {
     }
     this.anim.update(dt);
     this._gameplayPoints();
+    // CONTACT (brain.pinAt): his blow drawn where it met the hero, a moment behind (or ahead of) its clip;
+    // his gameplay points above stay on the clip's own time
+    if (b.pin.pin && b.pin.show !== 0) {
+      pl.stateT = pl.animT = Math.max(0, b.clipT - b.back.off - b.pin.show);
+      this.anim.update(0);
+    }
     // the body answering a hit (react.js): over the upright pose, after every gameplay point
     this.hitReact.apply(dt);
     this.lean.on = true;

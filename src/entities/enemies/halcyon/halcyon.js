@@ -8,7 +8,7 @@ import { wrapAngle } from '../../../core/math.js';
 import { HAL_LOADOUT, HAL_FIST } from './gear.js';
 import { HAL_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, TRANSITIONS, AFTER, REACT, OPEN, realise } from './moves.js';
-import { halMotionOn } from './motion.js';
+import { halMotionOn, halLimbsOn } from './motion.js';
 import { TUNING } from './tuning.js';
 import { LINKS } from './links.js';
 import { tintHalcyon, dressHalcyon, halLettersOn } from './look.js';
@@ -348,8 +348,11 @@ export class Halcyon extends Duelist {
       o.kind = 'blunt';
       o.y = 1.2;
       W?.destructibles?.strike?.(this.position.x, this.position.z, C.r + 2, C.power, o);
-      this.fx.shock?.(this.position.x, this.position.z, C.r, this.fx._opt(1.1, 0, 'dust', 0, true));
-      this.fx.sonic?.(this.position.x, 1.3, this.position.z, Math.sin(this.yaw), Math.cos(this.yaw));
+      // (ADR-254, `?halShock=a|b`: the redrawn front, fxShock.js; '0' the engine's dust front)
+      if (!this.fx.shockwave?.(this.position.x, this.position.z, C.r, this.position.y + 1.2)) {
+        this.fx.shock?.(this.position.x, this.position.z, C.r, this.fx._opt(1.1, 0, 'dust', 0, true));
+        this.fx.sonic?.(this.position.x, 1.3, this.position.z, Math.sin(this.yaw), Math.cos(this.yaw));
+      }
       this.game.shake?.(0.45);
       this.emit('dragon:clap', { x: this.position.x, z: this.position.z, r: C.r });
     } else if (D.halDive) {
@@ -357,6 +360,7 @@ export class Halcyon extends Duelist {
       o.kind = 'blast';
       W?.impact?.(this.position.x, this.position.z, M.crater, M.power, o);
       this.fx.crater?.(this.position.x, this.position.z, M.crater, 1.8);
+      this.fx.shockwave?.(this.position.x, this.position.z, M.crater * 1.8, 0.5, true);
       this.game.shake?.(0.6);
     }
   }
@@ -370,10 +374,14 @@ export class Halcyon extends Duelist {
   /** Every frame after the brain: his eyes, his city, then his flight (the hover last). */
   brainFrame(dt) {
     // (ADR-225, `?halMotion=a`: his arms open at the end of a blow, his kicks keep a little bend; live)
+    // (ADR-254, `?halMotion=b`: opened further, and a kick's foot carried out to a straight leg)
     if (this.anim) {
-      const on = halMotionOn();
-      this.anim.armSoft = on ? this.T.motion.armSoft : null;
-      this.anim.legSoft = on ? this.T.motion.legSoft : null;
+      const on = halMotionOn(), B = halLimbsOn() ? this.T.motion.b : null;
+      this.anim.armSoft = B?.armSoft ?? (on ? this.T.motion.armSoft : null);
+      this.anim.legSoft = B?.legSoft ?? (on ? this.T.motion.legSoft : null);
+      // (only through a kick: a flier's trailing legs are off the floor too, and it would lock them straight)
+      const b = B && this.mode === 'act' ? beatNow(this.brain.act) : null;
+      this.anim.kickStretch = b?.def?.mo?.fam === 'kick' ? B.kickStretch : null;
     }
     this.glare.frame(dt);
     this.terrain.frame(dt);
@@ -426,7 +434,7 @@ export class Halcyon extends Duelist {
     this.emit('dragon:parried', { attack: info?.attack ?? a.name, tell, hit: fin(b.hit, 0), last: true, flare: true });
     this.flash = Math.max(this.flash, 0.6);
     this.jolt = Math.max(this.jolt, 0.8);
-    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1));
+    this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1) * this._clashMult());
     if (this.mode !== 'act') return;
     // the way he was going (a pass: his line; otherwise his facing)
     const G = b._go;

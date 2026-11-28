@@ -3,11 +3,12 @@ import { Duelist, HERO_SCALE } from '../duelist/duelist.js';
 import { perPhase } from '../duelist/realise.js';
 import { ASH_LOADOUT, JIAN } from './gear.js';
 import { DUEL_POSES } from './poses.js';
-import { MOVES, MOVE_NAMES, CLIP, realise } from './moves.js';
+import { MOVES, MOVE_NAMES, CLIP, realise, formOn } from './moves.js';
 import { TUNING } from './tuning.js';
 import { TerrainMoves } from './terrain.js';
 import { LINKS } from './links.js';
 import { AshMoveFx } from './moveFx.js';
+import { AshSpecialFx } from './specialFx.js';
 import { lookOf } from '../duelist/lookSwitch.js';
 import { dressFrame } from './look.js';
 import { TELL } from '../../../combat/rules.js';
@@ -32,7 +33,12 @@ export const ASH_KIT = Object.freeze({
   blade: JIAN,
   dress: dressFrame,
   // the sword motion pass behind `?ashMotion=` (ADR-226): its numbers while on, null ('0') as before
-  motion: () => (lookOf('ashMotion', '0') === '0' ? null : TUNING.motion),
+  // (and ADR-250's form, `?ashForm=`: its thrusts open the arm further)
+  motion: () => (lookOf('ashMotion', '0') === '0' ? null : formOn() ? TUNING.formMotion : TUNING.motion),
+  // (ADR-250's form: a planted foot its clip lifts eases off its spot, as Wen Yao's and Lu Wusheng's do,
+  // so the step keyed into a cut leaves where the foot stood instead of jumping to the key; briefly: the
+  // ease drags the foot along the stones, and theirs (0.12 s) slid it 1.2 m through Rain of Ashes)
+  animOpts: Object.freeze({ liftEase: () => (formOn() ? TUNING.formMotion.liftEase : 0) }),
 });
 
 export class AshDisciple extends Duelist {
@@ -71,6 +77,7 @@ export class AshDisciple extends Duelist {
     // (the base constructor resets before this class's own fields could exist: made here)
     (this.terrain ??= new TerrainMoves(this)).reset();
     (this.moveFx ??= new AshMoveFx(this)).reset(); // burning ground (moveFx.js)
+    (this.specialFx ??= new AshSpecialFx(this)).reset(); // the specials' looks (specialFx.js, ADR-250)
     super.reset();
   }
 
@@ -119,6 +126,7 @@ export class AshDisciple extends Duelist {
     if (a?.def?.transition && (a.def.phase ?? 2) === 3) this.fx.phaseBurst?.(3, this.position.x, this.position.z);
     // what his blade cuts burns (phase 2 on: moveFx.js)
     if (b.def.burn) this.moveFx?.burn(b, a);
+    this.specialFx?.impact(b, a); // (Ember Whirl's, Heaven-Splitting Fall's looks: ?whirlFx / ?fallFx)
   }
 
   /** An afterimage of him where he stands as last drawn (DuelFx.ghost), drifting on the ash wind. */
@@ -180,6 +188,7 @@ export class AshDisciple extends Duelist {
     if (ashLook === 'a' || ashLook === 'c') this.kindle = Math.max(ashLook === 'c' ? 0.15 : 0, this.kindle - dt * 2.3);
     if (this.kindle > 0.05 && this.mode !== 'dying') fx.emberBlade(h0.x, h0.y, h0.z, t1.x, t1.y, t1.z, dt, this.kindle);
     if (this._ashK > 0) fx.ashWind?.(this, dt, this._ashK);
+    if (this.mode !== 'dying') this.specialFx?.frame(dt, a);
     if (this.mode === 'broken') fx.stunStars(this._hs[0]);
   }
 
