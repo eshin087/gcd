@@ -477,11 +477,42 @@ function begin(game, S, mode, kind) {
  * The perfect parry's mark at the crossing (x, y, z). `o`: e1 / e2 (the two blades, world), mode,
  * beat ('full' | 'short': cinema's), streak. Returns the blobs drawn now; never throws.
  */
+// THE CLASH'S SIZE (`?parryClash=`, the Lab's `parryClash`; ADR-264): the perfect parry's gold clash and its mark drawn
+// smaller so the two blades crossing stay in sight (the owner: the swords can't be seen meeting). a) the mark 0.55 x
+// (its X and its rings), the clash burst 0.6 x; b) the mark's X alone at 0.4 x (no rings), the clash 0.4 x. The spit
+// of sparks off the steel (parrySparks) is left as it is. '0' as before.
+const qs = (name) => {
+  try {
+    return typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null;
+  } catch {
+    return null;
+  }
+};
+export const PARRY_CLASH = Object.freeze({
+  opts: Object.freeze(['0', 'a', 'b']),
+  spec: Object.freeze({ a: Object.freeze({ mark: 0.55, rings: true, clash: 0.6 }), b: Object.freeze({ mark: 0.4, rings: false, clash: 0.4 }) }),
+});
+export const PARRY_CLASH_DEFAULT = '0'; // (until the owner picks from the films)
+const PC = { mode: PARRY_CLASH.opts.includes(qs('parryClash')) ? qs('parryClash') : PARRY_CLASH_DEFAULT };
+export const parryClashMode = () => PC.mode;
+export const setParryClash = (m) => (PC.mode = PARRY_CLASH.opts.includes(m) ? m : PARRY_CLASH_DEFAULT);
+/** The clash's size spec now ({ mark, rings, clash }), null when off. */
+export const parryClashSpec = () => PARRY_CLASH.spec[PC.mode] ?? null;
+const SMALL = new Map(); // (a mark's scaled copy, by its base and the mode)
+function smallMark(M) {
+  const C = parryClashSpec();
+  if (!C || !M) return M;
+  const key = PC.mode;
+  let m = SMALL.get(M);
+  if (!m) SMALL.set(M, (m = {}));
+  return (m[key] ??= Object.freeze({ ...M, size: M.size * C.mark, r: C.rings ? M.r : [], echo: C.rings ? M.echo : 0 }));
+}
+
 export function perfectParryMark(game, x, y, z, o = {}) {
   try {
     const mode = o.mode ?? perfectMode(), F = PERFECT_FEEL[mode];
     if (!F || !game?.fx?.fire?.spawn || !fin(x + y + z)) return 0;
-    const M = mode === 'cinema' && o.beat === 'short' ? F.parry.markShort : F.parry.mark;
+    const M = smallMark(mode === 'cinema' && o.beat === 'short' ? F.parry.markShort : F.parry.mark);
     const A = axes(game);
     let a1 = o.e1 ? screenAngle(A, o.e1.x, o.e1.y, o.e1.z) : NaN, a2 = o.e2 ? screenAngle(A, o.e2.x, o.e2.y, o.e2.z) : NaN;
     if (!fin(a1)) a1 = 0.75;

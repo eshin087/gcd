@@ -4613,6 +4613,20 @@ async function scenarioDeathblow() {
     }
     assert(gaps.a >= gaps['0'] - 0.02 && gaps.b >= gaps.a - 0.02 && gaps.b >= 1.4, `(g) the floor holds him off: ${gaps['0'].toFixed(2)} → a ${gaps.a.toFixed(2)} → b ${gaps.b.toFixed(2)} m`);
     SG.setStrikeGap(SG.STRIKE_GAP_DEFAULT);
+    // the clash's size (?parryClash=a|b): a perfect parry still met and answered with the mark drawn smaller
+    const PF = await imp('src/combat/perfectFx.js');
+    assert(PF.PARRY_CLASH_DEFAULT === '0' && PF.parryClashSpec() === null, '(g) the clash is drawn as before by default until the owner picks');
+    const base = {};
+    for (const mode of ['0', 'a', 'b']) {
+      PF.setParryClash(mode);
+      const C = PF.parryClashSpec();
+      const t = take('deathblow', { move: 'fallingAsh', run: 0, secs: 6, posture: 0 });
+      const got = { perfect: t.parry?.perfect, art: t.ev?.art ?? t.end?.art ?? null, hits: t.hits.length, hp: t.hpLost };
+      out(`   (g) parryClash ${mode}: ${JSON.stringify(C)} · ${JSON.stringify(got)}`);
+      if (mode === '0') Object.assign(base, got);
+      else assert(C && C.mark < 1 && C.clash < 1 && got.perfect === true && JSON.stringify(got) === JSON.stringify(base), `(g) parryClash ${mode}: the mark ${C?.mark} x, the burst ${C?.clash} x; the perfect parry and what follows as with 0`);
+    }
+    PF.setParryClash(PF.PARRY_CLASH_DEFAULT);
   }
   RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
   assert(RC.RIPOSTE_CUT.opts.includes('old') && RC.RIPOSTE_CUT.opts.includes('planted') && RC.RIPOSTE_DEFAULT === 'deathblow', 'deathblow is the default; old and planted stay options');

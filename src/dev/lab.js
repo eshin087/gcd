@@ -18,6 +18,7 @@ import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
 import { DB_FX, getDbFx, setDbFx } from '../combat/deathblowFx.js';
 import { DB_READ, dbReadMode, setDbRead } from '../entities/player/deathblow.js';
 import { STRIKE_GAP, strikeGapMode, setStrikeGap } from '../entities/enemies/duelist/strikeGap.js';
+import { PARRY_CLASH, parryClashMode, setParryClash } from '../combat/perfectFx.js';
 import { DB_MATRIX, getDbMatrix, setDbMatrix } from '../combat/deathblowMatrix.js';
 import { DB_SFX, getDbSfx, setDbSfx } from '../audio/deathblowSfx.js';
 import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
@@ -1363,6 +1364,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.strikeGapBtn.title = "how near a duelist's blade blow brings him (?strikeGap=; ADR-264): a 1.5 m, b 1.8 m centre to centre (never past what the blow reaches), so the swords meet in the open and a parry's clash reads; 0 as before";
+    this.ui.parryClashBtn = button(stkGrid, `parryClash ${parryClashMode()}`, () => {
+      const M = PARRY_CLASH.opts;
+      setParryClash(M[(M.indexOf(parryClashMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.parryClashBtn.title = "the perfect parry's gold clash and mark drawn smaller so the crossing blades show (?parryClash=; ADR-264): a 0.55 x the mark, 0.6 x the burst; b the X alone at 0.4 x, no rings, 0.4 x the burst; the sparks off the steel as they are; 0 as before";
     this.ui.dbmatrixBtn = button(stkGrid, `dbmatrix ${getDbMatrix()}`, () => {
       const M = DB_MATRIX.opts;
       setDbMatrix(M[(M.indexOf(getDbMatrix()) + 1) % M.length]);
@@ -1645,6 +1652,7 @@ export class Lab {
     if (this.ui.dbfxBtn) this.ui.dbfxBtn.textContent = `dbfx ${getDbFx()}`;
     if (this.ui.dbreadBtn) this.ui.dbreadBtn.textContent = `dbread ${dbReadMode()}`;
     if (this.ui.strikeGapBtn) this.ui.strikeGapBtn.textContent = `strikeGap ${strikeGapMode()}`;
+    if (this.ui.parryClashBtn) this.ui.parryClashBtn.textContent = `parryClash ${parryClashMode()}`;
     if (this.ui.dbmatrixBtn) this.ui.dbmatrixBtn.textContent = `dbmatrix ${getDbMatrix()}`;
     if (this.ui.dbsfxBtn) this.ui.dbsfxBtn.textContent = `dbsfx ${getDbSfx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
