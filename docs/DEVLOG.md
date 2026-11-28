@@ -21,6 +21,8 @@ to cancel it; the streak's flurry teleports gcd with no cue.
   break): traced situation by situation against main, the Training diverged at "His flurry x7"; the cause was the
   hero flurry's figure stream (`flurry.js` `fseed`), left wherever earlier scenarios' flurries put it. Lord
   `training` now reseeds it per situation, beside `Math.random`.
+- **Also on main, fixed here:** duel `parryfx`'s "ten in a row: at most 48 sparks" failed on main too (51): it
+  reads the live hero's streak through `?parryGrow=a` (cap 104 from tier 1). It now asks for the base spit (`grow: '0'`).
 - **The parry press and the parry sparks:** a second PR (`fix/parry-press`, ADR-275).
 - **Checked:** duel `deathblow` (new (g), (h)), `moments`, `clash`, `training`; fox `training`; asc `bare`; the full
   `npm test`.
