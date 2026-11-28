@@ -19,6 +19,16 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: "Bai Wuji's blows land where they aim",
+        notes: [
+          "Bai Wuji's palm, his straight poke, Dark Spark and the fist he pulls you onto now land on the line to your chest instead of crossing past you.",
+          'His kicks ease back after they land instead of snapping back off a dead stop.',
+          'In his first phase his right hand comes out of its pocket to cast Azure Draw and the Yank, so the blue fist he pulls you onto is a fist you can see.',
+          'Fixed: a spell or a thrown piece of his no longer knocks you down again the moment you stand up from a knockdown.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'The performance readout measures by itself',
         notes: ['With ?perf in the address, BENCH now runs on its own during a fight, at the slow moments too. Just play, then tap REPORT.'],
       },
@@ -52,6 +62,15 @@ export const RELEASES = [
         notes: [
           'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',
           'To try: ?sheathPace=a (his scabbard blows wind up longer) and ?drawFx=a, b or c (three looks for the draw).',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Bai Wuji glides: quicker, one-handed, and his barrier opens easier',
+        notes: [
+          "Bai Wuji fights with his hands in his pockets now: short, sharp kicks that land straight, a hand coming out in his second phase and both in his last. His blue and red blows hold a pose you can read; every later blow of a string comes out of a short blink around you.",
+          'His barrier opens easier: two ordinary parries crack it open, a perfect parry or dodge opens it for longer, and your cuts hit two and a half times as hard while it is open. He has less health, and he loses patience after 20 seconds instead of 30.',
+          'Fixed: a falling piece no longer lands on you while you are down, and a quick string of his can no longer hold you longer than it should.',
         ],
       },
       {
@@ -97,6 +116,14 @@ export const RELEASES = [
           'Break his posture with a parry, or parry one of his blue warning blows, and the hero answers with a DEATHBLOW for every perfect parry banked: up to seven blows where he stands, each a different cut, each freezing for a beat in him.',
           'Every deathblow leaves a cut across him that shatters on the last, sprays blood that pools on the floor, and sounds like a blade through flesh.',
           'Parry the last blow of a string and he recoils: strike back in that moment with your own counter cut. Parries no longer count toward the perfect-dodge streak.',
+        ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'The hero runs with his sword held low, its point down beside his leg, gripped as a hand grips it',
+        notes: [
+          'On the run he grips his sword the way a hand does: its point hangs down beside his right leg, a little ahead, and rides with his arm as it swings, clear of his coat. His fist sits on the handle the way a hand grips one, and his free arm swings naturally with his stride. ?runSword=hip and ?runArm=d give the run before.',
+          'Out of a run with the blade trailing behind him, blocking no longer flips the sword round in one frame.',
         ],
       },
       {

@@ -7076,6 +7076,94 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
 
+## ADR-250 — Bai Wuji round 3: the glide (his melee motion, the owner's pick of three takes), the barrier opens easier, cuts x2.5 through it; his mercy counted in real time (2026-11-27)
+
+- **Context:** the owner after playing the shipped fight (ADR-241 - 243): "the fight is pretty hard right now
+  and takes forever to do damage to him"; his kicks and punches "do not look natural and look off"; "faster and
+  cooler", effortless and invincible. Their answers: the barrier opens easier (two ordinary parries crack it
+  open, it stays open longer, the hero's cuts hit harder while it is open, hp near 20000, a good player wins in
+  about three minutes); effortless and one-handed (hands in his pockets most of phase 1, one out in phase 2,
+  both in phase 3; fast snaps, held poses only on blue / red); film 2 - 3 takes, they pick. They picked **b,
+  the glide**. Why his melee looked off: his realiser had no `keysOf`, so ADR-225's motion layer (held blue /
+  red windups, released feet) never reached him; his knees were 96 - 131 deg at the contact, his fists Tian
+  Lei's boxer guard, his strings lunged.
+- **Decision:**
+  1. THE TAKES (`untouched/motion.js`, `?wjMotion=0|a|b|c`; PICKED `b`; `0` = as first shipped): each melee
+     move's `beats` / `recovery` are live getters over the take; a take rebuilds the pose keys (hand-keyed,
+     ADR-236), retimes the windups (normal blows cut toward the engine's floors, blue / red keep most of theirs:
+     the held pose is the read; the cock moves late, a snap), recoveries x 0.66 (b), a string's later beat out
+     of a short blink round the hero (`wjBlink.near`; b blinks every later beat, flank / behind / other flank),
+     and `wjHands` (the hands a blow uses). THE HAND LAYER (`poses.js` `wjHandsLayer`, `pilot.wjPin` eased by
+     `WjMelee`) keeps the others in his pockets. Tells, zones, damage, knockback and the engine's minimums do
+     not move (veil.mjs DATA, MOTION, MOTIONAUDIT).
+  2. THE BARRIER OPENS EASIER (`wjBarrier`): `cracks` 4 -> 2; open after a perfect answer 4.0 / 3.2 / 2.6 ->
+     6 / 5 / 4.2 s; by cracks 2.4 / 2.0 / 1.6 -> 5 / 4.2 / 3.4 s; `openDamage` 2.5 (new; `barrier.scaled(o)`):
+     every cut that is not `exact` deals x2.5 while it is open. No new mark: the open ring and the numbers read
+     it. hp 26000 -> 20000. Patience after 30 -> 20 s.
+  3. THE BENCH WITH THE GLIDE (six seeds, god mode off): openDamage 2.2 gave the good bot 2 wins in 6, 2.35 4
+     in 6, **2.5 6 in 6 in 147 / 166 / 191 s** (2.8 min mean); the perfect bot 6 in 6 in 106 - 119 s, untouched;
+     fencing 3 in 6; roller 4 in 6 in 167 - 191 s; blocker dead at 39 s; the pace defender dead in all six at
+     patience 20 (95 - 553 s; at 30 and 25 one seed lived out 600 s). Longer openings by cracks changed nothing:
+     the good bot opens him by cracks 1 - 3 times a fight (ADR-227's parry windows leave the ordinary-parry band
+     about a frame wide).
+  4. THE PERFECT BOT'S HITS were the bot's, not his: it rolled out of falling pieces too late for the next red,
+     tapped one parry for two cues 0.08 s apart, and rolled away facing off him. The bench's bots now roll out
+     of a falling piece as its cue comes (late once to cover a red that follows within 0.3 s), roll the way that
+     keeps him in front, and hold the guard for two guard cues within 0.3 s: 0 hits on 12 seeds.
+  5. MERCY IN REAL TIME (`WjMelee`): a hit's freeze holds the hero as long as it holds the clock, so the stretch
+     out of his own hands is counted in `game.realDt` (three quick Five Sides blows measured 1.19 s of game time
+     while the hero was held 1.52 s); a blocked blow that would empty the guard meter adds `GUARD.openDur`, not a
+     plain stagger. A falling piece never lands on a hero who is down (`destructibles.js`).
+- **Consequences:** a good player beats him in about three minutes; a pure defender still dies. Open: the
+  ledger forgets a red once it has landed, so the fairness guard never holds a blow that lands while the hero is
+  still in the roll that answered a falling piece (shared duelist code, left); patience is slow against a pure
+  defender because his next blow lands in the knocked-open guard about one time in ten.
+
+## ADR-255 — Bai Wuji's motion audit: straight blows on the line to the hero, a kick's return without the snap, phase 1's casting hand out of its pocket (2026-11-27)
+
+- **Context:** the owner's motion audit of every boss (2026-11-26: "weird looking arm angles", "attacks that look
+  unrealistic", kicks "still bended", every attack readable; Bai Wuji's spell effects are the bar, kept). His
+  melee motion had just been rebuilt and picked (ADR-250, the glide), so this pass audits the glide, built on it
+  (PR 176), and changes only what the measures found. A new opt-in scenario `veil.mjs . anatomy` measures every
+  move of his in every phase on the rig: the striking limb at each contact, an arm's line to the hero (degrees
+  off the line from his shoulder to the hero's chest, flat and up / down, at the contact and at the release),
+  the largest one-frame jump and when. Two traps in measuring a line: the duelists' rig root carries a
+  world-fixed tilt toward the camera on a non-uniform scale (x -0.24 rad; 1.21 / 1.38 / 1.21), so the hero is
+  placed in an UNTILTED frame (his position, yaw and scale), and the hero's place is taken the frame before the
+  contact (the blow's own throw moves him inside the hit frame).
+- **Found:** the glide's kicks land straight (knee 166 - 175 deg; 107 - 132 before ADR-250) and its straight hand
+  blows open (152 - 169 deg); every blow faces the hero at its contact. But (1) the palm, the poke, Dark Spark's
+  fist and the Yank's fist crossed past his centreline, 12 - 31 deg off the line to the hero's chest (Dark Spark's
+  fist passed him by most of a metre); (2) inside a string a kick's contact pose was held dead still (u 1.0 -
+  1.22) and the leg snapped back to the chamber in the last frames of a ~0.15 s follow-through: a 0.4 - 0.57 m
+  one-frame jump (Three Count, Four Sides, Too Slow, Everywhere); (3) ADR-250's hand layer pins the right hand in
+  its pocket through any phase-1 move whose beat names no `wjHands`, so phase 1's Azure Draw lost its finger and
+  the Yank's BLUE fist (a parry cue) glinted inside a pocket (elbow 112 deg, the arm 81 deg down).
+- **Decision:**
+  1. `?wjPolish=0|a` (PICKED `a`, the owner's pick from the films; `untouched/motion.js` POLISH, built into a second set of takes,
+     read live): (1) each straight hand blow's contact hand moved back toward his centreline by AIM (palm -0.12,
+     poke -0.1, Dark Spark -0.2 m; the Yank's fist -0.14 through its own `wjKeysP`, played by his realiser's
+     `keysOf`): now 1 - 10 deg off; (2) a kick's follow-through is a moving hold (12 % back toward the chamber by
+     u 1.14) that eases into the chamber at u 1.7: Three Count's worst jump 0.51 -> 0.34 m, Everywhere's 0.48 ->
+     0.25. What is left is the snap of the strike itself (the owner's fast glide). A follow-through past the
+     contact was tried and dropped (it drove the axe heel into the road: 0.50 m).
+  2. `?wjCastHand=0|a|b` (PICKED `a`, the owner's pick from the films; `WjMelee._motionFrame`): a phase-1 beat of Azure Draw or the
+     Yank uses the right hand: `a` for the whole cast, `b` from 0.55 of its windup (the pull and the flick), `0`
+     round 3's pocket. Curb Pull keeps both hands in (its own design).
+  3. No effect is upgraded: his spells are the owner's bar for the game, and no special of his reads weaker than
+     the rest of his set on film.
+  4. Tests: `veil.mjs . polish` (default) asserts the lines, the return and the casting hand; `anatomy` (opt-in)
+     prints the table. No tell, windup, zone, damage or timing moves.
+  5. THE MERCY FOR SPELLS AND PIECES: the full run's DOWNTIME (seed 7, on the fight path these poses gave it) found
+     Crimson Cast's burst landing 0.05 s after the hero stood up from Overhead's knockdown: 2.92 s out of his own
+     hands (the cap 1.5). His melee beats spare such a blow (`WjMelee._spare`), his spells and thrown pieces only
+     spared a hero who was still down. Now `WjMelee.chainsLock(knockdown)` asks the same rule, and the spells'
+     `_strike` and terrain's `_heroDown` pass a blow over a hero it would chain (the blow still flies, cued; it
+     only does not land).
+- **Consequences:** the owner picked `a` and `a` from the films (2026-11-27): the defaults. Left for the hero
+  session: one-frame jumps of a SUPPORT foot after a blink (Five Sides 0.47 m, Passing Through 0.55 m) come from
+  the hero animator's `_feetClip`.
+
 ## ADR-251 — The Starless Lord's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps on the feet, the step on the blow; a readable pace and looks for two specials, to pick (`?lordForm` / `?lordPace` / `?boltFx` / `?igniteFx`) (2026-11-27)
 
 - **Context:** the owner's motion audit of every boss ("weird looking arm angles and sword positioning and attacks
@@ -7217,6 +7305,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   With `b` the default, the pace meter's phase-3 longest gap was re-pinned 3.9 -> 4.7 s: seed 4242 now rolls Pushing
   Hands then Unwriting (its bricks held before the first is thrown), 4.52 s; on five fresh seeds `b`'s worst phase-3
   gap is 2.91 s (`a`'s 2.67), and `a` itself fails the phase-2 cap on one of them (4.02 s).
+
 ## ADR-252 — Lu Wusheng audited: the draw's hands and lunge, thrusts in line, a diagonal overhead, the readable pace, three looks for the draw (`?sheathForm=` `?sheathPace=` `?drawFx=`) (2026-11-27)
 
 - **Context:** the owner asked for every boss's motion to be audited against `docs/ANIMATION.md` and the Sekiro /
@@ -7378,3 +7467,144 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Consequences:** the game holds still for a moment up to 4 times in a fight with `?perf` (only then); the
   frame after a bench is left out of the frame statistics. Not tried on the phone yet.
 
+## ADR-229 — The run from the owner's sketch: the blade trailing in the forearm's line, the free arm opened out (2026-11-26)
+
+- **Context:** the owner (2026-11-25): "modify the running animation. from the back the left arm seems way too
+  pressed in and makes it seem like he has no left arm during the run. also have the sword be in this angle when
+  he's running instead of it being held in the front", with a sketch: an arm coming down to the fist, a long
+  straight blade going on in the forearm's line, slanting down ~35-40° below level, the point well past the hand.
+  Measured on the drawn frame from behind at the game camera's pitch (the hero alone rendered as is, without the
+  free forearm, without the arm, without him: image masks, so the camera lean's shear is what is measured): the
+  default free arm (`d`, ADR-204) stood clear of the coat's outline on 10-40 % of a stride's rows, its median gap
+  to the coat -0.5 … 0.4 cm (it hugged the coat's edge). The sketch does not say which way the point faces nor how
+  far the arm hangs back; "instead of it being held in the front" says the point is not ahead.
+- **Decision (options; the defaults unchanged until the owner picks):**
+  1. **The free arm `e`, open** (`runArms.js` `RUN_ARMS.open`, `?runArm=e`): `d`'s pump with the upper arm ~20°
+     off his side (+6° more on the back swing), the forearm hardly crossing in front (10 - 16°), keeping most of
+     the stand-off (`side` 0.95). From behind its forearm is clear of the coat on 90-100 % of the stride (a 9 - 12
+     cm median gap); in the body frame the hand stands 32 - 39 cm out from his centre line (d: 13 - 26), the
+     elbow flares 0.48 - 0.54 (d: 0.26 - 0.30) and still works 31° a stride. **`f`, wider** (`RUN_ARMS.wide`): a
+     step further (28 - 30°, no cross): clear on all of the stride (15 - 18 cm), flare 0.63 - 0.68.
+  2. **Three trailing sword carries** (`runSword.js`, `?runSword=trail|swept|side`): the arm by forward
+     kinematics as in `hip`, the blade going on from the forearm's line behind him (lifted `tilt` off it, turned
+     `yaw` out to his right, its slant held in `down`), rocking with the arm's swing. `trail`: the arm hanging a
+     little back, the blade 27-45° below level on the run (22-36° at a sprint); `swept`: the arm swept back, 13-30°;
+     `side`: out to his right and back (azimuth ~128°), 15-41°: from the game camera behind him, the sketch's
+     diagonal. The wrist (forearm vs blade) 15-40° (`old` 57-84°, `hip` 54-77°: a hammer grip). The steel at
+     least 20 cm off the legs, never through the coat's skirt, the point at least 24 cm over the grass.
+  3. **Out of a trailing blade into a block, a parry, the flask or a charge** (`HeroAnimator._idleLife`): the
+     clip's entry takes `IDLES.cutFade` (0.24 s) at least, as out of the old trailing rest: in the block's 0.08 s
+     the blade turned 75° in a frame, the point 1.2 m a frame² (`old` did the same). Now 15-23 cm (hip: 26).
+- **Not changed:** the fight carry (`FIGHT_RUN`), the backpedal's guard, the sprint's blend over the carry.
+- **Consequences:** HERORUN measures every arm and sword carry (the wrist, the steel vs the legs and the coat
+  newly) and bounds `e` / `f` both ways (out past the coat, never a wing) and the trailing carries (behind him, the
+  slant, in line, clear); HEROARMS's elbow-in check skips an opened free arm, HERORUN holds it. Known: setting
+  off from a rest that holds the blade up (an idle action mid-draw) turns a trailing blade up to 11° a frame (the
+  point 8.6 cm a frame²; hip 5.4); with the aim swung behind him the backpedal guard swings it round at 12-15 cm a
+  frame² (hip 8, `old` 13); out of the opened arm into a block the free wrist jolts 2.7 (e) / 4.2 (f) cm more than
+  `old`.
+- **Amended (2026-11-26), the owner's pick and the straight arm:** "Arm e and trail but the right arm needs to be
+  straight during the trail running animation instead of having an angle. Right now it looks unnatural with the
+  angle." Why it bent: `trail` asked for a 166-170° elbow, but the solver's soft reach (ADR-044, `HERO_SOFT`
+  0.93-0.99 of the arm's length) compresses any near-full reach, so it drew 151° (at most ~163° whatever is
+  asked), and the blade, aimed off the asked forearm, sat 23-36° off the drawn one. Now: `RUN_SWORDS.trail.open`
+  asks the solver for the sword arm's full reach (`OUT.open` → `A.reachT` from the loco clip's own pose, scaled by
+  the carry's share: the sword's lag, the backpedal, the fight carry, a held guard; `_swordOpen()` cross-fades it
+  from where the last clip left it, like a pose channel, without one: the light chain's open PR adds channels;
+  `_arm` takes `max(lock, open)` in the soft reach only). The arm: 36° back (30° at a sprint) ±9-11° with the
+  stride, 22-24° off his side, straight: the hand asked 3 % past the arm's length (`over` 1.03; the solver stops it at
+  176°). Asked at exactly its length it drew 168° (the hand is aimed from the grip shoulder, 8 mm in from the arm's
+  own, and near a full stretch 3 mm of reach is 11° of elbow), a kink the owner still saw from the game camera:
+  "Make the right arm have a smoother angle during the run". The blade 2-3° off the line, 22-24° out: 1-5° off the
+  drawn forearm. Slant 25-45° below level (21-35° at
+  a sprint), the steel 30+ cm off the legs, 13 cm off the coat, 25+ cm over the grass. Setting off, the arm opens
+  out of the stand's 84° elbow over the sword's lag (~0.8 s). **Defaults now `?runArm=e` and `?runSword=trail`**,
+  the variants the owner chose from the films and the preview; `d` / `hip` give the run before. Against main's
+  `d` / `hip`: the block entry gentler (the point 20 cm a frame² vs 26), the run, the sprint, the light, the roll
+  and the flask as smooth; rougher: the aim swung behind him (15 vs 8 cm a frame²) and the stop (4 vs 2); the sword elbow letting go of the
+  straight arm jolts 2.6 cm a frame² at a stop (0.7) and 6.5 into a roll (4.2).
+- **Amended (2026-11-26), out along the owner's arrow, a relaxed arm:** the owner on the preview, with a
+  screenshot from the game camera and a red arrow from his hand down and out to his right at ~45°: "no the right
+  hand now is too straight back. the new angle is too much. the arm angle also looks unnatural too. i want the
+  sword and arm to be more on the red angle direction and ensure the look of his arm, motion, and animation
+  looks good and natural". Measured on the drawn frame at the game camera (the screen angle below the
+  horizontal, toward the screen's right): the straight-back arm 74°, its blade 74-75° (nearly straight down the
+  screen, over his back). Searched live against that: `trail` now hangs the arm out from his side (40-42°
+  off it, the forearm kept out, `side` 1.3), the shoulder 16° back ±10° with the stride, the elbow soft
+  (asked 154-166°, drawn 154-161°; `open` keeps the asked elbow, `over` 1), the blade lifted 44-46° off the
+  forearm's line and turned 62-64° out: azimuth 114-121° (90 is his right, 180 behind), 23-35° below level
+  (13-26° at a sprint). At the game camera: the arm ~57°, the blade ~48° (rocking 45-50°; 42° at a sprint),
+  the owner's arrow. The blade 21-28° off the drawn forearm (a light wrist turn). The steel 47 cm off the legs,
+  31 cm off the coat, 40 cm over the grass. `trailing()` now floors the blade's angle AFTER the lift (floored
+  before it, a forearm swinging past vertical froze the blade). Against main's `d` / `hip` it is smoother than
+  either version before it: the run, the sprint, the start and the strafe at or under main; the block entry 12.5
+  cm a frame² (26); rougher only the aim swung behind him (11.5 vs 8).
+- **Amended (2026-11-26), redone, then the natural hold (`nat`, the default):** after the arrow carry the owner
+  asked for the run redone "with the sword flailing out" (`flail`: the blade hangs from the hand and swings a beat
+  after the arm, `pendulum()`; "looking better but ... the sword angle being too far out"), then for "4 different
+  variations of different sword angles ... a solid back angle running animation" (`b15` / `b25` / `b35` / `b45`:
+  the blade held 15-45° out from straight back, swaying 2-3°), liked A (`b15`) but not its arm ("extending out and
+  above the back"), then four arms brought in (`a1`-`a4`), then: "all of them look unnatural from the user camera
+  perspective. figure it out and make it look good, natural, and anatomy wise correct". **What was wrong with every
+  carry since the sketch:** they put the blade in (or near) the forearm's line. A fist holds a sword's grip across
+  the palm, so the blade leaves the hand at about a right angle to the forearm and the wrist tips it at most ~30-40°
+  toward the forearm's line: a blade 15-40° off a hanging forearm is a grip no hand makes, and from the game camera
+  it read as a pole hanging from his fist. **`nat`:** the arm relaxed at his side (8° back ±8° with the stride, 16°
+  off his side), the elbow soft (asked 156-142°, drawn 138-155°), the fist by his hip, the blade 45-82° off the
+  forearm (a hammer grip; `old` 57-84°), behind him and a little out (azimuth 143-149°), 9-22° below level,
+  swaying ±2-3° (`pendulum()`). At the game camera the blade is a diagonal ~61° down the screen (58-64°). Clear:
+  the legs 22 cm, the coat (no crossing), the grass 46 cm. Against main's `d` / `hip`: the run and the sprint
+  steadier (the blade turns ≤ 1.1° a frame), the block entry gentler (15.5 cm a frame² vs 26); rougher: the aim
+  swung behind him (12.6 vs 8.4) and setting off (the blade turns 5.8° a frame while the stand hands over).
+  Every carry tried stays behind `?runSword=`.
+- **Amended (2026-11-26), the natural hold's arm:** the owner: "something about the arm joint angle looks unnatural
+  from the player view. also the side view doesnt look good". Measured in his body frame: the arm's angles are
+  against the leaning torso (17° running, 31° sprinting), so `phi` -8 hung the upper arm ~30° behind plumb while
+  the forearm hung straight down: the elbow jutted back in a V. Now `phi` is ahead of the torso's line by about the
+  lean: `nat` hangs the upper arm ~3-14° behind plumb (the elbow 151-162°, bending forward about a lateral axis,
+  its tip straight back), the fist at the hip, the blade 67-89° off the forearm; `n1` plumb, the fist ahead of the
+  hip (elbow ~150°); `n3` ~10-24° back, the fist behind it (elbow ~165°).
+- **Amended (2026-11-26), rebuilt from the hand's grip; the owner picked G2:** "all look bad. try again", ticking
+  the sword pointing back, the fist / wrist / grip, a stiff arm and the whole run, "you decide". `fistBlade()`: the
+  blade set in the fist, not in the world: the thumb faces `thumb` degrees round the forearm, the blade leaves the
+  fist on the thumb side `grip` degrees off the forearm's line, the flat lies across the knuckles (square to the
+  forearm and the blade: the fist never twists); the arm swings as a runner's (`RUNNER`: the shoulder 10-13° each
+  way, the elbow 162 → 142°) and the blade rides with the hand; `top` the wrist's cap on the point's rise. A relaxed
+  hammer grip's thumb faces forward, so it carries the blade forward and down; pointing it back needs the forearm
+  wrung round (what every trailing carry read as), or a reverse grip. Three concepts: `g1` low ahead, `g2` the
+  point down, `g3` a reverse grip. The owner: "g2 but make sure the arm and sword doesn't clip with the cloak
+  fabric" (the films showed the steel against the cloth: measured on every coat panel and cape streamer, densely,
+  it passed within 0.3 cm). **`g2`, the default:** the hand 18° off his side, the thumb 55° out, the grip 46-48°,
+  the point held 11-30° below level, azimuth 39-63° (ahead and out): the steel ≥ 12.6 cm off every cloth sheet
+  on every stretch, ≥ 22 cm off the legs, ≥ 33 cm over the grass, the wrist 30-48° (a dropped wrist), the elbow
+  133-159°. The block / parry / flask / charge entry's 0.24 s now also covers a blade pointing down (`swD.y` <
+  −0.15): from `g2` the block swung the point 47 cm a frame² (now 6; main 26). HERORUN measures the cloth gap
+  (`clothGap`) for every carry and bounds `g2`. Against main: the run's point moves more (it rides the arm: 3.8 vs
+  0.8 cm a frame²); the aim swung behind him 13.8 vs 8.4.
+- **Amended (2026-11-26), the free hand on guard (`?runArm=g`, the default):** the owner, of `g2` with the opened free
+  arm: "looking better but i want to make him look cooler when he runs"; four run styles over the posture
+  (`player/runStyle.js`, `?runStyle=hunter|dash|coiled|ghost`: more lean and sink, the free arm swept back, a
+  bladed chest turn, a low glide; the default stays `base`) were turned down; with a photo of a swordsman running,
+  his free fist at his hip: "his left hand is moving around too much, lets make his hand like this pose" (`h`: the
+  fist pinned to the pelvis at the belt, moving ~1 cm against it), turned down ("the angle looks really unnatural
+  and weird"); then "make his left in a pose like hes guarding his face and chest with his left hand and make it
+  look natural during the movement run". **`g`:** the fist placed before his chin, a little left of centre (chest
+  frame (0.07, 0.34, 0.29) m from the chest joint), the elbow's pole down before the ribs, the solver bending the
+  arm; both turned by the spine's and the pelvis's rotation as posed (it leans and twists with the torso); a little
+  give with each landing (1.2 cm) and the stride (1 cm). It moves 0.3 cm a frame² on the run (the swinging arm
+  1.2); into a light, a roll, a block or the flask no rougher than before. From straight behind the guard sits in
+  front of his body, under the cape. HERORUN bounds it (the fist ahead, inside the shoulder line, up, held).
+- **Amended (2026-11-26), the guard turned down:** "lets revert back. i dont like the new guarding pose as it looks
+  really bad from the other angles. lets go back to the left hand variations". The default free arm is `e` again
+  (the opened pump the owner picked); `g` (the guard) and `h` (the fist at the hip) stay behind `?runArm=`.
+- **Amended (2026-11-26), the free arm `a`; the sword hand's grip:** of the free arm's variations the owner picked
+  `a` (natural), "but the right hand and sword looks off and unnatural. review it and figure out the right anatomy
+  to hold the sword on that right hand while running". The sword hand is drawn in two pieces: the back of the hand
+  on the forearm, the curled fingers, the thumb and the knuckle ridge on the sword (`gripFist`: the thumb on the
+  +Y flat, the ridge on the +X edge). Measured where the forearm (elbow → wrist) comes into the fist, in the
+  sword's frame: his stand at ease (−0.27, −0.24, 0.93) and his fight guard (−0.20, −0.62, 0.76), both approved, come
+  in opposite the thumb, a little toward the −X edge, the blade 20-40° off the forearm; `g2` came in at (−0.60,
+  +0.32, 0.73), ON the thumb's side (the thumb wedged between the wrist and the grip: a fist wrung round), `old`
+  from the knuckles' side. `fistBlade()` now rolls the fist so the forearm comes in opposite the thumb, turned
+  `twist` 30° toward −X: (−0.32, −0.60, 0.74), between the two approved poses; the flat shows to the game camera
+  (|n·cam| ≥ 0.63; edge-on under ~0.3 vanishes). `g2`'s wrist cap is 26° (the point 8-35° below level).

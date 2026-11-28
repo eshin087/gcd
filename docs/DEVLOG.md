@@ -5,6 +5,71 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — The run from the owner's sketch: trailing sword carries, the free arm opened out (ADR-229; branch `claude/hero-run-sketch-6baa40`)
+
+**Owner (2026-11-25):** "from the back the left arm seems way too pressed in and makes it seem like he has no left
+arm during the run. also have the sword be in this angle when he's running instead of it being held in the front",
+with a sketch of a blade going on from the forearm, ~35-40° below level. **Measured** the free arm on the drawn
+frame (headless Edge, the hero rendered alone four ways: image masks, the camera lean's shear included): today's
+forearm clear of the coat on 10-40 % of a stride (gap ~0). **Built (options, defaults unchanged):** `?runArm=e`
+(open: 90-100 % clear, 9-12 cm) and `f` (wider: 100 %, 15-18 cm); `?runSword=trail|swept|side` (the blade in the
+forearm's line behind him, the wrist 15-40° against `old`'s 57-84°, the steel ≥ 20 cm off the legs, never through
+the coat). A block / parry / flask / charge out of a trailing blade now enters over 0.24 s (it flipped 75° in a
+frame, `old` too). **Verified:** `herorun` (new bounds for e / f and the trailing carries; the wrist, legs and coat
+newly measured), an in-page audit against today's `d` / `hip` (start, stop, sprint, strafe, turn, light, roll,
+block, heal). **Sent the owner** close-up films (today | A trail | B swept | C side; today | e | f; the game camera,
+behind, his side, the front; half-speed copies). **The owner picked** `e` + `trail`, "but the right arm needs to be straight ... instead of having an angle": the
+solver's soft reach had bent the asked 170° elbow to 151°; the trail carry now asks for the arm's full reach
+(`_swordOpen`) a hair past the arm's length (`over` 1.03: at exactly its length it still drew 168°, a kink the
+owner saw from the game camera), so the arm hangs straight back (176°), the blade 1-5° off it. **Then** the owner, with a game-camera
+screenshot and a red arrow down and out to his right: "too straight back ... the arm angle also looks unnatural".
+Measured screen angles at the game camera (arm and blade 74-75° down the screen) and searched live: the arm now
+hangs out from his side with a soft elbow (154-161°), the blade out along the arrow (~48° down the screen,
+azimuth ~117°, 23-35° below level), rocking with the stride; smoother than both versions before. **Then**,
+through the owner's asks: `flail` (the blade swinging loose, `pendulum()`), four solid back angles (`b15`-`b45`),
+four arms for A (`a1`-`a4`), and "all of them look unnatural ... make it ... anatomy wise correct". The cause:
+every carry put the blade near the forearm's line, a grip no fist makes (the blade leaves a fist at ~90° to the
+forearm). **`nat`** (the default): the arm relaxed at his side, the fist by his hip, the blade 45-82° off the
+forearm, behind him and a little out, steady; ~61° down the screen at the game camera. Films sent. **Then**
+the arm's joint (the elbow jutting back as he leans), then "all look bad" (the pointing back, the grip, a stiff arm,
+the whole run). Rebuilt from the hand (`fistBlade`: the blade set in the fist, a real grip, the arm a runner's);
+three concepts; the owner picked **`g2`** (the point down beside his leg) "but make sure the arm and sword doesn't
+clip with the cloak fabric": measured against every coat panel and cape streamer it passed within 0.3 cm; the hand
+further off his side and the thumb out, now ≥ 12.6 cm. The default; films sent. **Open:** the owner also ticked
+"the whole run" (legs, lean, torso): a separate pass (the loco lean is shared with the duelists' footwork).
+**Then** four run styles (`?runStyle=`, turned down), the fist at the hip from the owner's photo (`h`, turned down),
+and the guard (`?runArm=g`, the fist held before his chin and chest, posed in the chest's frame), turned down
+("looks really bad from the other angles"): the free arm is `e` again, then `a` (the owner's pick of the
+variations). **The sword hand's grip:** measured where the forearm enters the fist in the sword's frame; `g2`'s
+came in on the thumb's side (a fist wrung round); now opposite the thumb, as in his stand and his guard (`twist`). Both are the defaults now; films
+before | after sent. **Open:** setting
+off from an idle action that holds the blade up turns a trailing blade 11° a frame; the backpedal guard swings a
+trailing blade round at 12-15 cm a frame² (hip 8, old 13).
+
+## 2026-11-27 — Bai Wuji's motion audit (ADR-255; branch `claude/bai-wuji-motion-bd1653`, built on PR 176)
+
+**Owner:** the boss motion audit (2026-11-26): weird arm angles, unrealistic attacks, bent kicks; every attack
+readable; his spell effects (and the fox's) are the bar. His melee had just been rebuilt (ADR-250, the glide, PR
+176, open): this pass audits the glide and builds on that branch.
+
+**Measured** (`veil.mjs . anatomy`, new, opt-in): every move in every phase, the limb at each contact, an arm's line
+to the hero, the worst one-frame jump. The glide's kicks land straight (166 - 175 deg) and its straight blows
+open (152 - 169 deg). Found: straight hand blows 12 - 31 deg off the line to the hero's chest (Dark Spark's fist
+passed him by most of a metre); a string's kick snapping back off a dead hold (0.4 - 0.57 m in a frame); phase 1's
+Azure Draw and Yank cast from a pocket (the Yank's blue fist cue glinting in it). Measuring a line needs an
+untilted frame (the rig root leans toward the camera) and the hero's place the frame before the contact.
+
+**Changed:** `?wjPolish=a` (straight blows on the line: 1 - 10 deg; the kick's return a moving hold that eases into
+the chamber: Three Count 0.51 -> 0.34 m), `?wjCastHand=a|b` (the casting hand out). `veil.mjs . polish` asserts
+them. Films: before / after at the game camera and close, half speed, and the three casting hands.
+
+**Picked:** the owner kept the polish (`a`) and the casting hand out for the whole cast (`a`): the defaults.
+**Open:** a support foot jumps after a
+blink (Five Sides, Passing Through: anim.js `_feetClip`, the hero session's); PR 176 and Shen Hui's PR both use
+ADR-250.
+
+---
+
 ## 2026-11-27 — AUTO BENCH: `?perf` benches by itself in a fight (ADR-261; branch `perf/auto-bench`)
 
 **Owner:** "Is there no way we can capture the benchmarks without me having to press it at the laggy moment?"
@@ -13,6 +78,8 @@ most, 10 s apart); the frame after a bench is skipped; each bench records why, A
 line shows `bench n/4`; `?perf=manual` turns it off. Test: world `perfreadout`. **Checked:** a 25 s wyrm fight
 at the phone's size benched itself 8.9 s in (the desktop GPU never had a slow burst). **Next:** the owner's
 REPORT from Cinderwood on the iPhone.
+
+---
 
 ## 2026-11-27 — The Starless Lord's form, a readable pace, looks for two specials (ADR-251; branch `claude/lord-motion`)
 
@@ -79,6 +146,9 @@ at the game camera.
 **Open / next:** the hooks from the side, the
 sweep's knee at its very contact, Iron Rain's twin arms; the feet jump in `anim.js _feetClip` belongs to the hero
 session.
+
+---
+
 ## 2026-11-27 — Lu Wusheng audited: the form, the pace, three looks for the draw (ADR-252; branch `claude/lu-wusheng-motion`)
 
 **Goal:** the owner's motion audit of every boss (one session and one draft PR each, batch 2), for Lu Wusheng:
@@ -197,6 +267,8 @@ the cut starting in the air, and a landing 1.6 m short of the hero (leap `short`
 
 **Open.** His pace unchanged (the owner chose it fast). Feet still slide 0.15 - 0.5 m over a long string where the
 close-in carries his root under a planted foot.
+---
+
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
 **Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its
@@ -228,6 +300,37 @@ rolled; the same strings both ways, game camera, close crop, a posture readout b
 preview (the film has no sound). With the deathblow merged, a dance-made break may come with fewer perfect parries
 banked, so the deathblow can be shorter. Next in P4: the Break finisher, cuts that split the letters, one answer per
 unblockable, a sub-weapon.
+
+---
+
+## 2026-11-27 — Bai Wuji round 3: the glide, a barrier that opens easier (branch `wj2/lead`; ADR-250)
+
+**Owner:** "the fight is pretty hard right now and takes forever to do damage to him. his animations and attacks
+also need to be much more improved. like his kicks and punches do not look natural and look off. he needs to be
+faster and cooler." Their answers: the barrier opens easier (hp near 20000, a good player in ~3 min);
+effortless, one-handed; film takes and they pick. They picked **b, the glide**.
+
+**What changed.**
+- `untouched/motion.js`: three hand-keyed takes behind `?wjMotion=0|a|b|c` (PICKED b; Lab LOOKS row). Why he
+  looked off: his realiser had no `keysOf`, so ADR-225's motion layer never reached him (bent knees at the
+  contact, Tian Lei's boxer fists, lunging strings). The hand layer (`poses.js` `wjHandsLayer`, `pilot.wjPin`)
+  keeps his hands in his pockets by phase.
+- `wjBarrier`: cracks 2, open 6 / 5 / 4.2 s (by cracks 5 / 4.2 / 3.4), cuts x2.5 while open
+  (`barrier.scaled`); hp 20000; patience after 20 s.
+- `bench.mjs`: the bots roll out of falling pieces as their cue comes, keep him in front, hold the guard for two
+  cues 0.3 s apart (the perfect bot's three hits under the glide were its own).
+- `WjMelee` counts the mercy stretch in real time (`game.realDt`; hit freezes held the hero 1.52 s in
+  `downtime` seed 7 while game time said 1.19 s) and counts a guard-emptying block as the open stagger;
+  `destructibles.js`: no falling piece on a downed hero.
+
+**Verification.** The bench (six seeds, take b): good 6 / 6 in 147 - 191 s, perfect 6 / 6 in 106 - 119 s
+untouched (12 seeds), blocker and pace dead. `veil.mjs . all` green; the full `npm test` before the PR.
+
+**Open.** The ordinary-parry band is about a frame since ADR-227, so cracks rarely open him (a wider window
+would touch every level: the owner's call). The ledger forgets a landed red (shared duelist code). Patience
+is slow on a pure defender (his blow lands in the opened guard ~1 in 10). Should x2.5 have its own hit mark?
+
+---
 
 ## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
 

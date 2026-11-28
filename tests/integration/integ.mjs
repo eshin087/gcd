@@ -5491,7 +5491,10 @@ async function scenarioHero() {
   let bendR = Infinity, bendL = Infinity;
   const probe = () => {
     frames++;
-    bendR = Math.min(bendR, -r.arms.R.fore.rotation.x);
+    // (ADR-229: the run's trailing carry holds the sword arm straight on purpose, the owner (2026-11-26): "the right
+    // arm needs to be straight during the trail running animation instead of having an angle"; while it holds the
+    // arm (the animator's _swordOpen) the sword elbow is TRAIL's to bound, HERORUN; every attack and the roll still here)
+    if (!(p.anim._swordOpen?.() > 0.05)) bendR = Math.min(bendR, -r.arms.R.fore.rotation.x);
     if (p.anim.cur[45] < 0.05) bendL = Math.min(bendL, -r.arms.L.fore.rotation.x);
     p.object3d.traverse((o) => { const e = o.matrixWorld.elements; for (let i = 0; i < 16; i++) if (!Number.isFinite(e[i])) { bad++; break; } });
     for (const C of r.coat) for (const S of C.strips) { v.set(0, -S.len, 0).applyMatrix4(S.joint.matrixWorld); low = Math.min(low, v.y); }
@@ -5561,7 +5564,7 @@ async function scenarioHero() {
   assert(tipLow > -0.06, `the steel point never sinks into the ground (lowest ${tipLow.toFixed(3)} m)`);
   // (≥ 15°: the hero's arms open to ~150-160° at a cut's contact and a thrust's end, anim.js HERO_SOFT;
   // under ARM_SOFT they never opened past 130° and the bound was 23°)
-  assert(bendR > 0.26 && bendL > 0.26, `neither arm locks straight: the elbows keep at least ${(Math.min(bendR, bendL) * 57.3).toFixed(0)} deg of bend through the run, the roll and every attack (sword arm ${(bendR * 57.3).toFixed(0)}, off arm ${(bendL * 57.3).toFixed(0)})`);
+  assert(bendR > 0.26 && bendL > 0.26, `neither arm locks straight: the elbows keep at least ${(Math.min(bendR, bendL) * 57.3).toFixed(0)} deg of bend through the run (the sword arm outside the straight trailing carry), the roll and every attack (sword arm ${(bendR * 57.3).toFixed(0)}, off arm ${(bendL * 57.3).toFixed(0)})`);
   // glyph cells follow the view distance: the in-game size at the 36 m camera, finer in close-ups
   // (small parts capped, the blade's two columns fixed); a bad distance never yields NaN
   const coatU = r.materials.coat.uniforms.uCell.value;
@@ -7493,6 +7496,27 @@ function coatCrossOf(r, tip, sheetOffset, v, w) {
   return false;
 }
 
+// The nearest the sword's steel (0.12 m past the grip to `tip`) comes to any cloth sheet: the coat's skirt panels
+// and the cape's streamers, each curved round as drawn, sampled densely (world metres; ADR-229)
+const _cg = new THREE.Vector3(), _cq = new THREE.Vector3();
+function clothGap(r, tip) {
+  let best = 9;
+  const sheets = [];
+  for (const C of r.coat ?? []) for (let s = 0; s < 2; s++) sheets.push([C.segs[s], C.def.len[s], C.r0 + (s ? 0.25 * C.def.len[0] : 0), C.def.w[s], C.def.w[s + 1]]);
+  for (const S of r.streamers ?? []) for (let s = 0; s < 2 && s < S.segs.length; s++) sheets.push([S.segs[s], S.len[s], (S.wrap ?? 0.02) + (s ? 0.25 * S.len[0] : 0), S.w ? S.w[s] : 0.15, S.w ? S.w[s + 1] : 0.15]);
+  for (const [seg, len, R0, w0, w1] of sheets) {
+    for (let ti = 0; ti <= 6; ti++) {
+      const t = ti / 6, wd = w0 + (w1 - w0) * t, R = R0 + 0.25 * t * len;
+      for (let ui = 0; ui <= 8; ui++) {
+        const u = (ui / 8 - 0.5) * wd;
+        _cg.set(Math.sin(u / R) * R, -t * len, (Math.cos(u / R) - 1) * R).applyMatrix4(seg.matrixWorld);
+        for (let z = 0.12; z <= tip + 1e-6; z += 0.06) best = Math.min(best, _cq.set(0, 0, z).applyMatrix4(r.sword.matrixWorld).distanceTo(_cg));
+      }
+    }
+  }
+  return best;
+}
+
 // HEROLOOK's drive: a run, a sprint, strafes and a backpedal, a stop, a roll, the chain with each
 // look of its hits, the sprint slash, the roll cut, the charged cleave and a block. `go(s)` steps the
 // sim; `mark(phase)` is called before each part ('run', 'sprint', 'strafe', 'roll', 'chain',
@@ -8833,12 +8857,22 @@ async function scenarioHeroArms() {
     // on purpose, the swordsman's dash: HERORUN bounds it. Here the sword arm, and the free arm of a
     // carry that swings it)
     const dashing = runArmMode() === 'b' || runArmMode() === 'c';
-    const spL = dashing ? 0 : Sp.fL;
-    assert(Math.max(R.fR, R.fL, S.fR, S.fL) <= 0.45 && Math.max(Sp.fR, spL) <= 0.55,
-      `the elbows stay in beside the ribs: out to the side at most ${Math.max(R.fR, R.fL, S.fR, S.fL).toFixed(2)} on the run and the strafe (≤ 0.45; they flared 0.47-0.58), ${Math.max(Sp.fR, spL).toFixed(2)} sprinting (≤ 0.55; 0.60-0.73${dashing ? `; the dash's free arm ${Sp.fL.toFixed(2)}, HERORUN` : ''})`);
-    assert(R.mz[0] > 0.95 && R.eL[1] - R.eL[0] >= 35 && R.hz[1] - R.hz[0] >= 0.3,
-      `the free arm works on the run: its elbow opens and folds ${(R.eL[1] - R.eL[0]).toFixed(0)}° a stride (≥ 35; it was one 87° crook) and the hand's target swings ${((R.hz[1] - R.hz[0]) * 100).toFixed(0)} cm fore and aft (≥ 30)`);
-    assert(Math.max(Math.abs(S.mz[0]), Math.abs(S.mz[1])) < 0.1 && S.x[1] - S.x[0] < 0.3 && S.hz[1] - S.hz[0] >= 0.12 && S.eL[1] - S.eL[0] >= 15,
+    // (ADR-229, 'e' / 'f': the free arm opened out from his side on purpose, the owner (2026-11-25): "from the
+    // back the left arm seems way too pressed in and makes it seem like he has no left arm during the run".
+    // HERORUN bounds it, out past the coat and never a wing; here the sword arm stays in)
+    const opened = runArmMode() === 'e' || runArmMode() === 'f' || runArmMode() === 'h' || runArmMode() === 'g';
+    // ('h', ADR-229, the default: the free fist HELD at the left hip on purpose, the owner (2026-11-26) with a photo
+    // of a swordsman running, the free fist at his hip: "his left hand is moving around too much, lets make his
+    // hand like this pose". It does not swing: HERORUN bounds it, still at the hip, outside the coat)
+    const held = runArmMode() === 'h' || runArmMode() === 'g';
+    const spL = dashing || opened ? 0 : Sp.fL, rL = opened ? 0 : Math.max(R.fL, S.fL);
+    assert(Math.max(R.fR, S.fR, rL) <= 0.45 && Math.max(Sp.fR, spL) <= 0.55,
+      `the elbows stay in beside the ribs: out to the side at most ${Math.max(R.fR, S.fR, rL).toFixed(2)} on the run and the strafe (≤ 0.45; they flared 0.47-0.58), ${Math.max(Sp.fR, spL).toFixed(2)} sprinting (≤ 0.55; 0.60-0.73${dashing ? `; the dash's free arm ${Sp.fL.toFixed(2)}, HERORUN` : ''}${opened ? `; the opened free arm ${Math.max(R.fL, S.fL, Sp.fL).toFixed(2)}, HERORUN` : ''})`);
+    // (an opened arm, 'e' / 'f', swings wider from the shoulder and folds the elbow a little less: ≥ 25, HERORUN)
+    const work = opened ? 25 : 35;
+    if (!held) assert(R.mz[0] > 0.95 && R.eL[1] - R.eL[0] >= work && R.hz[1] - R.hz[0] >= 0.3,
+      `the free arm works on the run: its elbow opens and folds ${(R.eL[1] - R.eL[0]).toFixed(0)}° a stride (≥ ${work}; it was one 87° crook) and the hand's target swings ${((R.hz[1] - R.hz[0]) * 100).toFixed(0)} cm fore and aft (≥ 30)`);
+    if (!held) assert(Math.max(Math.abs(S.mz[0]), Math.abs(S.mz[1])) < 0.1 && S.x[1] - S.x[0] < 0.3 && S.hz[1] - S.hz[0] >= 0.12 && S.eL[1] - S.eL[0] >= 15,
       `… and in a pure strafe (the aim square to the run: mz ${S.mz[0].toFixed(2)}…${S.mz[1].toFixed(2)}, ${(S.x[1] - S.x[0]).toFixed(2)} m of sideways drift): the hand's target still swings ${((S.hz[1] - S.hz[0]) * 100).toFixed(0)} cm (≥ 12; it hung still, 0 cm) and the elbow works ${(S.eL[1] - S.eL[0]).toFixed(0)}° (≥ 15)`);
   }
   // (A3) the arms open: a swing that asks for the hand at ≥ 95 % of the arm's length opens the sword
@@ -8876,7 +8910,7 @@ async function scenarioHeroRun() {
   const LANE = [-10, 13]; // open ground (HEROARMS)
   const res = {};
   const f1 = (x) => (x * 100).toFixed(1);
-  for (const mode of ['old', 'a', 'b', 'c', 'd']) {
+  for (const mode of ['old', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
     RA.setRunArm(mode);
     const G = build();
     const { game, input } = G;
@@ -9036,6 +9070,27 @@ async function scenarioHeroRun() {
     assert(Sd.el[0] >= 70 && Sd.el[1] <= 115 && Sd.flare <= 0.45 && span(Sd, 2) >= 0.35 && Sd.popW <= 2.5,
       `d, the sprint: a full pump, the elbow ${Sd.el[0].toFixed(0)}-${Sd.el[1].toFixed(0)}° (70-115), in (flare ${Sd.flare.toFixed(2)} ≤ 0.45), the hand ${f1(span(Sd, 2))} cm fore and aft (≥ 35), no pop (${f1(Sd.popW)} cm ≤ 2.5)`);
   }
+  // (e, f, ADR-229: the full pump OPENED OUT, on purpose. The owner, 2026-11-25: "from the back the left arm
+  // seems way too pressed in and makes it seem like he has no left arm during the run". The elbow-in checks
+  // above were written to keep the arms in; these carries stand the free arm off his side so it is drawn
+  // past the coat from the game camera behind him (measured on the drawn frame: d's forearm clear of the
+  // coat on 10-40 % of a stride, e's on 90-100 %, f's on all of it). Bounded both ways: out past the coat,
+  // never a wing)
+  for (const [m, fl, hx, plus] of [['e', [0.35, 0.62], 0.28, 3], ['f', [0.5, 0.75], 0.36, 5]]) {
+    const R = res[m].run, Sp = res[m].sprint, S = res[m].strafe;
+    assert(Object.values(res[m]).every((X) => X.n > 10 && !X.nan), `${m}: every stretch measured, nothing NaN`);
+    for (const [k, X] of [['run', R], ['sprint', Sp], ['strafe', S]]) {
+      assert(X.flare >= fl[0] && X.flare <= fl[1] && X.lo[0] >= hx && X.popW <= 2.5,
+        `${m}, the ${k}: the free arm off his side (flare ${X.flare.toFixed(2)} in ${fl[0]}…${fl[1]}; d ${res.d[k].flare.toFixed(2)}), the hand ≥ ${f1(X.lo[0])} cm out from his centre line (≥ ${f1(hx)}; d ${f1(res.d[k].lo[0])}), no pop (wrist ${f1(X.popW)} cm ≤ 2.5)`);
+    }
+    assert(R.el[0] >= 85 && R.el[1] <= 135 && rng(R) >= 25 && span(R, 2) >= 0.3 && rng(S) >= 15,
+      `${m}, the run: still a runner's swing, the elbow ${R.el[0].toFixed(0)}-${R.el[1].toFixed(0)}° (85-135) working ${rng(R).toFixed(0)}° a stride (≥ 25), the hand ${f1(span(R, 2))} cm fore and aft (≥ 30); a strafe swings (${rng(S).toFixed(0)}° ≥ 15)`);
+    for (const k of ['light', 'roll', 'block', 'heal', 'turn', 'stop', 'start']) {
+      const S2 = res[m][k], o = O[k];
+      assert(S2.popW <= o.popW + plus && S2.popE <= o.popE + plus,
+        `${m}, ${k}: no worse a jolt than before (wrist ${f1(S2.popW)} cm, elbow ${f1(S2.popE)} cm; old ${f1(o.popW)} / ${f1(o.popE)}, + ${plus} allowed${plus > 3 ? ': the arm comes in from further out' : ''})`);
+    }
+  }
   for (const m of ['b', 'c']) {
     const S = res[m].sprint;
     assert(S.hi[2] <= -0.05 && S.lo[0] >= 0.3 && Math.max(span(S, 1), span(S, 2)) >= 0.06 && S.flare <= 0.8 && S.popW <= 1,
@@ -9057,7 +9112,37 @@ async function scenarioHeroRun() {
     assert(Math.max(rl.popW, rl.popE, bl.popW, bl.popE) <= 27, `c, out of the dash into a roll / a block: the free arm's jolt stays under 27 cm a frame² (${f1(Math.max(rl.popW, rl.popE, bl.popW, bl.popE))}; known, ADR-187)`);
   }
   // the default and the switch
-  assert(RA.runArmMode() === 'd' && RA.setRunArm('zz') === 'd' && RA.setRunArm('old') === 'old' && RA.setRunArm(null) === 'd', `?runArm= defaults to 'd' (the full pump, for the owner's look on the draft); unknown values fall back to it`);
+  {
+    // (h, ADR-229, an option (turned down): the free fist held at the left hip, as in the owner's photo of a swordsman running:
+    // "his left hand is moving around too much". The hand holds still at his hip and rides its turn (it moves ≤ 10
+    // cm over a stride in his body frame, the hips turning ±11°; d's swing moves it 24-46), out at his left side past the coat, no pop; out of the
+    // run into a light, a roll, a block or the flask no worse than before, + 3)
+    for (const k of ['run', 'sprint', 'strafe']) {
+      const X = res.h[k];
+      assert(span(X, 0) <= 0.05 && span(X, 1) <= 0.05 && span(X, 2) <= 0.10 && X.lo[0] >= 0.18 && X.popW <= 1.5,
+        `h, the ${k}: the fist held at his hip, riding its turn (it moves ${f1(span(X, 0))} / ${f1(span(X, 1))} / ${f1(span(X, 2))} cm over the stretch; d ${f1(span(res.d[k], 2))} fore and aft), out at his left side (x ≥ ${f1(X.lo[0])} cm), no pop (${f1(X.popW)} cm)`);
+    }
+    for (const k of ['light', 'roll', 'block', 'heal', 'turn', 'stop', 'start']) {
+      const S2 = res.h[k], o = O[k];
+      assert(S2.popW <= o.popW + 3 && S2.popE <= o.popE + 3, `h, ${k}: no worse a jolt than before (wrist ${f1(S2.popW)} cm, elbow ${f1(S2.popE)} cm; old ${f1(o.popW)} / ${f1(o.popE)}, + 3 allowed)`);
+    }
+  }
+  {
+    // (g, ADR-229, an option (the default for a day, turned down: "looks really bad from the other angles"): the guard, the owner (2026-11-26): "make his left in a pose like hes guarding his face
+    // and chest with his left hand and make it look natural during the movement run". The fist held before his
+    // chest and chin, a little left of centre (body frame: ahead, inside the shoulder line, up),
+    // giving only a little with the stride and the chest's bounce (≤ 9 cm up and down as the lean settles), no pop; out of the run no worse a jolt than before, + 3)
+    for (const k of ['run', 'sprint', 'strafe']) {
+      const X = res.g[k];
+      assert(X.lo[2] >= 0.18 && X.hi[0] <= 0.17 && X.lo[1] >= -0.12 && span(X, 0) <= 0.06 && span(X, 1) <= 0.09 && span(X, 2) <= 0.08 && X.popW <= 1.5,
+        `g, the ${k}: the fist up before his chest (body frame: ahead ≥ ${f1(X.lo[2])} cm, in from the shoulder line: x ≤ ${f1(X.hi[0])} cm, up ≥ ${f1(X.lo[1])} cm), held (riding the lean and the bounce) (it moves ${f1(span(X, 0))} / ${f1(span(X, 1))} / ${f1(span(X, 2))} cm; d ${f1(span(res.d[k], 2))} fore and aft), no pop (${f1(X.popW)} cm)`);
+    }
+    for (const k of ['light', 'roll', 'block', 'heal', 'turn', 'stop', 'start']) {
+      const S2 = res.g[k], o = O[k];
+      assert(S2.popW <= o.popW + 3 && S2.popE <= o.popE + 3, `g, ${k}: no worse a jolt than before (wrist ${f1(S2.popW)} cm, elbow ${f1(S2.popE)} cm; old ${f1(o.popW)} / ${f1(o.popE)}, + 3 allowed)`);
+    }
+  }
+  assert(RA.runArmMode() === 'a' && RA.setRunArm('zz') === 'a' && RA.setRunArm('old') === 'old' && RA.setRunArm(null) === 'a', `?runArm= defaults to 'a' (natural, the owner's pick of the variations, ADR-229; 'e' / 'f' opened, the guard 'g' and the fist at the hip 'h' turned down); unknown values fall back to it`);
   await heroRunSword();
   return G;
 }
@@ -9069,11 +9154,19 @@ async function scenarioHeroRun() {
 async function heroRunSword() {
   const RS = await imp('src/entities/player/runSword.js');
   const DEG = 180 / Math.PI;
-  const { DIM: HD } = await imp('src/entities/player/model.js');
+  const { DIM: HD, sheetOffset } = await imp('src/entities/player/model.js');
   const tip = HD.drawnTip ?? HD.steelTip ?? 0.9;
   const LANE = [-10, 13];
   const res = {};
   const f1 = (x) => (x * 100).toFixed(1);
+  // (ADR-229) the wrist (the sword forearm's line vs the blade), the blade's gap to the legs (capsules round
+  // the thigh and the shin), the frames its steel crosses the coat's skirt: body frame, from points
+  const El = new THREE.Vector3(), Wr = new THREE.Vector3(), Q = new THREE.Vector3(), A0 = new THREE.Vector3(), B0 = new THREE.Vector3(), Sg = new THREE.Vector3(), cv = new THREE.Vector3(), cw = new THREE.Vector3();
+  const segGap = (q, a, b, rr) => {
+    Sg.subVectors(b, a);
+    const t = clamp(Q.subVectors(q, a).dot(Sg) / Math.max(1e-9, Sg.lengthSq()), 0, 1);
+    return q.distanceTo(Q.copy(a).addScaledVector(Sg, t)) - rr;
+  };
   for (const mode of RS.RUN_SWORD_IDS) {
     RS.setRunSword(mode);
     const G = build();
@@ -9089,7 +9182,7 @@ async function heroRunSword() {
     let cur = null;
     const go = (sec, name) => {
       cur = name;
-      if (name) segs[name] ??= { n: 0, fwd: 9, el: [90, -90], ptY: 9, gx: -9, popG: 0, popP: 0, nan: 0, ph: [A.phase, A.phase] };
+      if (name) segs[name] ??= { n: 0, fwd: 9, back: -9, el: [90, -90], ptY: 9, gx: -9, popG: 0, popP: 0, nan: 0, ph: [A.phase, A.phase], wr: [180, 0], eb: [180, 0], azO: [360, -360], leg: 9, coat: 0, cloth: 9 };
       for (let i = 0, n = Math.round(sec / DT); i < n; i++) {
         game.mouseGround.set(p.position.x, 0, p.position.z - 60);
         G.tick(DT);
@@ -9101,6 +9194,36 @@ async function heroRunSword() {
           S.n++;
           w.set(0, 0, 1).applyQuaternion(r.sword.getWorldQuaternion(q)).applyQuaternion(r.body.getWorldQuaternion(q).invert());
           S.fwd = Math.min(S.fwd, w.z);
+          S.back = Math.max(S.back, w.z);
+          const azo = Math.atan2(-w.x, w.z) * DEG; // 0 ahead, 90 his right, 180 behind
+          S.azO[0] = Math.min(S.azO[0], azo);
+          S.azO[1] = Math.max(S.azO[1], azo);
+          // the wrist: the forearm (elbow → grip) against the blade (grip → point), body frame
+          r.body.worldToLocal(El.setFromMatrixPosition(r.arms.R.fore.matrixWorld));
+          r.body.worldToLocal(Wr.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld));
+          Wr.sub(El).normalize();
+          // the elbow's inside angle (the shoulder, the elbow, the forearm's line)
+          r.body.worldToLocal(A0.setFromMatrixPosition(r.arms.R.upper.matrixWorld)).sub(El).normalize();
+          const eb = Math.acos(clamp(A0.dot(Wr), -1, 1)) * DEG;
+          S.eb[0] = Math.min(S.eb[0], eb);
+          S.eb[1] = Math.max(S.eb[1], eb);
+          const bl = Q.copy(Pt).sub(Gp).normalize();
+          const wa = Math.acos(clamp(Wr.dot(bl), -1, 1)) * DEG;
+          S.wr[0] = Math.min(S.wr[0], wa);
+          S.wr[1] = Math.max(S.wr[1], wa);
+          // the steel (past the guard) vs the legs
+          for (let z = 0.2; z <= tip + 1e-6; z += 0.06) {
+            const q = r.body.worldToLocal(cv.set(0, 0, z).applyMatrix4(r.sword.matrixWorld));
+            for (const L of [r.legs.R, r.legs.L]) {
+              r.body.worldToLocal(A0.setFromMatrixPosition(L.thigh.matrixWorld));
+              r.body.worldToLocal(B0.setFromMatrixPosition(L.shin.matrixWorld));
+              S.leg = Math.min(S.leg, segGap(q, A0, B0, 0.086));
+              r.body.worldToLocal(A0.setFromMatrixPosition(L.foot.matrixWorld));
+              S.leg = Math.min(S.leg, segGap(q, B0, A0, 0.064));
+            }
+          }
+          if (coatCrossOf(r, tip, sheetOffset, cv, cw)) S.coat++;
+          S.cloth = Math.min(S.cloth, clothGap(r, tip));
           const el = Math.asin(Math.max(-1, Math.min(1, w.y))) * DEG;
           S.el[0] = Math.min(S.el[0], el);
           S.el[1] = Math.max(S.el[1], el);
@@ -9140,7 +9263,7 @@ async function heroRunSword() {
   for (const [mode, segs] of Object.entries(res)) {
     out(`   -- the sword carry ${mode}`);
     for (const [k, S] of Object.entries(segs)) {
-      out(`     ${k.padEnd(11)} blade forward ≥ ${S.fwd.toFixed(2)}, elevation ${S.el[0].toFixed(0)}…${S.el[1].toFixed(0)}°, point ≥ ${f1(S.ptY)} cm over the ground, grip x ≤ ${f1(S.gx)} cm, ${(S.ph[1] - S.ph[0]).toFixed(2)} strides; pops: grip ${f1(S.popG)} point ${f1(S.popP)} cm${S.nan ? `, NaN ${S.nan}` : ''}`);
+      out(`     ${k.padEnd(11)} blade forward ${S.fwd.toFixed(2)}…${S.back.toFixed(2)}, elevation ${S.el[0].toFixed(0)}…${S.el[1].toFixed(0)}°, elbow ${S.eb[0].toFixed(0)}-${S.eb[1].toFixed(0)}°, wrist ${S.wr[0].toFixed(0)}-${S.wr[1].toFixed(0)}°, point ≥ ${f1(S.ptY)} cm over the ground, legs ≥ ${f1(S.leg)} cm, cloth ≥ ${f1(S.cloth)} cm, through the coat ${S.coat}/${S.n}, grip x ≤ ${f1(S.gx)} cm, ${(S.ph[1] - S.ph[0]).toFixed(2)} strides; pops: grip ${f1(S.popG)} point ${f1(S.popP)} cm${S.nan ? `, NaN ${S.nan}` : ''}`);
     }
   }
   const H = res.hip;
@@ -9153,7 +9276,84 @@ async function heroRunSword() {
   const popG = Math.max(...Object.values(H).map((S) => S.popG)), popP = Math.max(...Object.values(H).map((S) => S.popP));
   assert(popG <= 0.02 && popP <= 0.04,
     `hip, stand → run → sprint → run → stop: no pop, the grip ${f1(popG)} cm (≤ 2) and the point ${f1(popP)} cm (≤ 4) at most a frame² (the carry before: the point ${f1(Math.max(...Object.values(res.old).map((S) => S.popP)))} cm, the blade swinging round from ahead to behind at the start)`);
-  assert(RS.runSwordMode() === 'hip' && RS.setRunSword('zz') === 'hip' && RS.setRunSword('old') === 'old' && RS.setRunSword(null) === 'hip', `?runSword= defaults to 'hip' (forward at the hip, for the owner's look on the draft); unknown values fall back to it`);
+  // (ADR-229) the owner's sketch, 2026-11-25: "have the sword be in this angle when he's running instead of it
+  // being held in the front": the blade going on from the forearm's line, behind him and down. Three readings,
+  // each: the point behind him the whole run and sprint, its slant in the reading's range, the wrist quiet
+  // (the carry before, `old`, bent the blade 57-87° off the forearm: "stiff"), clear of the legs, the coat
+  // and the grass, no pop
+  const TRAIL = { trail: { el: [-44, -10] }, swept: { el: [-40, -10] }, side: { el: [-46, -12] } };
+  for (const [m, T] of Object.entries(TRAIL)) {
+    const X = res[m];
+    assert(Object.values(X).every((S) => S.n > 10 && !S.nan), `${m}: every stretch measured, nothing NaN`);
+    for (const k of ['run', 'sprint']) {
+      const S = X[k];
+      assert(S.ph[1] - S.ph[0] >= 1 && S.back < -0.3 && S.el[0] >= T.el[0] && S.el[1] <= T.el[1] && S.el[1] - S.el[0] >= 6 && S.wr[1] <= 42 && S.ptY >= 0.15 && S.leg >= 0.12 && S.coat <= Math.max(2, S.n * 0.03) && S.gx < -0.05,
+        `${m}, the ${k}: the blade behind him (its forward part ≤ ${S.back.toFixed(2)} < −0.3), slanting ${S.el[0].toFixed(0)}…${S.el[1].toFixed(0)}° (${T.el[0]}…${T.el[1]}), rocking ${(S.el[1] - S.el[0]).toFixed(0)}° with the arm (≥ 6), in the forearm's line (the wrist ${S.wr[0].toFixed(0)}-${S.wr[1].toFixed(0)}° ≤ 42; hip ${res.hip[k].wr[0].toFixed(0)}-${res.hip[k].wr[1].toFixed(0)}, old ${res.old[k].wr[0].toFixed(0)}-${res.old[k].wr[1].toFixed(0)}), the point ≥ ${f1(S.ptY)} cm over the grass (≥ 15), the steel ≥ ${f1(S.leg)} cm off the legs (≥ 12), through the coat on ${S.coat} of ${S.n} frames, the grip on his right (${f1(S.gx)} cm)`);
+    }
+    if (m === 'trail') {
+      // (the owner's pick, 2026-11-26, then with a screenshot from the game camera and an arrow from his hand
+      // down and out to his right: "the right hand now is too straight back ... the arm angle also looks
+      // unnatural ... i want the sword and arm to be more on the red angle direction". The arm hangs out from
+      // his side with a soft elbow (not a locked one: the straight arm before it was "too much"), the blade
+      // out to his right and back (azimuth ~115°), drawn ~45° down the screen at the game camera)
+      for (const k of ['sprint', 'sprintEnd']) {
+        const S = X[k];
+        assert(S.eb[0] >= 148 && S.eb[1] <= 170 && S.wr[1] <= 32 && S.azO[0] >= 100 && S.azO[1] <= 135,
+          `trail, the ${k === 'sprintEnd' ? 'run after the sprint' : k}: a relaxed arm, the elbow ${S.eb[0].toFixed(0)}-${S.eb[1].toFixed(0)}° (148-170; hip ${res.hip[k].eb[0].toFixed(0)}-${res.hip[k].eb[1].toFixed(0)}), the blade ${S.wr[0].toFixed(0)}-${S.wr[1].toFixed(0)}° off the forearm (≤ 32), out to his right and back (azimuth ${S.azO[0].toFixed(0)}…${S.azO[1].toFixed(0)}°, 100…135; straight behind is 180)`);
+      }
+    }
+    const pG = Math.max(...Object.values(X).map((S) => S.popG)), pP = Math.max(...Object.values(X).map((S) => S.popP));
+    assert(pG <= 0.02 && pP <= 0.05, `${m}, stand → run → sprint → run → stop: no pop, the grip ${f1(pG)} cm (≤ 2), the point ${f1(pP)} cm (≤ 5) at most a frame²`);
+  }
+  {
+    // (FLAIL, ADR-229, the default: the owner, 2026-11-26, "can you just redo the run animation and do your best
+    // to make it look natural with the sword flailing out while running". The blade hangs from the hand and
+    // swings a beat after the arm: it must SWING (a frozen blade read as stiff), stand out to his right and
+    // back, keep the wrist loose but never cocked like `old`'s, and clear the legs, the coat and the grass)
+    const X = res.flail;
+    assert(Object.values(X).every((S) => S.n > 10 && !S.nan), `flail: every stretch measured, nothing NaN`);
+    for (const k of ['sprint', 'sprintEnd']) {
+      const S = X[k], nm = k === 'sprintEnd' ? 'the run after the sprint' : 'the sprint';
+      assert(S.azO[0] >= 100 && S.azO[1] <= 145 && S.el[0] >= -42 && S.el[1] <= -10 && S.el[1] - S.el[0] >= 8 && S.wr[1] <= 52 && S.eb[0] >= 128 && S.eb[1] <= 168 && S.ptY >= 0.15 && S.leg >= 0.12 && S.coat <= Math.max(2, S.n * 0.03),
+        `flail, ${nm}: the blade out to his right and back (azimuth ${S.azO[0].toFixed(0)}…${S.azO[1].toFixed(0)}°, 100…145), swinging ${(S.el[1] - S.el[0]).toFixed(0)}° (≥ 8) through ${S.el[0].toFixed(0)}…${S.el[1].toFixed(0)}° (−42…−10), the wrist loose (${S.wr[0].toFixed(0)}-${S.wr[1].toFixed(0)}° ≤ 52; old ${res.old[k].wr[0].toFixed(0)}-${res.old[k].wr[1].toFixed(0)}), the elbow ${S.eb[0].toFixed(0)}-${S.eb[1].toFixed(0)}° (128-168), the point ≥ ${f1(S.ptY)} cm over the grass, ≥ ${f1(S.leg)} cm off the legs, through the coat on ${S.coat} of ${S.n} frames`);
+    }
+    const pG = Math.max(...Object.values(X).map((S) => S.popG)), pP = Math.max(...Object.values(X).map((S) => S.popP));
+    assert(pG <= 0.02 && pP <= 0.05, `flail, stand → run → sprint → run → stop: no pop, the grip ${f1(pG)} cm (≤ 2), the point ${f1(pP)} cm (≤ 5) at most a frame²`);
+  }
+  {
+    // (NAT, ADR-229, the default: the owner, 2026-11-26, "all of them look unnatural from the user camera
+    // perspective. figure it out and make it look good, natural, and anatomy wise correct". A fist holds the
+    // grip across the palm: the blade leaves the hand at about a right angle to the forearm and the wrist tips
+    // it ~30-40° at most, so the blade stands 50-90° off the forearm (every carry "in the forearm's line" was a
+    // grip no hand makes); behind him and a little out, a little below level, steady; the elbow soft)
+    const X = res.nat;
+    assert(Object.values(X).every((S) => S.n > 10 && !S.nan), `nat: every stretch measured, nothing NaN`);
+    for (const k of ['sprint', 'sprintEnd']) {
+      const S = X[k], nm = k === 'sprintEnd' ? 'the run after the sprint' : 'the sprint';
+      assert(S.azO[0] >= 130 && S.azO[1] <= 160 && S.el[0] >= -30 && S.el[1] <= -5 && S.el[1] - S.el[0] <= 14 && S.wr[0] >= 40 && S.wr[1] <= 92 && S.eb[0] >= 125 && S.eb[1] <= 162 && S.ptY >= 0.2 && S.leg >= 0.12 && S.coat <= Math.max(2, S.n * 0.03),
+        `nat, ${nm}: a hand's grip (the blade ${S.wr[0].toFixed(0)}-${S.wr[1].toFixed(0)}° off the forearm, 40-92), behind him and a little out (azimuth ${S.azO[0].toFixed(0)}…${S.azO[1].toFixed(0)}°, 130…160), a little below level and steady (${S.el[0].toFixed(0)}…${S.el[1].toFixed(0)}°: −30…−5, moving ≤ 14), the elbow soft (${S.eb[0].toFixed(0)}-${S.eb[1].toFixed(0)}°, 125-162), the point ≥ ${f1(S.ptY)} cm over the grass, ≥ ${f1(S.leg)} cm off the legs, through the coat on ${S.coat} of ${S.n} frames`);
+    }
+    const pG = Math.max(...Object.values(X).map((S) => S.popG)), pP = Math.max(...Object.values(X).map((S) => S.popP));
+    assert(pG <= 0.02 && pP <= 0.05, `nat, stand → run → sprint → run → stop: no pop, the grip ${f1(pG)} cm (≤ 2), the point ${f1(pP)} cm (≤ 5) at most a frame²`);
+  }
+  {
+    // (G2, ADR-229, the default, the owner's pick of three carries rebuilt from the hand's grip ("all look bad. try
+    // again": the sword pointing back, the grip, a stiff arm all ticked), then "make sure the arm and sword doesn't
+    // clip with the cloak fabric". A relaxed hammer grip, the thumb ahead and out: the blade leaving the fist
+    // ~45° off the forearm, its point down beside his right leg, a little ahead and out; the arm swinging as a
+    // runner's; the wrist holding the point 20-30° below level. The steel keeps clear of every cloth sheet, the
+    // skirt's panels and the cape's streamers: it passed within 0.3 cm of them tucked in)
+    const X = res.g2;
+    assert(Object.values(X).every((S) => S.n > 10 && !S.nan), `g2: every stretch measured, nothing NaN`);
+    for (const k of ['sprint', 'sprintEnd']) {
+      const S = X[k], nm = k === 'sprintEnd' ? 'the run after the sprint' : 'the sprint';
+      assert(S.azO[0] >= 20 && S.azO[1] <= 85 && S.el[1] <= -5 && S.el[0] >= -42 && S.wr[0] >= 20 && S.wr[1] <= 70 && S.eb[0] >= 125 && S.eb[1] <= 165 && S.ptY >= 0.15 && S.leg >= 0.15 && S.cloth >= 0.08 && S.coat <= Math.max(2, S.n * 0.03),
+        `g2, ${nm}: ahead and out (azimuth ${S.azO[0].toFixed(0)}…${S.azO[1].toFixed(0)}°, 20…85), the point down (${S.el[0].toFixed(0)}…${S.el[1].toFixed(0)}°: −42…−5), a hand's grip (${S.wr[0].toFixed(0)}-${S.wr[1].toFixed(0)}° off the forearm, 20-70), the elbow ${S.eb[0].toFixed(0)}-${S.eb[1].toFixed(0)}° (125-165), the point ≥ ${f1(S.ptY)} cm over the grass, ≥ ${f1(S.leg)} cm off the legs (≥ 15), ≥ ${f1(S.cloth)} cm off every cloth sheet (≥ 8), through the coat on ${S.coat} of ${S.n} frames`);
+    }
+    const pG = Math.max(...Object.values(X).map((S) => S.popG)), pP = Math.max(...Object.values(X).map((S) => S.popP));
+    assert(pG <= 0.02 && pP <= 0.05, `g2, stand → run → sprint → run → stop: no pop, the grip ${f1(pG)} cm (≤ 2), the point ${f1(pP)} cm (≤ 5) at most a frame²`);
+  }
+  assert(RS.runSwordMode() === 'g2' && RS.setRunSword('zz') === 'g2' && RS.setRunSword('old') === 'old' && RS.setRunSword(null) === 'g2', `?runSword= defaults to 'g2' (the owner's pick, ADR-229); unknown values fall back to it`);
 }
 
 // ================================================================== scenario: the outfit options (?heroLook=)

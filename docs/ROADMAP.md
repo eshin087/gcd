@@ -201,6 +201,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.98 — Bai Wuji glides: quicker, one-handed, and his barrier opens easier (2026-11-27, `enemies/untouched`, ADR-250)
+- [x] Three motion takes behind `?wjMotion=0|a|b|c` (`untouched/motion.js`; the hand layer keeps his hands in his pockets); the owner picked b, the glide
+- [x] The barrier opens easier: two cracks, longer openings, cuts x2.5 through it; hp 20000; patience after 20 s
+- [x] The bench's bots answer falling pieces and paired cues as a person would; the perfect bot untouched on 12 seeds
+- [x] His mercy counts the lock in real time; no falling piece on a downed hero
+- [ ] The ledger forgets a landed red (shared duelist code); patience against a pure defender is slow
 
 ## M1.94 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-241 – ADR-243)
 - [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
@@ -261,6 +267,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Scenario `heroref`; the Lab's `idles` (ref / new / old), `guard` and `idle ▸` (`stow`) rows; pair sheets against the footage
 - [ ] The owner's look at the films (the hold's hands sit higher than the footage's, the guard from the game camera)
 - [ ] Played on the iPhone
+## M1.94 — The run from the owner's sketch (2026-11-26, `claude/hero-run-sketch-6baa40`, ADR-229)
+- [x] `player/runArms.js` `e` (open) / `f` (wider): the free arm off his side, drawn past the coat from behind (measured on the drawn frame)
+- [x] `player/runSword.js` `trail` / `swept` / `side`: the blade in the forearm's line, behind him and down, rocking with the arm
+- [x] A block / parry / flask / charge out of a trailing blade enters over 0.24 s (no one-frame flip)
+- [x] `herorun` bounds the opened arms and the trailing carries (the wrist, the legs, the coat, the grass, pops)
+- [x] The owner picks a sword carry and an arm width: `trail` and `e` (2026-11-26), now the defaults
+- [x] `trail`'s sword arm: the solver draws the asked elbow (`_swordOpen`); out along the owner's arrow from the game camera, a relaxed elbow
+- [x] `flail`, `b15`-`b45`, `a1`-`a4` tried; `nat` (a real grip: the blade ~right-angled to the forearm, the fist by his hip) the default
+- [x] Rebuilt from the hand's grip (`fistBlade`); `g2` the owner's pick, clear of every cloth sheet (≥ 12.6 cm), the default
+- [x] `runStyle.js` (four postures, behind `?runStyle=`); the free fist at the hip (`h`) and the guard (`g`), both turned down: the free arm stays `e`
+- [ ] The whole run (legs, lean, torso): its own pass
+- [ ] Played on the iPhone
+
 ## M1.90 — The run carried like the owner's reference (2026-11-25, `claude/run-sword-hand`, ADR-204)
 - [x] `player/runSword.js`: the sword carried forward at the hip, rocking with the forearm (`?runSword=hip|old`, the Lab's `run sword` row)
 - [x] `player/runArms.js` `d`: the full pump (the default)
@@ -1221,6 +1240,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       on the feet, a quiet free hand, the step landing with the blow; measured (`GCD_AUDIT_IMPACT`) and filmed
   - [x] The owner's pick from the films: the form, Ember Whirl b (the cyclone), Heaven-Splitting Fall b (the split)
   - [x] Heaven-Splitting Fall as a jump (the held coil covered his flight)
+- [x] Bai Wuji (ADR-255, on the glide of ADR-250): the anatomy audit (`veil.mjs . anatomy`), straight blows on the
+      line to the hero, a kick's return without the snap, phase 1's casting hand out of its pocket, behind
+      `?wjPolish` / `?wjCastHand`; films sent
+  - [x] The owner's pick from the films: both `a`, as the default
+  - [ ] A support foot jumps after a blink (Five Sides, Passing Through: anim.js `_feetClip`)
 - [x] The Starless Lord's form (ADR-251, `?lordForm`): thrusts on the arm's line in a real lunge, diagonal
       two-handed overheads, sweeps on the feet, a quieter free hand, the step landing with the blow, all four forms;
       measured per form (`lord.mjs . formaudit`) and filmed
