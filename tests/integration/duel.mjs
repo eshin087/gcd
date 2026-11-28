@@ -2251,7 +2251,8 @@ async function scenarioParryFx() {
     PFX.perfectClear();
     const e1 = { x: 0.2, y: 1, z: 0.1 }, e2 = { x: 1, y: 0.1, z: 0.3 };
     for (let i = 0; i < 10; i++) {
-      PS.parrySparks(game, x, y, z, { e1, e2, met: true, mode: 'a' });
+      // (the base spit's cap: `grow: '0'`, or ?parryGrow=a's tiers read the hero's streak and raise the cap to 104)
+      PS.parrySparks(game, x, y, z, { e1, e2, met: true, mode: 'a', grow: '0' });
       peak = Math.max(peak, L.alive);
       for (let j = 0; j < 6; j++) {
         PFX.perfectUpdate(game, DT, DT);
