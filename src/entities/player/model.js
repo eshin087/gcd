@@ -234,6 +234,13 @@ export const HERO_INK = {
   bevel: { part: 14, fill: [0.3, 0.31, 0.38], spec: 0.5, line: [1, 1, 1, 0.8], fillGain: 1.1, farLine: 0.5, farFill: 0.85 },
   welt: { part: 15, fill: [0.3, 0.31, 0.36] },
   trim: { part: 16, fill: [0.24, 0.25, 0.3], spec: 0.8, line: [1, 1, 1, 0.85], fillGain: 1.0, farLine: 0.55, farFill: 0.95 },
+  // the green inset in the Hooded look's silver belt (gear/hooded.js): the trim's part and lines (the
+  // silver it is set in), only its fill green. Built only for an item that names it (LOOK_ONLY_MATS)
+  jade: { part: 16, fill: [0.06, 0.42, 0.16], spec: 0.8, line: [1, 1, 1, 0.85], fillGain: 1.0, farLine: 0.55, farFill: 0.95 },
+  // … and its polished silver (gauntlets, belt, boot plates, the clasp, the line down the cloak): the
+  // trim's part and lines, a brighter fill, so it reads at the game camera (the sword's own trim keeps
+  // its own material, untouched)
+  silver: { part: 16, fill: [0.95, 0.97, 1.05], spec: 1.2, line: [1, 1, 1, 0.85], fillGain: 1.0, farLine: 0.55, farFill: 0.95 },
   blade: { part: 17, fill: [0.2, 0.42, 0.72], spec: 0.6, glow: 0.45, line: [0.8, 1.15, 1.4, 1.6], fillGain: 1.0, solid: true, farLine: 1, farFill: 1.5 },
   bladeTip: { part: 17, fill: [0.62, 0.86, 1.05], glow: 0.8, line: [1.0, 1.2, 1.4, 1.7], fillGain: 1.0, solid: true, farLine: 1, farFill: 1.5 },
   gem: { part: 18, fill: [0.3, 0.06, 0.7], glow: 1, rim: 0, line: [1.1, 0.45, 1.8, 2.0], solid: true, farLine: 1 },
@@ -255,14 +262,19 @@ export const HERO_SELF = {
   bevel: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
   welt: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
   trim: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
+  jade: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 }, // (as the trim's: they share part 16)
+  silver: { rimLine: CLOTH_RIM, rimDotted: true, farLine: 0.2 },
 };
+/** Hero materials only an outfit option's items draw (an item's `mats`): built only for a rig that
+ *  wears one (a material more on the rig draws a uuid from Math.random, which the tests seed). */
+export const LOOK_ONLY_MATS = Object.freeze(['jade', 'silver']);
 /** A part's pass values: [ink line rgba, fill (gain, style, far line, far fill), rim line rgba] (see HERO_INK). */
 export function heroPartValues(h) {
   const l = h.line ?? [1, 1, 1, 1];
   return [l, [h.fillGain ?? 1, (h.dotted ? 1 : h.solid ? 2 : 0) + (h.open ? 4 : 0) + (h.rimDotted ? 8 : 0), h.farLine ?? 0, h.farFill ?? 1], h.rimLine ?? l];
 }
 
-export function createHeroMaterials(U, { self = false } = {}) {
+export function createHeroMaterials(U, { self = false, extra = [] } = {}) {
   const S = (o, opts = {}) => ({ o, opts });
   const make = (name, o, { max = null, lockX = false, fixed = false, zoomNear = null } = {}) => {
     const heroArt = HERO_INK[name];
@@ -359,6 +371,9 @@ export function createHeroMaterials(U, { self = false } = {}) {
     }, { max: [0.03, 0.045], zoomNear: Z }),
     // silver hardware: buckles, rings, the gem frame — the brightest small metal
     trim: S({ ...silver, cell: [0.05, 0.045], gain: 0.85, rim: 0.12, outline: 0.1, inkGlow: 0.34, seed: 2.7 }, { max: [0.035, 0.03] }),
+    // the Hooded look's green belt inset (LOOK_ONLY_MATS): the trim's letters in green
+    silver: S({ ...silver, glyphs: '=#8@', cell: [0.045, 0.04], base: [0.06, 0.065, 0.075], ink: [1.0, 1.04, 1.16], gain: 1.0, rim: 0.16, outline: 0.1, inkGlow: 0.42, seed: 2.6 }, { max: [0.03, 0.028] }),
+    jade: S({ ...silver, glyphs: '-=#8', cell: [0.03, 0.03], base: [0.01, 0.05, 0.02], ink: [0.3, 1.0, 0.45], gain: 0.9, rim: 0.12, outline: 0.1, inkGlow: 0.4, glowMask: 0, seed: 2.8 }, { max: [0.02, 0.02] }),
     // silver plate bevels (pauldron, vambrace, shin lames, knee guards): thin bright lines
     bevel: S({ ...silver, glyphs: '-=-=', cell: [0.04, 0.02], ink: [0.72, 0.76, 0.9], gain: 1.0, rim: 0.1, outline: 0.08, inkGlow: 0.3, glowMask: 0, seed: 2.9 }, { max: [0.03, 0.014] }),
     // the boots' sole welt: a quiet silver line (no light-up sneakers)
@@ -435,7 +450,8 @@ export function createHeroMaterials(U, { self = false } = {}) {
   }
   // (the free hand's looks under consideration: their materials only when that look is drawn)
   const hl = handLook().mat;
-  return Object.fromEntries(Object.entries(specs).filter(([name]) => !HAND_ONLY_MATS.includes(name) || name === hl).map(([name, s]) => [name, make(name, s.o, s.opts)]));
+  const want = (name) => (HAND_ONLY_MATS.includes(name) ? name === hl : LOOK_ONLY_MATS.includes(name) ? extra.includes(name) : true);
+  return Object.fromEntries(Object.entries(specs).filter(([name]) => want(name)).map(([name, s]) => [name, make(name, s.o, s.opts)]));
 }
 
 /**
@@ -510,7 +526,9 @@ function mergeStatic(root, keep) {
  */
 export function buildHero(U, loadout = DEFAULT_LOADOUT, { self = false } = {}) {
   // `self`: the player's own rig (the art pass prints it on its own letter cell; materials.js HERO_ART)
-  const M = createHeroMaterials(U, { self });
+  // (the worn items first: an item may name a material only it draws, `mats`, LOOK_ONLY_MATS)
+  const worn = resolveLoadout(loadout);
+  const M = createHeroMaterials(U, { self, extra: worn.flatMap(({ item }) => item?.mats ?? []) });
 
   // joint / mesh helpers for one owner: a gear slot, or null for the skeleton and the body
   const helpers = (slot) => ({
@@ -576,7 +594,6 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, { self = false } = {}) {
   // a head item may keep only part of the hair under it: `hair` = the pieces to build ('cap' and
   // HAIR_CLUSTERS names; the hood keeps the cap and the fringe), `hidesHair` = none of it (a
   // closed helm). The hair joints stay either way (the animator springs them)
-  const worn = resolveLoadout(loadout);
   const headItem = worn.find(({ slot }) => slot === 'head')?.item;
   const hairKeep = headItem?.hidesHair ? new Set() : Array.isArray(headItem?.hair) ? new Set(headItem.hair) : null;
   const hairOn = (name) => !hairKeep || hairKeep.has(name);

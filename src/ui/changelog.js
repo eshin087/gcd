@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'gcd in the hooded costume, to try',
+        notes: [
+          'A new outfit for gcd to try before it becomes his own: a deep hood that hides his face, a long cloak down his back, a layered robe, silver gauntlets, a silver belt and silver-plated boots.',
+          'His sword, his moves and his timing are exactly as before.',
+          'Add heroLook=hooded to the address, or pick "Hooded" in the Lab\'s OUTFIT row.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'Swipe to dodge on touch',
         notes: [
           'Touch: flick your thumb on the right half of the screen and the hero dodges that way at once (SWIPE DODGE in the pause menu turns it off).',
