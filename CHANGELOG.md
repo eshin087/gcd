@@ -9,7 +9,7 @@ One hundred and forty-four pieces of work since 0.4.0:
   once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
   boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of
   the blade lock (`?dbLock=lock` as before; the Lab's `dbLock`). Tian Lei's beam locks are unchanged. The
-  Training's "Blade lock" plays with the old riposte so the lock still happens there.
+  Training's "Blade lock" plays with `?dbLock=lock` so the lock still happens there.
 - **A new fight stance: the middle guard** (2026-11-28, ADR-275). *Changed (the owner's pick of four filmed stances):* in a fight gcd
   now stands in a middle guard: both hands on the grip before his navel, the blade pointed forward at the boss's
   eyes (~36° up), the knees bent, the right foot ahead. It was the blade raised up and out to his right

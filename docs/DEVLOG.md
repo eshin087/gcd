@@ -16,7 +16,11 @@ to cancel it; the streak's flurry teleports gcd with no cue.
   ignored. Guard (the middle click) ended it at once with 0 damage, and a perfect parry of a blue `lock` blow became
   the blade lock instead of the combo. Both fixed (ADR-274): no guard inside the combo; `player.deathblowClaims`
   keeps the lock away from a combo the parry armed (`?dbLock=lock` as before; Lab `dbLock`).
-- **Training:** its "Blade lock" situation plays with `riposte: 'old'` (the deathblow would take the parry).
+- **Training:** its "Blade lock" situation sets `dbLock: 'lock'` for itself (a new per-situation field). A first
+  try with `riposte: 'old'` fed the dodge streak and failed CI's Lord `foeBlock` (his flurry blocked, no posture
+  break): traced situation by situation against main, the Training diverged at "His flurry x7"; the cause was the
+  hero flurry's figure stream (`flurry.js` `fseed`), left wherever earlier scenarios' flurries put it. Lord
+  `training` now reseeds it per situation, beside `Math.random`.
 - **The parry press and the parry sparks:** a second PR (`fix/parry-press`, ADR-275).
 - **Checked:** duel `deathblow` (new (g), (h)), `moments`, `clash`, `training`; fox `training`; asc `bare`; the full
   `npm test`.

@@ -7991,6 +7991,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Consequences:** with the deathblow on (the default), a duelist's melee blade lock is reached only with
   `?dbLock=lock`, or `?parryRiposte=old|planted`, or `debug.noRiposte` (every `lock` blow is blue). The suites whose
   checks are about the lock pin `?dbLock=lock` (duel `moments` and `clash`'s lock, asc `bare`); the Training's
-  "Blade lock" situation plays with `riposte: 'old'`. New checks are duel `deathblow` (g), the
+  "Blade lock" situation sets `dbLock: 'lock'` for itself (a Training situation's own `dbLock`, put back when it
+  ends; the old riposte there fed the dodge streak and shifted the situations after it). Lord `training` also
+  reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
   guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
   change is a combo where a lock was.
