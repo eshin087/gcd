@@ -14,6 +14,8 @@
 //               the blade up and forward (~47°) and out to his right, the point above his head; upright,
 //               relaxed. The footage stands the left foot ahead; this hold keeps the feet the light chain
 //               steps from and comes home to (the right a short step ahead, the hips square; ADR-207).
+//               Since ADR-275 the hold drawn is the owner's pick, the middle guard (HOLDS.a, below): setHold
+//               copies it in here; these numbers stay as HOLDS.ref (`?hold=ref`).
 //   REF_GUARD   the block (`?guard=ward` keeps the cross ward before it, anim.js blockPose): a braced
 //               crouch, the knees bent and out, the feet wide, leaning in; both hands on the grip raised
 //               before his right shoulder, the elbows out, the blade rising across his face to his left
@@ -93,6 +95,75 @@ export const REF_READY = {
   lF: [0.12, -0.18],
   hip: 0, // the hips' turn (pelvY: + the right hip ahead, with the right foot)
 };
+// ---------------------------------------------------------------- the fight hold switch (`?hold=`)
+// The owner, 2026-11-27: "the way he holds the sword and the angle of the sword doesn't look like a good
+// fighting stance. give me 4 new combat stance for me to review". Of four filmed holds they picked A, the
+// middle guard: the default (ADR-275). `?hold=ref` keeps the hold above (ADR-207's, the blade up and out to his
+// right), `?hold=b|c|d` the three turned down. Each writes the whole fight stance (refReady): the hands, the
+// blade, the free arm, the body, the feet. The chosen one is copied into REF_READY (setHold), so every reader
+// of the hold (idles.js's fight blade) sees it. Fields past REF_READY's: two (0 one-handed, 1 both hands on
+// the grip), body [bodyY, bodyZ, spX, spY, hdX, hdY extra], pelvY via hip, knees [right x, left x], lD / lN /
+// hs (the free hand's fingers, palm, shape: 1 the sword fingers), roll (the flat), toes [right, left].
+//   a  Middle guard    both hands before the navel on his centre line, the blade forward at the foe's
+//                      face (36° up: filmed at 30, raised so it clears a duelist 1.5 m off; duel `contact`), the knees bent, the right foot ahead.
+//   b  High guard      both hands raised before his right shoulder, the blade standing upright beside his
+//                      head, tilted back a touch: the cut from above loaded.
+//   c  Sword fingers   one hand: the sword arm forward at the chest, the blade level at the foe; the free
+//                      hand in the sword fingers raised above and behind his head, the body turned side-on.
+//   d  Low trailing    one hand: the arm hangs by the right hip, the blade trails back and down behind his
+//                      right leg, the point off the ground; the free hand open before his chest, crouched.
+const REF_HOLD = {
+  rH: REF_READY.rH.slice(), rP: REF_READY.rP.slice(), sw: REF_READY.sw.slice(), lH: REF_READY.lH.slice(), lP: REF_READY.lP.slice(),
+  rF: REF_READY.rF.slice(), lF: REF_READY.lF.slice(), hip: REF_READY.hip,
+  two: 1, body: [-0.03, 0, 0.05, 0.02, 0.04, 0], knees: [-0.3, 0.3], lD: [0.1, -0.5, 0.86], lN: [-0.9, 0, 0.3], hs: 0, roll: 40, toes: [-0.35, 0.6],
+};
+export const HOLDS = {
+  ref: REF_HOLD,
+  a: {
+    rH: [0.12, -0.29, 0.3], rP: [0.45, -0.88, -0.15], sw: [-4, 36], // (the elbow a little in: out, the wrist bent 69°)
+    lH: [0.12 + LEFT_FROM_RIGHT, -0.34, 0.27], lP: [0.7, -0.7, -0.15],
+    rF: [-0.13, 0.24], lF: [0.15, -0.22], hip: 0.12,
+    two: 1, body: [-0.075, 0.01, 0.1, -0.1, 0.02, 0], knees: [-0.35, 0.35], lD: [0.1, -0.5, 0.86], lN: [-0.9, 0, 0.3], hs: 0, roll: 40, toes: [-0.35, 0.6], // (the toes as ADR-207's: from -0.2 the right foot turned 0.07 rad in drawCut's pivot, under half its 0.3)
+  },
+  b: {
+    rH: [-0.04, -0.1, 0.24], rP: [-0.3, -0.95, 0.05], sw: [-125, 76],
+    lH: [-0.04 + LEFT_FROM_RIGHT, -0.16, 0.24], lP: [0.3, -0.95, 0.05],
+    rF: [-0.13, 0.2], lF: [0.15, -0.2], hip: 0.2,
+    two: 1, body: [-0.06, 0, 0.06, -0.12, 0.0, 0.02], knees: [-0.32, 0.32], lD: [0.1, -0.5, 0.86], lN: [-0.9, 0, 0.3], hs: 0, roll: 70, toes: [-0.25, 0.6],
+  },
+  c: {
+    rH: [0.03, -0.17, 0.46], rP: [-0.2, -0.95, -0.1], sw: [2, 24],
+    lH: [0.14, 0.42, -0.16], lP: [0.9, 0.1, -0.4],
+    rF: [-0.06, 0.32], lF: [0.19, -0.26], hip: 0.5,
+    two: 0, body: [-0.085, 0, 0.07, 0.12, 0.02, 0], knees: [-0.3, 0.4], lD: [-0.25, 0.35, 0.9], lN: [0.1, 0.9, -0.3], hs: 1, roll: 40, toes: [-0.1, 0.9],
+  },
+  d: {
+    rH: [-0.1, -0.45, -0.2], rP: [-0.3, -0.2, -0.93], sw: [-150, -36],
+    lH: [-0.08, -0.12, 0.38], lP: [0.8, -0.55, -0.1],
+    rF: [-0.2, -0.2], lF: [0.17, 0.26], hip: -0.3,
+    two: 0, body: [-0.17, 0.02, 0.24, 0.05, -0.16, 0], knees: [-0.4, 0.4], lD: [0.1, 0.92, 0.3], lN: [-0.15, 0.1, 0.98], hs: 0, roll: 40, toes: [-0.6, 0.3],
+  },
+};
+export const HOLD_IDS = Object.freeze(['a', 'ref', 'b', 'c', 'd']);
+export const HOLD_NAMES = Object.freeze({ a: 'the middle guard, the blade at the foe (the owner’s pick, the default)', ref: 'the two-handed hold before, the blade up and out (ADR-207)', b: 'the high guard, the blade upright by his head (turned down)', c: 'the sword fingers, one hand (turned down)', d: 'the low trailing guard, one hand (turned down)' });
+/** The hold the game opens in. */
+export const HOLD_DEFAULT = 'a';
+const HPICK = { id: 'ref', h: REF_HOLD };
+/** The fight hold drawn now (an id of HOLD_IDS). */
+export const holdMode = () => HPICK.id;
+/** The fight habits (grip, shift, loosen: both hands on the grip, about the hold's blade) only in a two-handed hold. */
+export const holdHabits = () => HPICK.h.two === 1;
+/** Lab / tests: switch the fight hold live. Copies its numbers into REF_READY. Returns the id now set. */
+export function setHold(id) {
+  const k = HOLDS[String(id)] ? String(id) : HOLD_DEFAULT, H = HOLDS[k];
+  HPICK.id = k;
+  HPICK.h = H;
+  for (const f of ['rH', 'rP', 'sw', 'lH', 'lP', 'rF', 'lF']) for (let i = 0; i < H[f].length; i++) REF_READY[f][i] = H[f][i];
+  REF_READY.hip = H.hip;
+  return k;
+}
+setHold(q('hold') ?? HOLD_DEFAULT);
+
 /** The guard (the block). feet: where the stance settles once held [right x, z, left x, z]. */
 export const REF_GUARD = {
   rH: [0.0, 0.02, 0.3], // the grip before the right shoulder, at the chin
@@ -184,37 +255,37 @@ export function refStand(p, P, A) {
 
 /** The fight's two-handed hold (the whole body over guard()'s). */
 export function refReady(p, P, A) {
-  const m = standLife(Number.isFinite(A.time) ? A.time : 0, true), S = REF_READY;
+  const m = standLife(Number.isFinite(A.time) ? A.time : 0, true), S = REF_READY, H = HPICK.h, B = H.body;
   p[P.bodyX] = 0.008 * m.sw;
-  p[P.bodyY] = -0.03 + 0.006 * m.br; // the knees soft
-  p[P.bodyZ] = 0.008 * m.dr;
+  p[P.bodyY] = B[0] + 0.006 * m.br; // the knees soft
+  p[P.bodyZ] = B[1] + 0.008 * m.dr;
   p[P.pelvX] = 0;
   p[P.pelvY] = S.hip; // turned a little, the right hip ahead with the right foot
   p[P.pelvZ] = -0.01 * m.sw;
-  p[P.spX] = 0.05 + 0.016 * m.br;
-  p[P.spY] = 0.02;
+  p[P.spX] = B[2] + 0.016 * m.br;
+  p[P.spY] = B[3];
   p[P.spZ] = 0;
-  p[P.hdX] = 0.04 - 0.012 * m.br;
-  p[P.hdY] = -(S.hip + 0.02) + 0.03 * m.look; // the eyes ahead, on the foe
+  p[P.hdX] = B[4] - 0.012 * m.br;
+  p[P.hdY] = -(S.hip + B[3]) + B[5] + 0.03 * m.look; // the eyes ahead, on the foe
   p[P.hdZ] = 0;
   set3(p, P.rH, S.rH[0] + 0.004 * m.tipB, S.rH[1] + 0.01 * m.brL, S.rH[2] + 0.006 * m.tipA);
   set3(p, P.rP, S.rP[0], S.rP[1], S.rP[2]);
   dir(p, P.swD, S.sw[0] + 1.8 * m.tipA, S.sw[1] + 1.6 * m.tipB + 1.0 * m.brL);
-  flatRolled(p, P, FLAT_ROLL);
-  set3(p, P.lH, S.lH[0], S.lH[1], S.lH[2]);
+  flatRolled(p, P, H.roll);
+  set3(p, P.lH, S.lH[0] + (H.two ? 0 : 0.006 * m.brL), S.lH[1] + (H.two ? 0 : 0.01 * m.br), S.lH[2]);
   set3(p, P.lP, S.lP[0], S.lP[1], S.lP[2]);
-  set3(p, P.lD, 0.1, -0.5, 0.86);
-  set3(p, P.lN, -0.9, 0, 0.3);
-  p[P.hs] = 0; // an open hand to the grip
+  set3(p, P.lD, H.lD[0], H.lD[1], H.lD[2]);
+  set3(p, P.lN, H.lN[0], H.lN[1], H.lN[2]);
+  p[P.hs] = H.hs; // an open hand to the grip (or the hold's own)
   p[P.lk] = 0;
-  p[P.twoHand] = 1;
+  p[P.twoHand] = H.two;
   p[P.offAt] = 0;
   set3(p, P.rF, S.rF[0], ANK, S.rF[1]);
   set3(p, P.lF, S.lF[0], ANK, S.lF[1]);
-  set3(p, P.rK, -0.3, 0, 1);
-  set3(p, P.lK, 0.3, 0, 1);
-  p[P.rFy] = -0.35;
-  p[P.lFy] = 0.6;
+  set3(p, P.rK, H.knees[0], 0, 1);
+  set3(p, P.lK, H.knees[1], 0, 1);
+  p[P.rFy] = H.toes[0];
+  p[P.lFy] = H.toes[1];
   p[P.rFf] = 1;
   p[P.lFf] = 1;
   p[P.footFlat] = 0.95;

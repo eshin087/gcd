@@ -28,6 +28,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-28',
+        title: 'A new fight stance: the middle guard',
+        notes: [
+          'In a fight gcd now holds his sword in a middle guard: both hands on the grip before him, the blade pointed at the boss, the knees bent.',
+          'At the game camera it reads as a sword aimed at your foe, not one raised up and out to the side.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
         notes: [
           'On a phone, one tap on a world, BEGIN HERE or BOSS RUSH now starts it: no more second tap.',

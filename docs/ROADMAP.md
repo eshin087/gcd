@@ -211,6 +211,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.102 — A new fight stance: the middle guard (2026-11-28, `player/stance-four`, ADR-275)
+- [x] Four fight holds as data behind `?hold=` (middle, high, sword fingers, low trailing), filmed close and far in one clip
+- [x] The owner's pick, A the middle guard, the default; ADR-207's hold `?hold=ref`; the Lab's `hold` row
+- [ ] The owner's playtest on the preview
 ## M1.99 — Bai Wuji's barrier shows where your blade hits it, and he goes down quicker (2026-11-28, `enemies/untouched`, ADR-266)
 - [x] A cut on the barrier chips a quarter of its damage (never his last HP), its number where the blade stopped
 - [x] His health 16000 (20000); the bench: the good bot in about 2.3 min

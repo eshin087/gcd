@@ -5,6 +5,33 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — A new fight stance: the middle guard (ADR-275; `player/stance-four`)
+
+**Owner:** "lets change gcds combat default pose. the way he holds the sword and the angle of the sword doesn't
+look like a good fighting stance. give me 4 new combat stance for me to review and approve. show me the video clip
+of close and far all in one clip." Picked from the clip: **A, the middle guard**.
+
+- **The switch** (`refStance.js` `HOLDS`, `setHold` / `holdMode`, `?hold=`): a hold is the whole fight stance
+  (hands, blade, elbows, free hand, body, knees, feet). `setHold` copies the chosen one into `REF_READY`, so the
+  fight's habits (idles.js, `syncStandArm`) aim about its blade. Default `a`; `ref` the ADR-207 hold; `b` high
+  guard, `c` sword fingers (one hand), `d` low trailing (one hand). One-handed holds play no fight habits
+  (`holdHabits`: they keep both hands on the grip) and the stance's blend never puts the free hand on the grip.
+- **The film** (headless Edge, 1080p): per hold a close orbit beside the game camera at true size and x2 (the
+  duel's own framing pushed him to the bottom edge, so the far view is the game camera's pitch, distance and
+  FOV centred on him), then the four side by side. From straight behind at the game camera A, B and C read alike
+  (a blade up the screen); side-on they are four different shapes.
+- **Anatomy:** my in-page wrist measure said 42°; `heroref`'s said 73° (bar 60). A sweep in the harness found the
+  elbow's pole: tucked a little in (`rP` 0.45, -0.88, -0.15) the wrist is 54° at most over four facings with the
+  blade the owner saw (-4°, 30° up; raised to 36° later, below). The toes went back to ADR-207's turn (`heroweight`: the draw cut's
+  pivot turned the right foot 0.07 rad from the filmed -0.2, under half the pivot), and the free elbow points out
+  to his left (the full run's `looks`: the robe's sleeve wing in his chest on 23 % of frames with it down and in;
+  now 2.4 %, main 2.5; ADR-207 met the same). The full run's duel `contact`: a deathblow's last cut lands as he
+  is back in the hold, and the filmed blade (30° up) stood 10.5 cm in the duelist at 1.5 m (bar 8). Probed at
+  1.3 / 1.5 / 1.7 / 2 m: 36° up with the hands 3 cm higher clears him at 1.5 m (-0.1 cm), wrist 54°. B and D were tuned under 60 for the film (55°, 54° in-page).
+- **Checked:** `heroref` green (the hold, the blend, the three habits, every move out of it within ×1.5 + 10 cm of
+  the stance before, the guard from the hold); the hero suites; a film strip of a light chain, a block and a roll
+  out of the hold.
+- **Open:** the owner on the preview (lock-on duels, strafing); whether the turned-down holds b-d stay.
 ## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
 
 **Goal:** two looks from the owner's Phantom Blade Zero reference (a boss fight they sent): a charged (black) attack
