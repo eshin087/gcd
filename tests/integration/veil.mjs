@@ -423,6 +423,7 @@ async function scenarioStrike() {
   out('\n== scenario STRIKE (a cut on the shell: the chip, the number, the silhouette in every look) ==');
   const B = TUNING.wjBarrier;
   const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const STRIKE_HOLD = (await imp('src/entities/enemies/untouched/fxStrike.js')).STRIKE.hold;
   {
     const G = build();
     const d = G.game.dragon;
@@ -440,7 +441,7 @@ async function scenarioStrike() {
     assert(d.hp === 1 && d.mode !== 'dying' && d.mode !== 'dead', `the shell never takes his last HP (${d.hp}, ${d.mode})`);
     G.watch = null;
   }
-  for (const look of ['0', 'a', 'b', 'c']) {
+  for (const look of ['0', 'a']) {
     setLook('wjStrike', look);
     const G = build();
     const d = G.game.dragon;
@@ -450,18 +451,19 @@ async function scenarioStrike() {
     const f0 = G.game.fx?.fire?.count ?? 0;
     d.takeHit({ damage: 60, part: 'body', point: { x: d.position.x + 0.2, y: 1.4, z: d.position.z - 0.5 }, dir: { x: 0, z: 1 } });
     const live = st.list.filter((r) => r.alive);
-    const segs = live.reduce((a, r) => a + r.n, 0), lookOn = live[0]?.look ?? '-';
+    const segs = live.reduce((a, r) => a + r.n, 0);
     let peak = 0;
-    run(G, 0.25, () => { peak = Math.max(peak, G.game.fx?.fire?.count ?? 0); });
-    run(G, 0.8);
+    run(G, 0.1, () => { peak = Math.max(peak, G.game.fx?.fire?.count ?? 0); });
+    const during = st.list.filter((r) => r.alive).length;
+    run(G, 0.25);
     const after = st.list.filter((r) => r.alive).length;
-    if (look === '0') assert(live.length === 0 && fx._ripples.some((r) => r.alive || r.t > 0), `0: the ripple as shipped, no silhouette (${live.length})`);
+    if (look === '0') assert(live.length === 0 && fx._ripples.some((r) => r.alive || r.t > 0), `0: the ripple as shipped, no outline (${live.length})`);
     else {
-      assert(live.length === 1 && lookOn === look, `${look}: one silhouette on the stop (${live.length}, look ${lookOn})`);
-      if (look !== 'a') assert(segs > 30, `${look}: his outline is ${segs} strokes long (> 30)`);
-      assert(peak > f0, `${look}: it prints in the fire field (${f0} -> ${peak} blobs)`);
+      assert(live.length === 1 && segs > 30, `a: the shell shows as his body's outline, ${segs} strokes (> 30)`);
+      assert(!fx._ripples.some((r) => r.alive), 'a: nothing else of the stop is drawn (no ripple)');
+      assert(during === 1 && peak > f0, `a: whole through the hit (${during} live at 0.1 s; ${f0} -> ${peak} blobs)`);
+      assert(after === 0, `a: gone when the hit ends (${after} live at 0.35 s; hold ${STRIKE_HOLD} s)`);
     }
-    assert(after === 0, `${look}: gone within a second (${after} live)`);
   }
   setLook('wjStrike', null);
 }

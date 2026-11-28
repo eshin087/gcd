@@ -117,7 +117,7 @@ export const LOOK_SWITCHES = Object.freeze([
 
   // Bai Wuji: fx rows
   ['wjShell', ['a', 'b', 'c'], 'a', 'a', false, ['veil'], 'his barrier while up: a all but invisible, it shows where the blade comes at it; b a faint standing shell of sparse strokes; c two faint rings that breathe (live)'],
-  ['wjStrike', ['0', 'a', 'b', 'c'], '0', 'b', false, ['veil'], 'a cut stopped on his barrier: 0 the ripple as shipped; a the shell, its whole oval lit round from the point; b his outline, the shell as it hugs him a hand off his body, lit from the point; c the rings, that outline and two wider ones rippling outward (live)', 'awaiting'],
+  ['wjStrike', ['0', 'a'], 'a', 'a', false, ['veil'], 'a cut stopped on his barrier: a the shell shows whole, a faint outline of his body a hand off it, for the hit only (the owner); 0 the ripple of rings as first shipped (live)'],
   ['wjNull', ['a', 'b'], 'a', 'a', false, ['veil'], 'the Violet Null\'s body: a a hard-edged slab, crisp strokes along both edges; b a round bore, brightest at its core, rings running down it (live)'],
 
   // Bai Wuji: world rows
