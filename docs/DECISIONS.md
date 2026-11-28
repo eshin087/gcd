@@ -7376,3 +7376,43 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   slice (both colours, both timings), the stroke line and the crescent stay behind `?slash=` and `?slice=` (the Lab's
   rows). A landed blow under the digit slash keeps the ending line's impact (the kick as the line lands); the kick on
   the contact's own frame is the slice's. The scenario `slice` checks the default.
+
+## ADR-263 — The digit slash on the swing's own path; the free hand at the hip; combo A's hits 4-5 without the thrust (2026-11-27)
+
+- **Context:** the owner, of PR 170's films: "go with belt and we decided on digit slash steel. i also want to improve or
+  change the 4th and 5th attack as it looks bad and the combo seems to pause on the 5th attack. the thrust looks
+  awkward. i also dont like from the back view that the left arm seems to be completely missing so fix that look. also
+  the digit slashes look really weird when the character is attacking from the side or facing the camera, the slashes
+  dont match the sword swing from those angles. make sure at any angle the character is facing, the digit slashes look
+  good. right now the slice looks good on all angle. also do a variation of the slice steel (drawn as the blade passes)
+  looks more sharp angles instead of being so curvy to make the strike look more sharp and damaging."
+- **Found:** (1) the digit slash was the ending line of ADR-240 placed across what it hit (`enemy`), its angle the way the
+  blade NEAR THE HAND crossed the screen: from the side and the front it lay 0.7-1.0 m (median) off the path the point
+  swept on the screen; from behind 0.28. (2) The belt hand sat on the front of the belt inside his outline (its elbow
+  0.30-0.33 m from his middle, level with his back, the sleeve dark on the dark coat): from behind, the game's view, the
+  arm vanished. (3) Hit 3 (the rising slash) leaves him turned to his left with the blade high left; the thrust's coil is
+  turned to his right at the ribs, so his chest swung ~150° within its 0.09 s windup (67° in one frame). Hit 5's 0.24 s
+  windup on the iai clock (`early3`: the coil reached in a third, then held) stood him still ~0.16 s: the pause.
+- **Decision:** (1) `slashFx.js` `?endslash=path`, the default: `_pathLine` fits one straight line to the point's path
+  (against his body, his travel taken off, as the slice's) on the screen: the frames moving at least `PATH.fast` of the
+  fastest step, weighed by step², their principal axis, run the blade's way over their extent ± `PATH.ext` (no shorter
+  than `PATH.min`); a turn gets one per third, a thrust straight at the camera runs along the blade off the point. It is
+  laid where the slice would be and not moved, so from every side it is the swing's own line. `enemy` stays behind
+  `?endslash=enemy`. (2) `belt` (the owner's pick, combo A's own hand now, feel `iai`'s too): the hand at the side-front
+  of the left hip, `hang` [0.16, -0.3, 0.16], the elbow out to 0.37-0.40 m (the arm's reach; bent ~85-100°), the fingers
+  forward-down along the forearm, the palm to the hip; its rest 0.45 on the hips (`thigh`, `hip`) so the windup's chest
+  whip does not fling it. Filmed from behind at the game's angle beside the first belt and a wider rest: here the forearm
+  and hand show past the coat. (3) `combos.js` `A45` / `?a45=`: three options for hits 4-5, each starting where the hit
+  before leaves the blade (the falling backhand from over the left shoulder, or the rising backhand from the left hip),
+  no thrust, and a two-handed finisher on a smooth windup (`warp` on the clip, read by `swingPose`: the coil reached as
+  the blow leaves, not held) of 0.15-0.2 s: `a` the slam's clip nearly grounded (no shards), `b` Whirling Tempest's
+  full turn, `c` the cleave's falling diagonal into a low lunge without its dash. `0` (the default until the owner
+  picks) keeps the thrust and Mountain Splitter. (4) `?sliceform=facet|jag`: the traced slice in straight cuts, a corner
+  where the blade has turned `FACET.turn` since the last one or the straight cut would leave the point's path by `dev`;
+  jag's fewer cuts run `over` past their corners and cross there in points.
+- **Consequences:** the digit slash no longer sits on the foe it hit; on a landed blow the burst and the kick run along
+  the line on the swing. Its digits lie a median 0.09-0.16 m from the point's path on the screen facing four ways
+  (scenario `slice`, beside the old place's numbers). The hits 4-5 options turn his chest at most 26-36° a frame
+  (`offhand` checks ≤ 45° for each and the belt hand under all four). The `offhand` step check leaves out a full turn's
+  frames (a hand 0.38 m out rides the whirl ~19 cm a frame without moving on him). Found, not changed: combo A's hit 1
+  snaps his chest ~60° in its first frame out of the two-handed fight hold and back four frames later.

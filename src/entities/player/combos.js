@@ -8,7 +8,7 @@
 // and its windup / active / recovery / chain (s); a finisher that is not the slam is a light-kind heavy blow
 // (`kind: 'light', heavy: true`: the heavy ending slash, no ground shards; a heavy after it is the lone heavy,
 // as after the slam). Damage, posture, reach and the rest of each hit are production's. '0' = production.
-//   a  Iai       draws: each cut leaves from a still pose and stops dead in another, the hand behind his back
+//   a  Iai       draws: each cut leaves from a still pose and stops dead in another, the hand at his left hip (`belt`)
 //                (feel snap); a two-handed falling cut to finish
 //   b  Tempest   quick strokes back and forth, no holds, the moves of the hand pulled in (feel flow); a full
 //                turn to finish
@@ -26,15 +26,14 @@ const F = (hitstop, shake, punch, kick, lunge) => ({ hitstop, shake, punch, kick
 const FIN = { kind: 'light', heavy: true, contact: 'sweep' }; // a finisher that is not the slam
 export const COMBOS = {
   a: {
-    name: 'Iai', feel: 'iai', hand: 'back',
+    name: 'Iai', feel: 'iai', hand: 'belt',
     hits: [
       // (hit-stop by the tiers of docs/ANIMATION.md 5.4: the lights 0.065-0.07 s, the thrust a medium 0.08,
       // the finisher a heavy 0.15)
       hit('drawCut', 0.09, 0.1, 0.28, 0.28, { turn: 0.3 }, null, F(0.065, 0.16, 0.5, 0.14, 0.75)),
       hit('flatBackhand', 0.09, 0.1, 0.28, 0.28, { turn: -0.4 }, null, F(0.065, 0.16, 0.5, 0.14, 0.75)),
       hit('risingSlash', 0.1, 0.11, 0.28, 0.28, { hop: 0.12 }, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),
-      hit('risingThrust', 0.09, 0.09, 0.28, 0.28, null, null, F(0.08, 0.18, 0.7, 0.16, 1.0)),
-      hit('heavyCrush', 0.24, 0.13, 0.45, 0.3, null, FIN, F(0.15, 0.5, 1.8, 0.3, 0.9)),
+      ...[0, 1], // hits 4 and 5: A45 below (`?a45=`)
     ],
   },
   b: {
@@ -68,6 +67,55 @@ export const COMBOS = {
     ],
   },
 };
+// COMBO A'S HITS 4 AND 5 (`?a45=`, ADR-263; the owner, 2026-11-27: "improve or change the 4th and 5th attack as it
+// looks bad and the combo seems to pause on the 5th attack. the thrust looks awkward"). Found: hit 3 (the rising slash)
+// leaves him turned to his left with the blade high left, and the thrust's coil is turned to his right at the ribs, so
+// his chest swung ~150° within the thrust's windup (67° in one frame); hit 5's 0.24 s windup on the iai clock (the coil
+// reached early, then HELD) stood him still for ~0.16 s before the blow: the pause. Each option below starts every cut
+// where the hit before it left the blade (the pendulum of swings.js), no thrust, and hit 5 winds up in 0.15-0.2 s on a
+// smooth clock (`warp`: the coil reached as the blow leaves, not held):
+//   '0'  as before: the rising thrust, then Mountain Splitter from over the left shoulder (0.24 s windup)
+//   a    the falling backhand from over the left shoulder (where hit 3 ends) down to the right hip; then both hands
+//        gather at the right hip, rise up his right side onto his toes, and one diagonal falls across him to the ground
+//        ahead (the slam's clip, nearly grounded, no shards)
+//   b    the falling backhand; then both hands on the grip, one full turn to his right with the blade level (Whirling
+//        Tempest's clip)
+//   c    the rising backhand from the left hip (where hit 3's blade drops) to high on his right; then both hands carry
+//        it on over the right shoulder and one long diagonal falls across his chest past the left hip into a low lunge,
+//        the free hand letting go into sword fingers at the foe (the charged cleave's clip, without its dash)
+const SMOOTH5 = ['smooth', 'early2', 'late18'];
+export const A45 = {
+  '0': [
+    hit('risingThrust', 0.09, 0.09, 0.28, 0.28, null, null, F(0.08, 0.18, 0.7, 0.16, 1.0)),
+    hit('heavyCrush', 0.24, 0.13, 0.45, 0.3, null, FIN, F(0.15, 0.5, 1.8, 0.3, 0.9)),
+  ],
+  a: [
+    hit('fallingBackhand', 0.1, 0.11, 0.28, 0.28, null, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),
+    hit('slam', 0.2, 0.13, 0.42, 0.3, { hop: 0.09, warp: SMOOTH5 }, FIN, F(0.14, 0.45, 1.6, 0.28, 0.9)),
+  ],
+  b: [
+    hit('fallingBackhand', 0.1, 0.11, 0.28, 0.28, null, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),
+    hit('heavySpin', 0.15, 0.17, 0.4, 0.3, { spin: -1, spinFeet: 'hop', warp: SMOOTH5 }, FIN, F(0.13, 0.4, 1.4, 0.26, 0.9)),
+  ],
+  c: [
+    hit('risingBackhand', 0.1, 0.11, 0.28, 0.28, null, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),
+    hit('cleave', 0.16, 0.15, 0.45, 0.3, { warp: SMOOTH5 }, FIN, F(0.14, 0.45, 1.6, 0.28, 0.95)),
+  ],
+};
+export const A45_IDS = ['0', 'a', 'b', 'c'];
+let a45Now = '0';
+/** Combo A's hits 4 and 5 now (an A45 key). */
+export const a45Mode = () => a45Now;
+/** Pick them (worn from the next swing); false for an unknown id. */
+export function setA45(m) {
+  const id = String(m);
+  if (!A45_IDS.includes(id)) return false;
+  COMBOS.a.hits[3] = A45[id][0];
+  COMBOS.a.hits[4] = A45[id][1];
+  a45Now = id;
+  if (comboNow === 'a') setCombo('a');
+  return true;
+}
 export const COMBO_IDS = ['0', 'a', 'b', 'c', 'd'];
 const KEYS = ['anim', 'variants', 'windup', 'active', 'recovery', 'chain', 'kind', 'heavy', 'contact', 'hitstop', 'shake', 'punch', 'kick', 'lunge'];
 const BASE = LIGHT.map((d) => Object.fromEntries(KEYS.map((k) => [k, d[k]])));
@@ -103,6 +151,11 @@ export function setCombo(m) {
 // (in the game the owner's baseline, combo A (2026-11-26: "lets use this as the baseline"), unless `?combo=` picks
 // another ('0' production's); the headless sims keep production's defs, which their checks are written for)
 export const DEFAULT_COMBO = 'a';
+setA45('0');
+{
+  const a = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('a45') : null;
+  if (a) setA45(a);
+}
 {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('combo') : null;
   if (typeof location !== 'undefined') setCombo(q && COMBO_IDS.includes(q) ? q : DEFAULT_COMBO);

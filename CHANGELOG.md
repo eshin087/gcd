@@ -5,18 +5,25 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and thirty-two pieces of work since 0.4.0:
-- **A slash of fine digits, and a left hand that stays out of his body** (2026-11-27, ADR-262). *Changed (the owner's pick from the films):*
-  every sword attack's slash is now a thin straight line of small steel-blue digits drawn across the foe the way the
-  sword crossed the screen as the swing ends, as if the blade cut the world's code open, gone in about 0.2 s, with a
-  few digits dripping out of the cut. A landed blow throws the camera along the blade's way and sprays a small burst
-  of sparks. *Added, to compare (not the default):* `?slice=green` (the matrix-green digits); `?slash=slice` the
-  digits laid along the exact path the blade's point swept (`?slicewhen=trace` as the blade passes, `end` all at once
-  as the swing ends); `?slash=line` the straight ending line in strokes as before; `?slash=arc` the crescent (the
-  Lab's `slash`, `slice` and `slicewhen` rows). *Fixed:* the free hand behind his back no longer passes through his
-  body (the yellow fist that flashed through his coat in the light combo): it rests on the small of his back with the
-  elbow bent, and comes and goes round his left hip; on the finisher it travels round his side to the grip. *Added, to
-  compare:* `?offhand=belt` (the free hand on his belt at the front of the left hip) and `?offhand=guard` (the sword
-  fingers raised before his chest), beside `?offhand=side` (the Lab's `offhand` row).
+- **A slash of fine digits on your swing, and your free hand at your hip** (2026-11-27, ADR-262, ADR-263). *Changed (the owner's picks from the films):*
+  every sword attack's slash is a thin straight line of small steel-blue digits, as if the blade cut the world's code
+  open, gone in about 0.2 s with a few digits dripping out of the cut; it is laid on the swing itself (the straight line
+  that best fits the path the sword's point swept, as the camera sees it), so it matches the sword from every side:
+  facing the camera, side-on or away (before, it was drawn across what it hit and crossed the swing from the side and
+  the front). A landed blow throws the camera along the blade's way and sprays a small burst of sparks. In combo A
+  your free hand rests at the front of the left hip with the elbow out to the side, so from behind the arm shows past
+  the coat (before, it was behind his back, then on the front of the belt where the body hid it); on the finisher it
+  joins the grip. *Added, to compare (not the default):* combo A's hits 4 and 5 without the thrust and without the
+  pause before the finisher, `?a45=a` (a falling backhand, then a two-handed falling cut from over the right
+  shoulder), `?a45=b` (a falling backhand, then a two-handed full turn) and `?a45=c` (a rising backhand, then a
+  two-handed falling diagonal into a low lunge); `?sliceform=facet` and `?sliceform=jag` (with `?slash=slice`: the
+  traced slice in straight cuts meeting at sharp corners, jag's crossing in points); `?slice=green` (the matrix-green
+  digits); `?slash=slice` the digits along the exact path the blade's point swept (`?slicewhen=trace` as the blade
+  passes, `end` all at once as the swing ends); `?endslash=enemy` the line across what it hit as before;
+  `?slash=line` the straight ending line in strokes; `?slash=arc` the crescent; `?offhand=guard` (the sword fingers
+  raised before his chest) and `?offhand=side` (the Lab's `slash`, `slice`, `slicewhen`, `sliceform`, `a45`,
+  `endslash` and `offhand` rows). *Fixed:* the free hand no longer passes through his body (the yellow fist that
+  flashed through his coat in the light combo).
 - **Harder-hitting swings, and slashes that stay in front of you** (2026-11-26, ADR-244). *Changed:* a heavy's
   slash no longer appears behind you as you dash: no part of any ending slash is drawn behind you, and a slash
   that cuts only air moves on with you. Landed blows hit harder: a longer freeze, the screen thrown along the slash,

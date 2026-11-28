@@ -954,7 +954,10 @@ function swingPose(p, A, k, t, W, Ac, R) {
   if (!C) return;
   // (the swings' feel, feel.js `?feel=`: the same keys on another clock inside the same phases, the body's
   // sink and turn scaled, its lead stretched; production's without one)
-  const Fl = feelLook();
+  let Fl = feelLook();
+  // (a hit's own clock over its feel's, `warp` on the clip (combos.js A45: a finisher whose coil is not held); kept on
+  // the clip, built once per feel)
+  if (Fl && k.warp) Fl = k._fl?.base === Fl ? k._fl.v : (k._fl = { base: Fl, v: { ...Fl, warp: k.warp } }).v;
   const u = warpPhase(swingPhase(t, W, Ac, R), Fl);
   const F = A.from;
   // the body runs AHEAD of the hand: the hips by lead[0] s, the chest by lead[1] (the kinetic chain:

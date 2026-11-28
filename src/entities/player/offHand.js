@@ -8,7 +8,8 @@
 //          a little as the body turns and drops (what the owner asked for on 2026-11-25)
 //   back   behind the back: the hand on the small of his back, palm out, the elbow out to his left and back
 //          (the one-handed fencer's hand, hidden from the front)
-//   belt   on his belt at the front of the left hip (the owner, 2026-11-27: the hand in front, not behind him)
+//   belt   at the front of the left hip, a little out from it, the elbow out (the owner's pick, 2026-11-27: the hand
+//          in front, not behind him; combo A's)
 //   guard  the sword fingers raised before his chest, left of his middle (the wuxia off-hand guard)
 //   quiet  production's own gestures kept, pulled in: the hand goes `keep` of the way to where the clip sends
 //          it from its rest at his side, the sword fingers as keyed
@@ -46,12 +47,14 @@ export const OFFHAND = {
     ...COMMON, hang: [-0.18, -0.3, -0.16], thigh: [0, 0, 0], hip: 0, near: 0.3, w: 12, z: 0.55, k: 0.25, sway: 0.04, thighR: 0,
     pole: [0.85, -0.15, -0.5], ld: [-0.9, -0.25, -0.2], ln: [0, 0, -1], lw: 0.8, hs: 0, keep: 0, body: 0.15,
   },
-  // (belt: the hand resting on his belt at the front of the left hip, as a swordsman holds where a scabbard sits: the
-  // elbow bent ~110° and out to his left, the fingers forward and down along the belt, the palm on it; the owner,
-  // 2026-11-27: the hand "needs to be in front of the player to look anatomically correct")
+  // (belt, the owner's pick 2026-11-27 and the default for combo A: the hand resting at the front of the left hip, a
+  // little out from it, as a swordsman's hand rests where a scabbard sits: the elbow bent ~100° and out to his left
+  // (0.40 m from his middle, the most the arm reaches), the fingers forward and down, the palm to the hip. At first the
+  // hand sat on the front of the belt (`hang` [-0.06, -0.3, 0.13]): from behind, the game's view, the arm lay inside his
+  // outline and "seems to be completely missing" (the owner); out here the forearm and hand show past his coat)
   belt: {
-    ...COMMON, hang: [-0.06, -0.3, 0.13], thigh: [0, 0, 0], hip: 0, near: 0.28, w: 12, z: 0.6, k: 0.2, sway: 0.03,
-    pole: [0.85, -0.2, -0.45], ld: [-0.7, -0.4, 0.6], ln: [-0.45, -0.35, -0.82], lw: 0.85, hs: 0, keep: 0, body: 0.15,
+    ...COMMON, hang: [0.16, -0.3, 0.16], thigh: [0.23, 0.235, 0.16], hip: 0.45, near: 0.28, w: 12, z: 0.6, k: 0.2, sway: 0.03,
+    pole: [1, -0.3, -0.3], ld: [-0.1, -0.75, 0.6], ln: [-0.9, 0, -0.3], lw: 0.85, hs: 0, keep: 0, body: 0.15,
   },
   // (guard: the wuxia off-hand guard: the sword fingers raised before his chest, left of his middle, the elbow down
   // and bent ~115°, the fingers up and a little forward, the palm toward his middle)

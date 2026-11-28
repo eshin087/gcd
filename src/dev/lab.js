@@ -26,10 +26,10 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
-import { SLASH_IDS, slashMode, setSlash, SLICE_IDS, sliceMode, setSlice, SLICE_WHEN_IDS, sliceWhenMode, setSliceWhen } from '../entities/player/slashFx.js';
+import { SLASH_IDS, slashMode, setSlash, SLICE_IDS, sliceMode, setSlice, SLICE_WHEN_IDS, sliceWhenMode, setSliceWhen, SLICE_FORM_IDS, sliceFormMode, setSliceForm } from '../entities/player/slashFx.js';
 import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
-import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combos.js';
+import { COMBO_IDS, COMBOS, comboMode, setCombo, A45_IDS, a45Mode, setA45 } from '../entities/player/combos.js';
 import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.js';
 import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
@@ -1484,12 +1484,14 @@ export class Lab {
       ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: dline = the ending slash in the slice's thin digits (the default), slice = a seam of digits along the blade's path, line = the ending slash line in strokes, arc = the curved crescent as before (?slash=)", (m) => m],
       ['slice', SLICE_IDS, setSlice, 'sliceBtns', "the slice's colour: steel = white-blue, green = the matrix (?slice=)", (m) => m],
       ['slicewhen', SLICE_WHEN_IDS, setSliceWhen, 'sliceWhenBtns', 'when the slice is laid: trace = as the blade passes, end = the whole cut at once as the swing ends (?slicewhen=)', (m) => m],
+      ['sliceform', SLICE_FORM_IDS, setSliceForm, 'sliceFormBtns', "the slice's shape: curve = the path as the point swept it, facet = straight cuts meeting at sharp corners, jag = fewer, longer cuts crossing in points at the corners (?sliceform=)", (m) => m],
       ['combo', COMBO_IDS, setCombo, 'comboBtns', 'four light combos for the ending slash: prod = as it ships, a Iai, b Tempest, c Mountain, d Dancer (each with its feel and its free hand) (?combo=)', (m) => (m === '0' ? 'prod' : `${m} ${COMBOS[m].name}`)],
+      ['a45', A45_IDS, setA45, 'a45Btns', "combo A's hits 4 and 5: 0 = the thrust and Mountain Splitter as before, a = falling backhand + a two-handed falling cut from over the right shoulder, b = falling backhand + a two-handed full turn, c = rising backhand + a two-handed falling diagonal into a low lunge (?a45=)", (m) => m],
       ['counter', COUNTER_IDS, setCounterMode, 'counterBtns', 'the flash counter: chain (the default) = he strikes back after each one, three in a row and he reels; old = it ends his string and he reels at once (?counter=0)', (m) => (m === '0' ? 'old' : m)],
-      ['endslash', PLACE_IDS, setPlace, 'placeBtns', "where the ending slash is drawn: target = ahead of him where the foe stands, body = across him, enemy = across what it hit, blade = along the blade's path (?endslash=)", (m) => m],
+      ['endslash', PLACE_IDS, setPlace, 'placeBtns', "where the ending slash is drawn: target = ahead of him where the foe stands, body = across him, enemy = across what it hit, blade = along the blade's path, path = the straight line on the swing's own path on the screen (the default) (?endslash=)", (m) => m],
       ['endbeat', BEAT_IDS, setBeat, 'beatBtns', 'when the ending slash comes: beat = a short pause after the swing, 0 = as it ends (?endbeat=)', (m) => m],
       ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
-      ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', "the free hand in a one-handed swing: auto = the feel's own, prod = as it ships, side = loose at his side, belt = on his belt at the front of the left hip, guard = the sword fingers raised before his chest, back = behind his back, quiet = its gestures pulled in (?offhand=)", (m) => (m === '0' ? 'prod' : m)],
+      ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', "the free hand in a one-handed swing: auto = the feel's own, prod = as it ships, side = loose at his side, belt = at the front of the left hip, the elbow out (combo A's), guard = the sword fingers raised before his chest, back = behind his back, quiet = its gestures pulled in (?offhand=)", (m) => (m === '0' ? 'prod' : m)],
       ['clash', CLASH_IDS, setClashMode, 'clashBtns', "the clash dance against the duelists (?clash=): dance = parries in a row inside one of his moves pay more posture each (x1, x1.25, x1.5, x1.75), their ring rises a little, and his posture recovers more slowly as his health drops; old = today's numbers. Read at each parry", (m) => (m === '0' ? 'old' : m)],
     ]) {
       const r = el('div', 'lab-row', null, body);
@@ -1618,6 +1620,8 @@ export class Lab {
     for (const { m, el: b } of this.ui.slashBtns ?? []) setClass(b, 'on', slashMode() === m);
     for (const { m, el: b } of this.ui.sliceBtns ?? []) setClass(b, 'on', sliceMode() === m);
     for (const { m, el: b } of this.ui.sliceWhenBtns ?? []) setClass(b, 'on', sliceWhenMode() === m);
+    for (const { m, el: b } of this.ui.sliceFormBtns ?? []) setClass(b, 'on', sliceFormMode() === m);
+    for (const { m, el: b } of this.ui.a45Btns ?? []) setClass(b, 'on', a45Mode() === m);
     for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
     for (const { m, el: b } of this.ui.feelBtns ?? []) setClass(b, 'on', feelMode() === m);
     for (const { m, el: b } of this.ui.comboBtns ?? []) setClass(b, 'on', comboMode() === m);

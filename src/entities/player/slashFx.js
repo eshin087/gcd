@@ -56,12 +56,17 @@ export function setSlash(m) {
  *    enemy   across what it hit, centred on the contact; a whiff: a shorter line at the target place (default)
  *    target  through the space ahead of him where the foe stands (END.ahead m out, at the cut's height)
  *    body    across him, centred on his chest
+ *    path    on the swing itself (the default, ADR-263): the straight line that best fits the path the blade's point
+ *            swept on the screen, through its fast part (PATH), laid where the slice would be: from every side the line
+ *            is the swing's own, as the slice is
  *    blade   along the blade's own path (the first instant slash: the chord of the swing)
  *  and when: '0' as the swing ends (default), 'beat' END.beat s later (the 'already cut' beat, the pose held). */
-export const PLACE_IDS = ['enemy', 'target', 'body', 'blade'];
+export const PLACE_IDS = ['path', 'enemy', 'target', 'body', 'blade'];
 export const BEAT_IDS = ['0', 'beat'];
-// (the owner's baseline, 2026-11-26: "combo A with the slash on the enemy", as the swing ends)
-let placeNow = 'enemy', beatNow = '0';
+// (the owner's baseline, 2026-11-26: "combo A with the slash on the enemy", as the swing ends; 2026-11-27, of the digit
+// slash: "looks really weird when the character is attacking from the side or facing the camera, the slashes dont
+// match the sword swing from those angles ... right now the slice looks good on all angle": `path`, ADR-263)
+let placeNow = 'path', beatNow = '0';
 export const placeMode = () => placeNow;
 export const beatMode = () => beatNow;
 export function setPlace(m) {
@@ -84,6 +89,11 @@ export function setBeat(m) {
  *  range of its middle (m), `len` [light, heavy] its length (m), `thrust` a thrust's, `miss` × the length of
  *  an enemy-placed whiff, `beat` (s) the pause before it in 'beat', `star` (rad) how far a turn's three cuts
  *  are fanned round their middle. */
+/** The path line's numbers (`path`): frames moving at least `fast` of the swing's fastest step are fitted (each weighed
+ *  by its step²); the line runs over their extent on the screen, carried on `ext` of it past each end, no shorter than
+ *  `min` m (× his scale; a thrust's `thrust`) and no longer than the look's `max`; a thrust whose path is shorter than
+ *  `short` m on the screen (straight at the camera) is drawn along the blade's own way across the screen instead. */
+export const PATH = { fast: 0.35, ext: 0.12, min: 1.0, thrust: 1.2, short: 0.35 };
 export const END = { ahead: 1.9, y: [0.55, 1.7], len: [3.6, 5.6], thrust: 2.4, miss: 0.6, beat: 0.12, star: 0, at: 0.2, reveal: 3, step: 1 / 60, front: 0.35, carry: 6 };
 // (`front` m: no part of a line is drawn nearer than this in front of him, along his facing (a heavy's line
 // across what it hit ran back over and behind him); `carry` 1/s: a whiff's line moves on with him at his own
@@ -120,6 +130,24 @@ export const SMEAR = { min: 0.16, n: 6, sub: 2, from: 0.3, life: 0.07, size: 0.1
  *  landed blow: the camera thrown along the blade's way AT the contact, a small spray of sparks there (IMPACT ×
  *  `burst`, `reach` m either side). */
 export const SLICE_IDS = ['steel', 'green'];
+/** The slice's shape (`?sliceform=`, ADR-263; the owner, 2026-11-27: "do a variation of the slice steel (drawn as the
+ *  blade passes) looks more sharp angles instead of being so curvy to make the strike look more sharp and damaging"):
+ *    curve  the path as the point swept it (the default)
+ *    facet  the path in straight cuts: a new one each time the blade has turned FACET.facet.turn since the last corner,
+ *           or the straight cut would leave the point's path by more than `dev` m (× his scale), so a swing prints as
+ *           three or four straight strokes meeting at sharp corners
+ *    jag    fewer, longer straight cuts (two or three), each carried on FACET.jag.over m past its corners, so they cross
+ *           there in points, as strokes of a brush do
+ *  Laid as the blade passes, each cut the frame the blade reaches its corner. */
+export const SLICE_FORM_IDS = ['curve', 'facet', 'jag'];
+export const FACET = { facet: { turn: 0.75, dev: 0.09, over: 0.03 }, jag: { turn: 1.1, dev: 0.16, over: 0.24 } };
+let sliceFormNow = 'curve';
+export const sliceFormMode = () => sliceFormNow;
+export function setSliceForm(m) {
+  if (!SLICE_FORM_IDS.includes(m)) return false;
+  sliceFormNow = m;
+  return true;
+}
 export const SLICE_WHEN_IDS = ['trace', 'end'];
 let sliceNow = 'steel', sliceWhenNow = 'trace';
 export const sliceMode = () => sliceNow;
@@ -138,6 +166,7 @@ export function setSliceWhen(m) {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
   if (q?.get('slice')) setSlice(q.get('slice'));
   if (q?.get('slicewhen')) setSliceWhen(q.get('slicewhen'));
+  if (q?.get('sliceform')) setSliceForm(q.get('sliceform'));
 }
 /** The slice's numbers: `cell` (m, × his scale) the lattice's cell, and so the digits' spacing; `size` × the cell
  *  a digit's size at birth and death; `life` [light, heavy] (s); `from` × the windup: followed from there on; `v`
@@ -214,6 +243,11 @@ export class SlashFx {
     this.vel = new Float32Array(NB); // … the point's speed (m/s)
     this.ps = new Float32Array(NB * 2); // … and where he stood (the slice takes his travel off)
     this.cells = new Set(); // the slice's lattice cells this swing has printed (one digit a cell)
+    this.fa = -1; // a sharp slice's last corner (a buffered frame), and the strength of the cut since it
+    this.fw = 0;
+    this.facetN = 0; // its straight cuts this swing (tests)
+    /** Tests: (ax, ay, az, bx, by, bz) as each of a sharp slice's straight cuts is laid (its seam's ends, past the corners). */
+    this.onFacet = null;
     this.seamN = 0; // the slice's digits so far (tests)
     this.drips = 0;
     this._dripC = 0;
@@ -304,6 +338,9 @@ export class SlashFx {
       this.kind = d.kind === 'thrust' || an?.kind === 'thrust' || C?.line === 'point' ? 2 : an?.spin ? 1 : 0;
       this.look = d.heavy ? 1 : 0;
       this.cells.clear();
+      this.fa = -1;
+      this.fw = 0;
+      this.facetN = 0;
     }
     // (the slice's impact: at the contact, the blade's way then)
     if (this._hitNew) {
@@ -336,7 +373,10 @@ export class SlashFx {
       this.ps[n * 2 + 1] = P.position.z;
       this.nb = n + 1;
       // the slice, traced: this frame's stretch of the point's path, as the blade passes
-      if (slashNow === 'slice' && sliceWhenNow === 'trace' && n > 0 && t >= SLICE.from * W) this._sliceSeg(n - 1, n);
+      if (slashNow === 'slice' && sliceWhenNow === 'trace' && n > 0 && t >= SLICE.from * W) {
+        if (sliceFormNow === 'curve') this._sliceSeg(n - 1, n);
+        else this._sliceFacet(n);
+      }
     }
     // the swing: its fastest frame from the windup's end on; it has ENDED on the first frame after that
     // peak (the cut proper: from the active window on) whose point moves under SWING.end of it (at the latest SWING.late of the recovery in)
@@ -359,6 +399,17 @@ export class SlashFx {
     const a = Math.max(0, s - 1), e = this.nb - 1;
     if (slashNow === 'slice') {
       this._sliceEnd(a, e);
+      return;
+    }
+    if (placeNow === 'path') {
+      // the line on the swing's own path (a turn: three, one on each third of it)
+      if (this.kind === 1) {
+        const k = SLASH.ring;
+        for (let j = 1; j <= k; j++) {
+          const i0 = Math.round(a + ((e - a) * (j - 1)) / k), i1 = Math.round(a + ((e - a) * j) / k);
+          if (i1 > i0) this._pathLine(i0, i1, false, j === 1, (j - 1) * END.reveal * END.step);
+        }
+      } else this._pathLine(a, e, this.kind === 2, true, 0);
       return;
     }
     if (this.kind === 2) this._streak(SLASH.thrust * (this.look ? 1.4 : 1));
@@ -405,6 +456,85 @@ export class SlashFx {
         if (!(ul > 1e-4)) continue;
         const l = ((l0 * ib + l1 * b) * f) / ul;
         this._sliceCell(h0x * ib + h1x * b + ux * l, h0y * ib + h1y * b + uy * l, h0z * ib + h1z * b + uz * l, w, r);
+      }
+    }
+  }
+
+  /** A sharp slice (FACET), frame n: the corner is where the blade has turned the form's `turn` since the last one; the
+   *  straight cut from the last corner to here is laid then. A slow frame (under SLICE.v[0]) ends the cut there. */
+  _sliceFacet(n) {
+    const S = SLICE, F = FACET[sliceFormNow] ?? FACET.facet, sc = this.p.drawScale || 1;
+    const w = Math.min(1, Math.max(0, (this.vel[n] / sc - S.v[0]) / (S.v[1] - S.v[0])));
+    if (this.fa < 0) {
+      if (w > 0 && n > 0) {
+        this.fa = n - 1;
+        this.fw = w;
+      }
+      return;
+    }
+    if (!(w > 0)) {
+      if (n - 1 > this.fa && this.fw > 0) this._facetCut(this.fa, n - 1, this.fw);
+      this.fa = -1;
+      this.fw = 0;
+      return;
+    }
+    this.fw = Math.max(this.fw, w);
+    // the blade's turn since the corner (its direction, base → point; his travel moves both ends alike)
+    const B = this.buf, Hb = this.hb, a = this.fa;
+    const ax = B[a * 3] - Hb[a * 3], ay = B[a * 3 + 1] - Hb[a * 3 + 1], az = B[a * 3 + 2] - Hb[a * 3 + 2];
+    const bx = B[n * 3] - Hb[n * 3], by = B[n * 3 + 1] - Hb[n * 3 + 1], bz = B[n * 3 + 2] - Hb[n * 3 + 2];
+    const la = Math.hypot(ax, ay, az), lb = Math.hypot(bx, by, bz);
+    if (!(la > 1e-4 && lb > 1e-4)) return;
+    const turn = Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by + az * bz) / (la * lb))));
+    if (turn >= F.turn) {
+      this._facetCut(a, n, this.fw);
+      this.fa = n;
+      this.fw = w;
+      return;
+    }
+    // (the straight cut corner → here would leave the point's path between them: the corner is the frame before)
+    if (n - a < 2) return;
+    const PS = this.ps, px = this.p.position.x, pz = this.p.position.z, lim = F.dev * sc;
+    const qx = (i) => B[i * 3] + px - PS[i * 2], qz = (i) => B[i * 3 + 2] + pz - PS[i * 2 + 1];
+    const x0 = qx(a), y0 = B[a * 3 + 1], z0 = qz(a), ux = qx(n) - x0, uy = B[n * 3 + 1] - y0, uz = qz(n) - z0, l2 = ux * ux + uy * uy + uz * uz;
+    if (!(l2 > 1e-8)) return;
+    for (let i = a + 1; i < n; i++) {
+      const vx = qx(i) - x0, vy = B[i * 3 + 1] - y0, vz = qz(i) - z0, t = Math.max(0, Math.min(1, (vx * ux + vy * uy + vz * uz) / l2));
+      if (Math.hypot(vx - ux * t, vy - uy * t, vz - uz * t) > lim) {
+        this._facetCut(a, n - 1, this.fw);
+        this.fa = n - 1;
+        this.fw = w;
+        return;
+      }
+    }
+  }
+
+  /** One straight cut of a sharp slice: buffered frame i0's point to i1's (against his body now), carried on the form's
+   *  `over` past both ends (fading there), a digit on each lattice cell it crosses, for each of the look's seams. */
+  _facetCut(i0, i1, w) {
+    const P = this.p, S = SLICE, sc = P.drawScale || 1, hv = this.look ? 1 : 0, F = FACET[sliceFormNow] ?? FACET.facet;
+    if (!this.p.fx?.add?.spawn) return;
+    const B = this.buf, Hb = this.hb, PS = this.ps, px = P.position.x, pz = P.position.z;
+    const o0x = px - PS[i0 * 2], o0z = pz - PS[i0 * 2 + 1], o1x = px - PS[i1 * 2], o1z = pz - PS[i1 * 2 + 1];
+    const rows = S.rows[hv], ov = F.over * sc;
+    this.facetN++;
+    for (let r = 0; r < rows.length; r++) {
+      const f = rows[r];
+      const x0 = Hb[i0 * 3] + (B[i0 * 3] - Hb[i0 * 3]) * f + o0x, y0 = Hb[i0 * 3 + 1] + (B[i0 * 3 + 1] - Hb[i0 * 3 + 1]) * f, z0 = Hb[i0 * 3 + 2] + (B[i0 * 3 + 2] - Hb[i0 * 3 + 2]) * f + o0z;
+      const x1 = Hb[i1 * 3] + (B[i1 * 3] - Hb[i1 * 3]) * f + o1x, y1 = Hb[i1 * 3 + 1] + (B[i1 * 3 + 1] - Hb[i1 * 3 + 1]) * f, z1 = Hb[i1 * 3 + 2] + (B[i1 * 3 + 2] - Hb[i1 * 3 + 2]) * f + o1z;
+      let dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+      const L = Math.hypot(dx, dy, dz);
+      if (!(L > 1e-3)) continue;
+      dx /= L;
+      dy /= L;
+      dz /= L;
+      if (r === 0) this.onFacet?.(x0 - dx * ov, y0 - dy * ov, z0 - dz * ov, x1 + dx * ov, y1 + dy * ov, z1 + dz * ov);
+      const steps = Math.min(64, Math.max(1, Math.ceil((L + 2 * ov) / (S.cell * sc * 0.5))));
+      for (let k = 0; k <= steps; k++) {
+        const s = -ov + ((L + 2 * ov) * k) / steps;
+        // (past a corner the stroke thins out to its point)
+        const tip = s < 0 ? 1 + s / Math.max(ov, 1e-6) : s > L ? 1 - (s - L) / Math.max(ov, 1e-6) : 1;
+        this._sliceCell(x0 + dx * s, y0 + dy * s, z0 + dz * s, w * (0.35 + 0.65 * tip), r);
       }
     }
   }
@@ -485,7 +615,15 @@ export class SlashFx {
   /** The slice's swing has ended (frames a … e): drawn now if it waits for the end; announced (the audio's ring,
    *  `player:slash`; tests: onLine with the path's two ends). */
   _sliceEnd(a, e) {
-    if (sliceWhenNow === 'end') for (let i = a + 1; i <= e; i++) this._sliceSeg(i - 1, i);
+    if (sliceFormNow !== 'curve') {
+      if (sliceWhenNow === 'end') {
+        this.fa = -1;
+        this.fw = 0;
+        for (let i = a + 1; i <= e; i++) this._sliceFacet(i);
+      }
+      if (this.fa >= 0 && e > this.fa && this.fw > 0) this._facetCut(this.fa, e, this.fw);
+      this.fa = -1;
+    } else if (sliceWhenNow === 'end') for (let i = a + 1; i <= e; i++) this._sliceSeg(i - 1, i);
     const B = this.buf, hv = this.look ? 1 : 0, la = this.last, hit = this.hitRec === this.rec;
     this._hit = hit;
     this.onLine?.(B[a * 3], B[a * 3 + 1], B[a * 3 + 2], B[e * 3], B[e * 3 + 1], B[e * 3 + 2], LOOKS[hv], this.kind);
@@ -647,6 +785,89 @@ export class SlashFx {
     this._dly = 0;
   }
 
+  /** The path line (`path`, PATH): from buffered frame i0 to i1, the point's path against his body now (his own travel
+   *  taken off, as the slice's), its fast frames fitted with one straight line in the screen's plane (the principal axis
+   *  of their places on the screen, each weighed by its step²), run the way the blade went, over their extent. */
+  _pathLine(i0, i1, thrust, kick, delay) {
+    const C = this.game?.camera?.matrixWorld?.elements, P = this.p;
+    if (!C) return;
+    const B = this.buf, S = this.spd, PS = this.ps, px = P.position.x, pz = P.position.z, sc = P.drawScale || 1;
+    const rx = C[0], ry = C[1], rz = C[2], ux = C[4], uy = C[5], uz = C[6];
+    let top = 0;
+    for (let i = i0 + 1; i <= i1; i++) top = Math.max(top, S[i]);
+    if (!(top > 0)) return;
+    const cut = PATH.fast * top, sp = (i) => (i > i0 ? S[i] : S[i0 + 1]);
+    // the weighed centre (in the world and on the screen), then the spread on the screen
+    let W = 0, wx = 0, wy = 0, wz = 0, ms = 0, mt = 0;
+    for (let i = i0; i <= i1; i++) {
+      const v = sp(i);
+      if (!(v >= cut)) continue;
+      const w = v * v, x = B[i * 3] + px - PS[i * 2], y = B[i * 3 + 1], z = B[i * 3 + 2] + pz - PS[i * 2 + 1];
+      W += w;
+      wx += w * x;
+      wy += w * y;
+      wz += w * z;
+      ms += w * (x * rx + y * ry + z * rz);
+      mt += w * (x * ux + y * uy + z * uz);
+    }
+    if (!(W > 0)) return;
+    wx /= W;
+    wy /= W;
+    wz /= W;
+    ms /= W;
+    mt /= W;
+    let css = 0, ctt = 0, cst = 0;
+    for (let i = i0; i <= i1; i++) {
+      const v = sp(i);
+      if (!(v >= cut)) continue;
+      const w = v * v, x = B[i * 3] + px - PS[i * 2], y = B[i * 3 + 1], z = B[i * 3 + 2] + pz - PS[i * 2 + 1];
+      const ds = x * rx + y * ry + z * rz - ms, dt = x * ux + y * uy + z * uz - mt;
+      css += w * ds * ds;
+      ctt += w * dt * dt;
+      cst += w * ds * dt;
+    }
+    const th = 0.5 * Math.atan2(2 * cst, css - ctt);
+    let ds = Math.cos(th), dt = Math.sin(th);
+    // the way the blade went: from the stretch's first frame to its last
+    const ex = B[i1 * 3] + px - PS[i1 * 2] - (B[i0 * 3] + px - PS[i0 * 2]), ey = B[i1 * 3 + 1] - B[i0 * 3 + 1], ez = B[i1 * 3 + 2] + pz - PS[i1 * 2 + 1] - (B[i0 * 3 + 2] + pz - PS[i0 * 2 + 1]);
+    if ((ex * rx + ey * ry + ez * rz) * ds + (ex * ux + ey * uy + ez * uz) * dt < 0) {
+      ds = -ds;
+      dt = -dt;
+    }
+    // its extent along the line
+    let s0 = Infinity, s1 = -Infinity;
+    for (let i = i0; i <= i1; i++) {
+      if (!(sp(i) >= cut)) continue;
+      const x = B[i * 3] + px - PS[i * 2] - wx, y = B[i * 3 + 1] - wy, z = B[i * 3 + 2] + pz - PS[i * 2 + 1] - wz;
+      const v = (x * rx + y * ry + z * rz) * ds + (x * ux + y * uy + z * uz) * dt;
+      s0 = Math.min(s0, v);
+      s1 = Math.max(s1, v);
+    }
+    const Lk = SLASH[LOOKS[this.look]];
+    let dx = rx * ds + ux * dt, dy = ry * ds + uy * dt, dz = rz * ds + uz * dt, cx = wx, cy = wy, cz = wz;
+    if (thrust && s1 - s0 < PATH.short * sc) {
+      // (a thrust straight at the camera: its path is a dot on the screen; along the blade's way across it, off the point)
+      const T = this.T, H = this.H, qx = T[0] - H[0], qy = T[1] - H[1], qz = T[2] - H[2];
+      if (this._screen(qx * rx + qy * ry + qz * rz, qx * ux + qy * uy + qz * uz)) {
+        dx = _OUT[0];
+        dy = _OUT[1];
+        dz = _OUT[2];
+      }
+      cx = T[0];
+      cy = T[1];
+      cz = T[2];
+      s0 = 0;
+      s1 = PATH.short * sc;
+    }
+    const len = Math.min(Lk.max * sc, Math.max((thrust ? PATH.thrust : PATH.min) * sc, (s1 - s0) * (1 + 2 * PATH.ext)));
+    const mid = (s0 + s1) / 2, h = len / 2;
+    // (a thrust's streak runs on past the point: its far end carried further)
+    const a0 = thrust ? mid - h * 0.6 : mid - h, a1 = thrust ? mid + h * 1.4 : mid + h;
+    this._dly = delay;
+    this._end(cx + dx * a0, cy + dy * a0, cz + dz * a0, cx + dx * a1, cy + dy * a1, cz + dz * a1, thrust, kick);
+    this._dly = 0;
+  }
+
   /** A direction across the screen (sx right, sy up, in pixels' proportions) as a world direction in the
    *  screen's plane → _OUT; false when there is none. */
   _screen(sx, sy) {
@@ -709,7 +930,7 @@ export class SlashFx {
   /** The ending slash: the cut's line (a → b) moved to its place (placeNow) at the cut's angle, kept off the
    *  floor, drawn now or after the beat (beatNow). */
   _end(ax, ay, az, bx, by, bz, thrust, kick) {
-    if (placeNow !== 'blade') {
+    if (placeNow !== 'blade' && placeNow !== 'path') {
       let dx = bx - ax, dy = by - ay, dz = bz - az;
       const l = Math.hypot(dx, dy, dz);
       if (!(l > 1e-4)) return;

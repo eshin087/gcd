@@ -14,7 +14,7 @@
 //   flow    fluid: no holds, an even cut that runs on into the follow-through and home; a little more turn,
 //           the hips a little ahead; production's free-hand gestures pulled in (`quiet`)
 //   iai     combo A's: the coil early and held, a crisp cut, the finish held while its ending slash flashes, then he
-//           rises; the hand behind his back
+//           rises; the hand at his left hip (offHand.js `belt`)
 // '0' (the default) is production's. A look's fields:
 //   warp   [windup, active, recovery]: each a curve name (CURVES) mapping the phase's own 0..1 to the clip's
 //   gain   { by, hip, sy, sx }: × the keyed sink, hips' turn, chest's turn and lean (eased in over the windup's
@@ -38,7 +38,7 @@ export const FEELS = {
   // combo A's (the impact pass, ADR-240): the coil reached early and held, a crisp cut, and the finish HELD while
   // its ending slash flashes before he rises (the snap's quick settle hid the 'already cut' beat); a little more
   // sink and turn, the hips a little ahead
-  iai: { warp: ['early3', 'early2', 'late18'], gain: { by: 1.15, hip: 1.1, sy: 1.1, sx: 1.1 }, lead: 1.2, hand: 'back' },
+  iai: { warp: ['early3', 'early2', 'late18'], gain: { by: 1.15, hip: 1.1, sy: 1.1, sx: 1.1 }, lead: 1.2, hand: 'belt' },
 };
 export const FEEL_IDS = ['0', 'snap', 'weight', 'flow', 'iai'];
 let feelNow = '0';

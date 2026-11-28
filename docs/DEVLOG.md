@@ -5,6 +5,38 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The digit slash on the swing, the belt hand seen from behind, combo A's hits 4-5 without the thrust (ADR-263; branch `claude/hero-attack-feel`, held)
+
+**Owner:** "go with belt and we decided on digit slash steel. i also want to improve or change the 4th and 5th attack as
+it looks bad and the combo seems to pause on the 5th attack. the thrust looks awkward. i also dont like from the back
+view that the left arm seems to be completely missing so fix that look. also the digit slashes look really weird when the
+character is attacking from the side or facing the camera ... right now the slice looks good on all angle. also do a
+variation of the slice steel (drawn as the blade passes) looks more sharp angles".
+
+**Done:**
+- The belt is combo A's hand (and feel `iai`'s). From behind it vanished: the hand on the front of the belt kept the whole
+  arm inside his outline, dark on the dark coat. Filmed three rests from behind at the game's angle; the one at the
+  side-front of the hip (`hang` [0.16, -0.3, 0.16], the elbow out 0.37-0.40 m, the most the arm reaches) shows the
+  forearm and hand past the coat. Its rest is 0.45 on the hips, so hit 1's chest whip does not fling it.
+- The digit slash is laid on the swing (`?endslash=path`, the default): the straight line that best fits the point's path
+  on the screen through its fast frames. Before, it was across what it hit at the angle the blade near the hand crossed
+  the screen: 0.7-1.0 m off the swing from the side and the front. Now 0.09-0.16 m (median), facing four ways.
+- Combo A's hits 4-5: the thrust's coil spun his chest ~150° (67° in a frame) out of hit 3's finish, and hit 5's held
+  coil was the pause. `?a45=a|b|c`: a falling or rising backhand from where hit 3 leaves the blade, then a two-handed
+  finisher on a smooth 0.15-0.2 s windup (a: a falling cut from over the right shoulder; b: a full turn; c: a falling
+  diagonal into a low lunge). Chest at most 26-36° a frame. `0` (as before) stays the default until the owner picks.
+- `?sliceform=facet|jag` (with `?slash=slice`): the traced slice in straight cuts meeting at corners (facet: 3-5 a
+  swing; jag: 2-3, crossing in points past each corner).
+- Merged main (ADR-251, ADR-261); the branch's ADR is 262 (+ 263 here).
+
+**Tests:** `offhand` (the belt under all four hits 4-5 options: never behind him, the elbow bent and out ≥ 0.36 m, the
+chest ≤ 45° a frame; the step check leaves out a full turn's frames), `slice` (the digit slash on the swing facing four
+ways; the sharp slices' straight cuts and corners). `handaudit` prints the elbow's place (`ex`, `ez`) and takes
+`GCD_HAND_A45`.
+
+**Next / open:** the owner's pick of hits 4-5 (a / b / c) and of the slice's shape; combo A's hit 1 snaps his chest ~60°
+in its first frame out of the fight hold (found, not changed).
+
 ## 2026-11-27 — The free hand behind his back, mended: a bent elbow, round his left (ADR-262; branch `claude/hero-attack-feel`, held)
 
 **Owner:** "The new free hand looks worse and unnatural. You need to make sure it doesn't look that bad and off. The hand

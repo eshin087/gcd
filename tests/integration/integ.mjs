@@ -6322,6 +6322,8 @@ async function scenarioHandAudit() {
   const { DIM: HD } = await imp('src/entities/player/model.js');
   const OHm = await imp('src/entities/player/offHand.js');
   const c0 = CO.comboMode(), o0 = OHm.offHandMode();
+  const a450 = CO.a45Mode();
+  if (process.env.GCD_HAND_A45) CO.setA45(process.env.GCD_HAND_A45);
   CO.setCombo(process.env.GCD_HAND_COMBO || 'a');
   if (process.env.GCD_HAND_OFF) OHm.setOffHand(process.env.GCD_HAND_OFF);
   // (GCD_HAND_SET='{"back":{"hang":[..],"body":..}}': try a look's numbers without editing it)
@@ -6372,11 +6374,14 @@ async function scenarioHandAudit() {
       const Le = new THREE.Vector3().setFromMatrixPosition(r.arms.L.fore.matrixWorld), cq = new THREE.Quaternion();
       r.chest.getWorldQuaternion(cq);
       const fl = Lw.clone().sub(Le).normalize().applyQuaternion(cq.invert());
-      rows.push(`${String(i).padStart(3)} fore ${fl.x.toFixed(2)},${fl.y.toFixed(2)},${fl.z.toFixed(2)} clr ${clr.toFixed(2)} elb ${elb.toFixed(0).padStart(3)} wbend ${wb.toFixed(0).padStart(3)} twist ${tw.toFixed(0).padStart(4)} ${(p.state === 'attack' ? `${p.atk.def.combo}:${p.atk.def.name}` : p.state).padEnd(22)} rad ${Math.hypot(W.x, W.z).toFixed(2)} x ${W.x.toFixed(2)} y ${(W.y - HD.shoulder[1]).toFixed(2)} z ${W.z.toFixed(2)} sd ${A.cur[P.sd].toFixed(2)} two ${A.cur[P.twoHand].toFixed(2)} step ${(stp * 100).toFixed(1)} wstep ${(wst * 100).toFixed(1)} yaw ${((p.yaw * 180) / Math.PI).toFixed(0)} chestYaw ${cyaw.toFixed(0)} ${mesh}`);
+      // (the elbow in the chest's frame: x out to his left, z ahead; from behind it shows past his body when x is wide)
+      const El = Le.clone().applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
+      rows.push(`${String(i).padStart(3)} ex ${El.x.toFixed(2)} ez ${El.z.toFixed(2)} fore ${fl.x.toFixed(2)},${fl.y.toFixed(2)},${fl.z.toFixed(2)} clr ${clr.toFixed(2)} elb ${elb.toFixed(0).padStart(3)} wbend ${wb.toFixed(0).padStart(3)} twist ${tw.toFixed(0).padStart(4)} ${(p.state === 'attack' ? `${p.atk.def.combo}:${p.atk.def.name}` : p.state).padEnd(22)} rad ${Math.hypot(W.x, W.z).toFixed(2)} x ${W.x.toFixed(2)} y ${(W.y - HD.shoulder[1]).toFixed(2)} z ${W.z.toFixed(2)} sd ${A.cur[P.sd].toFixed(2)} two ${A.cur[P.twoHand].toFixed(2)} step ${(stp * 100).toFixed(1)} wstep ${(wst * 100).toFixed(1)} yaw ${((p.yaw * 180) / Math.PI).toFixed(0)} chestYaw ${cyaw.toFixed(0)} ${mesh}`);
     }
     for (const l of rows) out('   ' + l);
   } finally {
     for (const [k, v] of Object.entries(set0)) Object.assign(OHm.OFFHAND[k], v);
+    CO.setA45(a450);
     CO.setCombo(c0);
     OHm.setOffHand(o0);
   }
@@ -6394,14 +6399,16 @@ async function scenarioSlice() {
   out('\n== scenario SLICE (a seam of digits on the blade\'s own path) ==');
   const SX = await imp('src/entities/player/slashFx.js');
   const { DIM: MD } = await imp('src/entities/player/model.js');
-  const m0 = [SX.slashMode(), SX.sliceMode(), SX.sliceWhenMode()];
-  // the owner's pick (2026-11-27): the digit slash, steel, is what plays with no parameter
-  assert(m0[0] === 'dline' && m0[1] === 'steel', `the default slash is the digit slash in steel (${m0[0]}, ${m0[1]})`);
+  const m0 = [SX.slashMode(), SX.sliceMode(), SX.sliceWhenMode(), SX.sliceFormMode(), SX.placeMode()];
+  // the owner's pick (2026-11-27): the digit slash, steel, is what plays with no parameter, laid on the swing's path
+  assert(m0[0] === 'dline' && m0[1] === 'steel' && m0[3] === 'curve' && m0[4] === 'path', `the default slash is the digit slash in steel on the swing's path (${m0[0]}, ${m0[1]}, ${m0[4]}; the slice ${m0[3]})`);
   let last = null;
-  const run1 = (yaw, plan, when, col, boss) => {
-    SX.setSlash('slice');
+  const run1 = (yaw, plan, when, col, boss, form = 'curve', look = 'slice', place = 'path') => {
+    SX.setSlash(look);
     SX.setSlice(col);
     SX.setSliceWhen(when);
+    SX.setSliceForm(form);
+    SX.setPlace(place);
     const G = (last = build());
     fightSetup(G);
     settle(G);
@@ -6421,7 +6428,9 @@ async function scenarioSlice() {
     let frame = 0, hitF = -1, kickF = -1, trails = 0;
     const tr = p.fx.trail.bind(p.fx);
     p.fx.trail = (...a) => { if (p.state === 'attack' || p.state === 'heavy') trails++; return tr(...a); };
-    p.slashFx.onSlice = (x, y, z, w, row) => digits.push({ x: x - p.position.x, y, z: z - p.position.z, w, row, f: frame, atk: p.atk });
+    p.slashFx.onSlice = (x, y, z, w, row) => digits.push({ x: x - p.position.x, y, z: z - p.position.z, w, row, f: frame, atk: p.atk ?? p.slashFx.rec });
+    const facets = [];
+    p.slashFx.onFacet = (ax, ay, az, bx, by, bz) => facets.push({ a: [ax - p.position.x, ay, az - p.position.z], b: [bx - p.position.x, by, bz - p.position.z], atk: p.atk });
     const w0 = G.watch;
     G.watch = (nn) => { if (nn === 'player:hitDragon' && hitF < 0) hitF = frame; };
     const k0 = p.slashFx.kicks, b0 = p.slashFx.bursts, np0 = p.slashFx.lines;
@@ -6463,7 +6472,25 @@ async function scenarioSlice() {
       o.frames.add(g.f);
       per.set(g.atk, o);
     }
-    return { digits, per, worst, bad, trails, kicks: p.slashFx.kicks - k0, bursts: p.slashFx.bursts - b0, marks: p.slashFx.lines - np0, pend: p.slashFx.np, hitF, kickF, sc: p.drawScale || 1, attacks: paths.size };
+    // on the screen (the camera's right and up, m): each digit's distance from its attack's path there (a line on the
+    // swing reads as the swing from where the camera stands, whatever the depth)
+    const Cm = game.camera.matrixWorld.elements, scr = (q) => [q[0] * Cm[0] + q[1] * Cm[1] + q[2] * Cm[2], q[0] * Cm[4] + q[1] * Cm[5] + q[2] * Cm[6]];
+    const scrD = [];
+    for (const g of digits) {
+      const P = paths.get(g.atk)?.pts;
+      if (!P || P.length < 2) continue;
+      const q = scr([g.x, g.y, g.z]);
+      let dm = Infinity;
+      for (let i = 1; i < P.length; i++) {
+        const a = scr(P[i - 1][0]), b = scr(P[i][0]), ux = b[0] - a[0], uy = b[1] - a[1], l2 = ux * ux + uy * uy;
+        const t = l2 > 1e-9 ? Math.max(0, Math.min(1, ((q[0] - a[0]) * ux + (q[1] - a[1]) * uy) / l2)) : 0;
+        dm = Math.min(dm, Math.hypot(q[0] - a[0] - ux * t, q[1] - a[1] - uy * t));
+      }
+      scrD.push(dm);
+    }
+    scrD.sort((a, b) => a - b);
+    const scrMed = scrD.length ? scrD[scrD.length >> 1] : Infinity, scr80 = scrD.length ? scrD[Math.floor(scrD.length * 0.8)] : Infinity;
+    return { digits, per, worst, bad, trails, kicks: p.slashFx.kicks - k0, bursts: p.slashFx.bursts - b0, marks: p.slashFx.lines - np0, pend: p.slashFx.np, hitF, kickF, sc: p.drawScale || 1, attacks: paths.size, facets, scrMed, scr80 };
   };
   try {
     const C5 = [[0, 'L'], [0.42, 'L'], [0.84, 'L'], [1.26, 'L'], [1.68, 'L']];
@@ -6507,8 +6534,64 @@ async function scenarioSlice() {
       const r = run1(0, [[0, 'L']], 'trace', 'steel', true);
       assert(r.hitF >= 0 && r.kickF === r.hitF && r.bursts >= 1, `a landed blow kicks the camera on the contact's frame (hit ${r.hitF}, kick ${r.kickF}) and sprays its sparks (${r.bursts})`);
     }
+    // the digit slash on the swing's own path (ADR-263; the owner, 2026-11-27: "the digit slashes look really weird when
+    // the character is attacking from the side or facing the camera, the slashes dont match the sword swing from those
+    // angles ... right now the slice looks good on all angle"): facing four ways, the light combo and a heavy, its
+    // digits lie on the path the blade's point swept as the camera sees it (half within 0.2 m of it on the screen, four in
+    // five within 0.5: a straight line on a curved swing, carried a little past its ends), every swing marked; the ending
+    // line across what it hit (`enemy`, as before) is measured beside it: 0.7-1.0 m off from the side and the front
+    {
+      const bad = [], sum = [], old = [];
+      for (const yaw of [Math.PI, Math.PI / 2, 0, -Math.PI / 2]) {
+        for (const plan of [C5, [[0, 'H']]]) {
+          const r = run1(yaw, plan, 'trace', 'steel', false, 'curve', 'dline', 'path');
+          const tag = `yaw ${(yaw * 57.3).toFixed(0)} ${plan.length > 1 ? 'combo' : 'heavy'}`;
+          if (r.bad || !(r.scrMed <= 0.2 * r.sc && r.scr80 <= 0.5 * r.sc)) bad.push(`${tag}: ${r.scrMed.toFixed(2)} / ${r.scr80.toFixed(2)} m off the swing${r.bad ? `, ${r.bad} NaN` : ''}`);
+          if (r.marks < (plan.length > 1 ? 5 : 1)) bad.push(`${tag}: ${r.marks} marks`);
+          sum.push(`${tag} ${r.scrMed.toFixed(2)}/${r.scr80.toFixed(2)}`);
+          if (plan.length > 1) {
+            const o = run1(yaw, plan, 'trace', 'steel', false, 'curve', 'dline', 'enemy');
+            old.push(`${(yaw * 57.3).toFixed(0)}: ${o.scrMed.toFixed(2)}/${o.scr80.toFixed(2)}`);
+          }
+        }
+      }
+      assert(!bad.length, `the digit slash lies on the swing from every side (median / 80th percentile m off the point's path on the screen: ${bad.join('; ') || sum.join(', ')}; the line across what it hit before: ${old.join(', ')})`);
+    }
+    // the sharp slices (`?sliceform=facet|jag`, ADR-263; the owner: "more sharp angles instead of being so curvy"): from
+    // the side and from behind, the light combo, traced: every swing prints as straight cuts (a cut at least 2 of them,
+    // the turn's more), consecutive ones meeting at a corner of at least 20°, their digits on the blade's path (within the
+    // lattice's tolerance plus the chord's sag and, for jag, its run past the corners)
+    {
+      const bad = [], sum = [];
+      for (const form of ['facet', 'jag']) {
+        for (const yaw of [-Math.PI / 2, 0]) {
+          const r = run1(yaw, C5, 'trace', 'steel', false, form);
+          const tag = `${form} yaw ${(yaw * 57.3).toFixed(0)}`, F = SX.FACET[form];
+          const lim = tol(r) + (F.dev + F.over) * r.sc;
+          if (r.bad || r.worst > lim) bad.push(`${tag}: a digit ${r.worst.toFixed(2)} m off (limit ${lim.toFixed(2)})`);
+          const by = new Map();
+          for (const f of r.facets) by.set(f.atk, [...(by.get(f.atk) ?? []), f]);
+          let corners = 0, sharp = Infinity;
+          for (const L of by.values()) {
+            for (let i = 1; i < L.length; i++) {
+              const u = L[i - 1].b.map((v, k) => v - L[i - 1].a[k]), v = L[i].b.map((q, k) => q - L[i].a[k]);
+              const c = (u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / (Math.hypot(...u) * Math.hypot(...v));
+              const ang = (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
+              corners++;
+              sharp = Math.min(sharp, ang);
+            }
+          }
+          const few = [...by.values()].filter((L) => L.length < 2).length;
+          if (by.size < 5 || few > 1 || !(sharp >= 20)) bad.push(`${tag}: ${by.size} swings in straight cuts, ${few} in one, corners at least ${sharp.toFixed(0)}°`);
+          sum.push(`${tag}: ${r.facets.length} cuts, ${corners} corners ≥ ${sharp.toFixed(0)}°, ${r.worst.toFixed(2)} m`);
+        }
+      }
+      assert(!bad.length, `the sharp slices print each swing as straight cuts meeting at corners, on the blade's path (${bad.join('; ') || sum.join('; ')})`);
+    }
     // ?slash=dline (the owner, 2026-11-27): the ending line printed in the slice's digits, no strokes, no crescent
     {
+      SX.setSliceForm('curve');
+      SX.setPlace('path');
       SX.setSlash('dline');
       const G = (last = build());
       fightSetup(G);
@@ -6534,6 +6617,8 @@ async function scenarioSlice() {
     SX.setSlash(m0[0]);
     SX.setSlice(m0[1]);
     SX.setSliceWhen(m0[2]);
+    SX.setSliceForm(m0[3]);
+    SX.setPlace(m0[4]);
   }
   return last;
 }
@@ -6680,7 +6765,7 @@ async function scenarioInstantSlash() {
 // OFFHAND (ADR-240; the owner, 2026-11-26: "make the left hand look more natural and not stand out so much"):
 // `?offhand=side|back|quiet` (offHand.js). Under each, through the light combo's one-handed hits the free hand
 // hangs at its look's rest (p[sd] 1 in the swing, the free wrist within the arm's reach of its shoulder, no
-// frame of hits 1-4 where it moves more than 0.7 of production's free hand's most, no NaN), and it is home on the pose's own hand by 1.2 s after; a
+// frame of hits 1-4 where it moves more than 0.7 of production's free hand's most (a full turn's frames aside), no NaN), and it is home on the pose's own hand by 1.2 s after; a
 // two-handed blow keeps it on the grip (the slam: p[sd] 0, the second hand at the grip); '0' (the default)
 // never hangs it.
 async function scenarioOffHand() {
@@ -6713,8 +6798,10 @@ async function scenarioOffHand() {
         S.setFromMatrixPosition(r.arms.L.upper.matrixWorld).applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
         if (!Number.isFinite(W.x + W.y + W.z)) nan = true;
         const sd = A.cur[P.sd], combo = p.state === 'attack' ? p.atk?.def?.combo : 0;
-        // (hits 1-4 and their way home: the slam is two-handed, both hands ride the blade there)
-        if (have && !(combo >= 5)) step = Math.max(step, W.distanceTo(Wp));
+        // (hits 1-4 and their way home: the slam is two-handed, both hands ride the blade there; not a full turn's frames,
+        // where every part of him is carried round (a hand 0.38 m out at the hip rides the whirl ~19 cm a frame))
+        const an = p.state === 'attack' ? (A.atkDef === p.atk?.def && A.atkAnim ? A.atkAnim : p.atk?.def?.anim) : null;
+        if (have && !(combo >= 5) && !an?.spin) step = Math.max(step, W.distanceTo(Wp));
         Wp.copy(W);
         have = true;
         if (combo >= 1 && combo <= 4 && p.atk.t > p.atk.def.windup) sdIn = Math.max(sdIn, sd);
@@ -6728,49 +6815,66 @@ async function scenarioOffHand() {
       else assert(!nan && sdIn > 0.95 && sdSlam < 0.05 && twoSlam > 0.9 && far <= 0.6 && step <= 0.7 * prodStep && sdAfter < 0.02,
         `offhand ${mode}: at its rest through hits 1-4 (sd ${sdIn.toFixed(2)}), the slam two-handed (sd ${sdSlam.toFixed(2)}, two ${twoSlam.toFixed(2)}), the wrist at most ${far.toFixed(2)} m from its shoulder, at most ${(step * 100).toFixed(1)} cm a frame through hits 1-4 (production ${(prodStep * 100).toFixed(1)}), home after (sd ${sdAfter.toFixed(2)})${nan ? ', NaN' : ''}`);
     }
-    // combo A's own hand behind his back (ADR-262; the owner: "its yellow fist randomly during the light attack
-    // combo", "on the 5th attack the left hand angle motion and animation looks unnatural"): while it hangs (sd 1)
-    // through hits 1-4 the free wrist stays out of his coat (≥ 0.125 m from the spine between hip and chest: the coat's
-    // back is 0.11 from it; it came within 0.07), with the elbow bent (≥ 50°: the hand on the small of his back; a rest
-    // 0.32 m back hung the arm nearly straight, 21°, "twisted and broken", the owner 2026-11-27), and hit 5 takes it
-    // to the grip round his side (never nearer than 0.12 m; through him it came to 0.11), no frame stepping more than
-    // 22 cm (it snapped 34)
+    // combo A's own hand, at his left hip (`belt`, the owner's pick 2026-11-27, ADR-262 / ADR-263; before it the hand
+    // behind his back: "twisted and broken", "showing behind the player. It needs to be in front"), under each of the
+    // hits 4-5 options (combos.js A45): while it hangs (sd 1) through hits 1-4 the free wrist is never behind his chest
+    // (z ≥ 0 in the chest's frame) and stays out of his coat (≥ 0.125 m from the spine between hip and chest), the
+    // elbow bent (≥ 50°) and out to his left (≥ 0.36 m from his middle in hits 2-4: from behind, the game's view, the
+    // arm shows past his coat; at 0.30-0.33 "the left arm seems to be completely missing", the owner), and hit 5 takes
+    // it to the grip, no frame stepping more than 22 cm (it snapped 34); hits 4-5 turn his chest at most 45° a frame
+    // (the thrust's coil swung it 67°)
     {
       const CO = await imp('src/entities/player/combos.js');
-      const c0 = CO.comboMode();
-      CO.setCombo('a');
-      OH.setOffHand('auto');
+      const c0 = CO.comboMode(), q0 = CO.a45Mode();
       try {
-        const G = (last = build());
-        fightSetup(G);
-        const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim;
-        p.debug.god = true;
-        p.debug.teleport(d.position.x + 14, d.position.z + 14);
-        p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
-        aimAt(G);
-        for (let i = 0; i < 60; i++) G.tick(DT);
-        const W = new THREE.Vector3(), Wp = new THREE.Vector3(), Wr = new THREE.Vector3(), inv = new THREE.Matrix4(), invR = new THREE.Matrix4();
-        let near = Infinity, reach = 0, have = false, grip = false, elb = 180, near5 = Infinity;
-        const fd = new THREE.Vector3();
-        const plan = [0, 0.35, 0.7, 1.08, 1.43];
-        for (let i = 0, N = Math.round(2.6 / DT); i < N; i++) {
-          if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
-          G.tick(DT);
-          inv.copy(r.chest.matrixWorld).invert();
-          W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
-          invR.copy(r.root.matrixWorld).invert();
-          Wr.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(invR).multiplyScalar(1 / (p.drawScale || 1));
-          const combo = p.state === 'attack' ? p.atk?.def?.combo : 0, sd = A.cur[P.sd], y = W.y - HD.shoulder[1];
-          if (combo >= 1 && combo <= 4 && sd >= 0.99 && y > -0.75 && y < 0.15) near = Math.min(near, Math.hypot(W.x, W.z));
-          if (combo >= 1 && combo <= 4 && sd >= 0.99) elb = Math.min(elb, (Math.acos(Math.max(-1, Math.min(1, -fd.set(0, -1, 0).applyQuaternion(r.arms.L.fore.quaternion).y))) * 180) / Math.PI);
-          if (combo === 5 && !grip && have) reach = Math.max(reach, Wr.distanceTo(Wp));
-          if (combo === 5 && !grip && y > -0.75 && y < 0.15) near5 = Math.min(near5, Math.hypot(W.x, W.z));
-          if (combo === 5 && sd < 0.01) grip = true;
-          Wp.copy(Wr);
-          have = true;
+        for (const opt of CO.A45_IDS) {
+          CO.setA45(opt);
+          CO.setCombo('a');
+          OH.setOffHand('auto');
+          const G = (last = build());
+          fightSetup(G);
+          const { game, input } = G, p = game.player, d = game.dragon, r = p.rig, A = p.anim;
+          p.debug.god = true;
+          p.debug.teleport(d.position.x + 14, d.position.z + 14);
+          p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+          aimAt(G);
+          for (let i = 0; i < 60; i++) G.tick(DT);
+          const W = new THREE.Vector3(), Wp = new THREE.Vector3(), Wr = new THREE.Vector3(), El = new THREE.Vector3(), inv = new THREE.Matrix4(), invR = new THREE.Matrix4(), cq = new THREE.Quaternion();
+          let near = Infinity, reach = 0, have = false, grip = false, elb = 180, minZ = Infinity, elOut = Infinity, turn45 = 0, cy0 = null;
+          const fd = new THREE.Vector3(), cf = new THREE.Vector3();
+          const plan = [0, 0.35, 0.7, 1.08, 1.43];
+          for (let i = 0, N = Math.round(2.6 / DT); i < N; i++) {
+            if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
+            G.tick(DT);
+            inv.copy(r.chest.matrixWorld).invert();
+            W.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
+            El.setFromMatrixPosition(r.arms.L.fore.matrixWorld).applyMatrix4(inv).multiplyScalar(1 / (p.drawScale || 1));
+            invR.copy(r.root.matrixWorld).invert();
+            Wr.set(0, -HD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld).applyMatrix4(invR).multiplyScalar(1 / (p.drawScale || 1));
+            r.chest.getWorldQuaternion(cq);
+            cf.set(0, 0, 1).applyQuaternion(cq);
+            const cy = Math.atan2(cf.x, cf.z);
+            const combo = p.state === 'attack' ? p.atk?.def?.combo : 0, sd = A.cur[P.sd], y = W.y - HD.shoulder[1];
+            if (cy0 !== null && combo >= 4) turn45 = Math.max(turn45, Math.abs(Math.atan2(Math.sin(cy - cy0), Math.cos(cy - cy0))));
+            cy0 = cy;
+            if (combo >= 1 && combo <= 4 && sd >= 0.99 && y > -0.75 && y < 0.15) near = Math.min(near, Math.hypot(W.x, W.z));
+            if (combo >= 1 && combo <= 4 && sd >= 0.99) {
+              elb = Math.min(elb, (Math.acos(Math.max(-1, Math.min(1, -fd.set(0, -1, 0).applyQuaternion(r.arms.L.fore.quaternion).y))) * 180) / Math.PI);
+              minZ = Math.min(minZ, W.z);
+              if (combo >= 2) elOut = Math.min(elOut, El.x);
+            }
+            // (the hand on its way: once on the grip (two 1) it moves with the sword hand, the blow's own raise)
+            if (combo === 5 && !grip && have && A.cur[P.twoHand] < 0.95) reach = Math.max(reach, Wr.distanceTo(Wp));
+            if (combo === 5 && sd < 0.01) grip = true;
+            Wp.copy(Wr);
+            have = true;
+          }
+          const t45 = (turn45 * 180) / Math.PI;
+          assert(minZ >= 0 && near >= 0.125 && elb >= 50 && elOut >= 0.36 && grip && reach <= 0.22 && (opt === '0' || t45 <= 45),
+            `combo A (hits 4-5 '${opt}'): the hand at his left hip, never behind him (its least ${minZ.toFixed(2)} m ahead), out of his coat (nearest ${near.toFixed(2)} m to his spine), the elbow bent (at least ${elb.toFixed(0)}°) and out (at least ${elOut.toFixed(2)} m), hit 5 takes it to the grip (${grip}) at most ${(reach * 100).toFixed(1)} cm a frame; hits 4-5 turn his chest at most ${t45.toFixed(0)}° a frame`);
         }
-        assert(near >= 0.125 && elb >= 50 && grip && near5 >= 0.12 && reach <= 0.22, `combo A's hand behind his back: out of his coat through hits 1-4 (its nearest ${near.toFixed(2)} m to his spine), the elbow bent (at least ${elb.toFixed(0)}°), hit 5 takes it to the grip (${grip}) round his side (its nearest ${near5.toFixed(2)} m), at most ${(reach * 100).toFixed(1)} cm a frame`);
       } finally {
+        CO.setA45(q0);
         CO.setCombo(c0);
       }
     }
