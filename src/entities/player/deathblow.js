@@ -51,7 +51,7 @@ const readHas = (k) => DB_READ.mode === 'all' || DB_READ.mode === k;
 /** The read's pieces on now: { beat (a), space (b), clean (c) }. */
 export const dbRead = () => ({ beat: readHas('a'), space: readHas('b'), clean: readHas('c') });
 
-// THE LOCK (`?dbLock=`, the Lab's `dbLock`; ADR-277): a PERFECT parry of a blue blow marked `lock` arms the combo
+// THE LOCK (`?dbLock=`, the Lab's `dbLock`; ADR-280): a PERFECT parry of a blue blow marked `lock` arms the combo
 // AND would cross the blades. 'combo' (the owner's pick, 2026-11-28): the combo has it, he recoils as from any blue
 // parry and the combo follows; 'lock': the blade lock as before (the combo is dropped once the hero locks).
 const LOCK_OPTS = ['combo', 'lock'];

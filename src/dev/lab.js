@@ -1389,7 +1389,7 @@ export class Lab {
       setDbLock(M[(M.indexOf(dbLockMode()) + 1) % M.length]);
       this._syncCutBtns();
     });
-    this.ui.dbLockBtn.title = "a perfect parry of a blue blow that would cross the blades (?dbLock=; ADR-277): combo, the deathblow combo takes it (he recoils, the combo follows); lock, the blade lock as before. Read at the parry";
+    this.ui.dbLockBtn.title = "a perfect parry of a blue blow that would cross the blades (?dbLock=; ADR-280): combo, the deathblow combo takes it (he recoils, the combo follows); lock, the blade lock as before. Read at the parry";
     this.ui.strikeGapBtn = button(stkGrid, `strikeGap ${strikeGapMode()}`, () => {
       const M = STRIKE_GAP.opts;
       setStrikeGap(M[(M.indexOf(strikeGapMode()) + 1) % M.length]);
