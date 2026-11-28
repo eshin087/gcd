@@ -24,7 +24,7 @@
 
 import { closestOnSegments } from './clashFx.js';
 
-const IDS = ['0', 'a', 'b'];
+const IDS = ['0', 'a', 'b', 'c'];
 let mode = '0';
 
 export const CONTACT_IDS = IDS;
@@ -32,8 +32,10 @@ export const DEFAULT_CONTACT = 'b'; // the owner's pick from the films (2026-11-
 /** '0' (as before), 'a' (blows land on what they strike) or 'b' (a, and a boss's blow that would fall short
  *  is reached into: his drawn body eases toward the hero as it comes). */
 export const contactMode = () => mode;
-export const contactOn = () => mode === 'a' || mode === 'b';
-export const contactReach = () => mode === 'b';
+export const contactOn = () => mode === 'a' || mode === 'b' || mode === 'c';
+export const contactReach = () => mode === 'b' || mode === 'c';
+/** `c`: b, and a blow that falls short by more than the reach steps in (his drawn body, feet and all). */
+export const contactStep = () => mode === 'c';
 export function setContactMode(m) {
   if (!IDS.includes(m)) return false;
   mode = m;
@@ -76,6 +78,16 @@ export const CONTACT = Object.freeze({
   // (his feet stay planted: the legs are solved again), gaps under `min` left alone; held `after` s past the
   // impact (and while the blow is pinned), eased back over `back` s
   reach: { lead: 0.14, max: 0.3, min: 0.03, after: 0.1, back: 0.22 },
+  // `c`: past `reach.max` his whole drawn body steps in too (feet and all: a drawn-only offset), `step` m more
+  // at most; the gap closed up to reach.max + step
+  step: 0.45,
+  // the execution's thrust: its point shown `depth` m into the body it runs through (the hero's swing clock,
+  // as a cut's), its burst drawn where the steel enters
+  exec: { depth: 0.12 },
+  // the wyrm's bite that lands short (its jaws connect 1 - 1.8 m off the hero): its head drawn onto him (the snout
+  // on his body), `max` m at most, lunging there over `in` s of REAL time (through the freeze), held `hold` s of
+  // game time more, let go over `follow` s
+  wyrm: { r: 0.12, max: 2.1, in: 0.06, hold: 0.05, follow: 0.16 },
   // the reactions: the hero's own (HitReact on him) at this x impactK('react')
   react: { hero: 1.2 },
   // the hero's cut: the same search on his swing's clock (his blade is thrown faster: finer steps)

@@ -29,6 +29,11 @@ after table and the films (all nine bosses, 0 | a | b, half speed) in the PR.
 
 **The owner's pick:** `b` (a + the reach), made the default.
 
+**Second round** (the owner: the not-covered list, with before / after): the execution's burst at the wound (0.23 →
+0.01 m), the plunge's at the steel's entry, the wyrm's short bite lunging its head onto the hero (limited by its
+neck: 1.27 → 1.06 m), `?contact=c` (a drawn step past the reach: closes little, kept as an option). What stays short
+is move data (a string's later blows on a hero knocked back; the wyrm's bite sphere past its jaws).
+
 **Open:** the wyrm's poses; the execution's thrust, the plunge and the flurry's cuts; blows whose
 zone outreaches the drawn limb (the motion sessions' data, listed in the notes folder).
 

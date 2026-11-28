@@ -815,9 +815,16 @@ compare every result. The logic is `combat/contact.js`; the numbers `CONTACT` th
   move data: the boss sessions').
 - **The default is `b`** (the owner's pick from the before | a | b films, 2026-11-27). **Off** (`?contact=0`, the
   Lab's `contact` row `old`): every pose and effect as before; `?contact=a` without the reach.
-- **Not changed:** the parry and the trade clash (they already met), the execution's thrust, the plunge, the
-  flurry's cuts, the wyrm's poses (it has its own clock; only its hurt sparks move onto the hero). The deathblow's
-  combo cuts land as any cut of the hero's.
+- **The second round** (2026-11-27, the owner: "work on not covered stuff"): the execution's burst is drawn where
+  the drawn steel enters him (it runs him through; 0.23 → 0.01 m off the wound); the plunge's burst where the steel
+  enters the head; a wyrm's bite that connects short (its jaws 1 - 1.8 m off the hero when its hit sphere meets him)
+  lunges its head onto him over 0.06 s of real time through the freeze (`pose.headContact` on the solved neck), held,
+  let go; its neck's reach limits it (the snout 1.27 → 1.06 m off). `?contact=c`: `b`, and past the reach his whole
+  drawn body steps in (≤ 0.45 m more): measured, it closes little (short hits 56 → 55 %, blocks 24 → 21 %).
+- **Still short, move data** (the boss sessions'): a string's later blows that still hit a hero its first blow knocked
+  a metre back (Xin Yi's One Roof and Hundred Hands 0.5 - 1.3 m, Tian Lei's Tiger and Comet Heel 0.7 - 1.3 m); the
+  wyrm's bite hit sphere reaching 1 - 1.8 m past its drawn jaws. Not changed: the parry and the trade clash (they
+  already met), the flurry's cuts. The deathblow's combo cuts land as any cut of the hero's.
 
 Measured (the contact audit, 2026-11-27: every duelist's every move on the hero standing, blocking and parrying
 and the hero's cuts on him, 1 100 contacts a setting; `through` = the striker 6 cm+ inside the struck body in a

@@ -7326,6 +7326,11 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   apart), the hero's cut short 3 %, through his ward 3 %; the sparks 0.02 - 0.11 m from the meeting. With `b`, short
   hits 56 → 47 % (Tian Lei 71 → 37, Halcyon 58 → 15), blocks short 43 → 26 %. Headless (duel / asc `contact`):
   through the hero 41 / 33 % → 0 %, Tian Lei's short hits 64 → 32 % with `b`; every result identical.
+- **The second round** (2026-11-27, the owner: "work on not covered stuff next"): the execution's and the plunge's
+  bursts at the steel's entry (`player._plungeEntry`); the wyrm's short bite drawn onto the hero (`dragon.strikeContact`,
+  `pose.headContact`, eased in on real time, its neck's reach the limit: 1.27 → 1.06 m); `?contact=c` (a drawn step past
+  the reach, `CONTACT.step`), measured as closing little and kept as an option. What stays short is move data: a
+  string's later blows hitting a hero knocked a metre back, the wyrm's bite sphere 1 - 1.8 m past its jaws.
 - **Not taken (yet):** the wyrm's poses (its own clock; its jaws are still 0.3 - 1.5 m short when its hit spheres
   connect, ADR-257's finding); the execution's thrust, the plunge and the flurry's cuts (each its own drawing, filmed
   for the owner); blows whose hit zone reaches past the drawn limb by more than the reach (kicks such as Tian Lei's

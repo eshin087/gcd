@@ -12,7 +12,9 @@ One hundred and thirty-one pieces of work since 0.4.0:
   your guard nudged onto it, a cut on a boss's guard stops on his steel; the sparks sit where the two met; and the
   struck part answers (your head snaps away, your body twists or folds, a shoulder knocked back, a leg buckles;
   a boss's reaction now knows the arm too), and a boss's blow that would fall short of you is reached into (his
-  body eases into it, feet planted). `?contact=0` as before, `?contact=a` without the reach. Nothing of any result, damage, window or timing moves
+  body eases into it, feet planted). The execution's and the plunge's bursts sit where your blade enters, and the
+  wyrm's bite lunges its head onto you as it lands. `?contact=0` as before, `?contact=a` without the reach,
+  `?contact=c` with a longer step-in reach. Nothing of any result, damage, window or timing moves
   (the duel and asc `contact` scenarios play one exchange three ways and compare every result). The Lab's
   `contact` row. *Added:* the contact audit (the duel / asc `contact` scenarios).
 - **The Starless Lord fights with better form** (2026-11-27, ADR-251). *Changed (the owner's picks from the films;

@@ -2417,8 +2417,15 @@ export class Player {
     } catch (err) {
       console.error('[player] onExecute failed', err);
     }
+    // CONTACT (?contact=): the burst where the drawn steel enters him (it runs him through)
+    const M = this._plungeEntry(d);
     // the drawn contact (the blade run into his drawn body), else his lock point
     const C = this._contactPoint(d, 'thrust', this._cut) ? this._cut : null;
+    if (M && C) {
+      C.x = M.x;
+      C.y = M.y;
+      C.z = M.z;
+    }
     const pt = C ?? d.lockPoint?.(this._v) ?? this._v.set(d.position.x, 1.2, d.position.z);
     if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: pt.x, y: pt.y, z: pt.z }, heavy: true, crit: true, kind: 'execute', combo: 1, weight: 'execute' });
     this._emit('player:plungeHit', { damage: dealt, execution: true });
@@ -2656,10 +2663,29 @@ export class Player {
     g.shake?.(exec ? P.execShake : P.impactShake);
     g.world?.gust?.(hp.x, hp.z, 1.4, 8);
     this.anim.kickCoat(0.9, this.anim.noise);
-    this.fx.plungeImpact(hp.x, hp.y, hp.z, pl.dx, pl.dz, exec);
+    // (CONTACT: the burst where the drawn steel enters the head, not at the gameplay point under it)
+    const E = this._plungeEntry(pl.att);
+    this.fx.plungeImpact(E ? E.x : hp.x, E ? E.y : hp.y, E ? E.z : hp.z, pl.dx, pl.dz, exec);
     if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'head', point: { x: hp.x, y: hp.y, z: hp.z }, heavy: true, crit: exec, kind: 'plunge' });
     this._emit('player:plungeHit', { damage: dealt, execution: exec });
     this.flurry.burst(dealt, hp); // the cuts a flurry left hanging open on this blow
+  }
+
+  /** CONTACT: where the hero's drawn steel enters a body it runs into (the plunge's head, the execution's foe), or null (off). */
+  _plungeEntry(att) {
+    if (!contactOn() || !att || !this.rig.loadout?.weapon) return null;
+    const B = this._cFoe ?? (this._cFoe = new ContactBody(THREE, 48));
+    if (!(att.rig?.pelvis && typeof att.drawnPoint === 'function' ? B.fromRig(att.rig, fin(att.drawScale, 1)) : B.fromSpheres(att.hurtSpheres))) return null;
+    this.object3d.updateMatrixWorld(true);
+    const s = this.rig.sword, A0 = (this._cK0 ??= new THREE.Vector3()), A1 = (this._cK1 ??= new THREE.Vector3()), P = (this._cK2 ??= new THREE.Vector3());
+    A0.set(0, 0, DIM.bladeBase).applyMatrix4(s.matrixWorld);
+    A1.set(0, 0, DIM.drawnTip).applyMatrix4(s.matrixWorld);
+    // (the entry: walk the steel from the hilt to the first point inside the body)
+    for (let i = 0; i <= 12; i++) {
+      P.lerpVectors(A0, A1, i / 12);
+      if (B.gap(P, P, 0) <= 0) return P;
+    }
+    return null;
   }
 
   /** Rip the blade out and spring off: a backflip arc to a clear landing in front of the head. */
@@ -3868,9 +3894,9 @@ export class Player {
    * pinned to that time (atk.pin / atk.show: animT), then carried on. (dx, dy, dz): the shove the boss was
    * given this frame (he is drawn there). Returns the meeting point (world, drawn) or null.
    */
-  _cutContact(dr, dx = 0, dy = 0, dz = 0, heavy = false, guard = false) {
+  _cutContact(dr, dx = 0, dy = 0, dz = 0, heavy = false, guard = false, thrust = false) {
     const a = this.atk;
-    if (!contactOn() || !a || a.exec || !dr || !this.rig.loadout?.weapon) return null;
+    if (!contactOn() || !a || (a.exec && !thrust) || !dr || !this.rig.loadout?.weapon) return null;
     const B = this._cFoe ?? (this._cFoe = new ContactBody(THREE, 48));
     const ok = dr.rig?.pelvis && typeof dr.drawnPoint === 'function' ? B.fromRig(dr.rig, fin(dr.drawScale, 1), dx, dy, dz) : B.fromSpheres(dr.hurtSpheres);
     if (!ok) return null;
@@ -3891,7 +3917,9 @@ export class Player {
       this.object3d.updateMatrixWorld(true);
       A0.set(0, 0, DIM.bladeBase).applyMatrix4(s.matrixWorld);
       A1.set(0, 0, DIM.drawnTip).applyMatrix4(s.matrixWorld);
-      const gB = B.gap(A0, A1, CONTACT.edge, P, guard ? 0 : CONTACT.bite);
+      const gB = B.gap(A0, A1, CONTACT.edge, P, guard || thrust ? 0 : CONTACT.bite);
+      // (a thrust: its POINT shown CONTACT.exec.depth m in; the burst where the steel enters, P)
+      if (thrust) return B.gap(A1, A1, 0) + CONTACT.exec.depth;
       if (!guard) return gB;
       const gs = steel ? closestOnSegments(A0, A1, H0, H1, C[0], C[1]) - 2 * CONTACT.edge : Infinity, gb = gB - CONTACT.guard.shell;
       onSteel = gs <= gb;
@@ -3900,7 +3928,7 @@ export class Player {
     };
     let tc = NaN;
     try {
-      tc = findContact(at, t0 - show0, guard ? CONTACT.guard.bite : CONTACT.bite, K, 0);
+      tc = findContact(at, t0 - show0, thrust ? 0 : guard ? CONTACT.guard.bite : CONTACT.bite, K, 0);
     } catch (err) {
       console.error('[player] the cut contact failed', err);
     }
