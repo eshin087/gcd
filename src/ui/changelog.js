@@ -36,6 +36,22 @@ export const RELEASES = [
       },
       {
         date: '2026-11-28',
+        title: 'The parry answers when you press it',
+        notes: [
+          'Letting go of a held guard no longer delays your next parry: hold, release and tap on time, and it parries.',
+          'Quick taps that parry nothing still make the next one wait a moment, so mashing still fails.',
+        ],
+      },
+      {
+        date: '2026-11-28',
+        title: 'The deathblow is not cut short',
+        notes: [
+          'Pressing guard during a deathblow no longer stops it. The guard comes up once the finisher lands.',
+          'A perfect parry of a blue blow now always earns the deathblow. It no longer turns into a blade lock.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'The Cinder Wyrm dies whole, every white spark shows, and its blue and red paws look apart',
         notes: [
           "When the Cinder Wyrm falls, its neck now comes down in one natural curve with its head in line, instead of snapping up and bending at odd angles.",

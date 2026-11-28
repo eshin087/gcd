@@ -19,7 +19,7 @@ import { HitReact } from '../enemies/duelist/react.js';
 import { impactK } from '../../combat/impact.js';
 import { Flurry } from './flurry.js';
 import { riposteMode, startRiposteCut, riposteTakeHit, riposteCutLanded, riposteContact } from './riposteCut.js';
-import { newDeathblowState, armDeathblow, tickDeathblow, deathblowTakeHit, deathblowLanded } from './deathblow.js';
+import { newDeathblowState, armDeathblow, tickDeathblow, deathblowTakeHit, deathblowLanded, deathblowClaims } from './deathblow.js';
 import { deathblowFxUpdate, deathblowFxClear } from '../../combat/deathblowFx.js';
 import { deathblowMatrixUpdate, deathblowMatrixClear } from '../../combat/deathblowMatrix.js';
 import { SwordMystic } from './swordMystic.js';
@@ -227,7 +227,7 @@ export class Player {
     // the HEAVY button's press (game time held): held past CHARGE.hold it is the charge (ADR-115; it
     // was the attack button's until the heavy button came: a light no longer waits to see if it is held)
     this.hb = { held: false, t: 0 };
-    this.rmb = { held: false, upT: -Infinity, parryT: -Infinity, edge: false, chain: false };
+    this.rmb = { held: false, upT: -Infinity, pressT: -Infinity, parryT: -Infinity, edge: false, chain: false };
     this.vel = { x: 0, z: 0 }; // own movement
     this.want = { x: 0, z: 0 }; // desired movement this frame
     this.kb = { x: 0, z: 0 }; // knockback slide
@@ -734,6 +734,7 @@ export class Player {
     this.rmb.held = false;
     this.rmb.edge = false;
     this.rmb.upT = -Infinity;
+    this.rmb.pressT = -Infinity;
     this.rmb.parryT = -Infinity;
     this.rmb.chain = false; // a deflect's instant re-arm doesn't survive a respawn / reset
     this.chargeK = 0;
@@ -904,8 +905,10 @@ export class Player {
     // RMB press: raise the guard from anything that can guard (cancels windups, recoveries, a charge
     // or a held light). Pressed mid-swing / mid-roll, the request waits while RMB stays held, so the
     // guard comes up the moment it can instead of only at the end of the recovery.
+    // (not inside a deathblow combo: a guard press there ended it with nothing dealt. The press waits while the
+    // button stays held and the guard comes up in the finisher's tail, as after any swing; ADR-277)
     const Rb = this.rmb;
-    if (Rb.edge && this.state !== 'block' && this.state !== 'parry' && this._canGuard()) {
+    if (Rb.edge && this.state !== 'block' && this.state !== 'parry' && this.db.phase !== 'combo' && this._canGuard()) {
       // the guard spends the held heavy press, otherwise _tickBlock would re-enter the charge at once
       if (this.state === 'charge' || this.atk?.pending) this.hb.held = false;
       this._startBlock();
@@ -988,12 +991,14 @@ export class Player {
     }
     if (L.held && (!inp.act('heavy') || L.t >= CHARGE.maxHold)) L.held = false; // released (or auto-release)
 
-    // block (RMB): hold = block; a press counts as a parry attempt only after a full re-arm (anti-mash). A
-    // successful deflect re-arms at once (Rb.chain): the next press counts as soon as RMB was released,
-    // so a string can be deflected hit after hit even with the guard held between blows; whiffed
-    // presses keep the re-arm, so mashing still fails.
+    // block (RMB): hold = block; a press counts as a parry attempt only `parryRearm` s after the press before
+    // it (anti-mash: every press restarts the wait). Counted from the press, not the release (ADR-278): a
+    // guard held and let go never makes the next press wait, so hold, release and tap on time parries. A
+    // successful deflect re-arms at once (Rb.chain), so a string can be deflected hit after hit even with
+    // the guard held between blows; quick presses that parry nothing keep the wait, so mashing still fails.
     if (inp.actPressed('block')) {
-      if (Rb.chain || this.time - Rb.upT >= DEFENSE.parryRearm) Rb.parryT = this.time;
+      if (Rb.chain || this.time - Rb.pressT >= DEFENSE.parryRearm) Rb.parryT = this.time;
+      Rb.pressT = this.time;
       Rb.chain = false;
       Rb.held = true;
       Rb.edge = true;
@@ -2164,6 +2169,12 @@ export class Player {
    * above. The attacker hears onLockEnd(won).
    * Returns false when the hero can't lock (down, plunging).
    */
+  /** A duelist asks before it crosses the blades on a perfect parry: true when the deathblow combo that parry
+   *  armed takes it instead (deathblow.js `deathblowClaims`, `?dbLock=`; ADR-277). */
+  deathblowClaims(att) {
+    return deathblowClaims(this, att);
+  }
+
   startBladeLock(att, L = {}) {
     if (!this.alive || this.state === 'plunge' || this.state === 'dead' || this.state === 'lock' || this.state === 'flurry') return false;
     this.riposte.att = null;

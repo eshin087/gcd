@@ -5,6 +5,42 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — The deathblow is not cut short: the guard press, the blade lock (ADR-277; `fix/deathblow-guard-lock`)
+
+**Owner:** on the wyrm a perfect parry shows the perfect-dodge streak's effect; mashing attack during the deathblow seems
+to cancel it; the streak's flurry teleports gcd with no cue.
+
+- **The wyrm:** by design (ADR-211: the wyrm keeps the flurry riposte; its parries count in the dodge streak). The
+  owner: leave it.
+- **The cancel:** sims mashing each button through a combo on the Ash Disciple. Attack, heavy and dodge were already
+  ignored. Guard (the middle click) ended it at once with 0 damage, and a perfect parry of a blue `lock` blow became
+  the blade lock instead of the combo. Both fixed (ADR-277): no guard inside the combo; `player.deathblowClaims`
+  keeps the lock away from a combo the parry armed (`?dbLock=lock` as before; Lab `dbLock`).
+- **Training:** its "Blade lock" situation sets `dbLock: 'lock'` for itself (a new per-situation field). A first
+  try with `riposte: 'old'` fed the dodge streak and failed CI's Lord `foeBlock` (his flurry blocked, no posture
+  break): traced situation by situation against main, the Training diverged at "His flurry x7"; the cause was the
+  hero flurry's figure stream (`flurry.js` `fseed`), left wherever earlier scenarios' flurries put it. Lord
+  `training` now reseeds it per situation, beside `Math.random`.
+- **Also on main, fixed here:** duel `parryfx`'s "ten in a row: at most 48 sparks" failed on main too (51): it
+  reads the live hero's streak through `?parryGrow=a` (cap 104 from tier 1). It now asks for the base spit (`grow: '0'`).
+- **The parry press (ADR-278):** the owner: the parry isn't instant like the dodge, it waits for the guard
+  animation. No animation wait; the anti-mash rule counted 0.25 s from the button's RELEASE, so a held guard let go
+  and a tap on time took the hit. Now from the last press (release is free; the owner's pick). Kept 0.25 s, not the
+  0.12 s the option offered: 0.12 s lets a steady mash parry every blow. New duel `parryrearm`.
+- **The parry's sparks:** the owner: not every parry shows the spark. No missing spawn: an audit wrapping the
+  effects over a 60 s fight drew 12 - 19 spark letters on every perfect parry. But since ADR-227 nearly every parry
+  is perfect, and since ADR-264's `?parryClash=c` a perfect parry draws no clash burst, only those one-letter
+  sparks (under 0.6 m, 0.12 - 0.44 s, under the bloom); a plain parry (0.20 - 0.22 s early) still throws the big
+  clash, and the boss's ordinary guard throws 33 glyphs and a ring. The better parry reads as no spark. Next: a look
+  pass with options so the hero's parry, his block, the boss's guard and the boss's deflect each read apart.
+- **Checked:** duel `deathblow` (new (g), (h)), `moments`, `clash`, `training`; fox `training`; asc `bare`; the full
+  `npm test`.
+- **Open / next:** the flurry's opening blink. The owner means the START: right after the perfect dodge he vanishes
+  and pops up by the boss. In the sims the jump is small (0.2 - 1.2 m, 3 - 4 frames hidden); it needs filming at the
+  game camera, then options to pick from. The riposte's end also snaps 2.4 - 3.5 m back to where he parried.
+
+---
+
 ## 2026-11-28 — Agents check what their branch changed before a PR; CI runs the full set (ADR-276; `test/changed-suites`)
 
 **Goal:** the owner saw the later chats take longer to open PRs. Each agent ran the full `npm test` before

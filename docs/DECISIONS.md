@@ -8035,3 +8035,51 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   (the docs, the wyrm, the bench). The other 51 touch shared code: `duelist/lookSwitch.js` (the look
   switch table), `combat/`, `player/` or `main.js`. So most of the time saved comes from not running the
   full set locally, not from the narrower pick. A new boss or level needs a line in `BOSSES`.
+
+## ADR-277 — The deathblow is not cut short: a guard press waits, and it takes a perfect blue parry from the blade lock (`?dbLock=combo|lock`) (2026-11-28)
+
+- **Context:** the owner: "if i spam an attack during deathblow, the deathblow gets cancelled?". A sim parried into a
+  combo while mashing each button. Attack, heavy and dodge presses were already dropped (`tickDeathblow` clears the
+  buffer). Two holes remained. (1) A guard press (the middle click) raised the guard out of the combo's swing:
+  `tickDeathblow` saw the attack state left and ended the combo at once, its event saying N strikes and 0 damage.
+  (2) A PERFECT parry of a blue blow marked `lock` (Falling Ash, Vanishing Step, the Lord's flips ...) armed the
+  combo and crossed the blades in the same call; the lock won, the hero mashed attack to push it, and no deathblow came,
+  although a plain parry of the same blow gave one. The owner said their case was the guard press and asked for the
+  deathblow to win over the lock.
+- **Decision:** (1) `player.update` raises no guard while `db.phase === 'combo'`; the press waits while the button is
+  held and the guard comes up in the finisher's tail, as after any swing. (2) `duelist.onParried` asks
+  `player.deathblowClaims(this)` before `brain.startLock()`: true when the parry armed the combo on a blue blow from
+  this duelist (`deathblow.js` `deathblowClaims`). He then recoils as from any blue parry and the combo follows.
+  `?dbLock=lock` (the Lab's `dbLock`) gives the lock back. Tian Lei's beam and lantern locks call `startLock` directly
+  and are unchanged.
+- **Consequences:** with the deathblow on (the default), a duelist's melee blade lock is reached only with
+  `?dbLock=lock`, or `?parryRiposte=old|planted`, or `debug.noRiposte` (every `lock` blow is blue). The suites whose
+  checks are about the lock pin `?dbLock=lock` (duel `moments` and `clash`'s lock, asc `bare`); the Training's
+  "Blade lock" situation sets `dbLock: 'lock'` for itself (a Training situation's own `dbLock`, put back when it
+  ends; the old riposte there fed the dodge streak and shifted the situations after it). Lord `training` also
+  reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
+  guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
+  change is a combo where a lock was.
+
+## ADR-278 — The parry press: the anti-mash wait counts from the press, so a released guard is free (2026-11-28)
+
+- **Context:** the owner: the parry seems not instant like the dodge, "i dont parry until my guard animation
+  completes". The check never waits for an animation: the press time is stored the instant it comes and the blow
+  reads it. The anti-mash rule did it: a press counted only once the button had been UP `parryRearm` (0.25 s). Sims
+  on the Ash Disciple: a single tap 0.03 - 0.21 s before the blow parried; a guard held and let go 0.3 / 0.2 /
+  0.12 s before, then a tap on time, took the full hit (holding on would have blocked it), and so did a second tap
+  0.2 s after an early one. The dodge has no such rule. Offered: release free (the recommendation), every press
+  counts, or a mash only plain. The owner picked release free.
+- **Decision:** the wait counts from the last PRESS (`rmb.pressT`), not the release; every press restarts it, and a
+  successful parry still re-arms at once (ADR-032). Holding the guard any length and letting go never makes the next
+  press wait. `parryRearm` stays 0.25 s: the option as offered said 0.12 s, but at 0.12 s a steady eight taps a
+  second would count every press, and a 0.22 s window per press would parry every blow.
+- **Consequences:** hold, release and tap on time parries; a second tap 0.2 s after one that parried nothing still
+  waits (0.3 s apart parries); a mash 0.1 s apart parries nothing. The tap's own hold no longer adds to the wait
+  (presses are a few frames more forgiving than before). Checked by duel `parryrearm`; the strings' minimum gap
+  (`minHitGap` 0.45 s) is unchanged.
+  - **Open:** woke `pace` seed 99 phase 2 fails its longest-gap band (4.08 s against 3.5 s). Its steady defender
+    raises the guard on each flash and lets go 0.2 s after the blow; its re-press now counts, so it perfect-parries
+    4 of Xin Yi's shots (main: 1) and sends them back, and his cues pause. It is the hero's answer measured as his
+    pace. Two bot changes (holding the guard 0.35 s, for every blow or only for shots) moved the phase-2 cue ratio
+    under its 0.82 floor instead, so they were not kept. main fails the same suite on seeds 1, 2, 3 and 5.

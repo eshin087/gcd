@@ -266,7 +266,7 @@ export const TUNING = {
   // it would land (cataclysm's held bite at 3 m); past this the bite misses instead (2026-11-20)
   biteLate: 0.07,
   // strings (contract 1): a follow-up hit lands at least this long after the previous one (the
-  // player releases and re-presses RMB: DEFENSE.parryRearm 0.25 s); checked by the STRINGS scenario
+  // player presses again: DEFENSE.parryRearm 0.25 s after the last press); checked by the STRINGS scenario
   minHitGap: 0.45,
   // Lab trigger: quick turn toward the player before a forced ability (rad/s, max seconds)
   forceTurn: { rate: 7, maxTime: 0.5 },

@@ -990,7 +990,10 @@ async function scenarioClash() {
   const late = d.takeHit({ damage: 30, part: 'body', heavy: false, poise: 5, point: { x: d.position.x, y: 1.2, z: d.position.z } });
   assert(wasAct && late === 0 && d.hp === hpB && d.mode === 'react' && ['ward', 'wardR', 'wardHigh'].includes(d.brain.react?.kind), `late in it he breaks the recovery off into his guard (${late} damage; ${d.brain.react?.kind})`);
   settle(G, 8);
-  // (6) the blade lock: the two close to the lock's distance and the blades cross
+  // (6) the blade lock: the two close to the lock's distance and the blades cross (?dbLock=lock: the deathblow
+  // does not take the perfect blue parry from it; ADR-277)
+  const DBM = await imp('src/entities/player/deathblow.js');
+  DBM.setDbLock('lock');
   home(G);
   place(G, 2.2);
   run(G, 0.3);
@@ -1006,6 +1009,7 @@ async function scenarioClash() {
   const dist = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
   far = p.deflect.gap;
   assert(locked && p.state === 'lock' && Math.abs(dist - 1.3) < 0.25 && far < 0.2, `blades locked: the two stand ${dist.toFixed(2)} m apart and the blades cross (${far.toFixed(2)} m between them)`);
+  DBM.setDbLock(DBM.DBLOCK_DEFAULT);
   run(G, 4, () => { if (n++ % 4 === 0) input.click(0); }, () => p.state !== 'lock');
   settle(G, 8);
   return G;
@@ -2247,7 +2251,8 @@ async function scenarioParryFx() {
     PFX.perfectClear();
     const e1 = { x: 0.2, y: 1, z: 0.1 }, e2 = { x: 1, y: 0.1, z: 0.3 };
     for (let i = 0; i < 10; i++) {
-      PS.parrySparks(game, x, y, z, { e1, e2, met: true, mode: 'a' });
+      // (the base spit's cap: `grow: '0'`, or ?parryGrow=a's tiers read the hero's streak and raise the cap to 104)
+      PS.parrySparks(game, x, y, z, { e1, e2, met: true, mode: 'a', grow: '0' });
       peak = Math.max(peak, L.alive);
       for (let j = 0; j < 6; j++) {
         PFX.perfectUpdate(game, DT, DT);
@@ -4459,6 +4464,8 @@ async function scenarioDeathblow() {
         if (p.flurry?.on) t.flurry = true;
         if (p.quickUntil > game.time) t.quick = true;
         if (o.press && t.quick && !pressedAtk && p.quickUntil > game.time && p.state !== 'attack') { pressedAtk = true; input.click(0); }
+        // (the guard mashed through the combo: a press every third frame)
+        if (o.guard && p.db.phase === 'combo' && ((game.realTime * 60) | 0) % 3 === 0) { input.up(1); input.click(1); t.guarded = (t.guarded | 0) + 1; }
         if (p.atk?.quick) t.atk = true;
         if (p.atk && p.atk !== lastAtk && p.atk.rip?.db) { lastAtk = p.atk; t.winds.push(p.atk.def.windup); }
         if (d.broken) t.brokenAny = true;
@@ -4564,6 +4571,28 @@ async function scenarioDeathblow() {
     out(`   (e) ${mode}: streak events ${t.streaks.join(',')} · parryRun ${t.runAfter} · art ${t.ev?.art}`);
     assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(e) ${mode}: the parry counts in the streak, no deathblow`);
     if (mode === 'planted') assert(t.ghost < 0.05, '(e) planted: the single cut takes no cold cast (' + t.ghost.toFixed(2) + ')');
+  }
+  // (g) the guard mashed through the combo (ADR-277): it never cuts the combo short (it ended it at once, nothing dealt)
+  {
+    const t = take('deathblow', { near: true, run: 2, guard: true });
+    out(`   (g) guard mashed: presses ${t.guarded | 0} · hits ${t.hits.length} · states ${[...t.states].join(',')}`);
+    assert((t.guarded | 0) >= 5, `(g) the guard was pressed through the combo (${t.guarded | 0} presses)`);
+    combo('(g) guard mashed', t, 3);
+  }
+  // (h) a PERFECT parry of a blue blow marked `lock` (Falling Ash): the combo takes it from the blade lock (?dbLock=combo,
+  // ADR-277); ?dbLock=lock: the lock as before, no combo
+  {
+    const DBM = await imp('src/entities/player/deathblow.js');
+    const t = take('deathblow', { move: 'fallingAsh', run: 3, secs: 6, posture: 20 });
+    out(`   (h) blue lock blow, perfect: parry ${JSON.stringify({ tell: t.parry?.tell, perfect: t.parry?.perfect })} · states ${[...t.states].join(',')} · hits ${t.hits.length}`);
+    assert(t.parry?.perfect === true && t.parry.tell === 'blue', '(h) a perfect parry of a blue blow');
+    assert(!t.states.has('lock') && !!t.ev, `(h) no blade lock: the combo came (states ${[...t.states].join(',')})`);
+    if (t.ev) combo('(h) blue lock blow', t, 4);
+    DBM.setDbLock('lock');
+    const L = take('deathblow', { move: 'fallingAsh', run: 3, secs: 2.5, posture: 20, until: () => false });
+    DBM.setDbLock(DBM.DBLOCK_DEFAULT);
+    out(`   (h) dbLock=lock: states ${[...L.states].join(',')} · combo ${L.ev?.art ?? 'none'}`);
+    assert(L.parry?.perfect === true && L.states.has('lock') && !L.ev, `(h) dbLock=lock: the blades lock, no combo (states ${[...L.states].join(',')})`);
   }
   // (f) THE READ (?dbread=, ADR-264): a the break, b space, c a clean contact, all. The same blows and damage as today
   // (combo's own checks less the disc and the spacing, which a and b change on purpose), and each piece does its one thing
@@ -5996,6 +6025,64 @@ async function scenarioAudit() {
   return last;
 }
 
+// ================================================================== scenario: parryrearm (ADR-278)
+// The anti-mash wait counts from the PRESS, not the release: a guard held and let go never makes the next press wait
+// (hold, release, tap on time: a parry), a single tap on time parries, a second quick tap after one that parried
+// nothing still waits DEFENSE.parryRearm, and a mash of presses 0.1 s apart parries nothing.
+async function scenarioParryRearm() {
+  out('\n== scenario PARRYREARM (the parry press: the wait counts from the press; a released guard is free) ==');
+  const G = build();
+  duel(G, { dist: 2.2 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, move = 'plumThrust';
+  p.debug.god = true;
+  p.debug.noRiposte = true;
+  run(G, 0.4);
+  const reset = () => { settle(G, 8); home(G); place(G, 2.2); run(G, 0.3); };
+  // the blow's impact after the trigger, measured once
+  reset();
+  let imp = null;
+  const t0 = game.time;
+  G.watch = (n) => { if (n === 'player:hurt' && imp === null) imp = game.time - t0; };
+  d.debug.trigger(move);
+  run(G, 3, () => game.mouseGround.set(d.position.x, 0, d.position.z), () => imp !== null);
+  assert(imp !== null && imp > 0.35, `${move} lands ${imp?.toFixed(2)} s after the trigger`);
+  /** Taps at `taps` s before the impact (the guard held from the start and let go `hold` s before, if given). */
+  const answer = (taps, hold = null) => {
+    reset();
+    let r = null;
+    G.watch = (n, e) => { if (n === 'combat:answer' && r === null && e.attack === move) r = e.result; };
+    const todo = taps.map((t) => ({ t, done: false }));
+    let up = hold === null;
+    if (!up) input.press(1);
+    d.debug.trigger(move);
+    const ts = game.time;
+    run(G, imp + 0.5, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      const left = ts + imp - game.time - DT;
+      if (!up && left <= hold) { input.up(1); up = true; }
+      for (const x of todo) if (!x.done && left <= x.t) { x.done = true; input.up(1); input.click(1); }
+    }, () => r !== null);
+    if (input.buttons[1]) input.up(1);
+    G.watch = null;
+    return r;
+  };
+  const cases = [
+    ['a single tap 0.1 s before', [0.1], null, RESULT.PARRIED],
+    ['the guard let go 0.3 s before, a tap 0.1 s before', [0.1], 0.3, RESULT.PARRIED],
+    ['the guard let go 0.2 s before, a tap 0.1 s before', [0.1], 0.2, RESULT.PARRIED],
+    ['the guard let go 0.12 s before, a tap 0.05 s before', [0.05], 0.12, RESULT.PARRIED],
+    ['a tap 0.4 s then 0.1 s before (0.3 s apart)', [0.4, 0.1], null, RESULT.PARRIED],
+    ['a tap 0.3 s then 0.1 s before (0.2 s apart: the wait)', [0.3, 0.1], null, RESULT.HIT],
+    ['a mash, 0.1 s apart', [0.45, 0.35, 0.25, 0.15, 0.05], null, RESULT.HIT],
+  ];
+  for (const [label, taps, hold, want] of cases) {
+    const r = answer(taps, hold);
+    assert(r === want, `${label}: ${r} (want ${want})`);
+  }
+  return G;
+}
+
 const SCENARIOS = {
   motion: scenarioMotion,
   react: scenarioReact,
@@ -6014,7 +6101,16 @@ const SCENARIOS = {
   fxlooks: scenarioFxLooks,
   telemetry: scenarioTelemetry,
   heavy: scenarioHeavy,
-  moments: scenarioMoments,
+  // (the blade lock's own checks: ?dbLock=lock, the deathblow does not take the perfect blue parry from it; ADR-277)
+  moments: async () => {
+    const M = await imp('src/entities/player/deathblow.js'), m0 = M.dbLockMode();
+    M.setDbLock('lock');
+    try {
+      return await scenarioMoments();
+    } finally {
+      M.setDbLock(m0);
+    }
+  },
   // (a boss-AI check, measured with the flurry before the dodge looks: the Thunder Thrust's held lunge
   // keeps the hero by him longer, and the seeded fight runs another way)
   pressure: async () => {
@@ -6039,6 +6135,7 @@ const SCENARIOS = {
   flashchain: scenarioFlashChain,
   clashdance: scenarioClashDance,
   deflect: scenarioDeflect,
+  parryrearm: scenarioParryRearm,
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
   chain: scenarioChain,

@@ -48,10 +48,12 @@ each actor's `tuning`.
    Since ADR-227 (the owner: parrying felt too tight) nearly every parry is perfect: a plain parry is
    only a press 0.20 – 0.22 s early. The plain parry's own answers (a string's riposte, the counter
    of a blue flare blow) are unchanged and come with a perfect parry too.
-   Mashing is prevented: RMB must be released `parryRearm` (0.25 s) before a new press counts —
+   Mashing is prevented: a press counts only `parryRearm` (0.25 s) after the press before it (every
+   press restarts the wait; counted from the press, not the release, so a guard held and let go never
+   makes the next press wait: hold, release and tap on time parries; ADR-278) —
    **except right after a successful parry**: a deflect re-arms at once, so the next press counts as
-   soon as RMB was released, even when the guard was held between blows (ADR-032). A press that
-   parries nothing needs the full re-arm again, so mashing still fails. Holding RMB after the press
+   soon as RMB was released, even when the guard was held between blows (ADR-032). Quick presses that
+   parry nothing keep the wait, so mashing still fails. Holding RMB after the press
    keeps blocking; between parries in rhythm the guard stays up (~0.3–0.6 s).
 5. **Perfect dodge** = a dodge started ≤ `perfectDodgeWindow` (0.2 s) before impact. Perfect
    dodges in a row are a **streak**. A perfect dodge of a **white or heavy blow** (one a parry
@@ -518,7 +520,11 @@ Against a duelist (`?parryRiposte=deathblow`, the default; `planted` / `old` the
 - A parry that **breaks** his posture, or **any parry of a blue blow**: the **DEATHBLOW**, N = parryRun (1..7) blows
   where the hero stands (0.6 m at most): his own cuts, a new order each time, the finisher a big one. Every contact
   holds for a beat (0.16 - 0.2 s, the finisher 0.38 s; ~3 s for seven) under the cold cast; 22 + 2N a blow, 40 + 15N
-  the finisher, final; he cannot be hurt; after a break he stays broken.
+  the finisher, final; he cannot be hurt; after a break he stays broken. A guard press does not end it (it waits,
+  and the guard comes up in the finisher's tail); attack, heavy and dodge presses are dropped (ADR-277).
+- A **perfect** parry of a blue blow marked `lock` would also cross the blades: the deathblow takes it (he recoils,
+  the combo follows; `?dbLock=lock` gives the blade lock back, ADR-277). Without the deathblow (`old` / `planted`) the
+  lock is as before; Tian Lei's beam and lantern locks are their own and unchanged.
 - Each blow: a straight cut on his body that crosses the last and shatters on the finisher (`?dbfx=b`), blood (a
   spray, a wound, pools on the floor), the Flesh sound (`?dbsfx=a`).
 - A chain of perfect parries grows (`?parryGrow=a`): more sparks a tier, embers, a short heat flash.

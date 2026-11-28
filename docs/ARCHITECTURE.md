@@ -843,6 +843,9 @@ onGuarded({ deflect, heavy, attacker })
                                        // 0.28 s), 'player:bounced'.
 // cancels (ADR-080): a guard press or a dodge cancels a swing at ANY point (windup, the cut, the
 // recovery; not the execution's thrust). A flask still waits for 35 % of the recovery.
+deathblowClaims(att): boolean            // a duelist asks it before it crosses the blades on a perfect parry of a
+                                       // `lock` blow (duelist.onParried): true when the deathblow combo that parry
+                                       // armed takes it instead (a blue blow, ?dbLock=combo, the default; ADR-277)
 startBladeLock(att, { start, push, decay, dur, hold, dist }): boolean
                                        // a duelist's perfectly parried `lock` blow (ADR-062): state 'lock', every press
                                        // of attack / guard pushes the meter +push, it falls decay / s; 1 wins, 0 loses,
@@ -1047,8 +1050,9 @@ none missed calls `_break()`. Lab / tests: `dragon.debug.streak(n)`, `.flurry(n)
 recovery, `_tryExecution`) with the head within `DEFENSE.plunge.execRange` 9 m starts the same move
 at HANG with `execution: true` (`execDamage`, no slow-mo, no perfect-dodge events); the press is
 spent.
-**Parry and the deflect chain** (player side): an RMB press counts as a parry attempt only once RMB
-has been up `DEFENSE.parryRearm` (anti-mash), except right after a successful parry: `_parry` sets
+**Parry and the deflect chain** (player side): an RMB press counts as a parry attempt only
+`DEFENSE.parryRearm` after the press before it (`rmb.pressT`; anti-mash, every press restarts it; from
+the press, not the release, ADR-278), except right after a successful parry: `_parry` sets
 `rmb.chain`, so the next press counts as soon as RMB was released; every press clears it, so a whiffed
 press needs the full re-arm again (ADR-032). Parries ≤ `TUNE.deflectChainGap` (1.1 s) apart count up
 `deflect.n` (the blade snaps to alternating sides, the clash grows, `player:parry {chain}` raises

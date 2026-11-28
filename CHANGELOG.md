@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-four pieces of work since 0.4.0:
+One hundred and forty-six pieces of work since 0.4.0:
+- **The parry answers when you press it** (2026-11-28, ADR-278). *Fixed:* letting go of a held guard made the next
+  parry press do nothing for 0.25 s, so holding the guard, releasing and tapping on time took the full hit. The
+  anti-mash wait now counts from your last press, so a released guard never delays a parry; quick taps that parry
+  nothing still wait 0.25 s, so mashing still fails.
+- **The deathblow is not cut short** (2026-11-28, ADR-277). *Fixed:* pressing guard during a deathblow ended it at
+  once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
+  boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of
+  the blade lock (`?dbLock=lock` as before; the Lab's `dbLock`). Tian Lei's beam locks are unchanged. The
+  Training's "Blade lock" plays with `?dbLock=lock` so the lock still happens there.
 - **The Cinder Wyrm dies whole, every white spark shows, and its blue and red paws look apart** (2026-11-28, ADR-274). *Fixed:* the wyrm's
   death no longer breaks its neck: its head swings down on the neck (round the neck's base, always in its reach) and
   looks along it, so the neck falls as one curve; before, the throe flung the head 1.5 m up into a straight pole with
