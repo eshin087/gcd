@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
+
+**Owner:** one tap on the path or BEGIN HERE must start; BOSS RUSH and BEGIN HERE looked bad, the menus should look
+like a real game's. On the phone: BLOCK where DODGE was, DODGE under ATTACK, the FLASK where BLOCK was, lock on at the
+fight's start, the phase call ran over the HUD, the controls too big on a small passport-shaped phone, the right
+controls further left, and a lock / unlock button to move them (kept).
+
+- **Two taps, found:** the entries selected on `mouseenter` / `focus` and re-drew the detail; iOS takes that first
+  tap as a hover. Now only a mouse's hover / a keyboard's focus selects (`titleMenu.js`). The desktop always worked
+  with one click (checked).
+- **The finish:** cut-corner buttons and panels, an ember BEGIN HERE with a sheen, a cooler TRAVEL, then (the owner:
+  the gold rush card looked out of place, empty space on the right) one panel: the world on the left, BEGIN HERE and
+  an ember-outline BOSS RUSH stacked on the right; quiet corner buttons; the pause menu in the same look; upright, the open world's panel sticks to the bottom.
+- **The pad:** FLASK | HEAVY / BLOCK | ATTACK / DODGE under ATTACK; PAD POSITION's places further in; the whole
+  layer scales with the screen (`pad.fit`, replaces `pad.tall`); the padlock drags it (`padOff`, kept, RESET).
+- **Lock-on:** `flow._enterBoss` → `player.takeLock()` each frame for up to 4 s, on touch only.
+- **The phase call:** `banner.js _clearHud` puts it under the player's frame and the boss bar.
+- **Checked:** the browser at 852 x 393 (title, the pad, the padlock drag and its saved place, the lock-on as the
+  fight starts, the phase call below the HUD) and 420 x 500 (fit 0.66, the sticky panel); `integ.mjs . touch` green
+  with new checks (the layout, the padlock, the fit).
+- **Open:** the owner on a real iPhone and the small phone; the fit's floor (0.62); start lock-on for mouse / pad?
 ## 2026-11-27 — The parry → deathblow exchange, readable (ADR-264; branch `claude/sweet-morse-33ddad`)
 
 **Goal:** the owner could not follow the moment between a parry and the deathblow it starts (a bot parrying Shen

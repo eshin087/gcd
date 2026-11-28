@@ -3292,6 +3292,7 @@ timings are the real device's):
 |---|---|---|
 | stick (left thumb, floats under the thumb in the left 42 % × lower 74 %) | `setVirtualAxis` | analog: dead zone 0.16, full run at 0.62 of the 52 px travel; ≥ 0.94 (rim) holds `@sprint` (off below 0.86) |
 | ATTACK (pad tile) | `@attack` | tap = light combo, hold ≥ 0.3 s = charge, release = the cleave; shows an ASCII charge meter `[###...]` |
+| the padlock (`.tc-padlock`, over the pad's top-left corner) | — | open (`setEditing(true)`): a drag on the pad moves it and presses nothing; shut: kept there |
 | BLOCK (pad tile) | `@block` | hold = block, tap just before impact = parry; a gauge along its foot is the guard meter |
 | DODGE (pad tile) | `@dodge` | roll / perfect dodge |
 | FLASK (rides with the pad) · LOCK · PAUSE (glyph `\|\|`, both top right) | `@flask` · `@lockOn` · `@pause` | flask count, LOCK lit while locked on |
@@ -3299,18 +3300,36 @@ timings are the real device's):
 | a bare-screen tap on title / death | `Mouse0` | "press any key" |
 | two bare-screen fingers in play | `cameraRig.zoom` | pinch (distance × start / now) |
 
-**The pad** (ADR-096; `CONFIG.touch.pad`; four tiles since ADR-115): ATTACK, HEAVY, BLOCK and DODGE are a
-2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK, each sharing an edge with the two beside it (ATTACK
-bottom right), raised and inset from the corner. HEAVY carries the charge meter while it is held. The pad is one pointer surface (`.tc-pad`; the tiles
+**The pad** (ADR-096; `CONFIG.touch.pad`; four tiles since ADR-115, laid out again in ADR-270): HEAVY
+over ATTACK, BLOCK beside ATTACK (where DODGE stood) and DODGE right under ATTACK, so ATTACK shares an
+edge with each of the other three; the FLASK button stands where BLOCK stood (top left, its own
+button: the slide never drinks). Raised and inset from the corner, further in than before (the thumbs
+of a hand holding the phone rest left of the edge). HEAVY carries the charge meter while it is held. The pad is one pointer surface (`.tc-pad`; the tiles
 take no pointers themselves): a touch on it, or up to `reach` (26 px) outside the cluster, presses
 the nearest tile, and a thumb that **slides** onto another tile releases the first and presses the
 second without lifting (release edge first; it must leave its tile by `stick`, 10 px; a slide that
 wanders further than `reach` from every tile keeps what it holds). Each finger holds its own tile.
 The player places the cluster in the pause menu: PAD POSITION (low / mid / high: `pad.pos`) and
 PAD SIZE (small / medium / large: `pad.size`), kept in `localStorage` (`gcd.touchPad`); the
-controls show through the pause screen, inert, while they are stepped (`.tc-root.peek`). Screens
-taller than 560 px get everything × `pad.tall`. API: `padPos`, `padSize`, `cyclePad('pos' | 'size')`,
-`padPoint(id)` (the screen point at a tile's middle), `padGeo`.
+controls show through the pause screen, inert, while they are stepped (`.tc-root.peek`).
+**The padlock** (ADR-270): a small button over the pad's top-left corner. Tapped open
+(`setEditing(true)`, `.tc-root.editing`: the pad dashed, DRAG TO MOVE and a RESET button over it) a
+drag anywhere on the pad moves the whole cluster (its flask and padlock with it) and presses nothing;
+tapped shut it stays there. The drag is `padOff` (px at fit 1, + left / + up from PAD POSITION's
+place), clamped on screen and kept in the same `localStorage` entry (`off: [x, y]`);
+`resetPadOffset()` puts it back. The padlock shuts itself when the controls go away (pause, the end of
+a fight). **The fit** (ADR-270, `pad.fit`): the whole layer scales with the screen, `fit = clamp(min(short
+side / base[0], long side / base[1]), min, max)` (390 / 760, 0.62 - 1.25): an iPhone on its side is 1, a
+small near-square screen (a fold's cover screen) 0.62 - 0.7, a tablet up to 1.25. The tiles, the
+flask, the stick (its ring, knob and travel: `stickRadius` × fit), LOCK and PAUSE all follow it
+(`--tc-f` on `.tc-root`; `--tc-k` = fit × PAD SIZE for the pad). API: `padPos`, `padSize`, `padOff`,
+`fit`, `editing`, `cyclePad('pos' | 'size')`, `setEditing(on)`, `resetPadOffset()`, `padPoint(id)`
+(the screen point at a tile's middle), `padGeo`.
+
+**The fight starts locked on** (ADR-270, `CONFIG.touch.autoLock` s): on touch (not with a pad in use)
+`flow._enterBoss` arms `autoLockT`; each boss frame until it runs out `flow` calls `player.takeLock()`
+(the LOCK button's toggle, taken only when off and in range), so the hero locks on as soon as the boss
+can be locked. LOCK still drops it.
 
 **Two more pad switches** (ADR-131; pause menu, kept in the same `localStorage` entry, both off by
 default; `?pad=split|classic` and `?hold=1|0` set them for one page load):

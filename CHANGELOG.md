@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty pieces of work since 0.4.0:
+One hundred and forty-one pieces of work since 0.4.0:
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s
@@ -20,6 +20,14 @@ One hundred and forty pieces of work since 0.4.0:
   blade instead of the big white star and ring (the Lab's `blueTell`). *Changed (the owner's pick, the defaults):*
   the perfect parry is `c`, a pinpoint where the blades cross and its sparks, no gold burst; the blue cue is `a`
   (`?parryClash=0` / `?blueTell=0` as before).
+- **One tap to begin, menus with a finish, and touch controls that fit and move** (2026-11-28, ADR-270). *Fixed:* on
+  a phone, a tap on a world, BEGIN HERE or BOSS RUSH on the title acts at once (iOS took the first tap as a hover).
+  *Changed:* the title's and the pause menu's buttons and panels in a finished look (cut corners, the world and its
+  buttons in one panel, an ember BEGIN HERE beside BOSS RUSH); held upright, the open world's panel stays on screen. Touch: FLASK | HEAVY over
+  BLOCK | ATTACK with DODGE right under ATTACK; the pad sits further in from the right edge; every control scales
+  with the screen (smaller on a small near-square phone, larger on a tablet); the phase call keeps below the HUD.
+  *Added:* a padlock over the pad: open it and drag the right-hand controls anywhere (kept; RESET puts them
+  back); on touch the boss fight starts locked on.
 - **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner's pick from the films):* the
   Thousand-Body Fox's straight punches and palms now land on an open arm along one line to you (the elbow 162 - 167°,
   was 123 - 139°), his roundhouse, his paper selves' rising kick and both ankle sweeps land on a straight leg (the
