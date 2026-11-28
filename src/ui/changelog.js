@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'One kind of parry',
+        notes: [
+          'Every parry is now a perfect parry: the same sparks, freeze and rewards every time you parry on time.',
+          'A parry pressed a touch early no longer counts as a weaker, different-looking parry.',
+          "So Bai Wuji's barrier now opens on every parry, and every bullet you parry flies back at whoever fired it.",
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'Varr Nihil after the reference pack, to try',
         notes: [
           'A new look for Varr Nihil to try before it becomes his own: his hood, helm, armour and whole cape kept in every form, and every blade split into two red-white rails with a dark slit between them.',

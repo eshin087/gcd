@@ -4,7 +4,12 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-six pieces of work since 0.4.0:
+One hundred and forty-seven pieces of work since 0.4.0:
+- **One kind of parry** (2026-11-28, ADR-279). *Changed:* every parry is now a perfect parry, anywhere in the
+  parry window: the same look, freeze and rewards every time (more posture damage, the counter cut, a bullet sent
+  back, a count toward the deathblow). Before, a press 0.20 - 0.22 s early was a plain parry with a different look.
+  So Bai Wuji's barrier now opens on every parry, and every parried shot flies back at the one who fired it.
+  `?parry=two` gives the two kinds back (the Lab's `parry`).
 - **The deathblow is not cut short** (2026-11-28, ADR-280). *Fixed:* pressing guard during a deathblow ended it at
   once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
   boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of
