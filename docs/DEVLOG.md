@@ -25,9 +25,12 @@ strike, unrealistic attacks; every attack readable; his spell effects are the ba
 - **Films:** before / after of 15 moves across the three phases, at the game camera (a close crop with the frame as an
   inset) and from the side, real and half speed.
 
-**Picked** (2026-11-27, from the films): both switches `a`, the default; his windups stay PBZ-fast. Open: Hand to Hand's opening jab's lead foot
-jumps 0.43 m in a frame (on main too; `anim.js _feetClip`, the hero session's file). His windups stay PBZ-fast
-(0.42 s first blows), under the audit brief's 0.7 s floor: the owner kept it.
+**Picked** (2026-11-27, from the films): both switches `a`, the default; his windups stay PBZ-fast (0.42 s first
+blows, under the audit brief's 0.7 s floor: the owner kept them).
+**Then fixed** (the owner asked): Hand to Hand's opening jab's lead foot jumped 0.43 m in a frame (on main too): the
+planner was stepping it when the clip lifted it, and the ADR-223 ease only caught a planted foot. `anim.js`
+`liftFromStep` (opt-in, the fox's kit): every move of his now under 0.3 m a frame, asserted in `fox.mjs motion`.
+
 ## 2026-11-27 — The clash dance is the default (ADR-247; branch `claude/combat-clash-dance-default`)
 
 **Owner:** watched the three films of PR 175 (today against the dance: Shen Hui, the Starless Lord, Xin Yi) and said

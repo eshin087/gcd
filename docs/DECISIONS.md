@@ -6984,8 +6984,12 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   COMBAT.md "The Thousand-Body Fox"), under the audit brief's 0.7 s floor: the owner's earlier call, asked again with
   the films: they kept it fast (2026-11-27). His effects (the Pearl, the foxfire, the Howl) are the bar the other bosses are measured
   against: no options offered.
-- **Found, not fixed:** Hand to Hand's opening jab lifts a lead foot the root left behind and it jumps 0.43 m in a
-  frame (on `main` too; `anim.js _feetClip`, the hero session's file).
+- **Fixed after the picks (the owner asked, 2026-11-27):** Hand to Hand's opening jab lifted a lead foot the root
+  had left behind, and it jumped 0.43 m in a frame (on `main` too). The foot planner was STEPPING it (mode 1) when
+  the clip lifted it, and ADR-223's release ease only caught a planted foot. `HeroAnimator` `opts.liftFromStep`
+  (opt-in; the fox's kit only, with his `liftEase`): a foot lifted mid-step eases from where it was drawn, its height
+  too. The hero and every other boss are unchanged. Every move of his now stays under 0.3 m a frame (Hand to Hand
+  0.43 → 0.24, Burning Tail 0.35 → 0.28; `fox.mjs motion` asserts it over all 21).
 - **Consequences:** `fox.mjs motion` asserts the limbs (straight blows >= 155°, kicks >= 155°, hooks and uppercuts
   95 - 130°, `0` as before); the pace, win, timing and data scenarios are unchanged.
 

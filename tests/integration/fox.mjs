@@ -1759,6 +1759,26 @@ async function scenarioMotion() {
     assert(k1.held >= 0.12 && k1.held > k0.held && taller, `${name} (${k1.tell}): held ${k0.held.toFixed(2)} -> ${k1.held.toFixed(2)} s (>= 0.12), the cock's pelvis ${k0.cock.pel} -> ${k1.cock.pel} m (${k1.tell === TELL.BLUE ? 'taller' : 'lower'})`);
     if (true) assert(r1.pop <= 0.3, `${name}: no joint jumps more than 0.3 m in a frame (${r0.pop.toFixed(2)} ${r0.popK} -> ${r1.pop.toFixed(2)} ${r1.popK})`);
   }
+  // 2b. every move, as shipped: no joint jumps more than 0.3 m in a frame (ADR-249: Hand to Hand's jab lifted
+  // a lead foot the planner was still stepping and it jumped 0.43 m: anim.js liftFromStep)
+  {
+    const bad = [];
+    let n = 0;
+    for (const name of MOVE_NAMES) {
+      const def = MOVES[name];
+      if (def.hidden || def.transition || def.verdict) continue;
+      const ph = Math.max(1, def.phase ?? 1);
+      const G = build();
+      duel(G, { dist: 4, form: ph });
+      const A = makeAudit({ THREE, G, DT, place });
+      const band = def.band ?? [0, 4];
+      const r = A.measure(name, { dist: Math.max(2.0, Math.min(6, (band[0] + Math.min(band[1], 8)) / 2)), phase: ph });
+      if (r.fail) { bad.push(`${name} ${r.fail}`); continue; }
+      n++;
+      if (r.pop > 0.3) bad.push(`${name} ${r.pop.toFixed(2)} ${r.popK}@${r.popAt}`);
+    }
+    assert(n >= 18 && !bad.length, `every move (${n}): no joint jumps more than 0.3 m in a frame (${bad.join(' | ') || 'ok'})`);
+  }
   // 3. the limbs at the contact (ADR-249, ?foxLimbs=a, the default): a straight blow lands on an open arm,
   // a kick on a straight leg (the sweep through its turn), a bent blow keeps its bend; '0' as before
   {
