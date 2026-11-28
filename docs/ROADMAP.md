@@ -44,6 +44,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Classic ASCII-art creatures (screen-grid conversion, owner's references); hero drawn bigger and leaned (ADR-017)
 - [~] Phone support: touch controls, phone camera, Lab toggle (released; needs a real-device check)
   - [x] The right thumb's pad: three tiles that touch, slide between them, placed and sized by the player (ADR-096)
+  - [x] FLASK | HEAVY over BLOCK | ATTACK, DODGE under ATTACK; the layer fits the screen; a padlock to drag it (kept); the fight starts locked on (ADR-270)
+  - [ ] Owner's verdict on the iPhone and the small phone: the new pad, the fit's floor, the padlock's place
+- [x] The title and the menus with a finish; one tap begins on a phone (ADR-270)
   - [x] The guard meter: blocks cost guard, not HP; parries and hits restore it (ADR-095)
   - [x] Played upright (portrait) as well as in landscape; see-through controls; a 70 px minimap on phones (ADR-097)
   - [x] An ASCII HUD: text meters, block-letter banners, no panels in play, a 40 – 72 px minimap (ADR-098)

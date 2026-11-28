@@ -7845,3 +7845,49 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Consequences:** the fight is about a fifth shorter, and cutting his barrier is no longer wasted: it chips
   him and shows the barrier where it struck. The opening has no floor sign now: its burst, and his cuts landing,
   show it. Open: whether the chip wants its own sound.
+
+  3. THE SILHOUETTE (`untouched/fxStrike.js`, `?wjStrike=0|a|b|c`, PENDING: the owner picks from
+     `docs/looks/veil/wjStrike-options.jpg` and the preview): a, the shell's whole oval lit round from the point;
+     b, his outline, the shell as it hugs him a hand off his body (his mesh points on the camera's plane, a distance
+     field, marching squares; every segment runs with his body on its left so the strokes never print twice); c,
+     that outline and two wider ones, a beat apart, rippling outward. A wave runs out of the point at 8.5 m/s, a
+     crest at heat 0.8 cooling to 0.45 of it, gone in about half a second. All heat in the fire field on the letter
+     grid (`fx._ink`), as the house style asks; the stop's white point, its push of air and its shards stay; '0'
+     keeps the ripple.
+- **Consequences:** the fight is about a fifth shorter, and cutting his barrier is no longer wasted. Open: the
+  owner's pick of the look; whether the chip wants its own sound.
+
+## ADR-270 — The finish: one tap to begin, game-menu buttons, a new pad, controls that fit the screen and move (2026-11-28)
+
+- **Context:** the owner: "i dont like you have to press it 2 times to start the boss. just one time click on the
+  line bar or begin here needs to start it. boss rush and begin here buttons look really bad. make the buttons and
+  menus look more polished professional like a real game." On the phone: "replace dodge with block and put dodge
+  right below the attack button. put the flask button where the block button was. make the game auto lock on the
+  boss in the beginning of the fight", the phase call ran over the HUD, and on a small passport-shaped phone the
+  controls were all too big; "place the right controls a little more to the left", and let them be moved with
+  "a small unlock/lock button" that keeps the place.
+- **Decision:**
+  1. ONE TAP: the title's entries selected the world on `mouseenter` / `focus`, which re-draws the detail
+     panel. iOS Safari takes a tap whose hover changes the page as a hover only and wants a second tap for the
+     click. Selection now follows a MOUSE's `pointerenter` and a keyboard's `:focus-visible` only; a tap acts at
+     once (travel, begin, the rush).
+  2. THE FINISH (`titleMenuStyle.js`, `hudStyle.js`): two corners cut off every button and panel, a hairline
+     frame, an ember rule along a panel's top. BEGIN HERE is an ember-filled button (a sheen on hover, the chevron
+     steps out, a small press); TRAVEL the same shape, cooler, so BEGIN stays the hottest thing; BOSS RUSH a gold
+     card with an emblem, its line, its best and a chevron; WHAT'S NEW / CONTROLS / CLOSE quiet cut frames that
+     light ember. The pause menu's buttons and panel take the same cut and an ember edge on hover / the pad's
+     focus. Held upright, the open world's panel sticks to the bottom of the list (BEGIN always on screen).
+  3. THE PAD (`CONFIG.touch.pad`): FLASK | HEAVY over BLOCK | ATTACK, DODGE under ATTACK; ATTACK touches the
+     other three tiles (the slide still runs between them). PAD POSITION's places are 30 - 36 px further in.
+  4. THE FIT (`pad.fit`): the whole touch layer scales with the screen (short side / 390 and long side / 760,
+     the smaller, 0.62 - 1.25), the stick included; it replaces `pad.tall` (x 1.14 above 560 px).
+  5. THE PADLOCK: a small padlock over the pad; open, the pad drags (nothing presses), RESET puts it back;
+     shut, the place is kept in `gcd.touchPad` (`off`).
+  6. LOCKED ON AT THE START: on touch the fight begins locked on (`touch.autoLock` 4 s of tries while the boss is
+     out of range); the gamepad and the mouse unchanged.
+  7. THE PHASE CALL (`banner.js _clearHud`): its middle goes below the lowest of the player's frame and the boss
+     bar (half its height and 10 px under them), never above 21 % nor below 42 % of the screen.
+- **Consequences:** a player who learned the 2 x 2 square finds DODGE and BLOCK moved (the owner's call). The
+  look options (2) were not offered as variants: the owner asked for the finish itself; `?menu=0` still shows
+  the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
+  to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
