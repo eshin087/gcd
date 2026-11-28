@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-one pieces of work since 0.4.0:
+One hundred and thirty-two pieces of work since 0.4.0:
+- **The hero runs with his sword held low, its point down beside his leg, gripped as a hand grips it** (2026-11-26, ADR-229).
+  *Changed:* on the run and the sprint he holds his sword the way a hand grips one, the thumb ahead: its point
+  hangs down beside his right leg, a little ahead and out, and it rides with his arm as it swings with his stride,
+  clear of his legs and his coat (before: the blade forward at his hip, level). His fist sits on his forearm as a hand closes on a grip (the thumb
+  away from the wrist), and his free arm swings naturally with his stride. *Added:* the other carries tried on the way stay behind switches: `?runSword=g1|g3|nat|n1|n3|flail|b15|b25|b35|b45|a1|a2|a3|a4|trail|swept|side|hip|old`, `?runArm=e|f|g|h|d` (the Lab's
+  `run sword` and `run arm` rows). *Fixed:* out of a run with the blade trailing behind him, a block, a parry, the
+  flask or a charge no longer flips the sword round in one frame (nor whips it up from a blade held low).
 - **The performance readout measures by itself** (2026-11-27, ADR-261). *Changed:* with `?perf`, BENCH now runs on its own
   during a fight (once early, then at the slow moments, four times at most); play, then tap REPORT. `?perf=manual`
   keeps it to the button.
