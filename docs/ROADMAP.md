@@ -248,6 +248,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The free hand seen from behind: `?offhand=guard` (combo A's) and `out`; tucked through a whole-body turn
 - [x] The ending slash on the blade's own on-screen line from every side, after the cut, clear of him, softer (`?slashSoft=`); scenario `slashaim`
 - [ ] The owner's picks: the hand (`guard` / `out`) and the softness (`a` / `b` / `c`)
+- [x] The coat's lower half one piece (`?coat=one`, `gear/coatOne.js`, ADR-274): one sheet on twelve coupled chains; scenario `coatone`
+- [ ] The owner's verdict on the one-piece coat
 
 ## M1.94 — Instant slashes, the left hand to pick (2026-11-26, `claude/hero-instant-slash`, ADR-240)
 - [x] PRs #118 and #166 closed on the owner's call: production's combo stays

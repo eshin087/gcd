@@ -5,6 +5,40 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The hero's coat in one piece (ADR-274; `player/coat-one-piece-anim`, on top of PR 195)
+
+**Owner:** after the cloak round on hit 5: "It should not be a skirt and needs to be one full cloak but with great
+animation that looks natural as the character moves and attacks". Asked: the coat's lower half as one continuous
+sheet from the waist to the calves, open at the front, the half-cape kept; the hem torn.
+
+- **Built:** `gear/coatOne.js` (`?coat=one` default, `panels` as before). Twelve two-segment chains round the waist (one at
+  each open front edge, where a lunging thigh went through the sheet on a first try with ten)
+  (the animator's coat springs, anim.js `_coat`; each pulled toward its neighbours' swing, `nbr`, COAT_COUPLE 14/s)
+  and ONE sheet rebuilt every frame (`rig.cloth[i].update()` after `_coat`): every column swung as the two chains it
+  lies between, blended by angle; the dark coat with its drawn folds above, the lavender torn zone with claw points
+  below, the lining, piping down both front edges, the torn strips under the hem on their own springs. The legs',
+  blade's and floor's rules work on every chain as they did on every panel.
+- **Drawn on its own:** the hero's rigid batch copies every mesh's geometry at build time, so the sheet is `noBatch`
+  with dynamic buffers (like the wyrm's membranes): six draw calls of its own; the batch test counts them.
+- **The seeded stream kept:** the headless sims seed Math.random once per build and three.js draws ids from it; the
+  one piece built 240 fewer draws and batched 8 fewer, which flipped seeded checks on other bosses (Xin Yi's cue
+  rate, Tian Lei's Eight Gates, the Crossing's marks). `RANDOM_PAD` draws exactly those, so every fight after the
+  hero's build replays as on main (measured with both coats built in the page).
+  A coat kick (a guard break, the slam) drew 3 numbers a chain and 2 a strip from Math.random: the one piece's now
+  come from the animator's own stream and the panels' 42 are drawn (Xin Yi's pace numbers now equal the panels'
+  exactly). Each chain covers its neighbours' arc for the blade's and the legs' rules (a sprint's blade went through
+  the sheet between chains on 4 frames; now 0).
+- **Measured:** integ `coatone` (a stand, a run and stop, combo A, a heavy, the cleave), both coats on the same
+  script: the one piece sinks no deeper into the legs and in fewer frames (8.5 cm, 366 frames; the panels 8.8, 431:
+  the legs as the cloth rule sees them reach wider than the drawn legs), jumps no further (45.9 cm at a swing's
+  snap; the panels 46.7), and its chains hang closer together (0.92 rad; the panels 1.27).
+- **Films:** a turnaround (today's panels over the one piece) and motion at the game camera (run and stop from
+  behind; the combo, heavy and cleave from his side).
+
+**Open:** the owner's verdict; the PR is held (it carries PR 195's commits until that one merges).
+
+---
+
 ## 2026-11-27 — The light combo planted, a real thrust, slashes that follow the blade (ADR-268; `player/attack-anim-planted`)
 
 **Owner:** with a reference combo video: too much forward momentum, the legs move too much, the left hand vanishes

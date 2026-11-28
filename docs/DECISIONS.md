@@ -7925,3 +7925,25 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   look options (2) were not offered as variants: the owner asked for the finish itself; `?menu=0` still shows
   the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
   to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
+
+## ADR-274 — The hero's coat in one piece: one sheet on twelve coupled chains (2026-11-27)
+
+- **Context:** the owner: the coat's lower half "should not be a skirt and needs to be one full cloak but with great
+  animation"; asked, one continuous sheet from the waist to the calves, open at the front, the half-cape kept, a torn
+  hem. It was six panels (ADR-034, ADR-065), each a rigid two-segment sheet on its own spring: they swung apart and
+  the gaps between them opened and closed, a skirt.
+- **Decision:** `gear/coatOne.js` (`?coat=one`, the default; `panels` the six as before). Twelve two-segment chains round
+  the waist ring (`COAT_ONE.chains`), the animator's coat springs unchanged in their rules (the legs, the blade, the
+  floor), plus a pull toward the neighbours' last swing (`nbr`, `COAT_COUPLE`). One sheet (46 columns from the left
+  front edge round the back to the right one) is rebuilt on the CPU every frame after the springs (`rig.cloth`,
+  model.js `cloth`, kept out of the static merge): each column swung as its two chains, blended by angle; the dark
+  part and the torn zone two meshes (+ the lining), piping down both front edges, the hem's claw points and ragged
+  edge baked per column, the strips on their own springs under the chains' hems.
+- **Consequences:** no gaps, no single piece swinging out; a few hundred vertices rebuilt a frame on the hero only
+  (normals recomputed in place, no allocation). The sheet is kept out of the hero's rigid batch (`noBatch`, dynamic
+  buffers): six draw calls of its own, frustum culling off. `RANDOM_PAD` keeps the headless sims' seeded stream as it
+  was (240 ids at build, 8 at batching, and the 42 draws a coat kick took from Math.random: anim.js `kickCoat` now
+  takes the one piece's noise from the animator's own stream). Each chain covers its neighbours' arc (`w`), the two
+  front-edge chains only their edge; the floor rule measures a one-piece chain's length as drawn (× its world
+  scale); the front hangs 13 mm a segment shorter than the panels' (lying on his side a front chain cannot lie
+  flat in its swing limits). integ `coatone` holds the one piece to the panels' bounds on the same script.

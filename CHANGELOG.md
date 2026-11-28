@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-two pieces of work since 0.4.0:
+One hundred and forty-three pieces of work since 0.4.0:
+- **The hero's coat is one piece** (2026-11-27, ADR-274). *Changed (the owner: "It should not be a skirt and needs to be one full cloak";
+  asked, they chose the coat's lower half as one piece, open at the front, the half-cape kept, a torn hem):* the six
+  coat panels that hung side by side like a skirt are now one sheet from the left front edge round the back to the
+  right one, with one torn lavender hem, the lining inside and the piping down the open front. It moves as one cloth:
+  twelve springs round the waist, each pulled toward its neighbours, so no piece swings out on its own; the legs, the
+  blade and the floor still push it aside. `?coat=panels` wears the six panels as before.
 - **The light combo stays planted, hit 4 is a real thrust, the slashes follow the blade** (2026-11-27, ADR-268). *Changed (the owner's notes on the auto attack, with a reference
   combo):* the light combo no longer carries you forward: each hit steps in 0.12 - 0.24 m (was 0.55 - 0.8), and only
   as far as needed when the foe is out of reach; your stance holds through the combo (the front foot slides, the back
