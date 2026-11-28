@@ -12,11 +12,12 @@ One hundred and thirty-seven pieces of work since 0.4.0:
   the two bodies never merge), `c` a clean contact (the flash at each cut smaller, beside the wound on his far side
   and gone at once instead of held through the freeze; the burst out of his back thinner; no white streak on the
   finishing thrust; his body's white flash dim), `all` the three (the default), `0` as before. The blows and their damage never change. The Lab's `dbread`
-  row. *Added (options, not yet picked):* `?strikeGap=a|b` keeps a sword boss's blows from bringing him nearer than
-  1.5 / 1.8 m, so the blades meet in the open between you at a parry (never past what the blow reaches; fists and
+  row. *Added (options, off by default):* `?strikeGap=a|b` keeps a sword boss's dashes from bringing him nearer than
+  1.5 / 1.8 m (off: it bends Shen Hui's lunges), so the blades meet in the open between you at a parry (never past what the blow reaches; fists and
   feet as before; the Lab's `strikeGap`); `?parryClash=a|b` draws the perfect parry's gold clash and its mark smaller
-  (b: the X alone, no rings) so the crossing blades show, the sparks off the steel as they are (the Lab's
-  `parryClash`).
+  (b: the X alone, no rings; c: no gold at all, a pinpoint where the blades cross and the sparks) so the crossing
+  blades show (the Lab's `parryClash`); `?blueTell=a` draws a boss's blue parry cue as a small blue cross on his
+  blade instead of the big white star and ring (the Lab's `blueTell`).
 - **The clash dance: parries in a row break him faster** (2026-11-27, ADR-247). *Changed (the owner's pick from the
   film):* against the human bosses, parries in a row inside one of his strings pay more posture each (x1, x1.25,
   x1.5, then x1.75); the run starts over when his string ends, when a blow lands on you, or after a pause. The

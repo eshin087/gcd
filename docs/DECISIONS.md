@@ -7701,13 +7701,24 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     hero: the cut was parried at 1.42 m, the thrust at 1.01 m. A floor on how near a duelist's own root motion (the
     windup's step-in, a dash, authored travel) brings him for a BLADE blow (`_part` marks a bare-handed kit's limb:
     left as authored), capped at 0.85 x the blow's reach so every blow lands where it did: a 1.5 m, b 1.8 m (the
-    parries at 1.5 / 1.5 m and 1.8 / 1.7 m). Off by default until the owner picks. Seen zoomed: the spacing shows
+    parries at 1.5 / 1.5 m and 1.8 / 1.7 m). The owner picked b; **as a default it broke Shen Hui's authored lunges**
+    (duel `ashform`, ADR-250: a dash stopped short leaves his back knee bent at impact, at 1.5 m as at 1.8) and Lu
+    Wusheng's Thousand Li (a dash THROUGH the hero, stop -3: now never floored). So it is left to dashes only (not the
+    windup's step-in nor authored travel, which footwork is keyed to) and **off by default** until that trade is
+    decided with the owner (re-key his lunges for the room, or keep the spacing as authored). Seen zoomed: the spacing shows
     the bodies apart up to the contact, but on a perfect parry the gold clash, its mark and its spark spit (ADR-181)
     cover the hero's chest, where the blades meet, at any gap.
   - **The clash's size** (`?parryClash=0|a|b`, `combat/perfectFx.js`, the Lab's `parryClash`), the owner's "Yes,
     film it": the perfect parry's mark (its gold X opening into rings up to 0.52 m) and its gold clash burst drawn
     smaller, one idea in two steps: a the mark 0.55 x with its rings, the burst 0.6 x; b the X alone at 0.4 x, the
-    burst 0.4 x. The spit of orange sparks off the steel (ADR-181) is left as it is. Off until the owner picks; filmed
+    burst 0.4 x. The spit of orange sparks off the steel (ADR-181) is left as it is. The owner picked b, then on a
+    closer look turned the whole gold parry burst down ("doesnt look good, doesnt feel like a parry effect, and
+    covering too much of the action. replace this with something better") and with it the big white star with a
+    ring, which is the BLUE TELL (his parry cue, not the parry). Replacements: **c** no gold burst and no rings, a
+    pinpoint where the blades cross (the mark's X at 0.12 x, a cell or two) and the spark spit carries the parry;
+    **`?blueTell=a`** (duelist/fx.js `TELL_GLINT.blueSmall`, the Lab's `blueTell`) a small cross on his blade (4 x 2
+    cells, no rays, no ring, held as long), dyed blue by a fire-field tint zone as the flares are, with a blue sparkle
+    and light. Both off by default until the owner picks from the films (`newparry-vs-today`); filmed
     with the 1.8 m gap beside today. Seen in the same zoom: the largest thing on screen before his thrust is his blue
     tell glint (a star and ring) right over the hero where the blades will meet; a gameplay cue, left as it is.
 - **Consequences:** a adds 0.35 s between the parry and the combo and 0.08 s to the first blow (the combo's own

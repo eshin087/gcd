@@ -1764,8 +1764,8 @@ takeHit({ damage, part, point:{x,y,z}, dir:{x,z}, cut:{x,z}, poise, heavy, crit,
                                         // in a reeling / recoil / stagger with most of it still to run, and
                                         // shove m is his flinch's travel back (read b; absent: 0)
                                         // (?strikeGap, ADR-264: duelist/strikeGap.js strikeGapFloor(d, zone),
-                                        // read by brain._motion: a blade blow's step-in, dash and travel stop
-                                        // at the floor, capped at 0.85 x the blow's reach)
+                                        // read by brain._motion: a blade blow's dash stops at the floor (never a
+                                        // dash through him), capped at 0.85 x the blow's reach; off by default)
 onParried({ attack, tell }): void       // the dragon calls this itself when player.takeHit returns 'parried'.
                                         // Deflect chain (contract 1): a string's non-final hit is only
                                         // deflected (posture + a 0.14 s visual knock-back, the string goes

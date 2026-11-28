@@ -37,7 +37,12 @@ beside today. Zoomed, the bodies stand apart up to the contact, but the perfect 
 cover the hero's chest where the blades cross at any gap. The owner said film a smaller one: `?parryClash=a|b` (the mark
 0.55 x with rings and the burst 0.6 x / the X alone at 0.4 x and the burst 0.4 x; the sparks as they are), filmed with
 the 1.8 m gap beside today, plus a zoom sheet of the first parry in four rows. The blue tell glint before the thrust is
-the largest thing over the crossing: a gameplay cue, left alone (a question for the owner).
+the largest thing over the crossing: a gameplay cue, left alone. The owner picked "Gap b + clash b". As defaults the
+full suites failed: any strike-gap floor bends Shen Hui's authored lunges (`ashform`, at 1.5 m too), Thousand Li (a
+dash through the hero) stopped short, the pace sims drifted. The floor is now dashes only, never a dash through him,
+and off by default. Then the owner turned the gold parry burst down and the white star with a ring (his BLUE TELL,
+not the parry): `?parryClash=c` (no gold, a pinpoint and the sparks) and `?blueTell=a` (a small cross dyed blue),
+filmed beside today (`newparry-vs-today`), off until picked.
 
 ---
 
