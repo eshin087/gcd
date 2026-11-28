@@ -15214,6 +15214,34 @@ async function scenarioHeroMotion() {
   const L0 = tally('0'), L1 = tally('a');
   out(`   lands (Piercing Gale at 1 / 1.8 / 2.6 m, combo A's hit 4 at 0.6 / 1.2 m from the chest): off ${L0.join('')} · a ${L1.join('')}`);
   assert(L1.every((x, i) => x >= L0[i]), `the thrusts land wherever they landed before (${L0.join('')} → ${L1.join('')})`);
+  // combo A as shipped (ADR-240, PR 167): the soft wrist turns the drawn blade, which the hit sweep and the ending
+  // slash both read, so every hit must still land where it did and every slash keep its angle
+  const chain = (id, gap) => {
+    HM.setHeroWrist(id); HM.setHeroThrust(id);
+    setCombo('a');
+    d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G);
+    const c = chest();
+    p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+    p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+    aimAt(G);
+    const hits = [0, 0, 0, 0, 0], lines = [];
+    const w0 = G.watch, l0 = p.slashFx.onLine;
+    G.watch = (n) => { if (n === 'player:hitDragon') { const k = p.atk?.def?.combo; if (k >= 0 && k < 5) hits[k] = 1; } };
+    p.slashFx.onLine = (ax, ay, az, bx, by, bz) => { const L = Math.hypot(bx - ax, by - ay, bz - az) || 1; lines.push({ k: p.atk?.def?.combo, v: [(bx - ax) / L, (by - ay) / L, (bz - az) / L] }); };
+    for (let k = 0; k < 5; k++) { input.click(0); run(G, k === 4 ? 1.3 : CHAIN_EVERY, { passive: true }); }
+    G.watch = w0; p.slashFx.onLine = l0;
+    setCombo('0');
+    return { hits, lines };
+  };
+  let worst = 0, L0c = '', L1c = '';
+  for (const gap of [0.8, 1.6]) {
+    const c0 = chain('0', gap), c1 = chain('a', gap);
+    L0c += c0.hits.join('') + ' '; L1c += c1.hits.join('') + ' ';
+    for (const l of c1.lines) { const m = c0.lines.find((x) => x.k === l.k); if (m) { const dot = Math.abs(m.v[0] * l.v[0] + m.v[1] * l.v[1] + m.v[2] * l.v[2]); worst = Math.max(worst, Math.acos(Math.min(1, dot)) * 180 / Math.PI); } }
+  }
+  out(`   combo A, hits 1-5 landing at 0.8 / 1.6 m: off ${L0c}· a ${L1c}; the ending slashes' angle moves at most ${worst.toFixed(1)}°`);
+  assert(L0c === L1c, `combo A lands exactly as shipped with the soft wrist (${L0c}→ ${L1c})`);
+  assert(worst <= 12, `combo A's ending slashes keep their angle with the soft wrist (at most ${worst.toFixed(1)}° off; ≤ 12)`);
   // the parry flick (?parryFlick): a tap SHOWS the guard a moment; the state, the parry and its window are unchanged
   const tapTake = (id) => {
     HM.setParryFlick(id);
