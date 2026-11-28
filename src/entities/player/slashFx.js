@@ -404,10 +404,12 @@ export class SlashFx {
     if (placeNow === 'path') {
       // the line on the swing's own path (a turn: three, one on each third of it)
       if (this.kind === 1) {
+        // (the kick rides the first cut actually drawn: one behind him is not)
         const k = SLASH.ring;
+        let kk = true;
         for (let j = 1; j <= k; j++) {
           const i0 = Math.round(a + ((e - a) * (j - 1)) / k), i1 = Math.round(a + ((e - a) * j) / k);
-          if (i1 > i0) this._pathLine(i0, i1, false, j === 1, (j - 1) * END.reveal * END.step);
+          if (i1 > i0 && this._pathLine(i0, i1, false, kk, (j - 1) * END.reveal * END.step)) kk = false;
         }
       } else this._pathLine(a, e, this.kind === 2, true, 0);
       return;
@@ -790,7 +792,7 @@ export class SlashFx {
    *  of their places on the screen, each weighed by its step²), run the way the blade went, over their extent. */
   _pathLine(i0, i1, thrust, kick, delay) {
     const C = this.game?.camera?.matrixWorld?.elements, P = this.p;
-    if (!C) return;
+    if (!C) return false;
     const B = this.buf, S = this.spd, PS = this.ps, px = P.position.x, pz = P.position.z, sc = P.drawScale || 1;
     const rx = C[0], ry = C[1], rz = C[2], ux = C[4], uy = C[5], uz = C[6];
     let top = 0;
@@ -864,8 +866,9 @@ export class SlashFx {
     // (a thrust's streak runs on past the point: its far end carried further)
     const a0 = thrust ? mid - h * 0.6 : mid - h, a1 = thrust ? mid + h * 1.4 : mid + h;
     this._dly = delay;
-    this._end(cx + dx * a0, cy + dy * a0, cz + dz * a0, cx + dx * a1, cy + dy * a1, cz + dz * a1, thrust, kick);
+    const drawn = this._end(cx + dx * a0, cy + dy * a0, cz + dz * a0, cx + dx * a1, cy + dy * a1, cz + dz * a1, thrust, kick);
     this._dly = 0;
+    return drawn;
   }
 
   /** A direction across the screen (sx right, sy up, in pixels' proportions) as a world direction in the
@@ -928,7 +931,7 @@ export class SlashFx {
   }
 
   /** The ending slash: the cut's line (a → b) moved to its place (placeNow) at the cut's angle, kept off the
-   *  floor, drawn now or after the beat (beatNow). */
+   *  floor, drawn now or after the beat (beatNow). True when it is drawn or queued. */
   _end(ax, ay, az, bx, by, bz, thrust, kick) {
     if (placeNow !== 'blade' && placeNow !== 'path') {
       let dx = bx - ax, dy = by - ay, dz = bz - az;
@@ -1032,7 +1035,7 @@ export class SlashFx {
         return fr;
       };
       const da = slide(0), db = slide(1);
-      if (!(da >= fr - 1e-6 || db >= fr - 1e-6)) return;
+      if (!(da >= fr - 1e-6 || db >= fr - 1e-6)) return false;
       if (da < fr - 1e-6) {
         const t = (fr - da) / (db - da);
         ax += (bx - ax) * t;
@@ -1044,7 +1047,7 @@ export class SlashFx {
         by += (ay - by) * t;
         bz += (az - bz) * t;
       }
-      if (!(Math.hypot(bx - ax, by - ay, bz - az) > 0.2)) return;
+      if (!(Math.hypot(bx - ax, by - ay, bz - az) > 0.2)) return false;
     }
     // drawn in END.reveal pieces END.step apart from where the swing began (a) to where it ended (b): the slash
     // runs the sword's way; after the beat (beatNow) and a turn's later cuts' delay
@@ -1083,6 +1086,7 @@ export class SlashFx {
       Q[o + 14] = cvx * Math.exp(-END.carry * dtc);
       Q[o + 15] = cvz * Math.exp(-END.carry * dtc);
     }
+    return true;
   }
 
   /** The ending slashes whose beat is up (dropped if he has died since). */

@@ -6699,7 +6699,9 @@ async function scenarioSlashFeel() {
 async function scenarioInstantSlash() {
   out('\n== scenario INSTANTSLASH (every swing a straight slash line, no crescent: slashFx.js) ==');
   const SL = await imp('src/entities/player/slashFx.js');
-  const slash0 = SL.slashMode();
+  const slash0 = SL.slashMode(), place0 = SL.placeMode();
+  // (the line's own place, as it was written for: `enemy`; the default `path` (ADR-263) is scenario slice's and slashfeel's)
+  SL.setPlace('enemy');
   let last = null;
   const play = (mode, plan, aim = false) => {
     SL.setSlash(mode);
@@ -6758,6 +6760,7 @@ async function scenarioInstantSlash() {
     }
   } finally {
     SL.setSlash(slash0);
+    SL.setPlace(place0);
   }
   return last;
 }
