@@ -4602,7 +4602,7 @@ async function scenarioDeathblow() {
   // blow still met and parried; '0' as before
   {
     const SG = await imp('src/entities/enemies/duelist/strikeGap.js');
-    assert(SG.STRIKE_GAP_DEFAULT === '0', `(g) the strike gap is off by default until the owner picks (${SG.STRIKE_GAP_DEFAULT})`);
+    assert(SG.STRIKE_GAP_DEFAULT === '0', `(g) the strike gap is off by default (it bends Shen Hui's lunges: ashform) (${SG.STRIKE_GAP_DEFAULT})`);
     const gaps = {};
     for (const mode of ['0', 'a', 'b']) {
       SG.setStrikeGap(mode);
@@ -4615,18 +4615,28 @@ async function scenarioDeathblow() {
     SG.setStrikeGap(SG.STRIKE_GAP_DEFAULT);
     // the clash's size (?parryClash=a|b): a perfect parry still met and answered with the mark drawn smaller
     const PF = await imp('src/combat/perfectFx.js');
-    assert(PF.PARRY_CLASH_DEFAULT === '0' && PF.parryClashSpec() === null, '(g) the clash is drawn as before by default until the owner picks');
+    assert(PF.PARRY_CLASH_DEFAULT === '0' && PF.parryClashSpec() === null, "(g) the clash is drawn as before by default until the owner picks");
     const base = {};
-    for (const mode of ['0', 'a', 'b']) {
+    for (const mode of ['0', 'a', 'b', 'c']) {
       PF.setParryClash(mode);
       const C = PF.parryClashSpec();
       const t = take('deathblow', { move: 'fallingAsh', run: 0, secs: 6, posture: 0 });
       const got = { perfect: t.parry?.perfect, art: t.ev?.art ?? t.end?.art ?? null, hits: t.hits.length, hp: t.hpLost };
       out(`   (g) parryClash ${mode}: ${JSON.stringify(C)} · ${JSON.stringify(got)}`);
       if (mode === '0') Object.assign(base, got);
-      else assert(C && C.mark < 1 && C.clash < 1 && got.perfect === true && JSON.stringify(got) === JSON.stringify(base), `(g) parryClash ${mode}: the mark ${C?.mark} x, the burst ${C?.clash} x; the perfect parry and what follows as with 0`);
+      else assert(C && C.mark < 1 && C.clash < 1 && C.clash >= 0 && got.perfect === true && JSON.stringify(got) === JSON.stringify(base), `(g) parryClash ${mode}: the mark ${C?.mark} x, the burst ${C?.clash} x; the perfect parry and what follows as with 0`);
     }
     PF.setParryClash(PF.PARRY_CLASH_DEFAULT);
+    // the small blue tell (?blueTell=a): a small blue cross on his blade, the blow parried as before
+    const DF = await imp('src/entities/enemies/duelist/fx.js');
+    assert(DF.BLUE_TELL_DEFAULT === '0' && DF.TELL_GLINT.blueSmall.w < DF.TELL_GLINT.blue.w && !DF.TELL_GLINT.blueSmall.ring && DF.TELL_GLINT.blueSmall.tint, '(g) the small blue tell: narrower, no ring, dyed blue; off by default until the owner picks');
+    DF.setBlueTell('a');
+    {
+      const t = take('deathblow', { move: 'fallingAsh', run: 3, perfect: false, secs: 6, posture: 20 });
+      out(`   (g) blueTell a: parried ${!!t.parry} (${t.parry?.tell}) · combo ${t.ev?.art} · hurt ${t.hurt}`);
+      assert(t.parry?.tell === 'blue' && t.ev?.art === 'deathblow' && t.hurt === 0, '(g) blueTell a: the blue blow is still cued, parried and answered');
+    }
+    DF.setBlueTell(DF.BLUE_TELL_DEFAULT);
   }
   RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
   assert(RC.RIPOSTE_CUT.opts.includes('old') && RC.RIPOSTE_CUT.opts.includes('planted') && RC.RIPOSTE_DEFAULT === 'deathblow', 'deathblow is the default; old and planted stay options');

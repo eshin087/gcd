@@ -19,6 +19,7 @@ import { DB_FX, getDbFx, setDbFx } from '../combat/deathblowFx.js';
 import { DB_READ, dbReadMode, setDbRead } from '../entities/player/deathblow.js';
 import { STRIKE_GAP, strikeGapMode, setStrikeGap } from '../entities/enemies/duelist/strikeGap.js';
 import { PARRY_CLASH, parryClashMode, setParryClash } from '../combat/perfectFx.js';
+import { BLUE_TELL_LOOK, blueTellMode, setBlueTell } from '../entities/enemies/duelist/fx.js';
 import { DB_MATRIX, getDbMatrix, setDbMatrix } from '../combat/deathblowMatrix.js';
 import { DB_SFX, getDbSfx, setDbSfx } from '../audio/deathblowSfx.js';
 import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
@@ -1370,6 +1371,12 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.parryClashBtn.title = "the perfect parry's gold clash and mark drawn smaller so the crossing blades show (?parryClash=; ADR-264): a 0.55 x the mark, 0.6 x the burst; b the X alone at 0.4 x, no rings, 0.4 x the burst; the sparks off the steel as they are; 0 as before";
+    this.ui.blueTellBtn = button(stkGrid, `blueTell ${blueTellMode()}`, () => {
+      const M = BLUE_TELL_LOOK.opts;
+      setBlueTell(M[(M.indexOf(blueTellMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.blueTellBtn.title = "a duelist's blue (parry) tell (?blueTell=; ADR-264): a = a small cross on his blade dyed blue (no rays, no ring), 0 = the big white star with its ring";
     this.ui.dbmatrixBtn = button(stkGrid, `dbmatrix ${getDbMatrix()}`, () => {
       const M = DB_MATRIX.opts;
       setDbMatrix(M[(M.indexOf(getDbMatrix()) + 1) % M.length]);
@@ -1653,6 +1660,7 @@ export class Lab {
     if (this.ui.dbreadBtn) this.ui.dbreadBtn.textContent = `dbread ${dbReadMode()}`;
     if (this.ui.strikeGapBtn) this.ui.strikeGapBtn.textContent = `strikeGap ${strikeGapMode()}`;
     if (this.ui.parryClashBtn) this.ui.parryClashBtn.textContent = `parryClash ${parryClashMode()}`;
+    if (this.ui.blueTellBtn) this.ui.blueTellBtn.textContent = `blueTell ${blueTellMode()}`;
     if (this.ui.dbmatrixBtn) this.ui.dbmatrixBtn.textContent = `dbmatrix ${getDbMatrix()}`;
     if (this.ui.dbsfxBtn) this.ui.dbsfxBtn.textContent = `dbsfx ${getDbSfx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;

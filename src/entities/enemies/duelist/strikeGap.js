@@ -1,8 +1,8 @@
-// THE STRIKE GAP (`?strikeGap=`, the Lab's `strikeGap`; ADR-264): the nearest a duelist's own root motion (the step-in
-// through a windup, a beat's dash, its authored travel) brings him to the hero for a BLADE blow, so the two swords meet
+// THE STRIKE GAP (`?strikeGap=`, the Lab's `strikeGap`; ADR-264): the nearest a beat's DASH brings a duelist (never a
+// dash through him; not the windup's step-in nor authored travel, which his footwork and lunges are keyed to) brings him to the hero for a BLADE blow, so the two swords meet
 // in the open between the bodies and a parry's clash reads at the game camera instead of inside two stacked bodies.
 // Capped at `reachK` x the blow's reach (zone r + fwd): every blow still reaches where it did. Bare-handed blows (the
-// kit marks the striking limb in `_part`) are left as authored. 'a' 1.5 m, 'b' 1.8 m, '0' as before.
+// kit marks the striking limb in `_part`) are left as authored. 'a' 1.5 m, 'b' 1.8 m (the default), '0' as before.
 const q = (name) => {
   try {
     return typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null;
@@ -11,7 +11,7 @@ const q = (name) => {
   }
 };
 export const STRIKE_GAP = Object.freeze({ opts: Object.freeze(['0', 'a', 'b']), floor: Object.freeze({ a: 1.5, b: 1.8 }), reachK: 0.85 });
-export const STRIKE_GAP_DEFAULT = '0'; // (until the owner picks from the films)
+export const STRIKE_GAP_DEFAULT = '0'; // (the owner picked b, but any floor bends Shen Hui's authored lunges (duel ashform, ADR-250): off until that trade is decided)
 const S = { mode: STRIKE_GAP.opts.includes(q('strikeGap')) ? q('strikeGap') : STRIKE_GAP_DEFAULT };
 export const strikeGapMode = () => S.mode;
 export const setStrikeGap = (m) => (S.mode = STRIKE_GAP.opts.includes(m) ? m : STRIKE_GAP_DEFAULT);

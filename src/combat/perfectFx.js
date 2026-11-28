@@ -480,7 +480,7 @@ function begin(game, S, mode, kind) {
 // THE CLASH'S SIZE (`?parryClash=`, the Lab's `parryClash`; ADR-264): the perfect parry's gold clash and its mark drawn
 // smaller so the two blades crossing stay in sight (the owner: the swords can't be seen meeting). a) the mark 0.55 x
 // (its X and its rings), the clash burst 0.6 x; b) the mark's X alone at 0.4 x (no rings), the clash 0.4 x. The spit
-// of sparks off the steel (parrySparks) is left as it is. '0' as before.
+// of sparks off the steel (parrySparks) is left as it is. b is the default (the owner's pick); '0' as before.
 const qs = (name) => {
   try {
     return typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null;
@@ -489,10 +489,16 @@ const qs = (name) => {
   }
 };
 export const PARRY_CLASH = Object.freeze({
-  opts: Object.freeze(['0', 'a', 'b']),
-  spec: Object.freeze({ a: Object.freeze({ mark: 0.55, rings: true, clash: 0.6 }), b: Object.freeze({ mark: 0.4, rings: false, clash: 0.4 }) }),
+  opts: Object.freeze(['0', 'a', 'b', 'c']),
+  spec: Object.freeze({
+    a: Object.freeze({ mark: 0.55, rings: true, clash: 0.6 }),
+    b: Object.freeze({ mark: 0.4, rings: false, clash: 0.4 }),
+    // c (the owner turned b down: "doesnt feel like a parry effect, covering too much"): no gold burst, no rings;
+    // a pinpoint where the blades cross (the X at its least, a cell or two) and the spit of sparks carries the parry
+    c: Object.freeze({ mark: 0.12, rings: false, clash: 0 }),
+  }),
 });
-export const PARRY_CLASH_DEFAULT = '0'; // (until the owner picks from the films)
+export const PARRY_CLASH_DEFAULT = '0'; // (b was picked, then turned down on a closer look: '0' until the owner picks c or another)
 const PC = { mode: PARRY_CLASH.opts.includes(qs('parryClash')) ? qs('parryClash') : PARRY_CLASH_DEFAULT };
 export const parryClashMode = () => PC.mode;
 export const setParryClash = (m) => (PC.mode = PARRY_CLASH.opts.includes(m) ? m : PARRY_CLASH_DEFAULT);

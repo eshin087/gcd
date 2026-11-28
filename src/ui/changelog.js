@@ -23,7 +23,7 @@ export const RELEASES = [
         notes: [
           'The parry that starts a deathblow now throws the boss open, arms wide and stumbling back, and you hold a beat before you step in and cut him while he reels.',
           'You strike from further away and every blow drives him back, so the two of you never merge into one shape, and the flash at each cut no longer covers the wound. The blows and their damage are unchanged; ?dbread=0 plays it as before.',
-          "To try: ?strikeGap=a or b keeps a sword boss from crowding you, so the blades meet in the open when you parry; ?parryClash=a or b draws the perfect parry's gold flash smaller so you can see the swords cross.",
+          "To try: ?parryClash=c replaces the perfect parry's gold burst with a pinpoint and its sparks, so you can see the two blades cross; ?blueTell=a draws a boss's blue parry cue as a small blue cross on his blade instead of a big white star; ?strikeGap=b keeps a sword boss's dashes from crowding you.",
         ],
       },
       {

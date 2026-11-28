@@ -54,7 +54,25 @@ const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 export const TELL_GLINT = Object.freeze({
   normal: { w: 6, h: 3, diag: 0, ring: 0, life: 0.2, heart: 2.3, arm: 1.17, tip: 0.6, light: 1.5 },
   blue: { w: 10, h: 5, diag: 4, ring: 1, life: 0.28, heart: 2.4, arm: 1.17, tip: 0.6, light: 2.4 },
+  // ?blueTell=a (ADR-264): the owner turned the big white star with its ring down ("covering too much of the
+  // action"): a small cross on his blade, no rays or ring, dyed BLUE by a tint zone (`tint`) so it reads as the
+  // parry cue and not as a white flash; held as long, a smaller light
+  blueSmall: { w: 4, h: 2, diag: 0, ring: 0, life: 0.28, heart: 2.2, arm: 1.17, tip: 0.7, light: 1.2, tint: true, sparkle: 0.5 },
 });
+const BLUE_TELL_OPTS = ['0', 'a'];
+export const BLUE_TELL_DEFAULT = '0'; // (until the owner picks from the films)
+let BLUE_TELL = BLUE_TELL_DEFAULT;
+try {
+  const q = new URLSearchParams(globalThis.location?.search ?? '').get('blueTell');
+  if (BLUE_TELL_OPTS.includes(q)) BLUE_TELL = q;
+} catch {
+  /* headless */
+}
+export const BLUE_TELL_LOOK = Object.freeze({ opts: BLUE_TELL_OPTS });
+export const blueTellMode = () => BLUE_TELL;
+export const setBlueTell = (m) => (BLUE_TELL = BLUE_TELL_OPTS.includes(m) ? m : BLUE_TELL_DEFAULT);
+const BLUE_SPARK = [0.6, 1.4, 3.2]; // (the small blue tell's sparkle and light: blue, not the steel's white)
+const blueGlint = () => (BLUE_TELL === 'a' ? TELL_GLINT.blueSmall : TELL_GLINT.blue);
 // The red tell before ADR-118 (kept: `?flare=blaze` draws it for comparison): a ragged blaze of red
 // letters, no straight line in it. Metres.
 export const TELL_BLAZE = Object.freeze({ rays: 12, reach: [1.4, 3.2, 5.0], drag: 7, size: 0.44, heat: 0.52, life: [0.22, 0.34], heart: 0.4, sparks: 8, light: 3.5 });
@@ -385,7 +403,7 @@ export class DuelFx {
     // a MOMENT (ADR-118): the flare. Red and black always; a blue blow when it is marked `flare`
     if (isFlare(tell, flare) && (FLARE_LOOK !== 'blaze' || tell !== TELL.RED)) this._flare(tell, x, y, z, k);
     else if (tell === TELL.RED) this._redFlash(x, y, z, k);
-    else this._glint(x, y, z, tell === TELL.BLUE ? TELL_GLINT.blue : TELL_GLINT.normal, k);
+    else this._glint(x, y, z, tell === TELL.BLUE ? blueGlint() : TELL_GLINT.normal, k);
   }
 
   /**
@@ -657,10 +675,11 @@ export class DuelFx {
     g.frame = -1;
     this._drawGlint(g);
     // the heart's sparkle: one small star of light (the only bloom in it)
-    const c = TELL_STYLE.normal.color, sp = this._rec(P.x, P.y, P.z, 0.12, 0.26 * (style.diag ? 1.25 : 1), 0.1, '*', c, null);
+    const c = style.tint ? BLUE_SPARK : TELL_STYLE.normal.color, sp = this._rec(P.x, P.y, P.z, 0.12, 0.26 * (style.diag ? 1.25 : 1) * (style.sparkle ?? 1), 0.1, '*', c, null);
     sp.alphaEnd = 0.3;
     this._spawn(this.add, sp);
-    this._light({ x: P.x, y: Math.max(0.9, P.y), z: P.z, color: lightColor(TELL_STYLE.normal.color), intensity: style.light, radius: (2.2 + 0.1 * style.w) * k, life: 0.2, fade: 0.18 });
+    this._light({ x: P.x, y: Math.max(0.9, P.y), z: P.z, color: lightColor(c), intensity: style.light, radius: (2.2 + 0.1 * style.w) * k, life: 0.2, fade: 0.18 });
+    if (style.tint) g.id = (this._glintId = ((this._glintId ?? 0) + 1) % 1000) + 700000; // (its tint zone's id)
   }
 
   /** Age the glints and re-draw them (update). */
@@ -716,6 +735,9 @@ export class DuelFx {
       this._cell(A, x, y, z, n * cw, -n * ch, life, D, h);
       this._cell(A, x, y, z, -n * cw, n * ch, life, D, h);
     }
+    // (?blueTell=a: the cross dyed blue, a tint zone round it, as the flares are)
+    const F = this.fire;
+    if (st.tint && F?.tint && S.ok) F.tint(g.id ?? 700000, S.px, S.py, (W + 3) * S.cw * 1.5, (H + 3) * S.ch * 1.8, TELL_STYLE.blue.flare.tint, 1, 0, 0.08);
     if (st.ring) {
       // a thin ring of strokes opening round the star (round on screen)
       const r = (4 + 9 * t) * cw * g.k, n = 26, h = 0.62 * (1 - t);

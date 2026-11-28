@@ -1474,7 +1474,7 @@ export class DuelBrain {
     // impact where the zone reaches him: a cut is never thrown at air, and the lunge reads as the tell
     // (not before a SIGN's vanish: he stands for the sign, and closes from where he arrives)
     if (b.close > 0 && L && u >= 0.15 && t < b.impact && !this.leap && !(D.blink?.sign && !b._blinked)) {
-      const gap = L.dist - Math.max(this._ideal(D.zone), strikeGapFloor(d, D.zone)); // (?strikeGap: a blade blow stops short of the floor)
+      const gap = L.dist - this._ideal(D.zone);
       // (pressure.pursue: a hero backing away is chased with closeK x the step-in)
       const budget = b.close * (this._chasing(s) ? perPhase(this.P.pursue.closeK ?? 1, d.phase) : 1) - (b.closed ?? 0);
       if (gap > 0.02 && budget > 0) {
@@ -1491,17 +1491,7 @@ export class DuelBrain {
     if (D.travel) {
       const prev = b._trav ?? 0, now = track(D.travel, u);
       b._trav = now;
-      let mv = now - prev;
-      // (?strikeGap: authored travel toward the hero stops at the floor)
-      const fl = mv > 0 && L ? strikeGapFloor(d, D.zone) : 0;
-      if (fl > 0) {
-        const p = d.game.player?.position;
-        if (p) {
-          const ex = p.x - d.position.x, ez = p.z - d.position.z, along = ex * fx + ez * fz, dist = Math.hypot(ex, ez);
-          if (along > 0) mv = Math.min(mv, Math.max(0, dist - fl));
-        }
-      }
-      d.moveBy(fx * mv, fz * mv);
+      d.moveBy(fx * (now - prev), fz * (now - prev));
     }
     if (D.dash && u >= D.dash.from) {
       if (!b._dash) {
@@ -1510,7 +1500,7 @@ export class DuelBrain {
         if (s) d.yaw = Math.atan2(ax, az);
         // (pressure.pursue: a hero backing away: the length cap x dashK)
         const cap = D.dash.max * (this._chasing(s) ? perPhase(this.P.pursue.dashK ?? 1, d.phase) : 1);
-        b._dash = { x: d.position.x, z: d.position.z, dx: ax / l, dz: az / l, len: clamp(dist - Math.max(D.dash.stop, strikeGapFloor(d, D.zone)), 0, cap), done: 0 };
+        b._dash = { x: d.position.x, z: d.position.z, dx: ax / l, dz: az / l, len: clamp(dist - (D.dash.stop >= 0 ? Math.max(D.dash.stop, strikeGapFloor(d, D.zone)) : D.dash.stop), 0, cap), done: 0 }; // (?strikeGap: not a dash through him)
       }
       const k = ease(clamp((u - D.dash.from) / Math.max(1e-4, D.dash.to - D.dash.from), 0, 1));
       const want = b._dash.len * k, step = want - b._dash.done;
