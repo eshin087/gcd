@@ -2057,6 +2057,10 @@ async function scenarioTrRefuse() {
   const W = game.world.destructibles, F = game.world.forest.foundry;
   const d = trDuel(G, 4, 0, 0);
   const T = tr(G);
+  // (the three changes on the way to phase 4 may have burst a tank or a ladle: every piece back first)
+  game.world.restore();
+  F.reset();
+  run(G, 0.3);
   // with the pieces there: each can start (the hero where it needs him)
   const L = F.ladles[1];
   const can = (name, hx, hz, bx = 0, bz = 0) => { d.position.set(bx, 0, bz); trHeroAt(G, hx, hz); const w = d.weigh(name, MOVES[name], 1, 4); const ok = d.brain.trigger(name); d.brain.act = null; d.mode = 'foot'; T.reset(); T.paced = false; d.position.set(0, 0, 0); return { w, ok }; };
