@@ -5,6 +5,20 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — The world suite's felled-trunk check made deterministic (branch `test/wreck-trunk-flake`)
+
+**Owner:** "fix the thing thats blocking every pr": `world wreck` ("a felled tree's trunk lies along its fall")
+failed CI on #206 and on a clean copy of main, while it had passed #202's CI hours before.
+
+**Cause:** not the game. A felled trunk lands turned off its fall by up to its blow's `yaw` (BREAK.fell, ADR-128;
+0.22 rad for the boss's blunt topple) and may snap in two, drawn from the break stream; the scenario did not reseed
+it, so the scenarios before it decided the draw, and it asked for `dx > 0.99` (~8°). The same code went green or
+red with what ran first.
+
+**Fix (test only):** `wreck` reseeds the break stream (`reseedBreaks(0x51ed)`) and accepts the blow's own turn
+(`dx >= cos(BREAK.fell[t.fk].yaw)`). Full `world` suite: green (its wall-clock `budget` check spiked once under
+the machine's load and passed alone).
+
 ## 2026-11-28 — The deathblow is not cut short: the guard press, the blade lock (ADR-280; `fix/deathblow-guard-lock`)
 
 **Owner:** on the wyrm a perfect parry shows the perfect-dodge streak's effect; mashing attack during the deathblow seems
