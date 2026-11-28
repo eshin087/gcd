@@ -451,6 +451,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The perfect parry's own reward from the owner's reference: posture break -> deathblow, the chain's sparks grow (ADR-211)
 - [ ] The deathblow played on the iPhone; the wyrm's parry answer (it keeps the flurry riposte)
 - [x] The parry → deathblow exchange readable to a watcher: a break beat, space, a clean contact, filmed (`?dbread=`, ADR-264)
+- [x] The deathblow not cut short: a guard press waits, it takes a perfect blue parry from the blade lock (`?dbLock=`, ADR-280)
+- [ ] The flurry's opening blink after a perfect dodge reads as a teleport with no cue: film it, options for the owner
 - [x] The owner's pick of `?dbread=` made the default (`all`)
 - [x] The parry's look: `?parryClash=c` (a pinpoint and sparks) and `?blueTell=a` (a small blue cross): the owner's pick, the defaults
 - [ ] The strike gap (`?strikeGap=b`, off): re-key Shen Hui's lunges for the room, or keep the spacing as authored

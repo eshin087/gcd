@@ -45,6 +45,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-28',
+        title: 'The deathblow is not cut short',
+        notes: [
+          'Pressing guard during a deathblow no longer stops it. The guard comes up once the finisher lands.',
+          'A perfect parry of a blue blow now always earns the deathblow. It no longer turns into a blade lock.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'The Cinder Wyrm dies whole, every white spark shows, and its blue and red paws look apart',
         notes: [
           "When the Cinder Wyrm falls, its neck now comes down in one natural curve with its head in line, instead of snapping up and bending at odd angles.",
