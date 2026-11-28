@@ -67,6 +67,8 @@ const ROLES = {
   // Bai Wuji (the Veiled Crossing): no blade lock, no perilous thrust (core's working set; the melee agent
   // brings the roles up to date with his moves)
   veil: { single: 'palm', string: 'threeCount', long: 'tooSlow', red: 'longStep' },
+  // the False Saint (the Last Foundry): core's working set (wave 0); the moves agents bring it up to date
+  foundry: { single: 'rebuke', string: 'benediction', long: 'litany' },
 };
 
 export function bossKinds(game) {
@@ -76,7 +78,7 @@ export function bossKinds(game) {
   if (typeof d?.debug?.flurry === 'function') {
     k.add('duel');
     // (a three-bar boss is not the Lord: Tian Lei has his own kind, the Lord's situations need the crater)
-    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.kit?.id === 'wokenOne' ? 'woke' : d?.kit?.id === 'halcyon' ? 'halcyon' : d?.kit?.id === 'untouched' ? 'untouched' : d?.lives ? 'lord' : 'ash');
+    k.add(d?.kit?.id === 'ascendant' ? 'asc' : d?.kit?.id === 'sheathed' ? 'sheathed' : d?.kit?.id === 'thousandFox' ? 'fox' : d?.kit?.id === 'wokenOne' ? 'woke' : d?.kit?.id === 'halcyon' ? 'halcyon' : d?.kit?.id === 'untouched' ? 'untouched' : d?.kit?.id === 'saint' ? 'saint' : d?.lives ? 'lord' : 'ash');
   }
   return k;
 }
@@ -417,7 +419,7 @@ export class Training {
     const id = this.game.level?.id;
     if (ROLES[id]) return ROLES[id];
     const k = bossKinds(this.game);
-    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('fox') ? ROLES.fox : k.has('halcyon') ? ROLES.city : k.has('untouched') ? ROLES.veil : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
+    return (k.has('wyrm') ? ROLES.cinderwood : k.has('asc') ? ROLES.ring : k.has('fox') ? ROLES.fox : k.has('halcyon') ? ROLES.city : k.has('untouched') ? ROLES.veil : k.has('saint') ? ROLES.foundry : k.has('lord') ? ROLES.starless : k.has('ash') ? ROLES.ash : null) ?? {};
   }
 
   find(id) {
