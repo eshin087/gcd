@@ -27,7 +27,8 @@ One hundred and forty-two pieces of work since 0.4.0:
   thumb wants it (kept), a second GUARD stands under ATTACK, and GUARD and the padlocks are drawn quieter so the
   controls do not pull the eye. *Added (pause menu):* LEFT GUARD and RIGHT GUARD switches to show or hide either
   guard button (one always stays), and PAD LAYOUT now picks where BLOCK sits in the right cluster (beside or
-  under ATTACK).
+  under ATTACK). Both guard buttons are named BLOCK, the gauge line under them is gone, and ATTACK's dagger points
+  down; `?leftLook=a|b|c` tries three looks for the stick and the left BLOCK.
 - **One tap to begin, menus with a finish, and touch controls that fit and move** (2026-11-28, ADR-270). *Fixed:* on
   a phone, a tap on a world, BEGIN HERE or BOSS RUSH on the title acts at once (iOS took the first tap as a hover).
   *Changed:* the title's and the pause menu's buttons and panels in a finished look (cut corners, the world and its

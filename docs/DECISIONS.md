@@ -7921,6 +7921,11 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   change the button layout": PAD LAYOUT now only picks the cluster's arrangement (BLOCK BESIDE / BLOCK UNDER
   ATTACK); LEFT GUARD and RIGHT GUARD are two switches of their own (one always stays). A pad saved with the
   old `split` keeps its left GUARD. The pause menu grows two entries; it scrolls.
+- **Then:** "have it both named block", "the attack symbol flipped upside down", "make the guard and cursor
+  design on the left more seamless ... out of place with the random bottom bar line": the left button is BLOCK,
+  the gauge line is gone from both BLOCKs (the HUD's GD meter carries it), the dagger points down, BLOCK is
+  centred on the stick, and the left side's look is three options for the owner to pick on the phone
+  (`?leftLook=a|b|c`, default `a` until then).
 - **Consequences:** first shipped off, then on after the owner tried it on the phone. The
   pad itself is not a swipe surface (a flick that starts on ATTACK still slides between tiles); open: a flick
   off the pad, a touch timing allowance (the wider parry / perfect-dodge windows on touch the owner was offered).

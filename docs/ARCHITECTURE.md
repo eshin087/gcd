@@ -3359,6 +3359,13 @@ default; `?pad=split|classic` and `?hold=1|0` set them for one page load):
   last one off turns the other on. `cyclePad('layout' | 'lguard' | 'rguard')`; `?pad=split|classic` sets the
   arrangement (split also shows the left GUARD, as before), `?lguard=1|0` and `?rguard=1|0` the guards. A pad
   saved before these (`layout: 'split'`, no `lg`) reads as the left GUARD on.
+  Then (the owner): both are named BLOCK (the left button's label; LEFT BLOCK / RIGHT BLOCK in the menu); no
+  gauge line under either (the HUD's GD meter shows the guard; a low guard warms the glyph, `.low`); ATTACK's
+  dagger points down (`scaleY(-1)`); in landscape the left BLOCK is centred on the stick. The left side's look
+  is a switch for the owner to pick (`?leftLook=a|b|c`, `touch.leftLook`, `.tc-root.look-*`): `a` quiet (a faint
+  ring, a bare knob, BLOCK in corner brackets only), `b` a pair of tiles (the stick in a square tile of the pad's
+  brackets, the ring dotted, BLOCK the same height against its edge), `c` glyphs only (the ring's four arrows at
+  rest, no frames).
 - SWIPE DODGE (ADR-274; `swipeDodge`, `cyclePad('swipe')`, `?swipe=1|0`; `CONFIG.touch.swipe`): a finger that
   touches the bare screen right of `swipe.from` (half the width) during play and travels `dist` px (30, × the
   fit) within `time` s (0.2) dodges the way it went (`input.dodgeToward`), once per touch, at that moment (not

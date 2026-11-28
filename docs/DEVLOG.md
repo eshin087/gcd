@@ -28,7 +28,10 @@ left hand as an option and swipe to dodge" to test first.
 - **And:** the owner asked for the guards to be removable and the layout changeable: PAD LAYOUT = BLOCK BESIDE /
   BLOCK UNDER, plus LEFT GUARD and RIGHT GUARD switches (one always stays; old saved `split` = left GUARD on).
   Touch suite green with new checks; the pause menu toggles and saves (browser).
-- **Open:** the distance / time numbers on the phone; whether GUARD should be the default layout; a touch timing
+- **Then:** both buttons named BLOCK, no gauge line under them, ATTACK's dagger down, the left BLOCK centred on the
+  stick, and three left-side looks behind `?leftLook=a|b|c` for the owner to pick (a quiet, b a pair of tiles, c
+  glyphs only). Touch suite green.
+- **Open:** the owner's pick of `leftLook`; whether GUARD should be the default layout; a touch timing
   allowance if parries are still late.
 
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
