@@ -6996,6 +6996,80 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
 
+## ADR-251 — The Starless Lord's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps on the feet, the step on the blow; a readable pace and looks for two specials, to pick (`?lordForm` / `?lordPace` / `?boltFx` / `?igniteFx`) (2026-11-27)
+
+- **Context:** the owner's motion audit of every boss ("weird looking arm angles and sword positioning and attacks
+  that look unrealistic ... clear tells ... make all the special moves and effects very cool"), one session and one
+  draft PR per fighter, judged on films. Batch 1 (ADR-248 Tian Lei, ADR-249 Wen Yao, ADR-250 Shen Hui) set the
+  method. The Lord had ADR-226's grip and held tells (`?lordMotion=a`, the default). Measured first, every move in
+  every form it is used in (`lord.mjs . formaudit`, new; the shared sword audit's impact table, ADR-250's, plus a
+  true slide of the feet on the floor and the off-hand blade's arm), because a move compiled round another form's
+  guard is not the move he plays there:
+  - thrusts landed on a bent arm (121 - 140°) with the point 18 - 23° off the arm's line; the long lunges (Starless
+    Lunge, the Dirge's opener, Push Opening, Hunting Wings, Cyclone, Crimson Eclipse) on two locked knees (176 / 176°);
+  - the two-handed overheads (Falling Star, Grasp and Sever's chop, Severance, every string's held chop, Judgment,
+    the Void Waltz, Thunder Verse) came straight down: the point's path 71 - 80° off level, one upright bar at the
+    game camera;
+  - the low sweeps (Reaping Arc, Red Meridian's second blow, every red sweep that ends a string) turned his hips a
+    full circle over feet that stayed put: the legs crossed by 0.73 - 0.85 m, the knee popped 630 - 645 mm a frame²;
+  - the front foot was still in the air (15 - 25 cm) at about half of all impacts;
+  - fine already: the wrist on the blade (≤ 40 - 59°, ADR-226), the blade clear of his body, the form-2 off-hand
+    blade at its own blows (elbow 161 - 166°, the blade 25 - 60° off the forearm).
+- **Decision** (`?lordForm=a`, `0` = as before; Lab LOOKS `lordForm`; the owner's pick, 2026-11-27, from the before /
+  after films, with the readable pace, `?boltFx=c` and `?igniteFx=a`; all four in `PICKED`): ADR-250's recipe
+  in his own move data, every beat's `formKeys` / `formMotionKeys` and the moves' `formRecovery`, played through his
+  realisers' `keysOf` / `recoveryKeysOf`; the same windups, impacts, zones, cues and root motion (LORDFORM: 187
+  realisations to the frame):
+  - **thrusts**: the sword hand keyed past full reach on the blade's own line, the arm opening further (his
+    `formMotion.armSoft` [0.9, 0.99]), out of a lunge with the front shin upright and the back leg long (forms 3 - 4
+    keep both hands on the hilt);
+  - **overheads**: still two-handed (his, unlike Shen Hui's jian), raised over the sword shoulder and brought down
+    across him to low at his left; the blue HIGH hold widened over the sword shoulder for those blows (az -1.1) and
+    ended at 0.7 of the windup; the somersault's landing chop the same, its turn kept;
+  - **low sweeps**: the feet go round with him (the right leg sweeping the floor, the left turning on its ball);
+  - **the step on the blow**: where a beat steps a foot in (the right, or the left in a string's left-foot cuts) it
+    is keyed off the floor halfway through the step and down at 0.86 of the strike (not in a dash, a leap, a flit, a
+    blink or a lift); a planted foot the clip lifts eases off its spot over 0.05 s (`animOpts.liftEase`);
+  - **the free hand** in one-handed cuts: gathered at the sternum and split in opposition, half the travel.
+  - Measured after: thrusts 154 - 157° at the elbow and 2 - 5° off the line; the lunge's front knee 95°; the
+    sweeps' feet never cross (+0.38 - 0.48 m); the overheads 43 - 61° off level; the front foot down at all but a
+    few cuts.
+- **The readable pace** (`?lordPace=a`, `starlessLord/pace.js`, Tian Lei's ADR-248 recipe): his shipped pace is the
+  owner's ("faster than Shen Hui and ramping": a string's blows ~0.34 s apart in form 1, ~0.3 s in form 4, first
+  blows from 0.4 s), under COMBAT rule 10's floor. Under `a`: a move's first blow >= 0.7 s × the form's windup
+  scale, blows >= 0.45 s apart, the cue 0.35 s before, the time added a hold of the cocked pose (a fixed delay); his
+  quick blows, counters, flurry and ignitions keep their timings, and so do his spells (a beat that casts, throws,
+  releases or reaches out with the Void: rule 10 is the melee's floor, and each cues itself; a hazard or a move of
+  the crater's pieces is left alone). Offered, and the owner took it (2026-11-27). Tests that asserted the fast pace
+  read it now (lord DATA: the gaps at the floor and the first blows sooner form by form; TIMING: a blow 0.35 s after
+  its glint, a spell 0.26 s; FLARE's parry bot). Known: the shared cue ledger's flash-fed entries and the Training
+  room's answer time read `TUNING.flashLead` (0.26 s), so they place a paced blade blow 0.09 s early (the ledger also
+  reads the running move's beats exactly; Training's 122 situations still pass). Fixing them is shared code.
+- **Two specials' looks** (`starlessLord/specialFx.js`; heat in the fire field and one-cell glyph particles at his
+  hand, arm, the bolt's line or round his feet, on the looks' own stream; no hit, cue or floor mark of their own):
+  - `?boltFx=` Void Lightning: `a` the thread (motes spiral into a white heart at his fingers, the bolt braided with
+    two violet strands, a ring punched out at the hand), `b` the tear (arcs crawl up the casting arm, the bolt leaves
+    a dark seam with violet lips that comes apart upward), `c` the storm (arcs creep along the floor round his feet,
+    the bolt grounds three times along its line); a chosen look draws the windup at his hand in place of the shipped
+    gather (the two together were one white flare);
+  - `?igniteFx=` a form's ignition, over the shipped `?ignite=a`: `a` the cocoon (a column of letters rises round
+    him and bursts out flat), `b` the writ (the new steel written in light where it will stand), `c` the eclipse (a
+    ring of dark spreads round him, its red rim stands up as a wall).
+  - Cost: at most ~200 blobs over today's peak (the field holds 6000; LORDFORM).
+- **Why** the same method as batch 1: it measured and fixed the same faults on Shen Hui, whom the Lord's move data
+  was built from; hand-keyed poses judged on film, no footage (ADR-236).
+- **Consequences / open:**
+  - The owner's picks (2026-11-27): the form `a`, the pace `a`, Void Lightning `c` (the storm), the ignitions `a`
+    (the cocoon); in `PICKED`, the losing options behind their switches.
+  - Found, not changed: Grasp and Sever's chop closes in with the shared step-in (`close`) over planted feet, so a
+    hero who rolls the pull clear watches him skate 3.4 m (every form); the fix (a dash like Severance's) changes the
+    beat's root motion, so it waits for the owner. The strings' close-in between blows still slides the feet
+    0.5 - 2 m per string (as before); the planner's lag is the hero animator's (`anim.js` `_feetClip`). In form 2
+    the off-hand blade points back along the left forearm (up to 157°) through the two-handed chops, where that hand
+    also holds the main hilt. The free hand flies 15 - 20 m/s in form 1 where it closes on the hilt for a chop or
+    snaps a cast (Grasp's pull, Drawn to the Blade).
+  - Shared code: none changed. `swordAudit.mjs` is ADR-250's (fields only); `duelist/*`, `player/*`, `tellPose.js`
+    are untouched.
 ## ADR-253 — Xin Yi's limbs on the line, his guns on the line of fire; two redrawn shots and bolts to pick (`?oneMoves=b`, `?oneGunFx=`, `?oneBoltFx=`) (2026-11-27)
 
 - **Context:** the boss motion audit (the owner: weird arm angles, unrealistic attacks, "kicks aren't straight during
