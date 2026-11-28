@@ -201,6 +201,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.99 — Bai Wuji's barrier shows itself when your blade hits it, and he goes down quicker (2026-11-28, `enemies/untouched`, ADR-266)
+- [x] A cut on the barrier chips a quarter of its damage (never his last HP), its number where the blade stopped
+- [x] His health 16000 (20000); the bench: the good bot in about 2.3 min
+- [x] The barrier's silhouette on a stop, three looks behind `?wjStrike=a|b|c` (`fxStrike.js`; sheet `docs/looks/veil/wjStrike-options.jpg`)
+- [ ] The owner's pick of `?wjStrike` (then PICKED and the default)
+
 ## M1.98 — Bai Wuji glides: quicker, one-handed, and his barrier opens easier (2026-11-27, `enemies/untouched`, ADR-250)
 - [x] Three motion takes behind `?wjMotion=0|a|b|c` (`untouched/motion.js`; the hand layer keeps his hands in his pockets); the owner picked b, the glide
 - [x] The barrier opens easier: two cracks, longer openings, cuts x2.5 through it; hp 20000; patience after 20 s

@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — Bai Wuji round 4: the chip, 16000, the barrier's silhouette (branch `wj3/barrier-playtest`; ADR-266)
+
+**Owner:** "right now it takes too much time to chip at [him] so balance it to be bit easier to do damage on him.
+when the player hits him and the sword is hitting the [barrier], show a cool ascii effect of the sword hitting the
+barrier and it showing its silhouette briefly."
+
+**What changed.** A cut stopped on the shell chips x0.25 of its damage (`wjBarrier.chip`, `barrier._chip`; never
+his last HP; the number rides `dragon:barrier` stop to the HUD). hp 20000 -> 16000. `untouched/fxStrike.js`: the
+shell's silhouette on a stop behind `?wjStrike=a|b|c` (a the oval, b his outline from his mesh points by marching
+squares, c three outlines rippling out); '0' (the default until the owner picks) keeps the ripple. Lab LOOKS row,
+PENDING.
+
+**Verification.** Bench (6 seeds): today's main, the good bot 4/6 in 163 - 211 s; the chip alone 4/6 in 160 - 187 s;
+16000 + chip 4/6 in 120 - 150 s (deaths with 5 % of his bar left), fencing 5/6; blocker and pace still die.
+`veil.mjs . strike` (the chip, its event, every look draws and is gone in a second); filmed on headless Edge
+(`docs/looks/veil/wjStrike-options.jpg`); full `npm test` before the PR.
+
+**Next.** The owner's pick of `?wjStrike`; a sound for the chip if they want one.
+
+---
+
 ## 2026-11-27 — The clash dance is the default (ADR-247; branch `claude/combat-clash-dance-default`)
 
 **Owner:** watched the three films of PR 175 (today against the dance: Shen Hui, the Starless Lord, Xin Yi) and said
