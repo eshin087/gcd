@@ -28,6 +28,37 @@ export const RELEASES = [
       },
       {
         date: '2026-11-27',
+        title: "Bai Wuji's blows land where they aim",
+        notes: [
+          "Bai Wuji's palm, his straight poke, Dark Spark and the fist he pulls you onto now land on the line to your chest instead of crossing past you.",
+          'His kicks ease back after they land instead of snapping back off a dead stop.',
+          'In his first phase his right hand comes out of its pocket to cast Azure Draw and the Yank, so the blue fist he pulls you onto is a fist you can see.',
+          'Fixed: a spell or a thrown piece of his no longer knocks you down again the moment you stand up from a knockdown.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The performance readout measures by itself',
+        notes: ['With ?perf in the address, BENCH now runs on its own during a fight, at the slow moments too. Just play, then tap REPORT.'],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Starless Lord fights with better form',
+        notes: [
+          'Varr Nihil thrusts on a long straight arm out of a real lunge, brings his two-handed overheads down on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quieter and lands his front foot with the blade, in all four forms.',
+          'He is easier to read: every attack holds its windup longer before it lands, and the glint comes earlier.',
+          'His Void Lightning now grounds along its line with the floor crackling round his feet, and each new form rises out of a column of violet letters.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Cinder Wyrm raises its head naturally to rain fire',
+        notes: [
+          'When the wyrm rears up to roar its meteors into the sky, its head now rises up and forward instead of twisting back over its own neck.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: "Xin Yi's limbs on the line",
         notes: [
           'Xin Yi moves more cleanly: his punches land straight at you, his kicks stay straight through the hit, his elbows and spinning kicks reach you instead of striking short, and his low sweep passes right through you. The timing of every attack is unchanged.',
@@ -40,6 +71,15 @@ export const RELEASES = [
         notes: [
           'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',
           'To try: ?sheathPace=a (his scabbard blows wind up longer) and ?drawFx=a, b or c (three looks for the draw).',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'Bai Wuji glides: quicker, one-handed, and his barrier opens easier',
+        notes: [
+          "Bai Wuji fights with his hands in his pockets now: short, sharp kicks that land straight, a hand coming out in his second phase and both in his last. His blue and red blows hold a pose you can read; every later blow of a string comes out of a short blink around you.",
+          'His barrier opens easier: two ordinary parries crack it open, a perfect parry or dodge opens it for longer, and your cuts hit two and a half times as hard while it is open. He has less health, and he loses patience after 20 seconds instead of 30.',
+          'Fixed: a falling piece no longer lands on you while you are down, and a quick string of his can no longer hold you longer than it should.',
         ],
       },
       {

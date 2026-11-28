@@ -47,6 +47,10 @@ export const LOOK_SWITCHES = Object.freeze([
   // --- the sword motion pass (ADR-226; live from his next move; the owner's pick: a)
   ['ashMotion', ['0', 'a'], '0', 'a', false, ['ash'], 'Shen Hui\'s sword motion: 0 as before; a the jian held in line with his forearm, his arms opening, blue / red blows held in their tell poses, two quick blows'],
   ['lordMotion', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s sword motion: 0 as before; a the blades held in line with his forearms, his arms opening, blue / red blows held in their tell poses, a shake of the steel for the end twirl, two quick blows'],
+  ['lordForm', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s form (ADR-251; live from his next move): a thrusts on a long arm along the blade out of a real lunge, the two-handed overheads down on a diagonal, the low sweeps turning on his feet, the free hand quieter, the front foot down as the blow lands; 0 as before'],
+  ['lordPace', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s pace (ADR-251; live from his next move): 0 as shipped; a COMBAT rule 10\'s floor: a move\'s first blow >= 0.7 s (x the form\'s windup scale), blows >= 0.45 s apart, the cue 0.35 s before, the time a held cock (his quick blows, counters, flurry and ignitions keep theirs)'],
+  ['boltFx', ['0', 'a', 'b', 'c'], '0', 'c', false, ['starless'], 'Void Lightning\'s look (ADR-251): a the thread (motes wound into his fingers, the bolt braided); b the tear (arcs up his arm, a tear left in the air); c the storm (the floor answers, the bolt grounds three times); 0 as shipped'],
+  ['igniteFx', ['0', 'a', 'b', 'c'], '0', 'a', false, ['starless'], 'a form\'s ignition, over the shipped look (ADR-251): a the cocoon (letters rise round him, burst out flat); b the writ (the new steel written in light where it will stand); c the eclipse (a ring of dark spreads, its red rim stands up as a wall); 0 as shipped'],
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
@@ -88,6 +92,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
   ['wyrmQuick', ['0', 'a'], '0', 'a', false, ['cinderwood'], 'Snap swipe: a quick white paw from its stance (a: in its moves)'],
   ['wyrmStrike', ['0', 'a'], '0', 'a', false, ['cinderwood'], "the wyrm's strikes (ADR-257): a in every bite its body surges first and the head snaps onto the beat (the owner's pick); 0 as shipped"],
+  ['wyrmHead', ['0', 'a'], '0', 'a', false, ['cinderwood'], "the meteors' roar (ADR-258): a the neck rises up and forward, the snout to the sky ahead of it; 0 the head tipped back past upright"],
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)
   ['halLook', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'Halcyon\'s body: a blue suit and red cape, b the idol, c tomorrow\'s tyrant (a reload)'],
   ['halCape', ['0', '1', '2', '3'], '3', '3', true, ['city'], 'his cape and colours at game size: 0 as first built, 1 brighter, 2 + a wide flared cape, 3 + its billow and a long trail (a reload)'],
@@ -100,6 +105,12 @@ export const LOOK_SWITCHES = Object.freeze([
   // Bai Wuji: body rows
   ['wjLook', ['a', 'b', 'c'], 'c', 'c', true, ['veil'], 'Bai Wuji\'s body: a the black high-collared coat and a black band, b a long indigo-black robe and a white cloth band, c a bone-white coat with a dark collar and band (a reload)'],
   ['wjHair', ['a', 'b'], 'b', 'b', true, ['veil'], 'his white hair: a a tall swept crown over the band (phase 1), long soft locks once it falls; b a shorter spikier burst, a choppier fringe (a reload)'],
+
+  // Bai Wuji: motion rows (round 3; awaiting: the owner picks from the sheets and films)
+  ['wjMotion', ['0', 'a', 'b', 'c'], 'b', 'b', false, ['veil'], 'his melee motion: 0 as shipped; a pocket kicks (upright, planted, the leg straight at the contact, a blink when the hero slid away); b glide (the same blows, every later beat of a string out of a blink round the hero); c turned away (back kicks, spinning heels, backhand flicks, looking over his shoulder). Every take: blue / red held, snap blows, short recoveries, the hands in his pockets in phase 1, one out in phase 2, both in phase 3 (live, from his next move)'],
+
+  ['wjPolish', ['0', 'a'], 'a', 'a', false, ['veil'], 'his motion audit (ADR-255): a the kicks ease back to the chamber (no snap off a dead stop), the palm, the poke, Dark Spark and the fist of the Yank land on the line to your chest; 0 round 3 as built (live, from his next move)'],
+  ['wjCastHand', ['0', 'a', 'b'], 'a', 'a', false, ['veil'], 'in phase 1, Azure Draw and the Yank: a his right hand out of its pocket for the whole cast (the finger raised, the reach); b out only for the pull and the flick at the end; 0 kept in the pocket (live)'],
 
   // Bai Wuji: fx rows
   ['wjShell', ['a', 'b', 'c'], 'a', 'a', false, ['veil'], 'his barrier while up: a all but invisible, it shows where the blade comes at it; b a faint standing shell of sparse strokes; c two faint rings that breathe (live)'],

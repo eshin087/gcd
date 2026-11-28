@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and twenty-five pieces of work since 0.4.0:
+One hundred and thirty-two pieces of work since 0.4.0:
 - **The hero's wrist, thrusts and parry tap, natural** (2026-11-27, ADR-256). *Fixed:* his sword wrist no longer bends past
   what a wrist can (it reached 128° off the forearm between the keys of a cut, through every roll and in the held
   charge): past 60° the blade eases toward 80°, the hand's path and every timing as before. The rising thrust (combo
@@ -14,6 +14,24 @@ One hundred and twenty-five pieces of work since 0.4.0:
   picks from the films. `?heroWrist=0` / `?heroThrust=0` / `?parryFlick=0` show them as before, `?heroWrist=b` a
   tighter wrist, `?parryFlick=b` a longer guard (the Lab's `heroWrist` / `heroThrust` / `parryFlick` rows).
   *Added:* the hero's motion audit (integ.mjs `heroaudit`, `heromotion`).
+- **The performance readout measures by itself** (2026-11-27, ADR-261). *Changed:* with `?perf`, BENCH now runs on its own
+  during a fight (once early, then at the slow moments, four times at most); play, then tap REPORT. `?perf=manual`
+  keeps it to the button.
+- **The Starless Lord fights with better form** (2026-11-27, ADR-251). *Changed (the owner's picks from the films;
+  `?lordForm=0` / `?lordPace=0` / `?boltFx=0` / `?igniteFx=0` as before):* in all four forms his thrusts land on a
+  long arm with the point on its line, out of a real lunge (front knee bent, back leg long; before, both knees
+  locked); his two-handed overheads (Falling Star, Grasp and Sever, Severance, every string's held chop) come down on
+  a diagonal across you instead of straight down; his low sweeps (Reaping Arc, Red Meridian, every red sweep) turn
+  on his feet instead of crossing his legs; his free hand stays quieter through a string; the front foot comes down
+  as the blade lands. He also fights at a readable pace (COMBAT rule 10): every move's first blow at least 0.7 s (a
+  little less each form), his blows at least 0.45 s apart, the glint 0.35 s before, the extra time a held windup.
+  Void Lightning grounds three times along its line, the floor crackling round his feet through the cast
+  (`?boltFx=c`); each form's ignition raises a column of violet letters round him that bursts out flat
+  (`?igniteFx=a`). The other options stay behind their switches.
+- **The Cinder Wyrm raises its head naturally to rain fire** (2026-11-27, ADR-258). *Fixed:* rearing up to roar
+  the meteors into the sky, the wyrm's head no longer tips back past upright and rolls over on its neck: the neck
+  rises up and forward over its forelegs and the head points up at the sky. `?wyrmHead=0` (the Lab's LOOKS row) as
+  before. *Added:* integ `wyrmhead` (opt-in): every fire move's head angle.
 - **Xin Yi's limbs on the line** (2026-11-27, ADR-253). *Changed (the owner's picks, the default):* his punches land straight down the line to you with the arm long, his kicks stay
   straight through the hit instead of folding as it lands, his elbow, knee and spin kick reach you instead of
   striking short, the low sweep passes through you, and his guns point down the line of fire, each shot leaving
@@ -22,6 +40,13 @@ One hundred and twenty-five pieces of work since 0.4.0:
   in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
 One hundred and twenty-six pieces of work since 0.4.0:
 One hundred and twenty-seven pieces of work since 0.4.0:
+- **Bai Wuji's blows land where they aim** (2026-11-27, ADR-255). *Changed:* his palm, his straight poke, Dark
+  Spark's fist and the fist he pulls you onto now land on the line to your chest (they crossed past you by up to
+  30 degrees); his kicks ease back after the contact instead of snapping off a dead stop; in his first phase his
+  right hand comes out of its pocket to cast Azure Draw and the Yank, so the Yank's blue fist is a fist you can
+  see (`?wjPolish=0` and `?wjCastHand=0` as before; `?wjCastHand=b` the hand out only at the end of the cast).
+  *Fixed:* a spell or a thrown piece of his no longer knocks you down again the moment you stand up from a
+  knockdown (his kicks and punches already held back there).
 - **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
   level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
   the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the
@@ -52,6 +77,14 @@ One hundred and twenty-seven pieces of work since 0.4.0:
   pause; the parry's ring rises a little with the run; and his posture recovers more slowly as his health drops
   (full speed above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin
   Yi this replaces their own curve, never faster than before). `?clash=0` or no switch: as before.
+- **Bai Wuji glides: quicker, one-handed, and his barrier opens easier** (2026-11-27, ADR-250). *Changed:* Bai Wuji's kicks and punches are
+  rebuilt by hand: his legs land straight, his hands stay in his pockets for most of phase 1 (one comes out in
+  phase 2, both in phase 3), normal blows snap out of the stance, blue and red ones hold a pose you can read, and
+  every later blow of a string comes out of a short blink round you (`?wjMotion=0` as before; `a`, `c` the other
+  takes). His barrier opens easier: two ordinary parries crack it open, it stays open longer (6 / 5 / 4.2 s after a
+  perfect answer), your cuts deal x2.5 through it, and his health is 20000 (was 26000); his patience runs out
+  after 20 s. *Fixed:* a falling piece no longer lands on you while you are down, and his mercy counts the time
+  you are held in real time, so a quick string cannot hold you past the cap through hit freezes.
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
   longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
   bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and
