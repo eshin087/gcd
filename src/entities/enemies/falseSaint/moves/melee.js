@@ -335,10 +335,13 @@ export class FsMelee {
     }
     if (this.grip) this._gripFrame(dt);
     if (this.flung) this._flungFrame(dt);
-    // (v04: no beat of his drove the hands this frame: they go back to the guard's half-curl, the default)
-    if (this._handOwn && !this._handLive) {
+    // (v04: no beat of his has driven the hands for a follow-through's length: back to the guard's half-curl)
+    // (held through the follow-through's own clock past the beat's end: realise.js FOLLOW_MAX 0.24 s)
+    this._handOff = this._handLive ? 0 : fin(this._handOff) + dt;
+    if (this._handOwn && this._handOff > 0.24) {
       this._handOwn = false;
-      d.fsHandR = d.fsHandL = undefined;
+      // (only the shapes this handler set: another's beat may have taken the hands since)
+      if (d.fsHandBy === this) d.fsHandR = d.fsHandL = d.fsHandBy = undefined;
     }
     this._handLive = false;
   }
@@ -586,6 +589,7 @@ export class FsMelee {
     hd.fsHandR = D?.fsLift || hk || (hs && (hp === 'fistR' || hp === 'palms')) ? 'reach' : 'guard';
     hd.fsHandL = hk || (hs && (hp === 'fistL' || hp === 'palms')) ? 'reach' : 'guard';
     this._handLive = this._handOwn = true;
+    hd.fsHandBy = this;
     if (!(D?.fsSlip > 0) || b.feint) return;
     const k = clamp((u - 0.08) / 0.55, 0, 1), want = D.fsSlip * k * k * (3 - 2 * k), step = want - fin(b._slip);
     // (v04, the pack's B3 / C2: the slip lands on the outside sole: its scuff and dust)

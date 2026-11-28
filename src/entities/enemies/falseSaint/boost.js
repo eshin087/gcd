@@ -104,6 +104,7 @@ export class FsBoost {
     hd.fsHandR = fist ? 'clench' : (D.fsDive || D.fsBlitz?.last) && u >= 0.93 ? 'open' : hs && (hp === 'fistR' || hp === 'palms') ? 'reach' : 'guard';
     hd.fsHandL = hs && hp === 'palms' ? 'reach' : 'guard';
     this._handLive = this._handOwn = true;
+    hd.fsHandBy = this;
     const J = D.fsJet;
     if (J && !J.pulse && u >= fin(J.from, 0) && u < 1) {
       const c = fin(D.cock, 0.8), k = 0.35 + 0.65 * clamp((u - J.from) / Math.max(0.05, c - J.from), 0, 1);
@@ -216,10 +217,13 @@ export class FsBoost {
       this._want[k] = 0;
     }
     if (d.mode !== 'act' || !a || a.name !== 'lastRite') d.fsCoreK = Math.max(0, d.fsCoreK - dt * 3);
-    // (v04: no beat of his drove the hands this frame: back to the guard's half-curl, the default)
-    if (this._handOwn && !this._handLive) {
+    // (v04: no beat of his has driven the hands for a follow-through's length: back to the guard's half-curl)
+    // (held through the follow-through's own clock past the beat's end: realise.js FOLLOW_MAX 0.24 s)
+    this._handOff = this._handLive ? 0 : fin(this._handOff) + dt;
+    if (this._handOwn && this._handOff > 0.24) {
       this._handOwn = false;
-      d.fsHandR = d.fsHandL = undefined;
+      // (only the shapes this handler set: another's beat may have taken the hands since)
+      if (d.fsHandBy === this) d.fsHandR = d.fsHandL = d.fsHandBy = undefined;
     }
     this._handLive = false;
     const pl = d.pilot;
