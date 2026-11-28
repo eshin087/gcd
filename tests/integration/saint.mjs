@@ -1158,7 +1158,7 @@ function bPaceDefender(G) {
 }
 
 async function scenarioBoostPace() {
-  const SECS = Number(process.env.GCD_BPSECS ?? 45);
+  const SECS = Number(process.env.GCD_BPSECS ?? 20); // (the measure in the report: GCD_BPSECS=60)
   const SEEDS = (process.env.GCD_BPSEEDS ?? '4242').split(',').map(Number).filter(Number.isFinite);
   out(`\n== scenario BOOST PACE (a measure: cues a minute per phase against a god-mode guarding bot that roams 2.5 / 5 / 9 m; ${SECS} s a phase, seeds ${SEEDS.join(', ')}) ==`);
   for (const seed of SEEDS) {
