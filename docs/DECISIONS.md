@@ -7071,6 +7071,147 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
 
+## ADR-251 — The Starless Lord's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps on the feet, the step on the blow; a readable pace and looks for two specials, to pick (`?lordForm` / `?lordPace` / `?boltFx` / `?igniteFx`) (2026-11-27)
+
+- **Context:** the owner's motion audit of every boss ("weird looking arm angles and sword positioning and attacks
+  that look unrealistic ... clear tells ... make all the special moves and effects very cool"), one session and one
+  draft PR per fighter, judged on films. Batch 1 (ADR-248 Tian Lei, ADR-249 Wen Yao, ADR-250 Shen Hui) set the
+  method. The Lord had ADR-226's grip and held tells (`?lordMotion=a`, the default). Measured first, every move in
+  every form it is used in (`lord.mjs . formaudit`, new; the shared sword audit's impact table, ADR-250's, plus a
+  true slide of the feet on the floor and the off-hand blade's arm), because a move compiled round another form's
+  guard is not the move he plays there:
+  - thrusts landed on a bent arm (121 - 140°) with the point 18 - 23° off the arm's line; the long lunges (Starless
+    Lunge, the Dirge's opener, Push Opening, Hunting Wings, Cyclone, Crimson Eclipse) on two locked knees (176 / 176°);
+  - the two-handed overheads (Falling Star, Grasp and Sever's chop, Severance, every string's held chop, Judgment,
+    the Void Waltz, Thunder Verse) came straight down: the point's path 71 - 80° off level, one upright bar at the
+    game camera;
+  - the low sweeps (Reaping Arc, Red Meridian's second blow, every red sweep that ends a string) turned his hips a
+    full circle over feet that stayed put: the legs crossed by 0.73 - 0.85 m, the knee popped 630 - 645 mm a frame²;
+  - the front foot was still in the air (15 - 25 cm) at about half of all impacts;
+  - fine already: the wrist on the blade (≤ 40 - 59°, ADR-226), the blade clear of his body, the form-2 off-hand
+    blade at its own blows (elbow 161 - 166°, the blade 25 - 60° off the forearm).
+- **Decision** (`?lordForm=a`, `0` = as before; Lab LOOKS `lordForm`; the owner's pick, 2026-11-27, from the before /
+  after films, with the readable pace, `?boltFx=c` and `?igniteFx=a`; all four in `PICKED`): ADR-250's recipe
+  in his own move data, every beat's `formKeys` / `formMotionKeys` and the moves' `formRecovery`, played through his
+  realisers' `keysOf` / `recoveryKeysOf`; the same windups, impacts, zones, cues and root motion (LORDFORM: 187
+  realisations to the frame):
+  - **thrusts**: the sword hand keyed past full reach on the blade's own line, the arm opening further (his
+    `formMotion.armSoft` [0.9, 0.99]), out of a lunge with the front shin upright and the back leg long (forms 3 - 4
+    keep both hands on the hilt);
+  - **overheads**: still two-handed (his, unlike Shen Hui's jian), raised over the sword shoulder and brought down
+    across him to low at his left; the blue HIGH hold widened over the sword shoulder for those blows (az -1.1) and
+    ended at 0.7 of the windup; the somersault's landing chop the same, its turn kept;
+  - **low sweeps**: the feet go round with him (the right leg sweeping the floor, the left turning on its ball);
+  - **the step on the blow**: where a beat steps a foot in (the right, or the left in a string's left-foot cuts) it
+    is keyed off the floor halfway through the step and down at 0.86 of the strike (not in a dash, a leap, a flit, a
+    blink or a lift); a planted foot the clip lifts eases off its spot over 0.05 s (`animOpts.liftEase`);
+  - **the free hand** in one-handed cuts: gathered at the sternum and split in opposition, half the travel.
+  - Measured after: thrusts 154 - 157° at the elbow and 2 - 5° off the line; the lunge's front knee 95°; the
+    sweeps' feet never cross (+0.38 - 0.48 m); the overheads 43 - 61° off level; the front foot down at all but a
+    few cuts.
+- **The readable pace** (`?lordPace=a`, `starlessLord/pace.js`, Tian Lei's ADR-248 recipe): his shipped pace is the
+  owner's ("faster than Shen Hui and ramping": a string's blows ~0.34 s apart in form 1, ~0.3 s in form 4, first
+  blows from 0.4 s), under COMBAT rule 10's floor. Under `a`: a move's first blow >= 0.7 s × the form's windup
+  scale, blows >= 0.45 s apart, the cue 0.35 s before, the time added a hold of the cocked pose (a fixed delay); his
+  quick blows, counters, flurry and ignitions keep their timings, and so do his spells (a beat that casts, throws,
+  releases or reaches out with the Void: rule 10 is the melee's floor, and each cues itself; a hazard or a move of
+  the crater's pieces is left alone). Offered, and the owner took it (2026-11-27). Tests that asserted the fast pace
+  read it now (lord DATA: the gaps at the floor and the first blows sooner form by form; TIMING: a blow 0.35 s after
+  its glint, a spell 0.26 s; FLARE's parry bot). Known: the shared cue ledger's flash-fed entries and the Training
+  room's answer time read `TUNING.flashLead` (0.26 s), so they place a paced blade blow 0.09 s early (the ledger also
+  reads the running move's beats exactly; Training's 122 situations still pass). Fixing them is shared code.
+- **Two specials' looks** (`starlessLord/specialFx.js`; heat in the fire field and one-cell glyph particles at his
+  hand, arm, the bolt's line or round his feet, on the looks' own stream; no hit, cue or floor mark of their own):
+  - `?boltFx=` Void Lightning: `a` the thread (motes spiral into a white heart at his fingers, the bolt braided with
+    two violet strands, a ring punched out at the hand), `b` the tear (arcs crawl up the casting arm, the bolt leaves
+    a dark seam with violet lips that comes apart upward), `c` the storm (arcs creep along the floor round his feet,
+    the bolt grounds three times along its line); a chosen look draws the windup at his hand in place of the shipped
+    gather (the two together were one white flare);
+  - `?igniteFx=` a form's ignition, over the shipped `?ignite=a`: `a` the cocoon (a column of letters rises round
+    him and bursts out flat), `b` the writ (the new steel written in light where it will stand), `c` the eclipse (a
+    ring of dark spreads round him, its red rim stands up as a wall).
+  - Cost: at most ~200 blobs over today's peak (the field holds 6000; LORDFORM).
+- **Why** the same method as batch 1: it measured and fixed the same faults on Shen Hui, whom the Lord's move data
+  was built from; hand-keyed poses judged on film, no footage (ADR-236).
+- **Consequences / open:**
+  - The owner's picks (2026-11-27): the form `a`, the pace `a`, Void Lightning `c` (the storm), the ignitions `a`
+    (the cocoon); in `PICKED`, the losing options behind their switches.
+  - Found, not changed: Grasp and Sever's chop closes in with the shared step-in (`close`) over planted feet, so a
+    hero who rolls the pull clear watches him skate 3.4 m (every form); the fix (a dash like Severance's) changes the
+    beat's root motion, so it waits for the owner. The strings' close-in between blows still slides the feet
+    0.5 - 2 m per string (as before); the planner's lag is the hero animator's (`anim.js` `_feetClip`). In form 2
+    the off-hand blade points back along the left forearm (up to 157°) through the two-handed chops, where that hand
+    also holds the main hilt. The free hand flies 15 - 20 m/s in form 1 where it closes on the hilt for a chop or
+    snaps a cast (Grasp's pull, Drawn to the Blade).
+  - Shared code: none changed. `swordAudit.mjs` is ADR-250's (fields only); `duelist/*`, `player/*`, `tellPose.js`
+    are untouched.
+## ADR-253 — Xin Yi's limbs on the line, his guns on the line of fire; two redrawn shots and bolts to pick (`?oneMoves=b`, `?oneGunFx=`, `?oneBoltFx=`) (2026-11-27)
+
+- **Context:** the boss motion audit (the owner: weird arm angles, unrealistic attacks, "kicks aren't straight during
+  the attack and still bended"; every attack readable; special effects to pick in the style of the fox and Bai
+  Wuji). Xin Yi's rebuild (ADR-221, `?oneMoves=a`, the default) already carried the animator kit the other bosses now
+  copy. Measured on `a` (woke.mjs AUDIT, the new GUNS and PROBE scenarios, the hero still in front of him; films at the
+  game camera and close from the side):
+  1. Straight punches landed 22 - 25 degrees off the line from the shoulder to the hero, the fist 0.17 m across his
+     centre line; the back-fist 63 degrees off, 0.6 m to the side and 0.6 m short; the palm 0.33 m short.
+  2. Kicks reached straight for two or three frames and folded at once. On Sky Turns' first tornado (phase 1) the leg
+     was already folding on the frame the hit-stop froze (118 degrees at the knee); the butterfly 131, the flash kick
+     in phase 3 120; a spin kick's leg went from straight to 91 degrees two frames after its contact.
+  3. The elbow struck 0.73 m short of the hero, the spin back kick 0.46, the flying knee 0.44, the hook 0.37: the
+     zone hit from where the limb never reached (his stand-off is the zone's, brain._ideal).
+  4. The low sweep's foot was 94 degrees round from the hero and 1 m short at its impact, the knee at 106 - 134 and
+     flailing 46 - 163 through the turn. Two causes: its foot keys were a third of a turn apart, so the foot cut
+     across the circle to half its reach between them; and the foot, keyed on the floor, was the feet planner's
+     (anim.js _feetClip holds a foot within 3.5 cm of the floor until its key is 14 cm away), a tenth of a second late.
+  5. The mirrored palm (deja vu in phase 3) struck with the left hand while its glint, trail and the parry's contact
+     stayed on the right, hanging at the hip (41 degrees at the elbow).
+  6. The guns: the right gun's barrel runs along the knuckles of the fist joint, and in every aim they faced
+     sideways: it pointed 55 - 113 degrees off the line its shots flew (Two Thunders' side-on aim 144), the left 24 -
+     36, the other hand's 55 - 90 off the hero; each shot left 0.2 - 0.3 m below the drawn gun (the shots' height is
+     held to 0.9 - 1.4 m; in Iron in the Air 0.7 - 0.9 m below it); Turning Wheel's shots were drawn along the floor
+     with nothing at the guns; nothing moved when he fired.
+  7. The palm bolts (the Source) drew as a ball of soft glowing heat a third of a metre wide with a white heart: a
+     glow, where STYLE.md asks for letters.
+- **Decision:** a third option of his moves, `?oneMoves=b` = `a` and two passes, the timings identical to `a` (no
+  windup, cue or impact moves); `a` stays the default until the owner picks.
+  - `limbs.js` (on each beat's keys, before the held tell's re-timing): a straight blow's hand put on the line from its
+    shoulder to his centre line 0.95 m ahead, 1.12 x the arm out (the double palms 0.1 m either side; the
+    point-blank shot's arm aimed 2.4 m out); a kick's contact pose repeated 0.35 of the follow-through later (the leg
+    held long, then drawn back) with the striking foot carried out to the contact's length through it; the sweep
+    turned so its leg crosses the hero's line at the impact, its turn keyed every 0.5 rad, its foot skimming 6 cm
+    off the floor from the tuck on (out of the planner), the planted foot near his pivot, the knee pole up and out;
+    a short blow's zone fitted to its drawn reach (`motion.fit`, measured: he steps in until the limb meets the hero,
+    and the hit reaches no further than the limb); the mirrored palm's part the left fist; Iron Rain's aim reached
+    by 0.6 of its windup and held (its first slugs leave a flight early).
+  - `gunAim.js` (drawn only, after the animator; no gameplay point moves): each gun turned in its hand so its barrel
+    runs down its forearm, onto the hero's chest when the forearm is within 0.8 rad of it; a shot kicks its arm (the
+    upper arm raised 0.15 rad round the shoulder, the gun climbing 0.3 rad and pulled back 5 cm, halflife 0.05 s;
+    worked in his root's own space, as his drawn matrices carry the camera lean's shear), the right gun's joint
+    turned with the arm (it is posed in the body's space); `muzzlePoint` gives the drawn muzzle. iron.js fires from
+    it on `b`, the shot falling along its way from the muzzle to chest height (the blasts' `yTo`; its flight and hit
+    flat, as before); Turning Wheel flashes at both muzzles.
+  - Two effect switches for the owner's pick (default '0', as shipped; `fxIron.js`): `?oneGunFx=a` the tracer (a hot
+    cone and side vents at the muzzle, a spent casing kicked out; a thin line of strokes behind each slug and small
+    rings of stilled air where it passed) or `b` the script (binary digits fanned from the muzzle; each slug leaving
+    a curtain of tiny falling digits); `?oneBoltFx=a` the seed (a hot core in three thin turning rings of digits) or
+    `b` the fold (a core of four hot cells like a falling column, rings of stilled air across its way).
+- **Consequences:** on `b` (woke AUDIT / LINE, the hero still): straight blows 1 - 7 degrees off the line, elbows
+  164 - 169, every one meeting the hero (-0.08 to 0.0 m); every kick 173 at contact and held (Sky Turns' first tornado
+  170 for six frames); the elbow, spin kick and knee within 0.06 m of the hero; the sweep 14 degrees off and touching
+  him at its impact, its knee 121 there and 160 - 170 through the turn; the mirrored palm on the left hand; every gun
+  shot from the drawn muzzle (at most 0.28 m from the fist) with its barrel at most 14 degrees off its line, elbows
+  164 - 170 through the kick. The jolt total rises 5 % (1.04 M -> 1.10 M mm/f2; the worst 993 -> 871), sliding feet
+  107 -> 102 m. The short blows' zones are smaller (the elbow's line 2.2 -> 1.1 m, the spin kick's 2.5 -> 1.76): a
+  hero who backs off out of his step-in is no longer hit from where the limb never reached. Not done: the hooks
+  still meet the hero from the side (0.17 m off), the drop heel lands 0.68 m short (its ring is the blow), the
+  sweep's knee at the very contact (121), Iron Rain's two arms are mirror twins between shots. Shared code
+  untouched (no `duelist/*`, `player/*`, `ascendant/*` change).
+- **The owner's answer (2026-11-27, from the films):** the motion `b` as his default, the shots `b` (the script) and the
+  bolts `a` (the seed): `oneMoves: 'b'`, `oneGunFx: 'b'`, `oneBoltFx: 'a'` in PICKED (`?oneMoves=a` the rebuild before
+  this pass, `?oneGunFx=0` / `?oneBoltFx=0` the shots and bolts as before, the other option behind its switch).
+  With `b` the default, the pace meter's phase-3 longest gap was re-pinned 3.9 -> 4.7 s: seed 4242 now rolls Pushing
+  Hands then Unwriting (its bricks held before the first is thrown), 4.52 s; on five fresh seeds `b`'s worst phase-3
+  gap is 2.91 s (`a`'s 2.67), and `a` itself fails the phase-2 cap on one of them (4.02 s).
 ## ADR-252 — Lu Wusheng audited: the draw's hands and lunge, thrusts in line, a diagonal overhead, the readable pace, three looks for the draw (`?sheathForm=` `?sheathPace=` `?drawFx=`) (2026-11-27)
 
 - **Context:** the owner asked for every boss's motion to be audited against `docs/ANIMATION.md` and the Sekiro /
@@ -7201,3 +7342,34 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   -> 0.99, the claw combo's lunge bite 3.10 -> 2.07, the Hesitant Maw's rear bite 2.33 -> 1.16, the sky hammer's
   bite 1.38 -> 0.45). The bite's hit sphere (1.05 x SCALE) still meets the hero a frame before the drawn jaws touch.
   At the game camera the change reads mostly as the surge; the head's hang and snap show best from the side.
+
+## ADR-258 — The meteors' roar with the head held naturally (`?wyrmHead=`) (2026-11-27)
+
+- **Context:** the owner: "The dragon's head twists too far back and looks unnatural when it raises its head up
+  to shoot fire." That is Meteor Rain's rear-up (the apocalypse, look a): its neck was keyed to swing back past
+  upright as it rose (the head goal 0.9 units ahead of the root, behind the neck's base at 1.7) and the head looked
+  at a point 40 m up just ahead of the root. Measured (integ `wyrmhead`, opt-in: every fire move's snout against
+  the body): the snout 90° up in the chest's frame and **15° past vertical toward the tail**, the head 0.43 units
+  **behind** the neck's base, the brow rolled 149° about the snout (the head over on its back). Every other
+  ground fire move stays under 56° up and never past vertical.
+- **Decision** (`?wyrmHead=a`, the default; `0` as before; the Lab's LOOKS row `wyrmHead`): through the rear-up and
+  the cast the head rises up and forward over the forelegs (root frame (0, 7.6, 2.3): ahead of the neck's base),
+  and the roar's look point is 40 m straight above it. The rig's head limits do the rest: the snout ends 66° up
+  in the chest's frame (the reared body leans back, so it is near vertical in the world), never past upright, the
+  head 0.81 units ahead of the neck's base. The sky fire, the bolts, the timing and the tell are unchanged.
+- **Consequences:** at the game camera the fire column now rises from a head held over the forelegs and leans a
+  little toward the hero instead of over the wyrm's own back. The flights' head (skyStrafe's recovery, the
+  cataclysm's wheel) also measures past vertical in a banked body; not changed here (the owner named the head
+  raised to shoot fire).
+
+## ADR-261 — AUTO BENCH: the readout benches by itself in a fight (2026-11-27)
+
+- **Context:** the owner asked not to have to tap BENCH at the laggy moment: "make it so i can just press a
+  button or it captures the required data moment i load the link and press it to give the results".
+- **Decision:** with `?perf`, BENCH runs by itself in a fight: once 8 s in (a typical frame), then on each
+  slow burst (6 of the last 30 frames over 20 ms: the heavy moment, measured as it is on screen), 10 s apart,
+  4 in all, each a lighter bench (~1 - 2 s of hold on a phone). The owner loads the link, plays, and taps
+  REPORT. `?perf=manual` leaves it to the button. Each bench says why it ran, AUTO's step and the lite world.
+- **Consequences:** the game holds still for a moment up to 4 times in a fight with `?perf` (only then); the
+  frame after a bench is left out of the frame statistics. Not tried on the phone yet.
+

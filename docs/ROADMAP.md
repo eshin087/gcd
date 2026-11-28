@@ -297,6 +297,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] BENCH in `?perf`: each pipeline step's GPU cost on the device (ADR-215)
 - [x] The owner's BENCH from a busy moment on fox and grove; the step it names cut at AUTO's floor (options shown first): the world pass; the lite world, the owner's pick C (ADR-216)
 - [ ] BENCH on the iPhone with the lite world on: fox and grove
+- [x] AUTO BENCH: the readout benches by itself in a fight, the owner only taps REPORT (ADR-261)
 - [ ] AUTO's own step hitch on the phone (17 - 32 ms: the letter atlases rebuilt)
 - [ ] A starting step per level for a heavy level (so AUTO does not find it by a slow stretch)
 
@@ -1220,6 +1221,17 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       on the feet, a quiet free hand, the step landing with the blow; measured (`GCD_AUDIT_IMPACT`) and filmed
   - [x] The owner's pick from the films: the form, Ember Whirl b (the cyclone), Heaven-Splitting Fall b (the split)
   - [x] Heaven-Splitting Fall as a jump (the held coil covered his flight)
+- [x] The Starless Lord's form (ADR-251, `?lordForm`): thrusts on the arm's line in a real lunge, diagonal
+      two-handed overheads, sweeps on the feet, a quieter free hand, the step landing with the blow, all four forms;
+      measured per form (`lord.mjs . formaudit`) and filmed
+  - [x] The owner's picks from the films (2026-11-27): the form, the readable pace (`?lordPace=a`), Void Lightning
+        `?boltFx=c` (the storm), the ignitions `?igniteFx=a` (the cocoon)
+  - [ ] Grasp and Sever's chop skates 3.4 m over planted feet when the pull is rolled (a dash, as Severance's?)
+- [x] Xin Yi (ADR-253): the audit (`audit`, `guns`, `probe`); straight blows on the line, kicks held straight, blows
+      that reach, the sweep crossing the hero, the guns on the line of fire with a kick, behind `?oneMoves=b`; two
+      redrawn shots and bolts (`?oneGunFx`, `?oneBoltFx`); the `line` test; films sent
+  - [x] The owner's picks from the films: motion `b`, the shots `b` (the script), the bolts `a` (the seed), the default
+  - [ ] The hooks meeting the hero from the side, the sweep's knee at its very contact, Iron Rain's twin arms
 - [x] Lu Wusheng (ADR-252): the form audit (`sheath.mjs form`), the draw's hands (the fist on the hilt, the scabbard
       drawn back) and its lunge, thrusts in line, the overhead on a diagonal, the sweep's feet, the free hand in the
       scabbard cuts, behind `?sheathForm`; the readable pace `?sheathPace`; three looks for the draw `?drawFx`; films sent
@@ -1227,6 +1239,8 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [x] The Cinder Wyrm (ADR-257): the anatomy audit at each blow's contact (`wyrmanatomy`), every bite led by the
       body and snapped onto the beat, behind `?wyrmStrike=a`
   - [x] The owner's pick from the films (2026-11-27): `a`, the default
+  - [x] The head in the meteors' roar no longer tips back past upright (ADR-258, `?wyrmHead=`)
+  - [ ] The flights' head in a banked body (skyStrafe's recovery, skyCataclysm's wheel) past vertical
   - [ ] Next: the forelegs straight through the whole rake, the wing blows flapping as one rigid wing, the feet
         skating up to ~1 m in some strings
 - [x] Halcyon (ADR-254): measured at every blow's contact in his upright frame (city `audit`, `GCD_AUDIT_IMPACT=1`);

@@ -30,7 +30,7 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 
 // (oneLetters and onePrint are redraws: their call-site default is '0', as he shipped, so `?looks=old` shows
 // it; the owner's pick, a, comes from lookSwitch.js PICKED, 2026-11-23, ADR-170)
-export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: '0', onePrint: '0', oneBody: '0', oneMoves: '0' });
+export const ONE_LOOKS = Object.freeze({ oneLook: 'a', oneLetters: '0', onePrint: '0', oneBody: '0', oneMoves: '0', oneGunFx: '0', oneBoltFx: '0' });
 export const oneLook = (name = 'oneLook') => lookOf(name, ONE_LOOKS[name] ?? 'a');
 /** The outfit chosen ('a' | 'b' | 'c'; anything else draws a), read when his rig is built. */
 export function oneLookNow() {
@@ -68,12 +68,16 @@ export function oneBodyNow() {
   return o === 'a' || o === 'b' || o === 'c' ? o : '0';
 }
 
-/** His moves (`?oneMoves=0|a`, the rebuild of 2026-11-26; read live, as each move is realised: moves.js
+/** His moves (`?oneMoves=0|a|b`, the rebuild of 2026-11-26; read live, as each move is realised: moves.js
  *  realise). '0' the moves he shipped with; a the rebuild (moves.js MOVES_A): the guns aimed down the arm
  *  from a side-on stance, every blue / red / black blow's windup a pose he HOLDS before the strike
- *  (heldTell), and two fast strings of short, fair windups (Snapping Hands, Quick Foot: never picked on '0'). */
+ *  (heldTell), and two fast strings of short, fair windups (Snapping Hands, Quick Foot: never picked on '0');
+ *  b (ADR-253) a with the limbs on the line (limbs.js: straight blows down his centre, kicks held long through
+ *  the contact, the sweep crossing the hero, short blows' zones fitted to their reach) and the guns aimed
+ *  down the line of fire with a recoil (gunAim.js). */
 export function oneMovesNow() {
-  return oneLook('oneMoves') === 'a' ? 'a' : '0';
+  const o = oneLook('oneMoves');
+  return o === 'a' || o === 'b' ? o : '0';
 }
 
 /** His letter cell's bias (kit.letterBias: steps along the hero's cells; pipeline.js

@@ -27,6 +27,13 @@ export const TUNING = {
     gripMax: 0.7, // rad (~40°): the most the blade turns off his sword forearm (anim.js gripMax; the hero ≤ 60°)
     armSoft: [0.9, 0.985], // his arms' soft reach (anim.js armSoft): a cut and a thrust end on an open arm
   },
+  // ---- the form pass (ADR-251; on behind `?lordForm=a`): the same, the arm opening further at a thrust's full
+  // reach (a lunge's hand is keyed past it: ~160° at the elbow, not 121 - 140°)
+  formMotion: {
+    gripMax: 0.7,
+    armSoft: [0.9, 0.99], // (1.0 locked a cut's arm dead straight: Shen Hui's, ADR-250)
+    liftEase: 0.05, // s: a planted foot the clip lifts eases off its spot (anim.js; 0.12 s, the others', slid the feet)
+  },
 
   // ---- tells (rules: COMBAT.md; checked by tests/integration/lord.mjs). Faster than Shen Hui and
   // ramping (the owner's pick): a string's follow-up windups 0.34 s in form 1 (Shen Hui's) down to
@@ -38,6 +45,9 @@ export const TUNING = {
   minQuickWindup: 0.3, // … but a QUICK blow's (a `quick` beat: a normal tell only; its glint 0.04 s into it; ADR-226)
   minHitGap: 0.34, // impact to impact inside a move
   windupScale: [1, 0.94, 0.89, 0.83],
+  // the readable pace (ADR-251, `?lordPace=a`, pace.js): a move's first blow >= `first` s (x windupScale),
+  // its later blows >= `gap` s apart, the cue `flashLead` s before the impact; the time is a held cock
+  pace: { first: 0.7, gap: 0.45, flashLead: 0.35 },
   recoveryScale: [0.9, 0.85, 0.8, 0.72],
   // the step-in through a windup (duelist/brain.js close-in)
   close: { first: 3.0, next: 1.5, speed: 13 },

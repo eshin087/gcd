@@ -1681,6 +1681,22 @@ the blade round the wrist. Two **quick blows**, normal tells, a fixed 0.30 s win
 you; a 2.3 m sector) and **Vigil's Fall** (form 4: the blade standing upright before his face falls on you, both
 hands; 2.6 m). Block or parry them; each runs into a string.
 
+**His form** (ADR-251, the owner's pick; `?lordForm=0` as before): the same moves, windups,
+cues and zones in all four forms, posed better. A thrust lands on a long arm (~155°) with the point on the arm's
+line, out of a lunge whose front shin stands over its foot and whose back leg is long; a two-handed overhead
+(Falling Star, Grasp and Sever's chop, Severance, the strings' held chops, Judgment's, the Void Waltz's, Thunder
+Verse's last) comes down on a diagonal across you from high over his sword shoulder (the blue HIGH hold a little
+wider over the shoulder for it); a low sweep turns on his feet; his free hand stays near his chest and opens to his
+left as he cuts; and the front foot comes down with the blade. **The readable pace** (the owner's pick; `?lordPace=0`
+his fast pace before, which the windups in the tables below describe): rule 10's floor, a move's first blow >= 0.7
+s × the form's windup scale (0.7 / 0.66 / 0.62 / 0.58 s), blows >= 0.45 s apart, the cue 0.35 s before, the extra
+time a held cock; his quick blows, counters, flurry, ignitions and spells keep theirs. The specials' looks (the owner's
+picks; no cue of their own): Void Lightning `?boltFx=c` (the floor crackles round his feet through the cast, the
+bolt grounds three times along its line; `a` a thread wound into his fingers and a braided bolt, `b` a tear left in
+the air, `0` as before) and a form's ignition `?igniteFx=a` (a column of violet letters rises round him through the
+kneel and bursts out flat; `b` the new steel written in light, `c` a ring of dark whose red rim stands up, `0` as
+before).
+
 **Four forms, four bars, a deathblow each** (the owner's pick):
 | Form | Blades | Reach | A string's follow-up windup | Recovery × |
 |---|---|---|---|---|
@@ -2702,6 +2718,26 @@ STRATEGY (opt-in, god mode, seeds 4242 and 7): mixed 75 – 84 s, parry 95 – 9
   the butterfly kicks carry him 0.7 m less, since the longer leg reaches what the travel did.
 - **A cued shot is never too fast to answer:** it takes at least `shotCue` 0.26 s from the gun to you (fired close,
   it flies a little slower), so its cue always counts (a shot cued under 0.2 s fizzles, the shots' own rule).
+
+### The limbs on the line (`?oneMoves=b`, 2026-11-27, ADR-253; the owner's pick, the default; `?oneMoves=a` as before)
+`a` and these, every timing as `a` (windups, cues, impacts; the LINE test compares every realisation):
+- **Straight blows on the line**: the cross, jab, palm, double palms and the back-fist land with the hand on the line
+  from its shoulder to his centre line, the arm long (elbows 164 - 169 at contact), reaching the hero (they were 22 -
+  63 degrees off; the back-fist 0.6 m short and to the side). The point-blank shot's arm is aimed at the hero.
+- **Kicks held straight**: the contact pose is held 0.35 of the follow-through before the leg draws back (every kick
+  173 at contact, still straight on the hit-stop's frame; Sky Turns' first tornado folded to 118 there).
+- **Blows that reach**: the elbow, the spin back kick, the hook, the flying knee and the straight blows step in until the
+  limb meets the hero, and their zones reach no further than the limb (the elbow's line 2.2 -> 1.1 m, the spin back
+  kick's 2.5 -> 1.76; the flying knee's dash stops 0.92 m short, not 1.35). The drop heel keeps its ring (it lands
+  0.68 m short; the ring is the blow).
+- **The sweep crosses you**: Low Wind's leg passes through the hero's line at its impact (it was 94 degrees round and 1
+  m short), long through its turn.
+- **The guns** (drawn only): each barrel on the line of fire, every shot from the drawn muzzle falling to chest height
+  along its way, the firing arm kicking; Turning Wheel fires from both guns. Iron Rain's aim is up and held from 0.6 of
+  its windup (the first slugs left while the arms were still rising).
+- **The shots and bolts redrawn** (drawing only): the owner picked the script for the shots (`?oneGunFx=b`: digits fanned
+  from the muzzle, a curtain of falling digits behind each slug) and the seed for the palm bolts (`?oneBoltFx=a`: a hot
+  core in three turning rings of digits); `0` as before, the other option behind its switch.
 
 ## Halcyon (2026-11-22, ADR-160; `?level=city`)
 
