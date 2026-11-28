@@ -1991,6 +1991,522 @@ async function scenarioWorld() {
   assert(F.ladles.every((l) => l.full) && F.molten.pools.every((p) => !p.alive), 'no ladle spills by itself after the reset');
 }
 
+// ================================================================== terrain (the terrain agent's: falseSaint/terrain.js, moves/terrain.js)
+// The foundry as his weapon: Offertory (P2), Crucible, Relic, Prostration (P3), Dies Irae (P4); the molten
+// pools' damage; the transitions' world. Each move refuses without its piece; what lands lands where it was
+// cued; a fresh pool can always be rolled out of; he burns in his own pools; the changes strike the world.
+const tr = (G) => G.game.dragon.parts.terrain;
+const TR_MOVES = ['offertory', 'crucible', 'relic', 'prostration', 'diesIrae'];
+/** The hero teleported to (x, z), facing him, healed. */
+function trHeroAt(G, x, z) {
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.teleport(x, z);
+  p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+  p.debug.heal();
+  game.mouseGround.set(d.position.x, 0, d.position.z);
+}
+/** A phase-`form` duel, his AI off, the pace limit off, him at (bx, bz). */
+function trDuel(G, form, bx = 0, bz = 0) {
+  duel(G, { dist: 4, ai: false, form });
+  const d = G.game.dragon;
+  d.position.set(bx, 0, bz);
+  tr(G).paced = false;
+  run(G, 0.2);
+  return d;
+}
+/** Run until his act is over (and the hero is up); `step` each frame. */
+function trPlay(G, max = 8, step = null) {
+  const d = G.game.dragon;
+  let acted = d.mode === 'act';
+  return run(G, max, step, () => { if (d.mode === 'act') acted = true; return acted && d.mode !== 'act' && G.game.player.state !== 'roll' && G.game.player.state !== 'knockdown'; });
+}
+/** Roll away from (x, z) now. */
+function trRollFrom(G, x, z) {
+  const p = G.game.player.position, dx = p.x - x, dz = p.z - z, l = Math.hypot(dx, dz) || 1;
+  G.input.axis = { x: dx / l, y: -dz / l };
+  G.input.tap('Space');
+}
+
+async function scenarioTrData() {
+  out('\n== scenario TR DATA (his five terrain moves: phases, tells, windups, links; every beat routed to the terrain handler) ==');
+  const want = { offertory: [2, 'R'], crucible: [3, 'R'], relic: [3, 'B'], prostration: [3, 'R'], diesIrae: [4, 'R'] };
+  for (const name of TR_MOVES) {
+    const def = MOVES[name];
+    assert(!!def && def.phase === want[name][0], `${name}: from phase ${want[name][0]}`);
+    for (const f of phasesOf(name)) {
+      const A = realise(name, f, () => 0.5);
+      const real = A.beats.filter((b) => !b.feint);
+      const tells = real.map((b) => (b.def.tell === TELL.BLUE ? 'B' : b.def.tell === TELL.RED ? 'R' : 'N')).join('');
+      if (f === def.phase) out(`     ${name} P${f}: ${A.beats.map((b) => `${b.feint ? 'feint' : tells}[${(b.impact - b.start).toFixed(2)} s]`).join(' + ')}, the cast at ${real[0].impact.toFixed(2)} s, ends ${A.end.toFixed(2)} s; damage ${real.map((b) => b.def.damage).join('/')}`);
+      if (!(tells === want[name][1] && real.every((b) => b.def.cast?.selfCue && b.impact - b.tellAt >= TUNING.minFirstWindup - 1e-6))) assert(false, `${name} P${f}: tell ${tells}, a self-cued cast with a windup >= ${TUNING.minFirstWindup} s`);
+    }
+  }
+  const G = build();
+  const d = G.game.dragon;
+  const routed = TR_MOVES.every((n) => MOVES[n].beats.every((b) => d._handlerOf(b) === tr(G)));
+  assert(routed, 'every beat of the five is routed to the terrain handler');
+  const { LINKS } = await imp('src/entities/enemies/falseSaint/links.js');
+  assert(TR_MOVES.every((n) => (LINKS[n] ?? []).length > 0), `each has its links (${TR_MOVES.map((n) => `${n} ${(LINKS[n] ?? []).map((l) => l.to).join('/')}`).join('; ')})`);
+}
+
+async function scenarioTrRefuse() {
+  out('\n== scenario TR REFUSE (no piece, no move: weighed 0 and refused when its piece is gone or out of reach) ==');
+  const G = build();
+  const { game } = G;
+  const W = game.world.destructibles, F = game.world.forest.foundry;
+  const d = trDuel(G, 4, 0, 0);
+  const T = tr(G);
+  // with the pieces there: each can start (the hero where it needs him)
+  const L = F.ladles[1];
+  const can = (name, hx, hz, bx = 0, bz = 0) => { d.position.set(bx, 0, bz); trHeroAt(G, hx, hz); const w = d.weigh(name, MOVES[name], 1, 4); const ok = d.brain.trigger(name); d.brain.act = null; d.mode = 'foot'; T.reset(); T.paced = false; d.position.set(0, 0, 0); return { w, ok }; };
+  const col = pieces(G, 'column').find((c) => c.x > 0 && c.z < 0);
+  const before = {
+    crucible: can('crucible', L.x - 3.5, L.z),
+    relic: can('relic', -2, 3, -9, 0),
+    offertory: can('offertory', -1, -2, -9, -8),
+    prostration: can('prostration', col.x - 5, col.z + 1),
+    diesIrae: can('diesIrae', 0, 5),
+  };
+  out(`     with their pieces: ${Object.entries(before).map(([k, v]) => `${k} w ${v.w.toFixed(2)} ${v.ok ? 'starts' : 'REFUSED'}`).join(', ')}`);
+  assert(Object.values(before).every((v) => v.w > 0 && v.ok), 'each starts while its piece is there');
+  game.world.restore();
+  d.reset();
+  run(G, 0.3);
+  const d2 = trDuel(G, 4, 0, 0);
+  // the pieces gone: every ladle spilled, every throwable and tank broken, every column down, the press's head down
+  for (const l of F.ladles) F.drop(l, 'boss');
+  for (const b of W.list) if (['girder', 'ingots', 'frame', 'tank', 'column', 'gantry', 'pressHead'].includes(b.kind) && b.state === 0) { b.hp = 0.01; W.strike(b.x, b.z, 0.3, 9, { kind: 'blunt', by: 'boss', y: b.kind === 'gantry' ? 9 : b.kind === 'pressHead' ? 5 : 0.8, src: W.swing() }); }
+  run(G, 3);
+  const T2 = tr(G);
+  T2.paced = false;
+  const r0 = T2.stats.refused;
+  const after = {
+    crucible: can('crucible', L.x - 3.5, L.z),
+    relic: can('relic', -2, 3, -9, 0),
+    offertory: can('offertory', -1, -2, -9, -8),
+    prostration: can('prostration', col.x - 5, col.z + 1),
+    diesIrae: can('diesIrae', 0, 5),
+  };
+  out(`     without them: ${Object.entries(after).map(([k, v]) => `${k} w ${v.w.toFixed(2)} ${v.ok ? 'STARTS' : 'refused'}`).join(', ')} (${W.list.filter((b) => ['girder', 'ingots', 'frame', 'tank', 'column', 'pressHead'].includes(b.kind) && b.state === 0).length} such pieces left standing)`);
+  assert(Object.values(after).every((v) => v.w === 0 && !v.ok) && T2.stats.refused >= r0, 'each is weighed 0 and refused without its piece');
+  // and out of reach: the hero far from every ladle / column
+  game.world.restore();
+  d2.reset();
+  run(G, 0.3);
+  const d3 = trDuel(G, 4, 0, 0);
+  tr(G).paced = false;
+  trHeroAt(G, 0, 2);
+  assert(d3.weigh('crucible', MOVES.crucible, 1, 2) === 0 && d3.weigh('prostration', MOVES.prostration, 1, 2) === 0 && !d3.brain.trigger('crucible'), 'the hero in the floor\'s middle: no ladle and no column in reach of him');
+}
+
+async function scenarioTrPools() {
+  out('\n== scenario TR POOLS (a fresh pool: always rolled out of; a walk out of its middle takes one burn; thrown past its rim; never on a hero who is down) ==');
+  const M = TUNING.terrain.molten;
+  const { FOUNDRY_TUNING: FT } = await imp('src/world/lastFoundry.js');
+  const R = FT.molten.spill.r;
+  const reach = R + M.pad + 0.45 * 0.5;
+  // (1) the hero in the middle of a fresh ladle-sized pool: a roll started `arm - 0.1` s after its cue
+  // (the latest a bot reacting 0.1 s before the burn would), each of 8 ways: never burnt
+  const res = [];
+  for (let k = 0; k < 8; k++) {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 1, 0, -9);
+    const p = game.player;
+    trHeroAt(G, 0, 3);
+    const hp0 = p.hp;
+    d.debug.pool(0, 3, R);
+    const a = (k / 8) * Math.PI * 2, at = [0, 0.15, 0.3, M.arm - 0.1][k % 4];
+    let rolled = -1, outAt = NaN;
+    const t0 = game.time;
+    run(G, 1.6, () => {
+      if (rolled < 0 && game.time - t0 >= at) { G.input.axis = { x: Math.sin(a), y: -Math.cos(a) }; G.input.tap('Space'); rolled = game.time - t0; }
+      if (!Number.isFinite(outAt) && Math.hypot(p.position.x, p.position.z - 3) > reach) outAt = game.time - t0;
+    });
+    res.push({ k, burnt: p.hp < hp0, outAt, rolled });
+  }
+  out(`     the roll from its middle at ${(M.arm - 0.1).toFixed(2)} s: out past its reach (${reach.toFixed(2)} m) at ${res.map((r) => r.outAt.toFixed(2)).join(' / ')} s; burnt ${res.filter((r) => r.burnt).length} / 8`);
+  assert(res.every((r) => !r.burnt), 'a roll out of a fresh pool\'s middle is never burnt (8 ways)');
+  // (2) a walk out of its middle: one burn (and only one: he is thrown past its rim)
+  {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 1, 0, -9);
+    const p = game.player;
+    trHeroAt(G, 0, 3);
+    const hp0 = p.hp;
+    d.debug.pool(0, 3, R);
+    run(G, 2.2, () => { G.input.axis = { x: 1, y: 0 }; });
+    G.input.axis = { x: 0, y: 0 };
+    const burns = tr(G).stats.heroBurns;
+    out(`     a walk out of its middle: ${burns} burn(s), ${hp0} -> ${p.hp} (${((hp0 - p.hp) / p.maxHp * 100).toFixed(0)} % of his bar), out at ${Math.hypot(p.position.x, p.position.z - 3).toFixed(2)} m`);
+    assert(burns === 1 && p.hp < hp0, 'a walk out of its middle costs one burn');
+    // (3) standing still in it: thrown past its rim at the first burn, no second
+    const G2 = build();
+    const d2 = trDuel(G2, 1, 0, -9);
+    const p2 = G2.game.player;
+    trHeroAt(G2, 0.3, 3);
+    d2.debug.pool(0, 3, R);
+    run(G2, 2.5);
+    const e2 = Math.hypot(p2.position.x, p2.position.z - 3);
+    out(`     standing still in it: ${tr(G2).stats.heroBurns} burn(s), thrown to ${e2.toFixed(2)} m from its middle (its reach ${reach.toFixed(2)})`);
+    assert(tr(G2).stats.heroBurns === 1 && e2 > reach, 'standing still: one burn, thrown out past its rim (never a trap)');
+  }
+  // (4) a hero knocked down in a pool is not burnt while down, and not for `grace` s after he is up
+  {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 1, 0, -9);
+    const p = game.player;
+    trHeroAt(G, 0, 3);
+    d.debug.pool(0, 3, R);
+    run(G, 0.05);
+    p.takeHit({ damage: 1, knockback: 0, knockdown: true, kind: 'crush', tell: TELL.RED, from: { x: 0, z: 2 } });
+    let burntDown = false, upAt = NaN, burnAt = NaN;
+    const hp0 = p.hp;
+    run(G, 4, () => {
+      if (p.state === 'knockdown' && p.hp < hp0) burntDown = true;
+      if (!Number.isFinite(upAt) && p.state !== 'knockdown') upAt = game.time;
+      if (!Number.isFinite(burnAt) && p.hp < hp0) burnAt = game.time;
+    });
+    out(`     knocked down in it: burnt while down ${burntDown}; up at +0, the first burn ${Number.isFinite(burnAt) ? `+${(burnAt - upAt).toFixed(2)} s after` : 'never'}`);
+    assert(!burntDown && (!Number.isFinite(burnAt) || burnAt - upAt >= M.grace - 0.02), `never burnt while down; ${M.grace} s of grace after he is up`);
+  }
+  // (5) the pool's burn is no blow to perfect-dodge: a roll into it gives no plunge
+  {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 1, 0, -9);
+    trHeroAt(G, 0, 7);
+    d.debug.pool(0, 3, R);
+    run(G, 0.8);
+    const pd = G.counts['player:perfectDodge'] ?? 0, pl = G.counts['player:plunge'] ?? 0;
+    G.input.axis = { x: 0, y: 1 };
+    G.input.tap('Space');
+    run(G, 1.2);
+    G.input.axis = { x: 0, y: 0 };
+    assert((G.counts['player:perfectDodge'] ?? 0) === pd && (G.counts['player:plunge'] ?? 0) === pl, 'rolling through a pool is no perfect dodge (no plunge)');
+  }
+}
+
+async function scenarioTrCrucible() {
+  out('\n== scenario TR CRUCIBLE (the gun on a ladle\'s chain; the pools land where they were marked; the hero who stays is burnt, the one who leaves is not; his own pool burns him) ==');
+  const K = TUNING.terrain.crucible;
+  for (const [label, off] of [['the hero under the ladle', 1.2], ['the hero beside it (a splash)', 4.0]]) {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 3, 0, 0);
+    const F = game.world.forest.foundry, L = F.ladles[1], p = game.player;
+    trHeroAt(G, L.x - off, L.z);
+    const log = flashLog(G);
+    const hp0 = p.hp, t0 = game.time;
+    const ok = d.brain.trigger('crucible');
+    const P = tr(G).lastPlan;
+    let shotAt = NaN, poolAt = NaN, burnAt = NaN;
+    const ids0 = F.molten.pools.filter((q) => q.alive).length;
+    run(G, 4, () => {
+      if (!Number.isFinite(shotAt) && tr(G).stats.shots > 0) shotAt = game.time - t0;
+      if (!Number.isFinite(poolAt) && F.molten.pools.some((q) => q.alive)) poolAt = game.time - t0;
+      if (!Number.isFinite(burnAt) && p.hp < hp0) burnAt = game.time - t0;
+    });
+    G.watch = null;
+    const live = F.molten.pools.filter((q) => q.alive);
+    const under = live.find((q) => Math.hypot(q.x - L.x, q.z - L.z) < 0.1);
+    const splash = live.find((q) => q !== under);
+    const at = splash && P.splash ? Math.hypot(splash.x - P.mx, splash.z - P.mz) : 0;
+    out(`     ${label} (${off} m): ${ok ? 'started' : 'REFUSED'}, the marks fixed at ${(K.fix * 1.0).toFixed(2)} s (splash ${P?.splash ? `${Math.hypot(P.mx - L.x, P.mz - L.z).toFixed(2)} m from the ladle` : 'none'}), the shot ${shotAt.toFixed(2)} s, a pool ${poolAt.toFixed(2)} s, ${live.length - ids0} pools (${live.map((q) => `r ${q.r}`).join(', ')}), the burn ${burnAt.toFixed(2)} s; cues ${tellsOf(log)}`);
+    assert(ok && !L.full && !!under && (!P.splash || (splash && at < 0.05)), `${label}: the ladle spills under itself${P.splash ? ', the splash lands where it was marked' : ''}`);
+    assert(Number.isFinite(burnAt) && burnAt - poolAt >= TUNING.terrain.molten.arm - 0.05 && tellsOf(log).includes('R'), `${label}: a red cue, then the hero who stayed is burnt (${(burnAt - poolAt).toFixed(2)} s after the pool lands)`);
+  }
+  // the hero who walks off the mark as it shows is not burnt
+  {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 3, 0, 0);
+    const F = game.world.forest.foundry, L = F.ladles[1], p = game.player;
+    trHeroAt(G, L.x - 3.5, L.z);
+    const hp0 = p.hp;
+    d.brain.trigger('crucible');
+    run(G, 4, () => { G.input.axis = d.brain.act?.t > K.fix ? { x: -1, y: 0 } : { x: 0, y: 0 }; });
+    G.input.axis = { x: 0, y: 0 };
+    out(`     the hero who walks off the mark at its fix: ${hp0} -> ${p.hp}, ${Math.hypot(p.position.x - L.x, p.position.z - L.z).toFixed(1)} m from the ladle`);
+    assert(p.hp === hp0, 'walking off the mark as it shows: untouched');
+  }
+  // the level's trick: he stands by the ladle, the hero lures the shot: his own pool burns him
+  {
+    const G = build();
+    const { game } = G;
+    const F = game.world.forest.foundry;
+    const L = F.ladles[1];
+    const d = trDuel(G, 3, L.x - 1.2, L.z + 0.4);
+    trHeroAt(G, L.x - 4.6, L.z - 0.6);
+    game.player.debug.god = true;
+    const h0 = d.hp;
+    d.brain.trigger('crucible');
+    run(G, 3);
+    out(`     he stands under the ladle he shoots: bossBurns ${tr(G).stats.bossBurns}, his hp ${Math.round(h0)} -> ${Math.round(d.hp)}, shell ${d.shell.exposure.toFixed(2)}`);
+    assert(tr(G).stats.bossBurns >= 1 && d.hp < h0, 'his own pool burns him (the trick)');
+  }
+}
+
+async function scenarioTrRelic() {
+  out('\n== scenario TR RELIC (he jets to a piece, tears it up, throws it: the blue flare on it; landed / parried / rolled; he walks back into his circle) ==');
+  for (const how of ['none', 'parry', 'dodge']) {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 3, -9, 0);
+    const p = game.player;
+    trHeroAt(G, -2, 3);
+    p.debug.god = false;
+    const T = tr(G);
+    const step = answer(G, how, 'relic');
+    const log = flashLog(G);
+    const hp0 = p.hp, pv0 = d.posture;
+    const x0 = d.position.x, z0 = d.position.z;
+    let maxOut = 0, flashT = NaN, landT = NaN, flashY = NaN;
+    const prevWatch = G.watch;
+    G.watch = (n, e) => { prevWatch?.(n, e); if (n === 'combat:flash' && e.attack === 'relic' && !Number.isFinite(flashT)) { flashT = game.time; flashY = e.y; } };
+    const ok = d.brain.trigger('relic');
+    const P = T.lastPlan, pc = P?.piece;
+    run(G, 6, () => { step(); maxOut = Math.max(maxOut, Math.hypot(d.position.x, d.position.z) - d.bound); }, () => { if (!Number.isFinite(landT) && T.stats.landed > 0) landT = game.time; return T.stats.landed > 0 && d.mode !== 'act' && p.state !== 'roll'; });
+    run(G, 1.5);
+    G.watch = null;
+    const r = G.hits.filter((h) => h.attack === 'relic').at(-1)?.r;
+    out(`     ${how}: ${ok ? '' : 'REFUSED '}a ${pc?.kind} ${pc ? Math.hypot(pc.x - x0, pc.z - z0).toFixed(1) : '-'} m from him (he stood ${P ? Math.hypot(P.sx - x0, P.sz - z0).toFixed(1) : '-'} m off, ${maxOut.toFixed(2)} m past his circle at most, back in: ${(Math.hypot(d.position.x, d.position.z) - d.bound).toFixed(2)}), the flare ${(landT - flashT).toFixed(2)} s before it landed at ${flashY.toFixed(1)} m up; ${tellsOf(log)}; the hero ${hp0} -> ${p.hp} (${r ?? 'not reached'}), his posture ${Math.round(pv0)} -> ${Math.round(d.posture)}`);
+    assert(ok && T.stats.taken === 1 && T.stats.thrown === 1 && T.stats.landed === 1 && pc?.state !== 0, `${how}: the ${pc?.kind} is torn up, thrown, lands`);
+    assert(tellsOf(log).startsWith('B') && landT - flashT >= TUNING.flashLead - 1.5 * DT, `${how}: the blue flare on the piece ${TUNING.flashLead} s before it lands (a frame)`);
+    if (how === 'none') assert(r === RESULT.HIT && p.hp < hp0, 'stood still: it lands on him');
+    if (how === 'parry') assert(r === RESULT.PARRIED && T.stats.parried === 1 && d.posture > pv0 && p.hp === hp0, 'parried: it breaks on his blade, posture to the saint');
+    if (how === 'dodge') assert(p.hp === hp0, 'rolled at the flare: untouched');
+    assert(maxOut <= TUNING.terrain.fetch.out + 0.05 && Math.hypot(d.position.x, d.position.z) <= d.bound + 0.05, `he leaves his circle by ${maxOut.toFixed(2)} m at most (${TUNING.terrain.fetch.out}) and walks back in`);
+  }
+  // cut out of his hands: the hero's blade breaks what he holds, nothing is thrown
+  {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 3, -9, 0);
+    trHeroAt(G, -2, 3);
+    game.player.debug.god = true;
+    const T = tr(G);
+    d.brain.trigger('relic');
+    run(G, 2, null, () => !!T.held.piece);
+    const pc = T.held.piece;
+    for (let i = 0; i < 30 && pc && pc.state === 3; i++) {
+      game.world.destructibles.sweep(pc.px - 1, pc.pz, pc.px + 1, pc.pz, 0.6, 1.5, { kind: 'cut', by: 'player', y: (pc.py ?? 1) + 0.3, src: game.world.destructibles.swing() });
+      run(G, 0.02);
+    }
+    trPlay(G, 4);
+    out(`     the piece cut in his hands: state ${pc?.state}, thrown ${T.stats.thrown}`);
+    assert(!!pc && pc.state !== 3 && T.stats.thrown === 0, 'cut out of his hands: it breaks, nothing is thrown');
+  }
+}
+
+async function scenarioTrOffertory() {
+  out('\n== scenario TR OFFERTORY (a gas tank kicked low at the hero: the red flare on it; it bursts where it lands; a roll clears it) ==');
+  for (const how of ['none', 'dodge']) {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 2, -9, -8);
+    const p = game.player;
+    trHeroAt(G, -1, -2);
+    p.debug.god = false;
+    const T = tr(G), log = flashLog(G);
+    let blasts = 0, flashT = NaN, landT = NaN, hz = null;
+    const prev = G.watch;
+    G.watch = (n, e) => { prev?.(n, e); if (n === 'world:blast') blasts++; if (n === 'combat:flash' && e.attack === 'offertory' && !Number.isFinite(flashT)) { flashT = game.time; hz = e.hazard; } };
+    const step = how === 'dodge' ? () => { if (Number.isFinite(flashT) && !G._rolled && game.time >= flashT + TUNING.flashLead - 0.12) { G._rolled = true; trRollFrom(G, T.fly[0]?.tx ?? p.position.x, T.fly[0]?.tz ?? p.position.z + 1); } } : null;
+    G._rolled = false;
+    const hp0 = p.hp;
+    const ok = d.brain.trigger('offertory');
+    const pc = T.lastPlan?.piece;
+    run(G, 6, () => step?.(), () => { if (!Number.isFinite(landT) && T.stats.landed > 0) landT = game.time; return T.stats.landed > 0 && d.mode !== 'act' && p.state !== 'roll'; });
+    run(G, 0.6);
+    G.watch = null;
+    const r = G.hits.filter((h) => h.attack === 'tankBurst').at(-1);
+    out(`     ${how}: ${ok ? '' : 'REFUSED '}the ${pc?.kind} at ${pc ? `${pc.x.toFixed(1)}, ${pc.z.toFixed(1)}` : '-'}, the red flare ${(landT - flashT).toFixed(2)} s before it landed (hazard ${hz}), ${blasts} blast(s), bursts ${T.stats.bursts} duds ${T.stats.duds}; ${tellsOf(log)}; the hero ${hp0} -> ${p.hp} (${r?.r ?? 'not reached'})`);
+    assert(ok && pc?.kind === 'tank' && T.stats.thrown === 1 && T.stats.bursts === 1 && blasts === 1, `${how}: the tank kicked, burst where it landed`);
+    assert(tellsOf(log).startsWith('R') && hz === true && landT - flashT >= TUNING.flashLead - 1.5 * DT, `${how}: the red flare on the tank (a hazard) ${TUNING.flashLead} s before it lands`);
+    if (how === 'none') assert(p.hp < hp0, 'stood still: the blast takes him');
+    else assert(p.hp === hp0, 'rolled at the flare: untouched');
+  }
+}
+
+async function scenarioTrProstration() {
+  out('\n== scenario TR PROSTRATION (his eye cuts a column\'s foot: it comes down across the floor on the hero: the world\'s strip, red; a roll clears it) ==');
+  for (const how of ['none', 'dodge']) {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 3, 2, -4);
+    const p = game.player;
+    const col = pieces(G, 'column').find((c) => c.x > 0 && Math.abs(c.z + 1.5) < 0.2);
+    trHeroAt(G, col.x - 5.5, col.z + 1);
+    p.debug.god = false;
+    const T = tr(G);
+    let tellT = NaN, flashT = NaN, landT = NaN;
+    G.defend = null;
+    G.watch = (n, e) => {
+      if (n === 'combat:tell' && e.attack === 'fallingDebris' && !Number.isFinite(tellT)) tellT = game.time;
+      if (n === 'combat:flash' && e.attack === 'fallingDebris' && !Number.isFinite(flashT)) { flashT = game.time; if (how === 'dodge') G._rollAt = game.time + 0.18; }
+    };
+    G._rollAt = NaN;
+    const hp0 = p.hp, t0 = game.time;
+    const ok = d.brain.trigger('prostration');
+    const P = T.lastPlan;
+    run(G, 5, () => { if (game.time >= G._rollAt) { G._rollAt = NaN; trRollFrom(G, col.x, col.z); } if (!Number.isFinite(landT) && col.state === 2) landT = game.time; }, () => col.state === 2 && d.mode !== 'act' && p.state !== 'roll' && p.state !== 'knockdown');
+    G.watch = null;
+    const r = G.hits.filter((h) => h.attack === 'fallingDebris').at(-1);
+    out(`     ${how}: ${ok ? '' : 'REFUSED '}the column at ${col.x.toFixed(1)}, ${col.z.toFixed(1)} (${P?.col === col ? 'the one' : 'another'}), the cut ${T.stats.felled ? 'made' : 'not made'}, its strip told ${(tellT - t0).toFixed(2)} s, flashed ${(flashT - t0).toFixed(2)} s, down ${(landT - t0).toFixed(2)} s; its runway ${col.top?.state}; the hero ${hp0} -> ${p.hp} (${r?.r ?? 'not reached'})`);
+    assert(ok && T.stats.felled === 1 && col.state === 2 && Number.isFinite(tellT) && Number.isFinite(flashT) && landT - tellT >= 1.0, `${how}: the column falls across the floor, told red from the cut (${(landT - tellT).toFixed(2)} s of warning)`);
+    if (how === 'none') assert(p.hp < hp0, 'stood still: it comes down on him');
+    else assert(p.hp === hp0, 'rolled at the flash: untouched');
+  }
+}
+
+async function scenarioTrDiesIrae() {
+  out('\n== scenario TR DIES IRAE (the gun into the press: it slams, a shock runs across the floor, striking what it passes; cued on its front; a roll through it clears it) ==');
+  const K = TUNING.terrain.diesIrae;
+  for (const how of ['none', 'dodge']) {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 4, 6, -2);
+    const p = game.player;
+    trHeroAt(G, -6, 6);
+    p.debug.god = false;
+    const T = tr(G), W = game.world.destructibles;
+    const head = pieces(G, 'pressHead')[0];
+    const hd0 = head.hp;
+    let flashT = NaN, slamT = NaN;
+    G.watch = (n, e) => { if (n === 'combat:flash' && e.attack === 'diesIrae' && !Number.isFinite(flashT)) { flashT = game.time; if (how === 'dodge') G._rollAt = game.time + TUNING.flashLead - 0.12; } };
+    G._rollAt = NaN;
+    const hp0 = p.hp, t0 = game.time;
+    const plates0 = W.floor.filter((b) => b.hp < b.hpMax).length;
+    const ok = d.brain.trigger('diesIrae');
+    let hitT = NaN;
+    run(G, 6, () => {
+      if (game.time >= G._rollAt) { G._rollAt = NaN; trRollFrom(G, T.front.x, T.front.z); }
+      if (!Number.isFinite(slamT) && T.stats.slams > 0) slamT = game.time;
+      if (!Number.isFinite(hitT) && T.front.hit) hitT = game.time;
+    }, () => T.stats.slams > 0 && !T.front.live && d.mode !== 'act');
+    G.watch = null;
+    const plates1 = W.floor.filter((b) => b.hp < b.hpMax || b.state !== 0).length;
+    const e0 = Math.hypot(-6 - head.x, 6 - head.z);
+    out(`     ${how}: ${ok ? '' : 'REFUSED '}the slam ${(slamT - t0).toFixed(2)} s (the press's head ${hd0.toFixed(2)} -> ${head.hp.toFixed(2)}), the front reached the hero ${(hitT - slamT).toFixed(2)} s later (${e0.toFixed(1)} m at ${K.speed} m/s), its flash ${(hitT - flashT).toFixed(2)} s before; ${T.stats.frontStruck} pieces and plates struck (${plates1 - plates0} plates marked), the hero ${hp0} -> ${p.hp}`);
+    assert(ok && T.stats.slams === 1 && head.hp < hd0 && T.stats.frontStruck >= 50 && plates1 - plates0 >= 50, `${how}: the press slams (it bites its ram) and the front strikes what it passes`);
+    assert(Number.isFinite(flashT) && hitT - flashT >= TUNING.flashLead - 0.05, `${how}: the flash on the front ${TUNING.flashLead} s before it reaches him`);
+    if (how === 'none') assert(p.hp < hp0 && T.stats.frontHits === 1, 'stood still: the front takes him once');
+    else assert(p.hp === hp0, 'rolled through the front at its flash: untouched');
+  }
+  // the press wears down: slam after slam, its head comes off and the move is gone
+  {
+    const G = build();
+    const { game } = G;
+    const d = trDuel(G, 4, 6, -2);
+    trHeroAt(G, -6, 6);
+    game.player.debug.god = true;
+    const T = tr(G);
+    let n = 0;
+    while (n < 10 && d.brain.trigger('diesIrae')) { n++; trPlay(G, 8); run(G, 5, null, () => !T.front.live && !T.busy); }
+    const head = pieces(G, 'pressHead')[0];
+    out(`     the press slammed ${n} times before its head came down (head state ${head.state})`);
+    assert(n >= 3 && n <= 8 && head.state !== 0 && d.weigh('diesIrae', MOVES.diesIrae, 1, 4) === 0, `the press gives out after ${n} slams; then Dies Irae is gone`);
+  }
+}
+
+async function scenarioTrChange() {
+  out('\n== scenario TR CHANGE (the transitions strike the world: 2 a small shock, 3 plates thrown, 4 the nova; he cannot be hurt through them) ==');
+  // two ways: saint.js as it is (core's one push ring, this file's effects on top), and with the lead's edit
+  // to saint.js _moment (the world blow handed to FsTerrain.onMoment: the ring by phase)
+  for (const mode of ['core ring', 'onMoment']) {
+    const G = build();
+    const { game } = G;
+    const d = game.dragon, W = game.world.destructibles;
+    duel(G, { dist: 4, ai: true });
+    game.player.debug.god = true;
+    const T = tr(G);
+    if (mode === 'onMoment' && !String(d._moment).includes('onMoment')) {
+      // (the proposed edit, applied here until saint.js has it: its world blow only when the handler did not take it)
+      const core = d._moment;
+      d._moment = function (n) {
+        const W0 = this.game.world, imp = W0.impact;
+        if (this.parts?.terrain?.onMoment?.(n)) W0.impact = () => 0;
+        try { return core.call(this, n); } finally { W0.impact = imp; }
+      };
+    }
+    out(`   ${mode}:`);
+    for (const n of [2, 3, 4]) {
+      const st0 = { ...T.stats };
+      const standing0 = W.list.filter((b) => !b.floor && b.state === 0).length;
+      d.position.set(n === 4 ? 6 : 0, 0, n === 4 ? -4 : 0);
+      // a cut of the hero's mid-change does nothing
+      d.hp = d.maxHp * TUNING.phaseAt[n - 1] + 20;
+      d.mode = 'foot';
+      d.brain.act = null;
+      d.takeHit({ damage: 400, part: 'body', heavy: true, exact: true });
+      run(G, 1.5, null, () => d.brain.act?.name === TRANSITIONS[n]);
+      run(G, 0.3);
+      const hp0 = d.hp;
+      const dealt = d.takeHit({ damage: 60, part: 'body', point: new THREE.Vector3(d.position.x, 1.2, d.position.z), dir: { x: 0, z: 1 }, swing: true });
+      const c = { x: d.position.x, z: d.position.z };
+      run(G, 6, null, () => d.mode !== 'act');
+      const standing1 = W.list.filter((b) => !b.floor && b.state === 0).length;
+      const broken = [4, 8].map((r) => W.floor.filter((b) => b.state !== 0 && Math.hypot(b.x - c.x, b.z - c.z) < r).length);
+      out(`     phase ${n}: plates thrown ${T.stats.platesThrown - st0.platesThrown}, pieces the nova struck ${T.stats.changeStruck - st0.changeStruck}, standing pieces ${standing0} -> ${standing1}, plates gone within 4 / 8 m ${broken.join(' / ')}; a cut mid-change dealt ${dealt} (hp ${Math.round(hp0)} -> ${Math.round(d.hp)})`);
+      assert(T.stats.changes - st0.changes === 1 && dealt === 0, `${mode}, phase ${n}: the change strikes the world once; a cut mid-change does nothing`);
+      if (n >= 3) assert(T.stats.platesThrown - st0.platesThrown >= (n === 4 ? 8 : 4), `${mode}, phase ${n}: floor plates thrown round him (${T.stats.platesThrown - st0.platesThrown})`);
+      if (n === 4) assert(T.stats.changeStruck - st0.changeStruck >= 1, `${mode}, phase 4: the nova strikes what stands within ${TUNING.terrain.change[4].reach} m (${T.stats.changeStruck - st0.changeStruck})`);
+      if (n === 2 && mode === 'onMoment') assert(broken[1] < 30, `onMoment, phase 2: a SMALL shock (${broken[1]} plates gone within 8 m)`);
+      settle(G, 2);
+      d.brain.act = null;
+      d.mode = 'foot';
+    }
+  }
+}
+
+async function scenarioTrUse() {
+  const SECS = Number(process.env.GCD_TRSECS ?? 20);
+  out(`\n== scenario TR USE (a measure: how often each terrain move CAN be used (its piece in reach of the hero / of him), and how often he picks it, against the roaming guarding bot; ${SECS} s a phase) ==`);
+  for (let ph = 2; ph <= 4; ph++) {
+    const G = build(4242, true);
+    const { game } = G;
+    const d = game.dragon, p = game.player, T = tr(G);
+    duel(G, { dist: 3, ai: true, form: ph });
+    p.debug.god = true;
+    p.debug.noRiposte = true;
+    G.defend = bPaceDefender(G);
+    const avail = Object.fromEntries(TR_MOVES.map((n) => [n, 0]));
+    const used = {};
+    G.watch = (n, e) => { if (n === 'dragon:windup' && TR_MOVES.includes(e?.name)) used[e.name] = (used[e.name] ?? 0) + 1; };
+    const roam = mulberry32(77 + ph), goal = { r: 2.5, a: 0, until: -1 };
+    let frames = 0;
+    for (let i = 0; i < Math.round(SECS / DT); i++) {
+      const rolled = G.defend.act();
+      if (game.time > goal.until) {
+        goal.r = [2.5, 5, 9][Math.floor(roam() * 3)];
+        goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+        goal.until = game.time + 4;
+      }
+      if (!rolled && p.state !== 'roll') {
+        const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+        const k = Math.hypot(gx, gz) > 13 ? 13 / Math.hypot(gx, gz) : 1;
+        const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+        G.input.axis = l > 0.5 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+      }
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      G.tick(DT);
+      if (i % 10 === 0) {
+        frames++;
+        for (const n of TR_MOVES) if (MOVES[n].phase <= ph && T._find(n)) avail[n]++;
+      }
+      if (d.phase !== ph && d.mode !== 'act') break;
+    }
+    G.defend = null;
+    G.watch = null;
+    out(`     P${ph}: its piece there ${TR_MOVES.filter((n) => MOVES[n].phase <= ph).map((n) => `${n} ${(avail[n] / Math.max(1, frames) * 100).toFixed(0)} %`).join(', ')}; picked ${Object.entries(used).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'}; pools ${T.stats.pools}, his burns ${T.stats.bossBurns}, the hero's ${T.stats.heroBurns}`);
+    assert(G.payload.size === 0, `P${ph}: no NaN in any event`);
+  }
+}
+
 // ================================================================== THE SCENARIOS (one entry per line, each agent in its block)
 const S = {
   // --- core
@@ -2032,6 +2548,16 @@ const S = {
   boostPace: scenarioBoostPace,
   // --- arsenal
   // --- terrain
+  trData: scenarioTrData,
+  trRefuse: scenarioTrRefuse,
+  trPools: scenarioTrPools,
+  trCrucible: scenarioTrCrucible,
+  trRelic: scenarioTrRelic,
+  trOffertory: scenarioTrOffertory,
+  trProstration: scenarioTrProstration,
+  trDiesIrae: scenarioTrDiesIrae,
+  trChange: scenarioTrChange,
+  trUse: scenarioTrUse,
   // --- tuning
 };
 // (opt-in scenarios: listed here, run only by name; tests/run.mjs may run one as a process of its own)
