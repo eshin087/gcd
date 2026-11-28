@@ -947,7 +947,7 @@ export class Lab {
       button(grid, 'Pull', () => D().pull()).title = 'an Azure Draw knot where the hero stands (it drags him)';
       button(grid, 'Blink', () => D().blink('behind')).title = 'he is behind the hero now';
     }
-    // the False Saint (ADR-0FS): his shell, a molten pool, his phases through their changes, every effect alone
+    // the False Saint (ADR-285): his shell, a molten pool, his phases through their changes, every effect alone
     if (typeof this.game.dragon?.debug?.fx === 'function' && Array.isArray(this.game.dragon?.debug?.fxNames)) {
       const D = () => this.game.dragon.debug;
       button(grid, 'Pool here', () => D().pool()).title = 'a molten pool at the hero\'s feet (cued red, then it burns)';

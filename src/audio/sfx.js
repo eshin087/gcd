@@ -1989,7 +1989,7 @@ export const SFX = {
       burst(v, t, 'brown', 'bandpass', 380, 0.8, 0.3, D * 0.8, 0.003);
     },
   },
-  // The False Saint (the Last Foundry; the fx agent's recipes, ADR-0FS). A machine, not a sorcerer: jets
+  // The False Saint (the Last Foundry; the fx agent's recipes, ADR-285). A machine, not a sorcerer: jets
   // that light with a hard hiss, servos, metal ringing on metal, the deep roar of the beams, the dry crack
   // of his gun, shells that whistle down. Serious and dry (the owner's taste); every jitter from the audio
   // stream (dsp.js rnd / spikes), never Math.random. All from `dragon:spell { name: 'fs...', x, z, dur }`

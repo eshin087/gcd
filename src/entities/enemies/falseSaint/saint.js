@@ -78,7 +78,7 @@ const SAINT_POSES = Object.freeze({
   },
 });
 
-/** His feet (the tuning pass, from the V04 audit; ADR-0FS): a foot a key lifts while it is planted (or still being
+/** His feet (the tuning pass, from the V04 audit; ADR-288): a foot a key lifts while it is planted (or still being
  *  stepped by the foot planner) eases off its spot over `ease` s instead of snapping (anim.js liftEase /
  *  liftFromStep: the engine's MOTION_FIX, Wen Yao's precedent, ADR-249). Live: saint.mjs tuneFeet measures it
  *  (off / on). 0.2 s, not the engine's MOTION_FIX.liftEase 0.12: measured (the largest foot jump in a frame;

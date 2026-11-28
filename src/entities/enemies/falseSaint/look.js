@@ -4,7 +4,7 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 import { DIM } from '../../player/model.js';
 import { FS_ART } from './bodyArt.js';
 
-// The False Saint's look (the BODY AGENT's file; the body contract: gear.js header; ADR-0FS). His rig is
+// The False Saint's look (the BODY AGENT's file; the body contract: gear.js header; ADR-286). His rig is
 // the hero's skeleton carrying the disguise over the frame (gear.js); this file colours it once (tintSaint)
 // and dresses it every frame (dressSaint): the shards of the disguise by the shell (d.shell: a shard is
 // gone while its part's exposure >= its threshold), the frame under every part that has started to go,

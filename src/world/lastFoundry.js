@@ -17,7 +17,7 @@ import {
   buildPourKerb, buildHusk, buildHulk, buildMound,
 } from './foundryProps.js';
 
-// THE LAST FOUNDRY (`?level=foundry`; ADR-0FS): a steel mill at the end of a war with the machines, at
+// THE LAST FOUNDRY (`?level=foundry`; ADR-285): a steel mill at the end of a war with the machines, at
 // night, still running with no one left to feed it. The game camera looks down at 58 degrees from the
 // south: the casting floor fills the frame, the pour glows along its top edge, the cranes' arms and the
 // ladles hang at its sides; the blast furnace, the press and the line stand past the floor's edges.

@@ -9,7 +9,7 @@ import {
 import { shatter, walls, cells, nearestCell, facet, merge, jag } from './bodyArt.js';
 import { fsLookNow } from './look.js';
 
-// The False Saint's gear (the BODY AGENT's file; ADR-0FS): the hero's skeleton (buildHero, the same
+// The False Saint's gear (the BODY AGENT's file; ADR-286): the hero's skeleton (buildHero, the same
 // animator) carrying TWO LAYERS, aligned, at one height in every phase (the owner's reference sheets,
 // docs/art/false-saint-reference-v01; BRIEF "The body"):
 //   the DISGUISE   olive synthetic skin (the face, the neck, the hands), short black hair, an asymmetric
@@ -226,7 +226,7 @@ const yCh = (h) => h - 1.225; // → chest space (REST.chest)
 // his left is +X. The body's own face (model.js) is taken off and rebuilt here in pieces that can chip.
 const SKULL = [0, 0.14, 0.005];
 
-// ---- the v04 pass (the owner's anchor.png: the face and the hair; ADR-0FS)
+// ---- the v04 pass (the owner's anchor.png: the face and the hair; ADR-286)
 /** The hair (anchor.png): short, black, SIDE-PARTED on his left and swept over to his right, a lock falling
  *  over his right brow, cut close above the ears and at the nape. One shell over the skull (and over the
  *  frame's cranium under it), its strands drawn as lines running with the sweep; no spikes. */

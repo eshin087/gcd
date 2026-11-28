@@ -6,7 +6,7 @@ import { prep, carve, mul, lumpy, buildRubble } from './forest.js';
 import { facetCol } from './landmarks.js';
 import { hangFrom, mergeHang } from './hang.js';
 
-// THE LAST FOUNDRY's builders (world/lastFoundry.js places them; ADR-0FS). Every builder works in the
+// THE LAST FOUNDRY's builders (world/lastFoundry.js places them; ADR-285). Every builder works in the
 // prop's own frame (its base on the origin, facing +z), carves its parts for the prop art path (the house
 // style: a dark body, brighter facets where the light catches, an edge band on the chamfers) and places
 // them in WORLD space last. Non-indexed triangles only (`prep`): the breakables cut them to brick size

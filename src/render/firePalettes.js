@@ -90,7 +90,7 @@ export const FIRE_PALETTES = {
     stops: [[0.44, 0.012, 0.03], [1.3, 0.04, 0.08], [2.2, 0.16, 0.2], [2.85, 0.8, 0.78], [3.2, 2.5, 2.45]],
     hdr: 0.6, fill: 0.08, back: [0.5, 0.8], lick: 0.5, erode: 0.75, boil: 12, warp: 0.6,
   },
-  // SAINT (the Last Foundry: the False Saint's jets, charges, lance and the beams' bodies; ADR-0FS). A swap of
+  // SAINT (the Last Foundry: the False Saint's jets, charges, lance and the beams' bodies; ADR-285). A swap of
   // the void slot (falseSaint/fx.js FsFx), as gold. INCANDESCENT: jet exhaust and white-hot metal, a dark
   // amber rim, a pale amber-white body, a white heart; paler and whiter than `gold`, never red (the red cues
   // keep the fire kind's red) and never cyan or blue (blue means a parry: nothing of his that signals an
@@ -100,7 +100,7 @@ export const FIRE_PALETTES = {
     stops: [[0.46, 0.2, 0.04], [1.1, 0.58, 0.14], [1.8, 1.36, 0.66], [2.45, 2.2, 1.6], [3.05, 3.0, 2.8]],
     hdr: 0.6, fill: 0.07, back: [0.5, 0.8], lick: 0.35, erode: 0.6, boil: 13, warp: 0.5, haze: [1.0, 0.82, 0.55],
   },
-  // FOUNDRY (the Last Foundry: the molten steel of the pour, the ladles and the pools; ADR-0FS). A swap of
+  // FOUNDRY (the Last Foundry: the molten steel of the pour, the ladles and the pools; ADR-285). A swap of
   // the FIRE slot for the level (world/lastFoundry.js, its ambience, once): the cues' red rim kept (a red
   // cue prints the fire kind at a low heat and reads as it always does), an orange body, a heavy
   // yellow-white heart. Molten metal does not climb as flame does: it lies and churns (lick low, slow

@@ -4,7 +4,7 @@ import { mergeGeometries } from '../../player/heroGeo.js';
 // The False Saint's print helpers (the BODY AGENT's file): how ONE rig carries two layers, the disguise
 // (skin, hair, the jacket, the trousers) over the frame (titanium and smoked ceramic plates, woven
 // microfilament), and how the disguise breaks away piece by piece (the reference's four milestones; BRIEF
-// "The body"; ADR-0FS). Build-time only except `FS_ART` (data). Deterministic: no Math.random anywhere
+// "The body"; ADR-286). Build-time only except `FS_ART` (data). Deterministic: no Math.random anywhere
 // (three's uuids aside: the gear builds on a quiet stream, gear.js `quiet`).
 //
 //   shatter(g, keyOf)          a geometry's triangles split by `keyOf(cx, cy, cz)` of each triangle's

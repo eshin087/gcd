@@ -134,7 +134,7 @@ export const LOOK_SWITCHES = Object.freeze([
   // Bai Wuji: world rows
   ['wjCity', ['a', 'b', 'c'], 'a', 'a', true, ['veil'], 'the crossing: a ash moon (cold moonlit ash-grey), b last lamps (sodium amber, dead screens), c black wet (wet black asphalt, pale bars) (a reload)'],
   ['wjVoid', ['a', 'b', 'c'], 'b', 'b', true, ['veil'], 'the void: a drifts (star clumps only), b the ring (a great pale ring on the floor round the fight), c the fall (stars falling as streaks, a line of light where the floor ends) (a reload)'],
-  // --- foundry: the Last Foundry and the False Saint (ADR-0FS; awaiting the owner's picks: each draws its call
+  // --- foundry: the Last Foundry and the False Saint (ADR-286; awaiting the owner's picks: each draws its call
   // site's default until then)
   ['fsLook', ['a', 'b'], 'a', 'a', true, ['foundry'], 'the False Saint\'s third milestone: a both legs plated (the second sheet\'s 03), b the right leg plated, the left trouser whole until phase 4 (the first sheet\'s 03) (a reload)', 'awaiting'],
   ['fsLetters', ['0', 'a'], 'a', 'a', false, ['foundry'], 'his letters: a they follow his size on screen as the hero\'s do, 0 the bosses\' fixed fine cell (live)', 'awaiting'],
