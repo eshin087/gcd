@@ -29,6 +29,11 @@ export const RELEASES = [
       },
       {
         date: '2026-11-27',
+        title: 'The performance readout measures by itself',
+        notes: ['With ?perf in the address, BENCH now runs on its own during a fight, at the slow moments too. Just play, then tap REPORT.'],
+      },
+      {
+        date: '2026-11-27',
         title: 'The Starless Lord fights with better form',
         notes: [
           'Varr Nihil thrusts on a long straight arm out of a real lunge, brings his two-handed overheads down on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quieter and lands his front foot with the blade, in all four forms.',

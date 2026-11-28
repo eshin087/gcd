@@ -16,7 +16,7 @@ const imp = (p) => import(pathToFileURL(`${ROOT}/${p}`).href);
 const THREE = await import(pathToFileURL(`${ROOT}/node_modules/three/build/three.module.js`).href);
 const { CONFIG } = await imp('src/core/config.js');
 const { ShadowCache } = await imp('src/render/shadowCache.js');
-const { PerfReadout, perfFromSearch, PERF_PARTS } = await imp('src/dev/perfReadout.js');
+const { PerfReadout, perfFromSearch, PERF_PARTS, AUTO_BENCH, autoFromSearch } = await imp('src/dev/perfReadout.js');
 const { warmDraw } = await imp('src/render/precompile.js');
 const { LAYER_CASTER } = await imp('src/render/shaderLib.js');
 const { Events } = await imp('src/core/events.js');
@@ -211,10 +211,51 @@ const S = {
     assert(/frame interval ms/.test(rep) && /level fox/.test(rep) && /player/.test(rep) && /longest frames/.test(rep), 'the report: the device, the level, the parts, the longest frames');
     assert(P.bench() === null, 'BENCH with no GL: nothing, no throw');
     P.benches.push({ t: 1, canvas: '669x867', state: 'boss', hero: 'attack', boss: 'knock', frame: 20.5, steps: { world: 9.1, glow: 3.2 }, half: { canvas: '468x606', frame: 12, share: '41 % less' } });
-    assert(/bench at 1s \(669x867/.test(P.report()) && /world\s+9\.1 ms/.test(P.report()) && /41 % less/.test(P.report()), 'a BENCH is in the report: the whole frame, each step\'s share, the half-pixel frame');
+    assert(/bench at 1s.*669x867/.test(P.report()) && /world\s+9\.1 ms/.test(P.report()) && /41 % less/.test(P.report()), 'a BENCH is in the report: the whole frame, each step\'s share, the half-pixel frame');
     P.benches[P.benches.length - 1].life = 1.4;
     assert(/the living world .* 1\.4 ms/.test(P.report()), "BENCH's living-world reading is in the report");
     assert(P._lifeOut() === null, 'no living world: no living-world reading, no throw');
+    // AUTO BENCH: in a fight, once `firstAt` s in, then on a slow burst, `cooldown` apart, `max` in all
+    {
+      const g2 = { level: { id: 'cinderwood' }, state: 'explore', player: {}, dragon: {} };
+      const Q = new PerfReadout(g2, { frames: 600, doc: null, auto: true });
+      let clock = 0;
+      const realNow = performance.now.bind(performance);
+      Q.t0 = 0;
+      const at = (secs) => (clock = secs * 1000);
+      performance.now = () => clock;
+      try {
+        for (let i = 0; i < 60; i++) { at(i / 60); Q.beginFrame(); Q.endFrame(1 / 60, 3); }
+        assert(Q._autoN === 0, 'no fight on screen: no auto bench');
+        g2.state = 'boss';
+        let t = 1;
+        for (; t < 1 + AUTO_BENCH.firstAt - 0.2; t += 1 / 60) { at(t); Q.endFrame(1 / 60, 3); }
+        assert(Q._autoN === 0, `the first ${AUTO_BENCH.firstAt} s of the fight: none yet`);
+        for (; t < 1 + AUTO_BENCH.firstAt + 0.2; t += 1 / 60) { at(t); Q.endFrame(1 / 60, 3); }
+        assert(Q._autoN === 1 && Q._busy, `${AUTO_BENCH.firstAt} s in: the first one is queued`);
+        Q._busy = false;
+        Q._nextAuto = t + AUTO_BENCH.cooldown;
+        for (let j = 0; j < 120; j++, t += 1 / 30) { at(t); Q.endFrame(1 / 30, 3); }
+        assert(Q._autoN === 1, 'slow frames inside the cooldown: none');
+        for (let j = 0; j < 60; j++, t += 1 / 60) { at(t); Q.endFrame(1 / 60, 3); }
+        t = Math.max(t, Q._nextAuto + 0.1);
+        for (let j = 0; j < 60; j++, t += 1 / 60) { at(t); Q.endFrame(1 / 60, 3); }
+        assert(Q._autoN === 1, 'after the cooldown, smooth frames: none');
+        for (let j = 0; j < AUTO_BENCH.window && !Q._busy; j++, t += 1 / 30) { at(t); Q.endFrame(1 / 30, 3); }
+        assert(Q._autoN === 2 && Q._busy, 'a slow burst after the cooldown: the next one is queued');
+        Q._skip = true;
+        Q.endFrame(5, 3);
+        assert(!Q._skip && Q.stats().longest.every((x) => x.interval < 1000), "the frame after a bench (its freeze) is not recorded");
+        Q._autoN = AUTO_BENCH.max;
+        Q._busy = false;
+        Q._nextAuto = 0;
+        for (let j = 0; j < 60; j++, t += 1 / 30) { at(t); Q.endFrame(1 / 30, 3); }
+        assert(Q._autoN === AUTO_BENCH.max && !Q._busy, `${AUTO_BENCH.max} in all, then no more`);
+        assert(new PerfReadout(g2, { doc: null, auto: false }).auto === false && autoFromSearch('?perf=manual') === false && autoFromSearch('?perf') === true, '?perf=manual: BENCH only on the button');
+      } finally {
+        performance.now = realNow;
+      }
+    }
     P.reset();
     assert(P.stats().frames === 0 && P.longest.length === 0, 'RESET forgets what was recorded');
     // the warm draw
