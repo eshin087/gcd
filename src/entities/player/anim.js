@@ -2993,6 +2993,11 @@ export class HeroAnimator {
      *  long, not handed to the key at once (a boss's clip foot left behind by its root motion jumped up to
      *  0.46 m in a frame; ADR-223). Bosses only (a function: their motion switch, read live); 0 = as before. */
     this.liftEase = typeof opts?.liftEase === 'function' ? opts.liftEase : null;
+    /** With liftEase: a foot the clip lifts while the foot planner is still STEPPING it (mode 1: a root
+     *  that closes in left it behind) eases from where it is drawn too, not only a planted one (Wen Yao's
+     *  Hand to Hand jab: it jumped 0.43 m in a frame; ADR-249). Off: as before (a stepping foot is the
+     *  clip's at once). */
+    this.liftFromStep = !!opts?.liftFromStep;
     /** [from, to, add, lift0, lift1] or null: a boss whose kicks land with the leg straight (Xin Yi,
      *  ADR-221; _leg). A lifted foot asked for past `from` of the leg's length is carried out, by up to
      *  `add` of it at `to`, so the leg reaches its full length at a kick's extension. */
@@ -3872,6 +3877,16 @@ export class HeroAnimator {
           F.rx = wx * c - wz * s;
           F.rz = wx * s + wz * c;
           F.ryaw = wrapAngle(F.wyaw - yaw);
+          F.ry = ANK;
+          F.mode = 3;
+          F.s = 0;
+          F.dur = ease;
+        } else if (this.liftFromStep && F.mode === 1 && ease > 0 && !off) {
+          // (mid-step: from where it was drawn last frame, its height too; model space, as the step's)
+          F.rx = fin(F.ox, dx);
+          F.rz = fin(F.oz, dz);
+          F.ryaw = fin(F.oyaw, dyaw);
+          F.ry = Math.max(ANK, fin(F.oy, ANK));
           F.mode = 3;
           F.s = 0;
           F.dur = ease;
@@ -3910,7 +3925,7 @@ export class HeroAnimator {
         F.s = Math.min(1, F.s + dt / F.dur);
         const e = smoothstep(0, 1, F.s);
         cur[i] = lerp(F.rx, dx, e);
-        cur[i + 1] = lerp(ANK, dy, e);
+        cur[i + 1] = lerp(fin(F.ry, ANK), dy, e);
         cur[i + 2] = lerp(F.rz, dz, e);
         cur[iy] = F.ryaw + wrapAngle(dyaw - F.ryaw) * e;
         if (F.s >= 1) F.mode = 2;

@@ -5,6 +5,7 @@ import { makeRealise } from '../duelist/realise.js';
 import { makeHeldKeys } from '../duelist/heldTells.js';
 import { lookOf } from '../duelist/lookSwitch.js';
 import { X as ASC, CLIPS as ASC_CLIPS } from '../ascendant/moves.js';
+import { limbMoves, limbsOn } from './limbs.js';
 
 // Wen Yao's moves and reaction clips, as data (ADR-147; COMBAT.md → "The Thousand-Body Fox"). He fights
 // BARE-HANDED (the owner, 2026-11-22: "a fist fighter, no sword"): his blows are built with Tian Lei's
@@ -433,19 +434,33 @@ const perPhaseN = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1
 // (`?foxMotion=a|b`: his blue and red blows hold their cock, coloured / not; ADR-223, duelist/heldTells.js)
 const HELD_KEYS = makeHeldKeys('foxMotion', GUARD);
 const realiser = (M) => makeRealise({ TUNING, MOVES: M, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat, keysOf: HELD_KEYS });
-const base = realiser(MOVES);
-// the Round realised for each live count (its own windup per count; FoxBrain.startAct passes `opts.selves`)
-const ROUNDS = {};
-for (let n = 1; n <= TUNING.clones.pool; n++) ROUNDS[n] = realiser({ foxRing: { ...MOVES.foxRing, beats: roundBeats(n) } });
+// (`?foxLimbs=a`, ADR-249: every beat's contact key with the limbs long, limbs.js; '0' as authored. Both
+// sets are built once; the switch is read live as a move is realised)
+// (`?foxCues=a`, ADR-249: one cue, one meaning: his uppercut is the blue flare of Hand to Hand, so Paper
+// Rain, white, ends on a backfist instead of an uppercut; '0' as before)
+const CUE_MOVES = Object.freeze({
+  ...MOVES,
+  streakFlurry: { ...MOVES.streakFlurry, beats: [...MOVES.streakFlurry.beats.slice(0, 3), { ...punch('backfist', N, 0.48, 14), flit: { r: 2.4 } }] },
+});
+export const cuesOn = () => lookOf('foxCues', '0') !== '0';
+const SETS = [false, true].flatMap((cues) => [false, true].map((on) => {
+  const M0 = cues ? CUE_MOVES : MOVES;
+  const L = on ? limbMoves : (m) => m;
+  // the Round realised for each live count (its own windup per count; FoxBrain.startAct passes `opts.selves`)
+  const rounds = {};
+  for (let n = 1; n <= TUNING.clones.pool; n++) rounds[n] = realiser(L({ foxRing: { ...MOVES.foxRing, beats: roundBeats(n) } }));
+  return { base: realiser(L(M0)), rounds };
+}));
 
 /** A move as it will play this time (duelist/realise.js). The Round is realised for its pack's n this
  *  phase (`opts.selves`, FoxBrain.startAct; ROUND_PACK.n). */
 export function realise(name, phase = 1, rnd = Math.random, opts = null) {
+  const K = SETS[(cuesOn() ? 2 : 0) + (limbsOn() ? 1 : 0)];
   if (name === 'foxRing') {
     const n = Math.max(1, Math.min(TUNING.clones.pool, Math.round(Number(opts?.selves) || perPhaseN(ROUND_PACK.n, phase))));
-    return ROUNDS[n](name, phase, rnd, opts);
+    return K.rounds[n](name, phase, rnd, opts);
   }
-  return base(name, phase, rnd, opts);
+  return K.base(name, phase, rnd, opts);
 }
 
 /** The guard pose (for tools). */

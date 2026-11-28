@@ -6987,6 +6987,37 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
   `link`, `links`, `last`.
 
+## ADR-249 — Wen Yao's limbs at the contact: straight punches on one line, straight kicks, one cue one meaning (2026-11-26)
+- **Context:** the boss motion audit (the owner: weird arm angles, "kicks aren't straight during the attack and
+  still bended"; every attack readable; effects at the fox's own bar). Measured on the rig with a new opt-in scenario
+  (`fox.mjs . anatomy`: the striking limb at every blow's contact, his paper selves' blows too): his straight punches
+  and palms landed with the elbow at 123 - 139° (a boss without `armSoft` opens at most ~145°, `ARM_SOFT`), the fist
+  0.25 - 0.36 m off the shoulder → hero line; the roundhouse 107 - 111°, the selves' rising kick 126°, the sweep 82°
+  at the contact and 50 - 90° through its turn; the Kite String's heel straight but he landed on the hero, the heel
+  0.8 m past. His uppercut was both white (Paper Rain) and the blue flare (Hand to Hand).
+- **Decision:** a pass in his own folder (`thousandFox/limbs.js`), behind `?foxLimbs=0|a`; his blows stay Tian Lei's
+  builders (`ascendant/moves.js X`, untouched: that session owns them). It rewrites the CONTACT key of his realised
+  beats (Xin Yi's ADR-221 method: a straight blow's hand 1.08 x the arm toward a chest-high point before him, a kick's
+  foot 1.05 x the leg along its line; bent blows keep a bend) and opens his and his selves' animators (`armSoft`,
+  `legSoft`, `kickStretch`: Xin Yi's numbers). The sweep's turn is keyed every 30° with the foot 5 cm off the floor
+  (keys a third of a turn apart cut the chord; a foot on the floor was taken by `_feetClip` for a planted one and
+  walked after the clip). One shared-engine field, opt-in: a beat's `leap.stop` (brain.js `_leap`; 0 / unset = as
+  always) lands a leap short of the hero; his axe heel 0.7 m, his hammer fists 0.45 m. `?foxCues=0|a`: Paper Rain
+  ends on a backfist, so the uppercut always means blue. The owner picked `a` for both from the before / after films
+  (2026-11-27): they are the default (`PICKED`); `0` plays him as before.
+- **Not changed:** every timing, tell, window, number and effect. His windups stay PBZ-fast (first blows from 0.42 s,
+  COMBAT.md "The Thousand-Body Fox"), under the audit brief's 0.7 s floor: the owner's earlier call, asked again with
+  the films: they kept it fast (2026-11-27). His effects (the Pearl, the foxfire, the Howl) are the bar the other bosses are measured
+  against: no options offered.
+- **Fixed after the picks (the owner asked, 2026-11-27):** Hand to Hand's opening jab lifted a lead foot the root
+  had left behind, and it jumped 0.43 m in a frame (on `main` too). The foot planner was STEPPING it (mode 1) when
+  the clip lifted it, and ADR-223's release ease only caught a planted foot. `HeroAnimator` `opts.liftFromStep`
+  (opt-in; the fox's kit only, with his `liftEase`): a foot lifted mid-step eases from where it was drawn, its height
+  too. The hero and every other boss are unchanged. Every move of his now stays under 0.3 m a frame (Hand to Hand
+  0.43 → 0.24, Burning Tail 0.35 → 0.28; `fox.mjs motion` asserts it over all 21).
+- **Consequences:** `fox.mjs motion` asserts the limbs (straight blows >= 155°, kicks >= 155°, hooks and uppercuts
+  95 - 130°, `0` as before); the pace, win, timing and data scenarios are unchanged.
+
 ## ADR-250 — Shen Hui's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps that turn on the feet, the step that lands with the blow; looks for Ember Whirl and Heaven-Splitting Fall (2026-11-26)
 
 - **Context:** the owner's motion audit of every boss (2026-11-26): "weird looking arm angles and sword positioning
@@ -7100,6 +7131,11 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The ring is not on the film (no sound): it is the owner's to judge by ear in
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
+- **Update (2026-11-27):** the owner watched the three films (Shen Hui, the Starless Lord, Xin Yi, today against
+  the dance) and said "Make it default". The game plays the dance with no switch (`DEFAULT_CLASH`); `?clash=0`
+  and the Lab's `clash` row `old` give the numbers before. As with the flash chain (ADR-246), the headless sims
+  keep it off unless a scenario sets it (their posture checks were written for the old numbers); duel and lord
+  `clashdance` play it. The ring is still the owner's to judge by ear.
 
 ## ADR-250 — Bai Wuji round 3: the glide (his melee motion, the owner's pick of three takes), the barrier opens easier, cuts x2.5 through it; his mercy counted in real time (2026-11-27)
 
@@ -7780,6 +7816,31 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   from the knuckles' side. `fistBlade()` now rolls the fist so the forearm comes in opposite the thumb, turned
   `twist` 30° toward −X: (−0.32, −0.60, 0.74), between the two approved poses; the flat shows to the game camera
   (|n·cam| ≥ 0.63; edge-on under ~0.3 vanishes). `g2`'s wrist cap is 26° (the point 8-35° below level).
+
+## ADR-266 — Bai Wuji round 4: a cut on the barrier chips him, his health 16000, the barrier's silhouette on a stop to pick (`?wjStrike`) (2026-11-28)
+
+- **Context:** the owner after the glide (ADR-250): "it takes too much time to chip at him", "balance it to be bit
+  easier to do damage on him"; and "when the player hits him and the sword is hitting the barrier, show a cool ascii
+  effect of the sword hitting the barrier and it showing its silhouette briefly". A stop dealt nothing and drew a
+  small ripple of rings (ADR-241).
+- **Decision:**
+  1. THE CHIP (`wjBarrier.chip` 0.25, `barrier._chip`): a cut stopped on the shell still takes a quarter of its
+     damage off his bar: no stagger, no posture, never his last HP (the shell is no way to kill him), his phase
+     gates hold. The stop's event `dragon:barrier { state 'stop' }` carries `damage, x, y, z` when it chipped; the
+     HUD prints the number there. Bots seldom cut the shell (they cut in his openings), so the bench barely sees it
+     (good bot 163 - 211 s -> 160 - 187 s); a person cuts it often, which is what the owner felt.
+  2. HP 20000 -> 16000: the good bot 4 of 6 in 120 - 150 s (2.3 min; 2.8 before), its two deaths with 5 % of his
+     bar left; fencing 5 of 6 in 87 - 115 s. The blocker and pace bots still die (they never cut).
+  3. THE SILHOUETTE (`untouched/fxStrike.js`, `?wjStrike=0|a|b|c`, PENDING: the owner picks from
+     `docs/looks/veil/wjStrike-options.jpg` and the preview): a, the shell's whole oval lit round from the point;
+     b, his outline, the shell as it hugs him a hand off his body (his mesh points on the camera's plane, a distance
+     field, marching squares; every segment runs with his body on its left so the strokes never print twice); c,
+     that outline and two wider ones, a beat apart, rippling outward. A wave runs out of the point at 8.5 m/s, a
+     crest at heat 0.8 cooling to 0.45 of it, gone in about half a second. All heat in the fire field on the letter
+     grid (`fx._ink`), as the house style asks; the stop's white point, its push of air and its shards stay; '0'
+     keeps the ripple.
+- **Consequences:** the fight is about a fifth shorter, and cutting his barrier is no longer wasted. Open: the
+  owner's pick of the look; whether the chip wants its own sound.
 
 ## ADR-265 — Production's combo and instant slash again, on the swing; the belt hand; the slash's subtler tones (2026-11-27)
 

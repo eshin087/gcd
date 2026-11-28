@@ -1256,7 +1256,8 @@ async function scenarioFlashChain() {
 // drops (regenByHp). Off: every number as before.
 async function scenarioClashDance() {
   out('\n== scenario CLASHDANCE (parries in a row pay more posture; resets; slower recovery at low HP; off = today) ==');
-  const { setClashMode, clashMult, clashRing, clashRegenK } = await imp('src/combat/clashDance.js');
+  const { setClashMode, clashMult, clashRing, clashRegenK, DEFAULT_CLASH, clashMode } = await imp('src/combat/clashDance.js');
+  assert(DEFAULT_CLASH === 'dance' && clashMode() === '0', `the game's default is the dance (${DEFAULT_CLASH}, the owner's pick); a headless sim starts with it off (${clashMode()})`);
   const CD = DEFENSE.clashDance;
   const G = build();
   duel(G, { dist: 3 });

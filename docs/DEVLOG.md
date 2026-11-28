@@ -179,6 +179,65 @@ fast frames); `player:slash` → audio `slashRing`. Combo A: its own hit-stop, s
 landscape and portrait.
 
 **Open / next:** the owner's verdict; the sound is a synth recipe (a recorded one to pick by ear if wanted).
+## 2026-11-26 — Wen Yao's motion audit: straight limbs at the contact, one cue one meaning (ADR-249; `claude/wen-yao-motion-674ba7`)
+
+**Owner:** a motion audit of every boss (one session each; this is the fox's): weird arm angles, kicks bent at the
+strike, unrealistic attacks; every attack readable; his spell effects are the bar for the others.
+
+- **Measured, not eyeballed:** a new opt-in scenario `fox.mjs . anatomy` (every blow's striking limb at its contact
+  in his own frame: kick knee, support knee, elbow, the wrist off the shoulder → hero line; `GCD_ANAT_TRACE` per
+  frame). Straight punches 123 - 139° at the elbow (bosses without `armSoft` cap at ~145°), the roundhouse 107°, the
+  sweep 82° (50 - 90° through its turn), the selves' rising kick 126°; the Kite String's heel landed 0.8 m past the
+  hero (he landed on him).
+- **Changed** (`thousandFox/limbs.js`, `?foxLimbs=0|a`; Tian Lei's builders untouched): contact keys rewritten (Xin
+  Yi's ADR-221 method), his and his selves' animators opened (`armSoft` / `legSoft` / `kickStretch`), the sweep keyed
+  every 30° with the foot skimming 5 cm (on the floor `_feetClip` walked it as a planted foot), `leap.stop` (opt-in
+  in brain.js) for the heel and hammer leaps. `?foxCues=0|a`: Paper Rain's last blow a backfist (the uppercut is blue
+  only). After: straight blows 162 - 167°, kicks 161 - 173°, hooks / uppercuts 111 - 116°.
+- **Kept:** his held blue / red windups (ADR-223), every timing and number, every effect (no options: they are the bar).
+- **Tests:** `fox.mjs motion` asserts the limbs both ways; the whole fox suite green.
+- **Films:** before / after of 15 moves across the three phases, at the game camera (a close crop with the frame as an
+  inset) and from the side, real and half speed.
+
+**Picked** (2026-11-27, from the films): both switches `a`, the default; his windups stay PBZ-fast (0.42 s first
+blows, under the audit brief's 0.7 s floor: the owner kept them).
+**Then fixed** (the owner asked): Hand to Hand's opening jab's lead foot jumped 0.43 m in a frame (on main too): the
+planner was stepping it when the clip lifted it, and the ADR-223 ease only caught a planted foot. `anim.js`
+`liftFromStep` (opt-in, the fox's kit): every move of his now under 0.3 m a frame, asserted in `fox.mjs motion`.
+## 2026-11-28 — Bai Wuji round 4: the chip, 16000, the barrier's silhouette (branch `wj3/barrier-playtest`; ADR-266)
+
+**Owner:** "right now it takes too much time to chip at [him] so balance it to be bit easier to do damage on him.
+when the player hits him and the sword is hitting the [barrier], show a cool ascii effect of the sword hitting the
+barrier and it showing its silhouette briefly."
+
+**What changed.** A cut stopped on the shell chips x0.25 of its damage (`wjBarrier.chip`, `barrier._chip`; never
+his last HP; the number rides `dragon:barrier` stop to the HUD). hp 20000 -> 16000. `untouched/fxStrike.js`: the
+shell's silhouette on a stop behind `?wjStrike=a|b|c` (a the oval, b his outline from his mesh points by marching
+squares, c three outlines rippling out); '0' (the default until the owner picks) keeps the ripple. Lab LOOKS row,
+PENDING.
+
+**Verification.** Bench (6 seeds): today's main, the good bot 4/6 in 163 - 211 s; the chip alone 4/6 in 160 - 187 s;
+16000 + chip 4/6 in 120 - 150 s (deaths with 5 % of his bar left), fencing 5/6; blocker and pace still die.
+`veil.mjs . strike` (the chip, its event, every look draws and is gone in a second); filmed on headless Edge
+(`docs/looks/veil/wjStrike-options.jpg`); full `npm test` before the PR.
+
+**Next.** The owner's pick of `?wjStrike`; a sound for the chip if they want one.
+
+---
+
+## 2026-11-27 — The clash dance is the default (ADR-247; branch `claude/combat-clash-dance-default`)
+
+**Owner:** watched the three films of PR 175 (today against the dance: Shen Hui, the Starless Lord, Xin Yi) and said
+"Make it default".
+
+**What changed:** `DEFAULT_CLASH` is 'dance' (combat/clashDance.js): the game plays the clash dance with no switch;
+`?clash=0` and the Lab's `clash` row `old` give the numbers before. As the flash chain does, the headless sims keep it
+off unless a scenario sets it (their posture checks were written for the old numbers); duel `clashdance` now also
+checks the default. CHANGELOG / WHAT'S NEW: the entry moved to the top as a change; COMBAT, ARCHITECTURE, ROADMAP,
+ADR-247 (an update) say so.
+
+**Open:** the ring by ear on the owner's devices (the films had no sound).
+
 ## 2026-11-27 — Blows land on what they strike (ADR-259; branch `claude/contact-motion-246eeb`)
 
 **Goal:** the owner's contact pass: every hit, deflect, guard, parry and deadly blow should look like it strikes the

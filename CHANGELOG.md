@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-eight pieces of work since 0.4.0:
+One hundred and forty-one pieces of work since 0.4.0:
 - **A six-hit sword-and-shield combo to try** (2026-11-27, ADR-267). *Added, to compare (not the default):* `?combo=e`, a
   six-hit light combo keyed pose for pose from the owner's reference film (mirrored, so the sword stays in the right
   hand): a falling diagonal from high over the right shoulder, a rising backhand out to the right, an overhead into a
@@ -34,6 +34,24 @@ One hundred and thirty-eight pieces of work since 0.4.0:
   (heavier for heavies). The blade smears for a frame or two at the fastest part of every swing. The light combo
   steps in further, holds each finishing pose while its slash flashes, then rises. Checked facing all four ways
   and on the phone camera, upright and sideways.
+- **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner's pick from the films):* the
+  Thousand-Body Fox's straight punches and palms now land on an open arm along one line to you (the elbow 162 - 167°,
+  was 123 - 139°), his roundhouse, his paper selves' rising kick and both ankle sweeps land on a straight leg (the
+  sweep stays straight through its whole turn), his hooks and uppercuts keep a real bend, and his leaps with the heel
+  or both fists come down short so the heel and fists land on you, not him. Paper Rain ends on a backfist, so the
+  uppercut is only ever the blue flare. Timings, tells and numbers unchanged. `?foxLimbs=0` / `?foxCues=0` play him as
+  before.
+- **Bai Wuji's barrier shows itself when your blade hits it, and he goes down quicker** (2026-11-28, ADR-266). *Changed:* a cut that stops on Bai
+  Wuji's barrier still takes a quarter of its damage off his bar (no stagger, never his last HP), its number shown
+  where the blade stopped; his health is 16000 (was 20000). *Added:* the barrier's silhouette lit from where the
+  blade hit it, three looks to try: `?wjStrike=a` (the shell's oval), `b` (its outline hugging him), `c` (outlines
+  rippling outward); without the parameter the ripple as before.
+- **The clash dance: parries in a row break him faster** (2026-11-27, ADR-247). *Changed (the owner's pick from the
+  film):* against the human bosses, parries in a row inside one of his strings pay more posture each (x1, x1.25,
+  x1.5, then x1.75); the run starts over when his string ends, when a blow lands on you, or after a pause. The
+  parry's ring rises a little with the run, and his posture recovers more slowly as his health drops (full speed
+  above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin Yi this
+  replaces their own curve, never faster than before). `?clash=0` (the Lab's `clash` row) plays as before.
 - **Shen Hui fights with better form** (2026-11-26, ADR-250). *Changed (the owner's pick; `?ashForm=0` as before):* his thrusts
   land on a straight arm with the point on its line, out of a real lunge (front knee bent, back leg long); his
   overheads come down one-handed on a diagonal across you instead of straight down; his low sweeps turn on his feet
@@ -116,12 +134,6 @@ One hundred and thirty-eight pieces of work since 0.4.0:
   his meteor's landing send a crisp ring of air racing out with the dust shoved ahead of it (`?halShock=0` the dust
   front before, `b` a dome of pressure). *Added, not the default:* `?halPace=a`, COMBAT rule 10's slower pace (the owner
   kept his fast one). The Lab's LOOKS rows for all four.
-- **The clash dance, to try** (2026-11-26, ADR-247). *Added, to compare (not the default):* `?clash=dance` (the Lab's
-  `clash` row) against the human bosses: parries in a row inside one of his strings pay more posture each (x1,
-  x1.25, x1.5, then x1.75), and the run starts over when his string ends, when a blow lands on you, or after a
-  pause; the parry's ring rises a little with the run; and his posture recovers more slowly as his health drops
-  (full speed above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin
-  Yi this replaces their own curve, never faster than before). `?clash=0` or no switch: as before.
 - **Bai Wuji glides: quicker, one-handed, and his barrier opens easier** (2026-11-27, ADR-250). *Changed:* Bai Wuji's kicks and punches are
   rebuilt by hand: his legs land straight, his hands stay in his pockets for most of phase 1 (one comes out in
   phase 2, both in phase 3), normal blows snap out of the stance, blue and red ones hold a pose you can read, and

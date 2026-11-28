@@ -307,7 +307,17 @@ Render helpers for creature modules:
     `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`. `HeroAnimator.kickStretch` (ADR-221; null by
     default): `[from, to, add, lift0, lift1]`: a foot off the ground (lift0 .. lift1 m) asked for past `from` of
     the leg's length is carried out along its line by up to `add` of it at `to`, so a kick lands with the leg
-    straight; Xin Yi sets it, `legSoft` and `armSoft` every frame from his `?oneMoves=` switch.
+    straight; Xin Yi sets it, `legSoft` and `armSoft` every frame from his `?oneMoves=` switch. Wen Yao sets all
+    three (Xin Yi's numbers, `thousandFox/limbs.js` `LIMBS`) on his animator in his kit's `dress` and on every paper
+    self's in `FoxClones.pose`, while `?foxLimbs=` is on (ADR-249).
+  - **A foot lifted mid-step** (ADR-249): `HeroAnimator` `opts.liftFromStep` (bool; off = as before), read with
+    `opts.liftEase` in `_feetClip`: a foot the clip lifts while the foot planner is still stepping it (mode 1)
+    eases from where it was drawn last frame (`F.ox / oy / oz / oyaw`, model space), not only a planted one. Wen
+    Yao's kit sets it (his paper selves share his kit's options).
+  - **A leap that comes down short** (ADR-249): a duelist beat's `leap: { from, lock, apex, stop }`: `stop` (m,
+    optional; 0 / unset = on the hero, as always) brings the landing spot that much short of the hero along his
+    line (`brain.js` `_leap`), so a heel or fists that strike ahead of him land on the hero. Wen Yao's limbs pass
+    sets it on his axe-heel and hammer-fist leaps; no other boss uses it.
   - **A sword boss's grip** (ADR-226): `HeroAnimator.gripMax` (rad; 0 / unset = off, the hero and every other boss):
     after the sword arm's solve, a forearm more than gripMax off the blade turns toward it round the elbow
     (`_gripAlign`; the hand and `rig.sword.position` move, the blade's direction never). A duelist kit's optional
@@ -1025,7 +1035,7 @@ the clang); each parry slides him `TUNE.deflectPush` 0.16 m back (×1.6 for blue
 the guard lingers (`guardHold` eases 1 → 0 over `TUNE.guardLinger` [0.32, 0.6] s after the last one).
 `player:parry.chain` is the hero's own rhythm count and can run across two strings; the HUD's
 "DEFLECT ×N" uses the attacker's `combat:deflectChain` (one string).
-**The clash dance** (`?clash=dance`, `combat/clashDance.js`, ADR-247; off by default): a duelist keeps the run of
+**The clash dance** (`combat/clashDance.js`, ADR-247; the game's default, `?clash=0` off; the headless sims keep it off unless a scenario sets it): a duelist keeps the run of
 parries inside one of his moves on `_clash {act, n, t, hurt}`. `clashPeek()` gives the run a parry would make now
 (0: off) and the hero reads it in `_parry` for `player:parry {clash}` (audio.js rings it a little higher and
 louder: `clashRing`); `onParried` (and Halcyon's crash) counts it in `_clashMult()` and multiplies the parry's
@@ -6305,6 +6315,10 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
   `weigh(name, def, w, dist) → w`, `onActStart(A) → false` (refused); every handler `frame(dt)`,
   `afterPose(dt, a)`, `stop()` (a reaction, a break, his death), `reset()`. A new move goes in its file, never in
   `moves.js`.
+- **THE STRIKE ON THE SHELL** (`fxStrike.js`, ADR-266; `?wjStrike=0|a|b|c`, PENDING): `WjFx.barrierStop` calls
+  `strikeStart(fx, fx._strikes, d, point, heavy)` (true: a look took the stop, no ripple) and `_wjUpdate` calls
+  `strikeUpdate`; b / c read his figure through `DuelFx._bodyPts` at the stop. `barrier._chip(o)` takes
+  `wjBarrier.chip` x a stopped cut off his bar through the engine's `_applyDamage` (never his last HP).
 - **THE MOTION TAKES** (`motion.js`, ADR-250; `?wjMotion=0|a|b|c`, PICKED b): `moves/melee.js` makes every melee
   move's `beats` / `recovery` live getters over `liveTakes(name, def)`; the take's beats carry `wjHands` ('R' /
   'L' / 'RL': the hands the blow uses) and `wjBlink.near` (a later beat blinks only when the hero is further). `WjMelee`
@@ -6439,7 +6453,7 @@ Player → hud/audio/fx/flow:
   light, sweep, point, slam, cleave or execute; the plunge's has neither; shards = true when only the slam's ground
   shards hit (the blade is in the ground: weight null, no cut drawn, no blade sound)), `player:hurt {damage, kind, hp}`,
   `player:bounced {heavy}` (a duelist's guard deflected the hero's strike: his blade is thrown back),
-  `player:block {damage, tell}`, `player:parry {tell, attack, chain, clash, light, perfect, last, flare}` (clash = the clash dance's run this parry makes on a duelist, 0 with `?clash=dance` off or no duelist's blade / body, ADR-247; flare = the blow was a parry moment, a blue flare blow: the counter follows; last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
+  `player:block {damage, tell}`, `player:parry {tell, attack, chain, clash, light, perfect, last, flare}` (clash = the clash dance's run this parry makes on a duelist, 0 with the dance off (`?clash=0`) or no duelist's blade / body, ADR-247; flare = the blow was a parry moment, a blue flare blow: the counter follows; last = false for a string's non-final blow; chain = the hero's parries in rhythm, ≤ 1.1 s
   apart, 1 = single; it can run across two strings; light = a deflected bullet: a lighter clash; perfect = pressed within
   `DEFENSE.perfectParryWindow`: with light, the bullet is returned), `player:guardBreak {attack}`,
   `player:guardOpen {attack, black}` (black = a black, charged, blow met on the guard or a parry: the whole meter at once, ADR-118; else the guard meter ran out on a blocked blow: the blow was blocked, the guard is knocked open for a
@@ -6586,7 +6600,8 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   ran out, or a thrown car landed; by = who broke it) and cues each fuse as a falling piece is cued
   (`combat:tell` / `combat:flash`, source world, attack carBomb, hazard: true).
 - Bai Wuji, the Veiled Crossing's boss, added these names: `dragon:barrier {state, why, cracks, dur}` (his
-  barrier, untouched/barrier.js: state stop = the hero's blade stopped on it, crack = an ordinary parry cracked
+  barrier, untouched/barrier.js: state stop = the hero's blade stopped on it (with damage, x, y, z when the stop
+  chipped him, ADR-266: the HUD prints the number there), crack = an ordinary parry cracked
   it, open = it opened (why parry / dodge / cracks / break / counter / domain / debug; dur its seconds), close
   = it stands again) and `dragon:domain {state, x, z}` (the phase-3 transition, untouched/domain.js: state sign
   = the hand sign, escape = the hero dodged through the closing wall, caught = he is held, void = the scene is

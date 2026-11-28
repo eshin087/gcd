@@ -18,6 +18,22 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-28',
+        title: "Bai Wuji's barrier shows itself when your blade hits it, and he goes down quicker",
+        notes: [
+          "A cut that stops on Bai Wuji's barrier now still takes a little off his health, and he has less health to begin with: the fight is about a fifth shorter.",
+          'Being tried out: add ?wjStrike=a, ?wjStrike=b or ?wjStrike=c to the address and the barrier lights up where your blade hits it, showing its shape for a moment: its whole oval, an outline hugging his body, or outlines rippling outward.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The clash dance: parries in a row break him faster',
+        notes: [
+          'Against the human bosses, every parry in a row inside one of his strings breaks his posture faster than the last, and the clash of steel rings a little higher with each one.',
+          'His posture also recovers more slowly the more you have cut his health, so a near break stays near.',
+        ],
+      },
+      {
         date: '2026-11-27',
         title: 'Blows land on what they strike',
         notes: [
@@ -134,14 +150,6 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
-        title: 'The clash dance, to try',
-        notes: [
-          'Add ?clash=dance to the address to try it against the human bosses: parries in a row inside one of his strings break his posture faster, and the clash of steel rings a little higher with each one.',
-          'His posture also recovers more slowly the more you have cut his health, so a near break stays near.',
-        ],
-      },
-      {
-        date: '2026-11-26',
         title: 'The perfect parry earns its own reward: the deathblow',
         notes: [
           'Parrying the human bosses now builds toward a reward of its own: every parry fills his gold posture bar, and every perfect parry is banked.',
@@ -157,6 +165,11 @@ export const RELEASES = [
           'On the run he grips his sword the way a hand does: its point hangs down beside his right leg, a little ahead, and rides with his arm as it swings, clear of his coat. His fist sits on the handle the way a hand grips one, and his free arm swings naturally with his stride. ?runSword=hip and ?runArm=d give the run before.',
           'Out of a run with the blade trailing behind him, blocking no longer flips the sword round in one frame.',
         ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'Wen Yao punches and kicks with straight limbs',
+        notes: ['The Thousand-Body Fox now throws his punches and palms with a straight arm along one line to you, and lands his kicks and ankle sweeps with a straight leg. His heel and fists come down on you when he leaps. Paper Rain ends on a backfist, so his uppercut always means blue. Add ?foxLimbs=0 or ?foxCues=0 to see him as before.'],
       },
       {
         date: '2026-11-26',

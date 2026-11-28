@@ -201,6 +201,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.99 — Bai Wuji's barrier shows itself when your blade hits it, and he goes down quicker (2026-11-28, `enemies/untouched`, ADR-266)
+- [x] A cut on the barrier chips a quarter of its damage (never his last HP), its number where the blade stopped
+- [x] His health 16000 (20000); the bench: the good bot in about 2.3 min
+- [x] The barrier's silhouette on a stop, three looks behind `?wjStrike=a|b|c` (`fxStrike.js`; sheet `docs/looks/veil/wjStrike-options.jpg`)
+- [ ] The owner's pick of `?wjStrike` (then PICKED and the default)
+
 ## M1.98 — Bai Wuji glides: quicker, one-handed, and his barrier opens easier (2026-11-27, `enemies/untouched`, ADR-250)
 - [x] Three motion takes behind `?wjMotion=0|a|b|c` (`untouched/motion.js`; the hand layer keeps his hands in his pockets); the owner picked b, the glide
 - [x] The barrier opens easier: two cracks, longer openings, cuts x2.5 through it; hp 20000; patience after 20 s
@@ -1268,6 +1274,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
+- [x] Wen Yao (ADR-249): the anatomy audit (`fox.mjs . anatomy`), straight punches on one line and straight kicks
+      at the contact (his paper selves too), the sweep straight through its turn, leaps that land the heel / fists
+      on the hero, one cue one meaning (Paper Rain's backfist), behind `?foxLimbs` / `?foxCues`; films sent
+  - [x] The owner's pick from the films: both, as the default; his pace kept fast (2026-11-27)
+  - [x] Hand to Hand's opening jab: a lead foot the root left behind jumped 0.43 m in a frame; fixed (anim.js `liftFromStep`, the fox only; every move under 0.3 m)
 - [x] Shen Hui's form (ADR-250, `?ashForm`): thrusts on the arm's line in a real lunge, diagonal overheads, sweeps
       on the feet, a quiet free hand, the step landing with the blow; measured (`GCD_AUDIT_IMPACT`) and filmed
   - [x] The owner's pick from the films: the form, Ember Whirl b (the cyclone), Heaven-Splitting Fall b (the split)
@@ -1336,8 +1347,8 @@ five additions proposed to the owner, who picked the order:
 - [ ] Cuts that split the letters: hits spray the boss's own letters along the blade, a killing cut splits him
       along the swing (looks to pick on film first)
 - [x] The clash dance: parries in a row inside one string pay more posture each, the ring rises; his posture
-      recovers slower as his health falls (ADR-247): built behind `?clash=dance`, off by default
-- [ ] The owner's pick of the clash dance from film (and its ring by ear, on the iPhone too)
+      recovers slower as his health falls (ADR-247): the default, picked by the owner from the film (`?clash=0` off)
+- [ ] The owner's playtest of the clash dance's ring by ear (and on the iPhone)
 - [ ] One answer per unblockable: jump a sweep (and kick off his head), grabs dodge-only, thrusts keep the mikiri
 - [ ] A sub-weapon and a swap strike (boss rewards: a few uses per fight; the swap strikes and refills the guard)
 

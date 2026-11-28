@@ -92,6 +92,9 @@ export const LOOK_SWITCHES = Object.freeze([
   ['sheathPace', ['0', 'a'], '0', '0', false, ['grove'], 'Lu Wusheng\'s pace: 0 as shipped; a COMBAT rule 10\'s floor: a move\'s first blow >= 0.7 s, blows >= 0.45 s apart, the cue 0.35 s before, the time a held cock; the draws as before (0 the owner\'s pick, the default; live, from his next move)'],
   ['foxMotion', ['0', 'a', 'b'], '0', 'a', false, ['fox'], "Wen Yao's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk, the feet no longer jump; b held only"],
   ['foxQuick', ['0', 'a'], '0', 'a', false, ['fox'], 'Fox Snap and Fox Knee: quick white blows from his guard (a: in his moves)'],
+  // --- the boss motion audit (ADR-249; the owner picked a for both from the films, 2026-11-27)
+  ['foxLimbs', ['0', 'a'], '0', 'a', true, ['fox'], "Wen Yao's limbs at the contact: 0 as shipped; a straight punches on one line, straight kicks and sweeps, leaps that land the heel / fists on you (his paper selves too; the owner's pick, the default; a reload)"],
+  ['foxCues', ['0', 'a'], '0', 'a', false, ['fox'], "Paper Rain's last blow: 0 an uppercut (white); a a backfist, so the uppercut is only ever the blue flare (the owner's pick, the default)"],
   ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
   ['wyrmQuick', ['0', 'a'], '0', 'a', false, ['cinderwood'], 'Snap swipe: a quick white paw from its stance (a: in its moves)'],
   ['wyrmStrike', ['0', 'a'], '0', 'a', false, ['cinderwood'], "the wyrm's strikes (ADR-257): a in every bite its body surges first and the head snaps onto the beat (the owner's pick); 0 as shipped"],
@@ -117,6 +120,7 @@ export const LOOK_SWITCHES = Object.freeze([
 
   // Bai Wuji: fx rows
   ['wjShell', ['a', 'b', 'c'], 'a', 'a', false, ['veil'], 'his barrier while up: a all but invisible, it shows where the blade comes at it; b a faint standing shell of sparse strokes; c two faint rings that breathe (live)'],
+  ['wjStrike', ['0', 'a', 'b', 'c'], '0', 'b', false, ['veil'], 'a cut stopped on his barrier: 0 the ripple as shipped; a the shell, its whole oval lit round from the point; b his outline, the shell as it hugs him a hand off his body, lit from the point; c the rings, that outline and two wider ones rippling outward (live)', 'awaiting'],
   ['wjNull', ['a', 'b'], 'a', 'a', false, ['veil'], 'the Violet Null\'s body: a a hard-edged slab, crisp strokes along both edges; b a round bore, brightest at its core, rings running down it (live)'],
 
   // Bai Wuji: world rows
