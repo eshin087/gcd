@@ -333,7 +333,9 @@ export class FalseSaint extends Duelist {
     F?.ambience?.flare?.(1);
     const o = (this._wbo ??= { kind: 'blast', by: 'boss', dx: NaN, dz: NaN, y: 1, src: -1, scar: true });
     o.src = W?.destructibles?.swing?.() ?? -1;
-    W?.impact?.(this.position.x, this.position.z, T.ringRadius + 1, T.power, o);
+    // (the terrain handler owns the change's world blow by phase: P2 a small shock, P3 the lift's ring, P4 the
+    // core vent's nova; without it, the core's full ring at every change)
+    if (!this.parts?.terrain?.onMoment?.(n)) W?.impact?.(this.position.x, this.position.z, T.ringRadius + 1, T.power, o);
     this.fx.transitionBurst?.(n, this.position.x, this.position.z, T.ringRadius);
     this.fx.shellStrip?.(this.position.x, 1.3, this.position.z, 1);
     this.game.shake?.(0.5);
