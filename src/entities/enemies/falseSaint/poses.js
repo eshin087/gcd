@@ -6,8 +6,8 @@ import * as AR from './posesArsenal.js';
 import * as TR from './posesTerrain.js';
 
 // The False Saint's stance, footwork and reaction clips (the BODY AGENT's file; core's stand-in, wave 0;
-// the body contract: gear.js header). A calm man who stands square, the open hands low before him; his
-// guard is the forearms.
+// the body contract: gear.js header). A calm man in a wide, low guard, both open hands raised (GUARD); his
+// ward is the forearms.
 //
 // Pose channels (duelist/poses.js header): body space +x his LEFT, +y up, +z forward; hands are offsets
 // from each shoulder; feet model space; `sw` [az, el] turns the right fist (it hangs on the sword joint).
@@ -33,14 +33,16 @@ import * as TR from './posesTerrain.js';
 const ANK = DIM.ankle;
 const FIST_UP = Object.freeze([0, 1.45]);
 
-/** His stance: square, upright, the weight even, the open hands low before his hips. */
+/** His guard (the owner's second reference sheet, ref-02; every phase): a wide, low, bent-knee stance, both
+ *  hands raised and OPEN at chest / chin height, the lead (left) hand a little forward. (Core's first
+ *  approach to it: the melee / body agents refine it.) */
 export const GUARD = Object.freeze({
-  bX: 0, bY: -0.03, bZ: 0.0, pitch: 0.0, yaw: -0.12, roll: 0,
-  hip: 0.02, hipZ: 0, hipX: 0, spX: 0, spY: 0.04, spZ: 0,
-  hdX: 0.02, hdY: 0.1, hdZ: 0, two: 0, flat: 1, rFy: -0.3, lFy: 0.2,
-  rH: [0.03, -0.32, 0.18], rP: [-0.9, -0.2, -0.3], lH: [-0.03, -0.32, 0.2], lP: [0.9, -0.2, -0.3], sw: FIST_UP,
-  swF: [0, 0, 1], rK: [-0.25, 0, 1], lK: [0.2, 0, 1],
-  rF: [-0.16, ANK, -0.06], lF: [0.14, ANK, 0.1],
+  bX: 0, bY: -0.13, bZ: 0.0, pitch: 0.06, yaw: -0.28, roll: 0,
+  hip: -0.04, hipZ: 0, hipX: 0, spX: 0.02, spY: 0.06, spZ: 0,
+  hdX: 0.02, hdY: 0.22, hdZ: 0, two: 0, flat: 1, rFy: -0.55, lFy: 0.25,
+  rH: [0.06, -0.12, 0.26], rP: [-0.9, -0.4, -0.2], lH: [-0.02, -0.06, 0.38], lP: [0.9, -0.4, -0.1], sw: FIST_UP,
+  swF: [0, 0, 1], rK: [-0.5, 0, 0.85], lK: [0.45, 0, 0.9],
+  rF: [-0.25, ANK, -0.16], lF: [0.22, ANK, 0.18],
 });
 
 const K = createDuelPoses(GUARD, { breath: { k: 0.5, period: 4.6 } });
