@@ -18,6 +18,16 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'The light combo stays planted, hit 4 is a real thrust, the slashes follow the blade',
+        notes: [
+          'The light combo no longer carries you forward: each hit is a small step, and your stance holds through the whole combo. You still step in when the foe is out of reach.',
+          'Your free hand stays out in front of you, where you can see it, instead of hiding behind your back.',
+          'The fourth hit is a level thrust straight at the foe, not a stab at the sky.',
+          'The slash each swing leaves now runs the way your blade went from every side, comes right after the cut, is softer, and never lies across you: the heavy and the charged cleave no longer draw theirs over your back.',
+        ],
+      },
+      {
         date: '2026-11-28',
         title: "Bai Wuji's barrier shows where your blade hits it, and he goes down quicker",
         notes: [
