@@ -52,15 +52,16 @@ export function swordFromUrl() {
 }
 
 /** What the hero wears today: the Shrouded set (gear/shroud.js, ADR-043: a hood, a wrap tunic,
- *  bound sleeves, and since ADR-281 the great cloak from the owner's design sheet) over the Wanderer's
- *  boots, coat tails and sword. No shoulder armour: the cowl carries the shoulders. */
+ *  and since ADR-281 the owner's costume reference 11: a deep hood, a shawl over steel gauntlets, a
+ *  layered robe and the great cloak) over the Wanderer's boots and sword. No shoulder armour: the
+ *  cowl carries the shoulders. */
 export const DEFAULT_LOADOUT = Object.freeze({
-  head: 'shroud.hood',
+  head: 'shroud.deephood',
   chest: 'shroud.tunic',
   shoulders: null,
-  arms: 'shroud.arms',
+  arms: 'shroud.gauntlets',
   legs: 'wanderer.legs',
-  waist: 'wanderer.skirt-tied', // (ADR-281: the front tails only, in the cloak's opening, tied)
+  waist: 'shroud.robe',
   back: 'shroud.greatcloak',
   weapon: 'wanderer.sword',
 });

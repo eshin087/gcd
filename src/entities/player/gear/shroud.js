@@ -3,6 +3,7 @@ import {
   shellGeometry, skirtSheet, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb,
   gripFist, sheetOffset, clumpGeometry, orientTo,
 } from '../heroGeo.js';
+import { panelSkirt } from './sheet.js';
 import { buildFreeHand } from './hands.js';
 
 // The Shrouded set (owner reference 2026-11-11: a hooded swordsman in a huge tattered cloak, seen
@@ -101,6 +102,24 @@ function buildHood({ head, M, mesh }) {
   buildHoodHair(head, M, mesh, HOOD_HAIR);
 }
 
+/** The deep hood (costume reference 11, ADR-281): up over the whole head and well forward of the
+ *  face, which is in its shadow; no hair shows. Head-space rings as HOOD_RINGS. */
+const DEEP_HOOD_RINGS = [
+  { y: -0.05, rx: 0.175, rz: 0.15, cz: -0.01, gap: 0.08 },
+  { y: 0.02, rx: 0.155, rz: 0.145, cz: 0.0, gap: 0.075 },
+  { y: 0.09, rx: 0.142, rz: 0.152, cz: 0.01, gap: 0.082 },
+  { y: 0.16, rx: 0.14, rz: 0.158, cz: 0.014, gap: 0.078 },
+  { y: 0.225, rx: 0.13, rz: 0.155, cz: 0.008, gap: 0.06 },
+  { y: 0.275, rx: 0.108, rz: 0.135, cz: -0.004, gap: 0.036 },
+  { y: 0.31, rx: 0.07, rz: 0.095, cz: -0.016, gap: 0.012 },
+  { y: 0.33, rx: 0.03, rz: 0.045, cz: -0.028, gap: 0.003 },
+];
+function buildDeepHood({ head, M, mesh }) {
+  const g = foldLines(shellGeometry(DEEP_HOOD_RINGS, { sub: 2, cols: 28 }), (x, y, z, u) => 0.5 + 0.6 * Math.sin(u * 54 + y * 8) - 1.4 * Math.max(0, (y - 0.26) / 0.1));
+  mesh(head, g, M.coat);
+  mesh(head, g, M.lining);
+}
+
 /** Gold strands out of the hood (head space): each lock is [x, y, z of its root, direction x, y, z,
  *  length, half-width, curl]; `sides` are mirrored to both sides. Neighbours alternate the ink
  *  sub-id so a line separates them (strands, not one gold mass). Session 16, the owner's pick of
@@ -159,13 +178,15 @@ function buildTunic({ spine, chest, M, BODY, REST, mesh }) {
 /** Cloth sleeves with a rounded shoulder and a soft elbow, forearms bound in leather strips, bare
  *  hands: the sword hand closed round the grip (on the `sword` joint), the free hand loosely
  *  closed. The forearm stops short of the grip so the WRIST reads between the binding and the fist. */
-function buildArms(ctx) {
+function buildArms(ctx, { metal = false, sleeve = false } = {}) {
   const { arms, sword, M, DIM, BODY, mesh } = ctx;
+  // metal: steel gauntlets (the forearm plates, the fists: the armour) instead of leather and bare hands
+  const wrapM = metal ? M.armor : M.leather, handM = metal ? M.armor : M.skin;
   const [ua0, ua1] = BODY.upperArm, [fa0, fa1] = BODY.foreArm, HK = BODY.hand;
   let hand = null;
   {
     const F = gripFist(HK);
-    mesh(sword, mergeGeometries([F.fingers, F.thumb, F.ridge]), M.skin);
+    mesh(sword, mergeGeometries([F.fingers, F.thumb, F.ridge]), handM);
   }
   for (const side of [-1, 1]) {
     const R = side < 0;
@@ -186,21 +207,40 @@ function buildArms(ctx) {
       wraps.push(sub(limb({ length: (y0 - y1) / (n - 1) + 0.012, r0: r, r1: r - 0.004, radial: 10, rings: 2, capSegs: 1 }).translate(0, y + 0.006, 0), i & 1));
     }
     mesh(fore, sub(limb({ length: 0.085, r0: ua1 + 0.002, r1: fa0 + 0.004 }), 1), M.coat);
-    mesh(fore, mergeGeometries(wraps), M.leather);
+    mesh(fore, mergeGeometries(wraps), wrapM);
+    if (sleeve) buildShawlSleeve(upper, side, M, mesh);
     if (R) {
       // the sword hand's wrist and the back of the hand, meeting the fist on the grip
       mesh(fore, mergeGeometries([
         limb({ length: 0.05, r0: fa1 - 0.006, r1: fa1 - 0.004, radial: 8, rings: 2, capSegs: 1 }).translate(0, -DIM.foreArm + 0.07, 0),
         ellipsoidGeometry(0.034 * HK, 0.04 * HK, 0.042 * HK, { widthSegs: 10, heightSegs: 6 }).translate(0, -DIM.foreArm + 0.022, 0.004),
-      ]), M.skin);
+      ]), handM);
     } else {
       // the free hand open (hanging, reaching, bracing), and the same hand closed round the grip
       // below the sword hand: the animator shows one or the other as the hand joins the grip
       // (rig.offHand, anim.js twoHand). The one free-hand builder every arms item shares (hands.js)
-      hand = buildFreeHand(ctx);
+      hand = buildFreeHand(ctx, metal ? M.armor : null);
     }
   }
   return hand;
+}
+
+/** The shawl over an upper arm (costume reference 11, ADR-281): a wide bell of the cloak's cloth
+ *  from the shoulder to above the elbow, a torn lower edge; it rides the arm, so it never flaps. */
+function buildShawlSleeve(upper, side, M, mesh) {
+  const rings = [
+    { y: -0.235, rx: 0.12, rz: 0.115, cz: -0.004, gap: 0 },
+    { y: -0.14, rx: 0.106, rz: 0.1, cz: -0.004, gap: 0 },
+    { y: -0.05, rx: 0.096, rz: 0.092, cz: -0.002, gap: 0 },
+    { y: 0.035, rx: 0.088, rz: 0.086, cz: 0, gap: 0 },
+    { y: 0.075, rx: 0.05, rz: 0.06, cz: 0, gap: 0 },
+  ];
+  const g = foldLines(shellGeometry(rings, { sub: 2, cols: 22 }), (x, y, z, u) => 0.5 + 0.6 * Math.sin(u * 40 + y * 6 + side));
+  const p = g.attributes.position;
+  for (let i = 0; i <= 22; i++) p.setY(i, p.getY(i) + (i % 3 === 0 ? -0.045 : i % 3 === 1 ? 0.008 : -0.018));
+  g.computeVertexNormals();
+  mesh(upper, g.translate(side * 0.008, 0, 0), M.coat);
+  mesh(upper, g, M.lining);
 }
 
 // ---------------------------------------------------------------- back: the tattered cloak
@@ -237,22 +277,22 @@ function buildMantle({ chest, M, REST, mesh }) {
   }
 }
 
-/** A sheet's outermost columns (skirtSheet's 16-column grid) on side `side` (−1 = its −X edge, +1 =
- *  its +X edge), lifted a hair off its front face: the purple edge down the cloak's opening. */
-function edgeTrim(g, side, n = 3) {
+/** Columns [i0, i1) of a sheet (skirtSheet's 16-column grid), lifted a hair off its front face: the
+ *  line of pale glyphs down the middle of the cloak's back (reference 11). */
+function colTrim(g, i0, i1) {
   const C = 17, idx = g.index.array, keep = [];
   for (let k = 0; k < idx.length; k += 3) {
     const i = Math.min(idx[k] % C, idx[k + 1] % C, idx[k + 2] % C);
-    if (side < 0 ? i < n : i >= 16 - n) keep.push(idx[k], idx[k + 1], idx[k + 2]);
+    if (i >= i0 && i < i1) keep.push(idx[k], idx[k + 1], idx[k + 2]);
   }
   const t = g.clone();
   t.setIndex(keep);
   const p = t.attributes.position, nr = t.attributes.normal;
-  for (let v = 0; v < p.count; v++) p.setXYZ(v, p.getX(v) + nr.getX(v) * 0.004, p.getY(v) + nr.getY(v) * 0.004, p.getZ(v) + nr.getZ(v) * 0.004);
+  for (let v = 0; v < p.count; v++) p.setXYZ(v, p.getX(v) + nr.getX(v) * 0.006, p.getY(v) + nr.getY(v) * 0.006, p.getZ(v) + nr.getZ(v) * 0.006);
   return t;
 }
 
-/** Hang cloak sheets (SHROUD_SHEETS' fields; `edge` ±1: a purple trim down that edge) on the
+/** Hang cloak sheets (SHROUD_SHEETS' fields; `spine`: the glyph line down its middle) on the
  *  streamer springs. `pale` = how far down the lower segment the pale torn zone starts. Returns the
  *  streamers. */
 function hangShroudSheets({ chest, arms, M, mesh, joint }, SHEETS, { pale = 0.36, flare = 0.25, curl = 0.2 } = {}) {
@@ -274,7 +314,7 @@ function hangShroudSheets({ chest, arms, M, mesh, joint }, SHEETS, { pale = 0.36
     const g0 = foldLines(skirtSheet(L0, w0, w1, d.wrap, flare, 0, d.seed, [0.004, 0.018, nF, ph]), pleat(0));
     mesh(s0, g0, M.coat);
     mesh(s0, g0, M.lining);
-    if (d.edge) mesh(s0, edgeTrim(g0, d.edge), M.facing);
+    if (d.spine) mesh(s0, colTrim(g0, 7, 9), M.trim);
     const s1 = joint(s0, 0, -L0, 0);
     const R1 = d.wrap + flare * L0;
     const fold = [0.018, 0.04, nF, ph];
@@ -282,7 +322,7 @@ function hangShroudSheets({ chest, arms, M, mesh, joint }, SHEETS, { pale = 0.36
     const g1 = foldLines(skirtSheet(L1, w1, w2, R1, flare, 0.05, d.seed + 7, fold, 0, pale), pleat(L0));
     mesh(s1, g1, M.coat);
     mesh(s1, g1, M.lining);
-    if (d.edge) mesh(s1, edgeTrim(g1, d.edge), M.facing);
+    if (d.spine) mesh(s1, colTrim(g1, 7, 9), M.trim);
     const g2 = foldLines(skirtSheet(L1, w1, w2, R1, flare, 0.05, d.seed + 7, fold, pale, 1), pleat(L0));
     mesh(s1, g2, M.hem);
     mesh(s1, g2, M.lining);
@@ -296,67 +336,45 @@ function hangShroudSheets({ chest, arms, M, mesh, joint }, SHEETS, { pale = 0.36
     }
     // `w` (widths) and `arm` (1 / 2: hung on the right / left upper arm, which then does not push it)
     // feed the animator's cloth-vs-steel bound; `wrap` (the root curve) is for the tests' sheet model
-    streamers.push({ segs: [s0, s1], len: d.len, out: d.out, lag: d.lag ?? SHROUD_LAG, max: SHROUD_MAX, w: d.w, arm: d.on === 'armR' ? 1 : d.on === 'armL' ? 2 : 0, wrap: d.wrap, ...(d.wob ? { wob: d.wob } : {}) });
+    streamers.push({ segs: [s0, s1], len: d.len, out: d.out, lag: d.lag ?? SHROUD_LAG, max: SHROUD_MAX, w: d.w, arm: d.on === 'armR' ? 1 : d.on === 'armL' ? 2 : 0, wrap: d.wrap, ...(d.wob ? { wob: d.wob } : {}), ...(d.floor ? { floor: true } : {}) });
   });
   return streamers;
 }
 
 // ---------------------------------------------------------------- back: the great cloak (ADR-281)
-/** The owner's design sheet "MAIN CHARACTER / DESIGN EXPLORATION / 03" (2026-11-28): a long cloak
- *  over both shoulders, open at the front with a purple edge down the opening, long pale tears at
- *  the hem, a heavy cowl round the neck and shoulders. The owner's pick of three (B: to the calf, not
- *  the boots), then: "fix the left side ... not being connected", "not so flowery ... shaped like a
- *  dress", "width can be lowered a bit". So every long sheet hangs from the shoulders (none on the
- *  left arm: it swung apart from the rest), they hang near straight (`out` ~0.1, the hem barely
- *  wider than the seam), and they share one flutter (`wob`: a third of it, one phase). The fields
- *  are SHROUD_SHEETS'. */
+/** The owner's costume reference 11 (2026-11-28; after their sheet 03 and three rounds on it): a full
+ *  black cloak to the ankles, fading to a lavender torn hem in layered points, a line of pale glyphs
+ *  down the middle of the back. Seven sheets round the back and the flanks, all from the shoulders
+ *  (an arm-hung sheet flapped apart from the rest), near straight, one flutter (`wob`), the hem kept
+ *  over the grass in a roll (`floor`). The fields are SHROUD_SHEETS' (`spine`: the glyph line). */
 const GREAT_WOB = [0.35, 0.6];
 export const GREAT_SHEETS = [
-  // down the middle of the back, then a sheet either side of it turned out round the body
-  { on: 'chest', at: [0, 0.2, -0.165], ry: Math.PI, w: [0.19, 0.22, 0.25], len: [0.44, 0.43], out: 0.06, wrap: 0.24, strips: [0.17, 0.1, 0.23, 0.13], fork: [0, 1, 0, 0], seed: 3 },
-  { on: 'chest', at: [0.11, 0.2, -0.13], ry: Math.PI - 0.55, w: [0.14, 0.17, 0.2], len: [0.435, 0.425], out: 0.07, wrap: 0.22, strips: [0.14, 0.21, 0.12], fork: [1, 0, 0], seed: 17 },
-  { on: 'chest', at: [-0.11, 0.2, -0.13], ry: Math.PI + 0.55, w: [0.14, 0.17, 0.2], len: [0.435, 0.425], out: 0.07, wrap: 0.22, strips: [0.2, 0.11, 0.16], fork: [0, 0, 1], seed: 29 },
-  // down each side from the back of the shoulder
-  { on: 'chest', at: [0.155, 0.2, -0.07], ry: Math.PI - 1.15, w: [0.12, 0.17, 0.2], len: [0.435, 0.425], out: 0.08, wrap: 0.18, strips: [0.18, 0.12, 0.2], fork: [0, 1, 0], seed: 67 },
-  { on: 'chest', at: [-0.155, 0.2, -0.07], ry: Math.PI + 1.15, w: [0.12, 0.17, 0.2], len: [0.435, 0.425], out: 0.08, wrap: 0.18, strips: [0.15, 0.21, 0.11], fork: [0, 0, 1], seed: 41 },
-  // ... and one more each side, from the top of the shoulder down his flank (the owner: "too thin ...
-  // its legs all showing"): the cloak's front edge, purple; the arms swing in front of it
-  { on: 'chest', at: [0.18, 0.205, -0.005], ry: Math.PI - 1.85, w: [0.13, 0.19, 0.23], len: [0.43, 0.42], out: 0.1, wrap: 0.17, strips: [0.16, 0.22, 0.12], fork: [0, 0, 1], seed: 83, edge: -1 },
-  { on: 'chest', at: [-0.18, 0.205, -0.005], ry: Math.PI + 1.85, w: [0.13, 0.19, 0.23], len: [0.43, 0.42], out: 0.1, wrap: 0.17, strips: [0.13, 0.2, 0.17], fork: [1, 0, 0], seed: 97, edge: 1 },
-  // a short torn shoulder cape on the sword arm (as on the cloak before)
-  SHROUD_SHEETS[4],
-].map((d, i, A) => (i < A.length - 1 ? { ...d, wob: GREAT_WOB } : d));
+  { on: 'chest', at: [0, 0.2, -0.17], ry: Math.PI, w: [0.22, 0.28, 0.33], len: [0.52, 0.5], out: 0.08, wrap: 0.26, strips: [0.22, 0.12, 0.26, 0.1, 0.18], fork: [0, 1, 0, 0, 1], seed: 3, spine: true },
+  { on: 'chest', at: [0.11, 0.2, -0.14], ry: Math.PI - 0.55, w: [0.16, 0.21, 0.25], len: [0.52, 0.49], out: 0.09, wrap: 0.22, strips: [0.14, 0.24, 0.1, 0.2], fork: [1, 0, 0, 0], seed: 17 },
+  { on: 'chest', at: [-0.11, 0.2, -0.14], ry: Math.PI + 0.55, w: [0.16, 0.21, 0.25], len: [0.52, 0.49], out: 0.09, wrap: 0.22, strips: [0.2, 0.11, 0.25, 0.13], fork: [0, 0, 1, 0], seed: 29 },
+  { on: 'chest', at: [0.16, 0.2, -0.08], ry: Math.PI - 1.1, w: [0.14, 0.19, 0.23], len: [0.51, 0.48], out: 0.09, wrap: 0.19, strips: [0.18, 0.1, 0.23, 0.14], fork: [0, 1, 0, 0], seed: 67 },
+  { on: 'chest', at: [-0.16, 0.2, -0.08], ry: Math.PI + 1.1, w: [0.14, 0.19, 0.23], len: [0.51, 0.48], out: 0.09, wrap: 0.19, strips: [0.12, 0.22, 0.15, 0.2], fork: [0, 0, 1, 0], seed: 41 },
+  { on: 'chest', at: [0.185, 0.205, -0.005], ry: Math.PI - 1.7, w: [0.13, 0.18, 0.22], len: [0.5, 0.47], out: 0.1, wrap: 0.17, strips: [0.16, 0.24, 0.12], fork: [0, 0, 1], seed: 83 },
+  { on: 'chest', at: [-0.185, 0.205, -0.005], ry: Math.PI + 1.7, w: [0.13, 0.18, 0.22], len: [0.5, 0.47], out: 0.1, wrap: 0.17, strips: [0.13, 0.22, 0.18], fork: [1, 0, 0], seed: 97 },
+].map((d) => ({ ...d, wob: GREAT_WOB, floor: true }));
 
-/** The great cloak's purple: the edge down its opening is the `facing` material, made violet on the
- *  wearer's own rig (model.js tintHero; player.js paints it after every build that wears it). */
-export const GREAT_CLOAK_TINT = Object.freeze({ facing: { fill: [0.3, 0.12, 0.42], ink: [0.66, 0.34, 0.9], inkGlow: 0.4 } });
-/** ... and its ink lines in the player's own part tables (shaderLib uSelfPart*, `facing`'s part):
- *  violet lines and rim instead of the lapels' pale ones. [line rgba, rim rgba, fill gain]. */
-const GREAT_CLOAK_PART = { part: 7, line: [0.78, 0.42, 1.05, 0.95], rim: [0.85, 0.48, 1.1, 1.0], gain: 1.5 };
-
-/** Paint the great cloak's purple on the player's own `rig` after a build (buildHero rewrites his
- *  part tables from HERO_INK): violet when its back is the great cloak, HERO_INK's `facing` otherwise
- *  (an outfit option's lapels). `heroPartValues` from model.js (not imported here: gear/ stays below it). */
-export function paintGreatCloak(U, rig, tintHero, heroPartValues, base) {
-  if (!rig) return;
-  const P = GREAT_CLOAK_PART, on = rig.loadout?.back === 'shroud.greatcloak';
-  if (on) tintHero(rig.materials, GREAT_CLOAK_TINT);
-  const [l, f, r] = on ? [P.line, null, P.rim] : heroPartValues(base);
-  U?.uSelfPartInk?.value?.[P.part]?.set(l[0], l[1], l[2], l[3]);
-  U?.uSelfPartRim?.value?.[P.part]?.set(r[0], r[1], r[2], r[3]);
-  const fv = U?.uSelfPartFill?.value?.[P.part];
-  if (fv) {
-    if (on) fv.x = P.gain;
-    else fv.set(f[0], f[1], f[2], f[3]);
-  }
-}
+/** The robe under the cloak (reference 11's front): four layered torn panels from the belt to the
+ *  ankles in the cloak's open front, the outer two over the inner, fading to the lavender hem; tied
+ *  (`tie`: they stir as one, anim.js _coat). panelSkirt's fields (COAT_PANELS in wanderer.js). */
+export const ROBE_PANELS = [
+  { az: 0.78, w: [0.13, 0.17, 0.21], len: [0.42, 0.42], strips: [0.1, 0.16, 0.08], fork: [0, 1, 0], out: 0.03, flare: 0.1, skew: 1, slant: 0.05, hemFrom: 0.35 },
+  { az: -0.78, w: [0.13, 0.17, 0.21], len: [0.42, 0.42], strips: [0.08, 0.15, 0.11], fork: [0, 0, 1], out: 0.03, flare: 0.1, skew: -1, slant: 0.05, hemFrom: 0.35 },
+  { az: 0.3, w: [0.11, 0.14, 0.17], len: [0.4, 0.4], strips: [0.12, 0.07, 0.14], fork: [1, 0, 0], out: 0, flare: 0.06, hemFrom: 0.3 },
+  { az: -0.3, w: [0.11, 0.14, 0.17], len: [0.4, 0.4], strips: [0.13, 0.09, 0.1], fork: [0, 1, 0], out: 0, flare: 0.06, hemFrom: 0.3 },
+].map((P) => ({ ...P, breeze: 0.02, idleFlare: 0.02, cone: 0.15, tie: [0.3, 0.6] }));
 
 /** The cowl: a heavy wrap of the cloak's cloth round the neck and over the shoulders (chest-joint
  *  rings by height above the ground), two rolls round the throat, a torn lower edge. */
 function buildCowl({ chest, M, REST, mesh }) {
   const yCh = (h) => h - REST.chest;
   const rings = [
-    { y: yCh(1.33), rx: 0.3, rz: 0.215, cz: -0.03, gap: 0.03 },
+    { y: yCh(1.29), rx: 0.275, rz: 0.228, cz: -0.03, gap: 0.03 },
+    { y: yCh(1.33), rx: 0.3, rz: 0.222, cz: -0.03, gap: 0.03 },
     { y: yCh(1.385), rx: 0.288, rz: 0.205, cz: -0.026, gap: 0.03 },
     { y: yCh(1.435), rx: 0.255, rz: 0.185, cz: -0.02, gap: 0.028 },
     { y: yCh(1.475), rx: 0.2, rz: 0.158, cz: -0.012, gap: 0.024 },
@@ -365,10 +383,12 @@ function buildCowl({ chest, M, REST, mesh }) {
   const g = foldLines(shellGeometry(rings, { sub: 2, cols: 32 }), (x, y, z, u) => 0.5 + 0.6 * Math.sin(u * 48 + y * 7));
   // a torn lower edge, deeper than the mantle's
   const p = g.attributes.position;
-  for (let i = 0; i <= 32; i++) p.setY(i, p.getY(i) + (i % 3 === 0 ? -0.05 : i % 3 === 1 ? 0.01 : -0.02));
+  for (let i = 0; i <= 32; i++) p.setY(i, p.getY(i) + (i % 4 === 0 ? -0.018 : i % 4 === 2 ? -0.008 : 0));
   g.computeVertexNormals();
   mesh(chest, g, M.coat);
   mesh(chest, g, M.lining);
+  // the clasp at his left collarbone (reference 11)
+  mesh(chest, boxGeometry(0.04, 0.04, 0.012, 0.09, yCh(1.43), 0.17, 0, 0, 0.78), M.trim);
   // the rolls round the throat, over the tunic's scarf (sub-ids alternate: a line between them)
   mesh(chest, mergeGeometries([
     sub(bandGeometry(0.17, 0.148, 0.055, 24).rotateX(0.1).translate(0, yCh(1.5), 0.004), 1),
@@ -380,7 +400,7 @@ function buildCowl({ chest, M, REST, mesh }) {
 function buildGreatCloak(ctx) {
   buildCowl(ctx);
   // (flare / curl: the sheets keep their curve down to the hem and the tears hang straight, not out)
-  return { streamers: hangShroudSheets(ctx, GREAT_SHEETS, { pale: 0.62, flare: 0.08, curl: 0.04 }) };
+  return { streamers: hangShroudSheets(ctx, GREAT_SHEETS, { pale: 0.3, flare: 0.1, curl: 0.06 }) };
 }
 
 /** The set. `hair` on a head item: the pieces of the hair model.js builds under it ('cap' and
@@ -390,8 +410,13 @@ function buildGreatCloak(ctx) {
 export const SHROUD_ITEMS = [
   { id: 'shroud.hood', slot: 'head', name: 'Tattered Hood', hair: ['cap'], shadowsFace: true, build: buildHood },
   { id: 'shroud.tunic', slot: 'chest', name: 'Wrap Tunic', build: buildTunic },
-  { id: 'shroud.arms', slot: 'arms', name: 'Bound Sleeves', build: buildArms },
+  { id: 'shroud.arms', slot: 'arms', name: 'Bound Sleeves', build: (ctx) => buildArms(ctx) },
   { id: 'shroud.cloak', slot: 'back', name: 'Tattered Shroud', build: buildCloak },
   // the default since ADR-281 (the owner's design sheet); shroud.cloak above is the cloak before it
   { id: 'shroud.greatcloak', slot: 'back', name: 'Great Cloak', build: buildGreatCloak },
+  // the rest of costume reference 11 (ADR-281): the deep hood, the shawl over the arms with steel
+  // gauntlets, the layered robe in front
+  { id: 'shroud.deephood', slot: 'head', name: 'Deep Hood', hidesHair: true, shadowsFace: true, build: buildDeepHood },
+  { id: 'shroud.gauntlets', slot: 'arms', name: 'Shawl and Gauntlets', build: (ctx) => buildArms(ctx, { metal: true, sleeve: true }) },
+  { id: 'shroud.robe', slot: 'waist', name: 'Layered Robe', build: (ctx) => panelSkirt(ctx, ROBE_PANELS, { seed: 140 }) },
 ];

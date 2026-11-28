@@ -4,7 +4,7 @@ import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from 
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
 import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
-import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM, heroPartValues } from './model.js';
+import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
 import { HeroAnimator, ROLL_SLIDE } from './anim.js';
 import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BREATH, CHARGE, REACH, HIT_FEEL, feel, chargeStats, bandHit, SwordSweep } from './combat.js';
@@ -12,7 +12,6 @@ import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { SlashFx, slashMode } from './slashFx.js';
 import './combos.js'; // (`?combo=`: four light combos for the ending slash, worn on LIGHT at load)
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
-import { paintGreatCloak } from './gear/shroud.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { CONTACT, ContactBody, contactOn, findContact, newPin, pinAt, pinStep } from '../../combat/contact.js';
@@ -204,7 +203,6 @@ export class Player {
     this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo, { self: true });
     game.onModelBuilt?.('player'); // (see Dragon: the headless sims reseed their random stream here)
     tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
-    paintGreatCloak(game.U, this.rig, tintHero, heroPartValues, HERO_INK.facing); // (ADR-281)
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
     this.radius = 0.45;
@@ -822,7 +820,6 @@ export class Player {
       saved.forEach((a, i) => a && U[PART_UNIFORMS[i]].value.forEach((v, j) => a[j] && v.copy(a[j])));
     }
     tintHero(rig.materials, HERO_LOOKS[this.look]?.tint);
-    paintGreatCloak(U, rig, tintHero, heroPartValues, HERO_INK.facing);
     const root = this.object3d, old = this.rig;
     this.batch?.dispose(); // the old rig's rigid batches (their bone slots are reused below)
     for (const c of [...root.children]) root.remove(c);
