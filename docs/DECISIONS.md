@@ -8150,3 +8150,50 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
   guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
   change is a combo where a lock was.
+
+## ADR-289 — Shen Hui after the reference pack: his look and his poses behind two switches (`?ashRef`, `?ashRefMove`) (2026-11-28)
+
+- **Context:** the owner generated a reference pack for Shen Hui (`docs/art/character-packs-v04/shen-hui`: an
+  identity anchor and 22 sheets, A01, D01 - D12, F01 - F04, P01 - P02, R01 - R02, V01; a handoff, a review with an order
+  of authority, a beat-locator table and a coverage map of 47 moves / 138 beats / 19 reaction clips) and asked for his
+  look and his animation to follow it: lean build, the layered ragged ash-grey robe, brick-red folds, the bronze
+  bracer, the straight jian in his right hand with its disc guard and red tassel, the phase dressing (phase 2
+  smoulders; phase 3 hatless, hair loose, the robe pale), every move, reaction, step and transition, with no change
+  to balance. The pack's source hashes matched the commit it was made from, but `main` had since taken ADR-250 (his
+  form, `formKeys`): 12 of its 26 hashed files had changed. Its beat map still held (the same 47 moves, 138 beats,
+  19 clips, the authored keys unchanged: ADR-250 adds a layer, it does not re-key), so the pose layer goes over
+  whatever keys the shipped switches pick. Final art approval stays with the owner.
+- **Decision:** the pattern of ADR-277.
+  1. TWO SWITCHES, '0' (as shipped) until the owner picks (`lookSwitch.js` PENDING; the Lab's LOOKS rows marked
+     awaiting). `?ashRef=a` (read when his rig is built) is the look; `?ashRefMove=a` (live, from his next move) the
+     poses. `ashDisciple/refLook.js` holds both readers and the layer's numbers.
+  2. THE LOOK, only what the anchor shows that he lacked: the bracer of old bronze (a fitted shell and four raised
+     bands, `trim`) instead of the charcoal cloth strips; a narrow brick-red fold down the front by the wrap's edge
+     and down the back (`facing`, on its own springs, a hair proud of the panels: laid inside them, the wrap hid it
+     from every side); the robe layered and ragged in every phase: the over-robe's torn edge at mid-thigh and the
+     hem run out into torn ends, each a slice of the panel's own sheet with a sawtooth edge (tatter strips cost
+     seven times as many triangles: +17.7k on his 57k; the slices +6.6k). The hat, the jian, the tassel, his colours
+     and the phase dressing are untouched; phase 3 still takes the hat and burns the robe pale (the red fold neither
+     smoulders nor frays: `look.js` skips `inner` panels).
+  3. THE POSES, never the timing. A layer over the keys `keysOf` picks (ADR-226's held tells, ADR-250's form, or
+     neither): the same key times and eases, so the realiser lands every impact, flash, active end, follow-through
+     clock and recovery where it did; no root-motion field is touched. Every clip is compiled round the reference's
+     guard (F01 / P01 / A01 08 / V01's base pose: the same level blade and sword-finger arc, 7 cm lower, the feet
+     a long stride apart, knees out) through a second pose set (`poses.js` K_REF, chosen live by `posesNow`; a clip
+     carries its set). The load sinks a little, the contact and follow-through sink and lean into the cut, the
+     feet a little wider (not in the air); a one-handed blow's free hand that would sit in front of him goes out
+     to the side and back (opposition); the reaction clips read bigger (R01 rows 5 - 7) and follow the switch
+     (`AshBrain.C`). Piercing Ash keeps its own windup (the owner's call, ADR-226) under the layer.
+  4. KEPT AS THEY ARE: the choreography (the D strips draw the source's own beats), the transitions (D10 / F04's
+     kneel, upright blade, rise and low sweep are the shipped keys), the qi, flit, burns and terrain pieces (F02 -
+     F04 draw the shipped effects; the pack's "contact aids" are not new set art), the branches and counts (V01:
+     hesitate 50 %, flagVolley 60 %, chaseRain / partingWind close cut or ranged qi, streakFlurry's cycle), and
+     ADR-250's overhead diagonal.
+  5. CHECKED: `duel.mjs . ashref`: 2760 realisations (every move, phase, branch roll and flurry count; the shipped
+     switches, each off, both off) time every beat the same with the layer on and off; the same seeded fights in
+     phases 1 and 3 land the same blows at the same times; the sword audit holds (wrist ≤ 40°, the blade ≥ 0.18 m
+     from his head and hat, the elbow opening ≥ 156°, thrusts on the arm's line); the look's pieces and their cost.
+- **Consequences:** the default game is unchanged until the owner picks. The pose layer is broad (every beat at
+  once), not a hand re-key of 138 beats: the strips draw the beats he already plays, and the differences were of
+  bearing (lower, committed, the free arm in opposition), not of path. A per-move pass is open on what the owner
+  names. At the game camera the stance and the layered hem read; the red fold and the bronze read in close views.

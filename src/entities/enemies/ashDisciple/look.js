@@ -74,6 +74,7 @@ export function dressSkirt(ctx, out) {
   const { M, mesh } = ctx;
   const keep = [];
   (out?.coat ?? []).forEach((C, i) => {
+    if (C.inner) return; // (ADR-289, `?ashRef`: the red inner robe under the panels neither smoulders nor frays)
     const P = C.def, s1 = C.segs[1];
     const L0 = P.len[0], L1 = P.len[1], R1 = C.r0 + 0.25 * L0, R2 = R1 + 0.25 * L1;
     const sk = P.skew ?? 0, w0 = P.w[0];

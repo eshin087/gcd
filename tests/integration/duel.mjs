@@ -6025,7 +6025,144 @@ async function scenarioAudit() {
   return last;
 }
 
+/**
+ * ASHREF (ADR-289): Shen Hui after the reference pack (docs/art/character-packs-v04/shen-hui). `?ashRefMove=a`
+ * changes poses only: every move, phase, branch roll and flurry count realised with it on and off times every
+ * beat the same (start, impact, end, windup, hold, active, sustain, follow-through clock, close, flash, feint,
+ * last, the move's recovery and end) under the shipped switches, with ashMotion / ashForm each off, and both off;
+ * the same seeded fights (phases 1 and 3) against the defender bot land the same blows at the same times; the
+ * sword audit's limits hold (the sword in line with the forearm, the blade clear of his head (the hat) and body,
+ * the arms opening, the thrust on the arm's line); the reaction clips follow the switch. `?ashRef=a`: the bronze
+ * bracer, the two red inner panels, the ragged over-robe and hem; phase 3 still takes the hat off and burns the
+ * robe pale; 3 phases of a fight, nothing NaN.
+ */
+async function scenarioAshRef() {
+  out('\n== scenario ASHREF (ADR-289: the reference pack behind ?ashRef / ?ashRefMove: the look and the poses, never the timing) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const rnd = (s) => () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const f4 = (x) => (Number.isFinite(x) ? x.toFixed(5) : String(x));
+  const key = (A) => JSON.stringify([f4(A.end), f4(A.recoveryStart), A.hits, A.beats.map((b) => [b.index, f4(b.start), f4(b.impact), f4(b.end), f4(b.W), f4(b.H), f4(b.A), f4(b.S), f4(b.F), b.close, f4(b.flash), f4(b.tellAt), b.feint, b.last])]);
+  let n = 0;
+  const diff = [];
+  for (const combo of [{}, { ashMotion: '0' }, { ashForm: '0' }, { ashMotion: '0', ashForm: '0' }]) {
+    for (const [k, v] of Object.entries(combo)) setLook(k, v);
+    for (const name of MOVE_NAMES) {
+      const def = MOVES[name];
+      for (const ph of [1, 2, 3]) {
+        if ((def.phase ?? 1) > ph || (def.transition && ph !== def.phase)) continue;
+        for (let s = 1; s <= 6; s++) {
+          const opts = def.streak ? { count: 1 + s } : null;
+          setLook('ashRefMove', '0');
+          const a = realise(name, ph, rnd(s * 7919), opts);
+          setLook('ashRefMove', 'a');
+          const b = realise(name, ph, rnd(s * 7919), opts);
+          if (!a || !b) continue;
+          n++;
+          if (key(a) !== key(b)) diff.push(`${name} P${ph} s${s}`);
+        }
+      }
+    }
+    for (const k of Object.keys(combo)) setLook(k, null);
+  }
+  setLook('ashRefMove', null);
+  assert(!diff.length && n > 1000, `${n} realisations (47 moves, every phase, branch roll and flurry count; the shipped switches, each off and both off) time every beat the same with ?ashRefMove on and off (${diff.slice(0, 6).join(', ') || 'none differ'})`);
+  // the poses do change (the layer is on): the first beat's impact key of a thrust and a cut
+  setLook('ashRefMove', 'a');
+  const on = realise('plumThrust', 1, rnd(3)), cut = realise('fallingAsh', 1, rnd(3));
+  setLook('ashRefMove', '0');
+  const off = realise('plumThrust', 1, rnd(3));
+  setLook('ashRefMove', null);
+  assert(on.clip.kit !== off.clip.kit && cut.clip.kit === on.clip.kit, `?ashRefMove=a compiles its clips round the reference's guard (a set of their own)`);
+  // the same seeded fights, the same blows
+  const fight = (refOn, phase) => {
+    setLook('ashRefMove', refOn ? 'a' : '0');
+    const G = build(SEED + 11 + phase);
+    duel(G, { dist: 3.5, ai: true });
+    const d = G.game.dragon;
+    if (phase >= 2) d.debug.phase2();
+    if (phase >= 3) d.debug.phase3();
+    G.defend = makeDefender(G);
+    const h0 = G.hits.length;
+    let bad = false;
+    run(G, 24, () => {
+      G.defend.act();
+      if (!Number.isFinite(d.position.x + d.position.z)) bad = true;
+    });
+    setLook('ashRefMove', null);
+    return { bad, hits: G.hits.slice(h0).map((h) => `${h.t.toFixed(3)} ${h.attack} ${h.r} ${h.damage}`) };
+  };
+  for (const ph of [1, 3]) {
+    const A = fight(false, ph), B = fight(true, ph);
+    const first = A.hits.findIndex((h, i) => h !== B.hits[i]);
+    assert(A.hits.length > 4 && A.hits.length === B.hits.length && first < 0 && !A.bad && !B.bad, `phase ${ph}: a seeded 24 s fight against the defender: ${A.hits.length} blows off, ${B.hits.length} on, the same times, moves and results${first >= 0 ? ` (first differs: ${A.hits[first]} / ${B.hits[first]})` : ''}; finite`);
+  }
+  // the sword audit with the reference's poses (the shipped switches on)
+  setLook('ashRefMove', 'a');
+  let last = null;
+  const H = { THREE, build: (...a) => (last = build(...a)), duel: (G, o) => duel(G, o), run, DT, MOVES, names: ['plumThrust', 'fallingAsh', 'piercingAsh', 'ashRain', 'swallow', 'crane', 'lotus', 'needleDart', 'wristFlick', 'twinEmbers', 'glideKick'], formOf: () => 1, setForm: null };
+  const rows = swordAudit(H);
+  printAudit(rows, out);
+  printImpacts(rows, out);
+  const ok = rows.filter((r) => !r.fail);
+  assert(ok.length === H.names.length, `${ok.length} of ${H.names.length} moves audited`);
+  const wr = Math.max(...ok.map((r) => r.wrist.max)), gh = Math.min(...ok.map((r) => r.gap.head)), gb = Math.min(...ok.map((r) => r.gap.body)), el = Math.min(...ok.map((r) => r.elbow[1]));
+  assert(wr <= 62, `the sword in line with the forearm with the reference's poses: the wrist at most ${wr}° (≤ 62)`);
+  assert(gh >= 0.08 && gb >= 0.08, `the blade clear of him (the hat too) with the reference's poses: ${gh.toFixed(2)} m from his head, ${gb.toFixed(2)} m from his body at the closest (≥ 0.08)`);
+  assert(el >= 148, `every move opens the arm: the widest elbow at least ${el}° (≥ 148)`);
+  const th = ok.flatMap((r) => r.impacts.map((x) => ({ ...x, name: r.name }))).filter((x) => x.thrust);
+  assert(th.length >= 3 && th.every((x) => x.elbow >= 150 && x.armLine <= 8), `a thrust lands on an open arm, the point on its line: ${th.map((x) => `${x.name} b${x.i} ${x.elbow}° / ${x.armLine}°`).join(', ')} (≥ 150° / ≤ 8°)`);
+  const rain = ok.find((r) => r.name === 'ashRain');
+  assert(rain.free.v <= 12, `the free hand never flies through Rain of Ashes: ${rain.free.v} m/s at its fastest (≤ 12)`);
+  const lotus = ok.find((r) => r.name === 'lotus');
+  assert(lotus.feet.cross >= 0, `Lotus Sweep turns on its feet: the legs never cross (${lotus.feet.cross} m)`);
+  const G0 = last;
+  const brain = G0.game.dragon.brain;
+  const { CLIP: C0, CLIP_REF } = await imp('src/entities/enemies/ashDisciple/moves.js');
+  const refC = brain.C === CLIP_REF;
+  setLook('ashRefMove', '0');
+  const offC = brain.C === C0;
+  setLook('ashRefMove', null);
+  assert(refC && offC && Object.keys(CLIP_REF).length === Object.keys(C0).length, `the reaction clips follow the switch (${Object.keys(CLIP_REF).length} clips, the reference's round its guard)`);
+  // the look: what the build hangs on him with the switch off and on (meshes by material, triangles)
+  const census = (on) => {
+    setLook('ashRef', on ? 'a' : '0');
+    const g = build(SEED + 3);
+    duel(g, { dist: 4 });
+    const dd = g.game.dragon, MM = dd.rig.materials, c = { red: 0, bronze: 0, coat: 0, tris: 0 };
+    dd.rig.root.traverse((o) => {
+      if (!o.isMesh) return;
+      const n = o.geometry?.index ? o.geometry.index.count / 3 : (o.geometry?.attributes?.position?.count ?? 0) / 3;
+      c.tris += n;
+      if (o.material === MM.facing) c.red += n;
+      if (o.material === MM.trim) c.bronze += n;
+      if (o.material === MM.coat) c.coat += n;
+    });
+    setLook('ashRef', null);
+    return c;
+  };
+  const c0 = census(false), c1 = census(true);
+  out(`     his rig: ${Math.round(c0.tris)} -> ${Math.round(c1.tris)} triangles (+${Math.round(c1.tris - c0.tris)}); red ${Math.round(c0.red)} -> ${Math.round(c1.red)}, bronze ${Math.round(c0.bronze)} -> ${Math.round(c1.bronze)}, robe ${Math.round(c0.coat)} -> ${Math.round(c1.coat)}`);
+  assert(c1.red > c0.red * 1.5 && c1.bronze > c0.bronze * 1.3 && c1.coat > c0.coat && c1.tris - c0.tris < 0.15 * c0.tris, `?ashRef=a hangs the red inner folds, the bronze bracer and the ragged robe on him, for less than 15 % more triangles than he has (+${Math.round(c1.tris - c0.tris)} on ${Math.round(c0.tris)})`);
+  setLook('ashRef', 'a');
+  const G = build(SEED + 3);
+  duel(G, { dist: 4, ai: true });
+  const d = G.game.dragon;
+  let hatOn1 = null, hatOn3 = null, bad = false;
+  const hat = d.rig.root.userData.dress?.hideP3 ?? [];
+  run(G, 3, () => { if (!Number.isFinite(d.position.x + d.position.z)) bad = true; });
+  hatOn1 = hat.length > 0 && hat.every((m) => m.visible);
+  d.debug.phase2();
+  run(G, 3);
+  d.debug.phase3();
+  run(G, 4, () => { if (!Number.isFinite(d.position.x + d.position.z)) bad = true; });
+  hatOn3 = hat.some((m) => m.visible);
+  setLook('ashRef', null);
+  assert(hatOn1 && !hatOn3 && !bad, `?ashRef=a: the hat on in phase 1 (${hatOn1}) and off in phase 3 (${!hatOn3}); 10 s through three phases, nothing NaN`);
+  return last;
+}
+
 const SCENARIOS = {
+  ashref: scenarioAshRef,
   motion: scenarioMotion,
   react: scenarioReact,
   strategy: scenarioStrategy,

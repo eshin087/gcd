@@ -1,5 +1,6 @@
 import { DIM } from '../../player/model.js';
 import { createDuelPoses, azEl, dirLerp } from '../duelist/poses.js';
+import { refMove, GUARD_REF as RG } from './refLook.js';
 
 // The Ash Disciple's guard stance and the pose functions built round it (duelist/poses.js: the clip
 // format, the blade-driven arm, the gait). Nothing here mirrors the hero: his stance is a jian guard,
@@ -24,7 +25,28 @@ export const GUARD = GUARD_BASE;
 
 const K = createDuelPoses(GUARD);
 export const { duelStance, duelLoco, compileClip, completeBeat, evalClip, duelClip } = K;
-/** The pose table HeroAnimator takes for him. */
-export const DUEL_POSES = K.POSES;
+// `?ashRefMove=a` (refLook.js, ADR-289): the reference pack's guard: the same blade and sword-finger, on a
+// lower, wider stance (F01 / P01 / A01 08 / V01 base pose). Every clip compiled while it is on is compiled
+// round it, so a clip starts from it and returns to it.
+export const GUARD_REFP = Object.freeze({
+  ...GUARD_BASE,
+  bY: GUARD_BASE.bY - RG.sink,
+  rF: [GUARD_BASE.rF[0] - RG.wide, GUARD_BASE.rF[1], GUARD_BASE.rF[2] * RG.stride],
+  lF: [GUARD_BASE.lF[0] + RG.wide, GUARD_BASE.lF[1], GUARD_BASE.lF[2] * RG.stride],
+  rK: [GUARD_BASE.rK[0] - RG.knee, GUARD_BASE.rK[1], GUARD_BASE.rK[2]],
+  lK: [GUARD_BASE.lK[0] + RG.knee, GUARD_BASE.lK[1], GUARD_BASE.lK[2]],
+});
+export const K_REF = createDuelPoses(GUARD_REFP);
+/** The pose set playing now: the reference's while `?ashRefMove` is on. */
+export const posesNow = () => (refMove() ? K_REF : K);
+/** A clip compiled round the guard playing now (the realiser's: moves.js). */
+export const compileClipNow = (keys, dur, o) => posesNow().compileClip(keys, dur, o);
+
+/** The pose table HeroAnimator takes for him (live: a clip carries its own set, `clip.kit`; the stance
+ *  between moves is the set playing now). */
+export const DUEL_POSES = Object.freeze({
+  loco: (p, A) => posesNow().duelLoco(p, A),
+  duel: (p, A) => posesNow().duelClip(p, A),
+});
 
 export { azEl, dirLerp };
