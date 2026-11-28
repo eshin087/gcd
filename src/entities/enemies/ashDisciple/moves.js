@@ -1,6 +1,7 @@
 import { TELL } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
-import { compileClip, completeBeat, GUARD } from './poses.js';
+import { compileClip, completeBeat, GUARD, K_REF, compileClipNow, posesNow } from './poses.js';
+import { refMove, REF } from './refLook.js';
 import { TUNING } from './tuning.js';
 import { makeRealise } from '../duelist/realise.js';
 import { GUARD_CLIPS } from '../duelist/guard.js';
@@ -1364,15 +1365,91 @@ for (const [k, c] of Object.entries(CLIP)) c.name = k;
  * holds, absolute times per beat ({ start, impact, end, flash, tellAt }) and the compiled clip. `rnd`
  * = a 0..1 source (the game's Math.random, so the seeded sims replay).
  */
+// ---------------------------------------------------------------- after the reference pack (ADR-289)
+// `?ashRefMove=a` (refLook.js; '0' = as shipped): the reference pack's poses over whatever keys the shipped
+// switches pick (ADR-226's held tells, ADR-250's form, or neither): the same key times and the same eases,
+// so every windup, hold, impact, active window, follow-through clock, zone, flash and cue lands where it did
+// (the realiser times a beat from its windup, never from its poses), and no root-motion field is touched
+// (bX / bZ / bY are pose offsets; dash, lift, leap, travel, spring, flit, zig, go are beat fields, not keys).
+// Every clip is compiled round the reference's guard (poses.js GUARD_REFP).
+const FLOOR_Y = ANK + 0.02;
+const sinkTo = (bY, by) => Math.max(bY - by, Math.min(bY, REF.floor));
+const widen = (v, s) => (v.length === 2 ? [v[0] + s * REF.wide, v[1]] : v[1] <= FLOOR_Y ? [v[0] + s * REF.wide, v[1], v[2]] : v);
+const clampReach = (v, r = REF.reach) => {
+  const n = Math.hypot(v[0], v[1], v[2]);
+  return n > r ? v.map((x) => (x * r) / n) : v;
+};
+/** A beat carried off the ground (its feet keyed in the air, or a leap / lift / spring): no sink, no widening. */
+const airborne = (b, k) => !!(b.leap || b.lift || b.spring) || Math.abs(k.pitch ?? 0) > 1 || Math.abs(k.roll ?? 0) > 1
+  || (Array.isArray(k.rF) && k.rF.length === 3 && k.rF[1] > FLOOR_Y + 0.05 && Array.isArray(k.lF) && k.lF.length === 3 && k.lF[1] > FLOOR_Y + 0.05);
+/** One key of a beat in the reference's poses. */
+export function refKey(u, k, b) {
+  const o = { ...k };
+  const hit = u >= 1 - 1e-6;
+  if (!airborne(b, k)) {
+    if (hit) {
+      if (k.bY != null) o.bY = sinkTo(k.bY, REF.sink);
+      if (k.pitch != null) o.pitch = k.pitch + REF.lean;
+    } else if (u > 0.3 && k.bY != null) o.bY = sinkTo(k.bY, REF.load);
+    if (Array.isArray(k.rF)) o.rF = widen(k.rF, -1);
+    if (Array.isArray(k.lF)) o.lF = widen(k.lF, 1);
+  }
+  // a one-handed blow's free hand out to the side and back in opposition, not in front of his body
+  if (hit && u < 1.7 && Array.isArray(k.lH) && !((k.two ?? 0) > 0.3) && k.lH[2] > REF.freeZ && k.lH[1] < 0.3) {
+    o.lH = clampReach([k.lH[0] + REF.free[0], k.lH[1] + REF.free[1], Math.min(k.lH[2] + REF.free[2], REF.freeZ)]);
+  }
+  return o;
+}
+const REF_KEYS = new WeakMap(); // beat -> (keys -> the reference's keys)
+/** A beat's keys (the array the shipped switches pick) in the reference's poses; cached per beat and array. */
+export function refKeysOf(b, keys) {
+  if (!Array.isArray(keys)) return keys;
+  let M = REF_KEYS.get(b);
+  if (!M) REF_KEYS.set(b, (M = new WeakMap()));
+  let r = M.get(keys);
+  if (!r) M.set(keys, (r = keys.map(([u, k]) => [u, refKey(u, k, b)])));
+  return r;
+}
+const REF_RECOVERY = new WeakMap();
+function refRecoveryOf(R) {
+  if (!Array.isArray(R)) return R;
+  let r = REF_RECOVERY.get(R);
+  if (!r) REF_RECOVERY.set(R, (r = R.map(([t, k]) => [t, k.bY != null && !(Math.abs(k.pitch ?? 0) > 1) ? { ...k, bY: sinkTo(k.bY, REF.load) } : k])));
+  return r;
+}
+/** The reactions in the reference's poses (R01 rows 5 - 7): the recoils thrown further, the stagger lower. */
+const BIG = new Set(['flinch', 'stagger', 'recoil', 'reeling', 'trampled']);
+function refClipKey(name, k) {
+  if (!BIG.has(name)) return k;
+  const o = { ...k }, R = REF.react;
+  if (k.pitch != null) o.pitch = k.pitch * R.pitch;
+  if (k.bZ != null) o.bZ = k.bZ * R.bZ;
+  if (k.spX != null) o.spX = k.spX * R.spX;
+  if (k.bY != null) o.bY = sinkTo(k.bY, R.by);
+  return o;
+}
+/** The reaction clips compiled round the reference's guard (the brain's set while `?ashRefMove` is on). */
+export const CLIP_REF = Object.fromEntries(Object.entries(CLIPS).map(([k, c]) => [k, K_REF.compileClip(c.keys.map(([t, pose]) => ({ t, ...refClipKey(k, pose) })), c.dur, { hold: !!c.hold })]));
+for (const [k, c] of Object.entries(CLIP_REF)) c.name = k;
+/** The reaction clips playing now. */
+export const clipsNow = () => (refMove() ? CLIP_REF : CLIP);
+
+/** A beat's keys this time: ADR-226's held tell poses (`?ashMotion`), ADR-250's form (`?ashForm`), either or
+ *  both; null = the beat's own keys. */
+const keysNow = (b) => {
+  const m = motionOn();
+  if (formOn()) return (m ? (b.formMotionKeys ?? b.formKeys ?? b.motionKeys) : b.formKeys) ?? null;
+  return m ? (b.motionKeys ?? null) : null;
+};
+
 export const realise = makeRealise({
-  TUNING, MOVES, compileClip: (keys, dur) => compileClip(keys, dur), completeBeat,
-  // ADR-226's held tell poses (`?ashMotion`) and ADR-250's form (`?ashForm`), either or both
-  keysOf: (b) => {
-    const m = motionOn();
-    if (formOn()) return (m ? (b.formMotionKeys ?? b.formKeys ?? b.motionKeys) : b.formKeys) ?? null;
-    return m ? (b.motionKeys ?? null) : null;
+  TUNING, MOVES, compileClip: (keys, dur) => compileClipNow(keys, dur), completeBeat: (list) => posesNow().completeBeat(list),
+  // the shipped switches' keys, and the reference's poses over them (`?ashRefMove`)
+  keysOf: (b) => (refMove() ? refKeysOf(b, keysNow(b) ?? b.keys) : keysNow(b)),
+  recoveryKeysOf: (def) => {
+    const R = formOn() ? (def.formRecovery ?? null) : null;
+    return refMove() ? refRecoveryOf(R ?? def.recoveryKeys) : R;
   },
-  recoveryKeysOf: (def) => (formOn() ? (def.formRecovery ?? null) : null),
 });
 
 /** The guard pose (for tools). */

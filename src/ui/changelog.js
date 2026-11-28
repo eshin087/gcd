@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'Shen Hui after the reference pack, to try',
+        notes: [
+          'A new look for Shen Hui to try before it becomes his own: a bronze bracer, a brick-red fold down his robe, and the robe layered and torn ragged at the hem.',
+          'And a new way for him to move: a lower, wider guard, blows that sink into the cut, the free hand out behind, bigger reactions. His timing and damage are exactly as before.',
+          'Add ashRef=a and ashRefMove=a to the address to try them.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'Swipe to dodge on touch',
         notes: [
           'Touch: flick your thumb on the right half of the screen and the hero dodges that way at once (SWIPE DODGE in the pause menu turns it off).',

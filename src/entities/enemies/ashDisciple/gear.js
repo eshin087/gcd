@@ -6,6 +6,7 @@ import {
 } from '../../player/heroGeo.js';
 import { ASH_ART, toDragonLook } from './bodyArt.js';
 import { ashLookNow, dressHat, dressSleeves, dressSkirt } from './look.js';
+import { refLook } from './refLook.js';
 
 // The Ash Disciple's outfit (docs/specs/ash-disciple.md §3): gear items on the hero's skeleton, so
 // he is built by the same buildHero(U, loadout) and driven by the same animator. A small straw douli
@@ -101,7 +102,16 @@ function buildSleeves({ arms, sword, M, DIM, BODY, mesh }) {
         const t = i / (n - 1), y = lerp(y0, y1, t), r = lerp(fa0, fa1 - 0.002, t) + 0.006;
         wraps.push(sub(limb({ length: (y0 - y1) / (n - 1) + 0.012, r0: r, r1: r - 0.004, radial: 10, rings: 2, capSegs: 1 }).translate(0, y + 0.006, 0), i & 1));
       }
-      mesh(fore, mergeGeometries(wraps), M.shirt);
+      if (refLook()) {
+        // (ADR-289, `?ashRef`: the anchor's bracer of old bronze: a fitted shell from the wrist to past
+        // mid-forearm, ringed by raised bands (alternating ink: the engraving), over the wraps' place)
+        const shell = [sub(limb({ length: y0 - y1 + 0.03, r0: fa0 + 0.011, r1: fa1 + 0.008, radial: 12, rings: 3, capSegs: 1 }).translate(0, y0 + 0.012, 0), 0)];
+        for (let i = 0; i < 4; i++) {
+          const t = i / 3, y = lerp(y0 + 0.004, y1 + 0.004, t), r = lerp(fa0, fa1, t) + 0.015;
+          shell.push(sub(limb({ length: 0.014, r0: r, r1: r, radial: 12, rings: 1, capSegs: 1 }).translate(0, y + 0.007, 0), 1));
+        }
+        mesh(fore, mergeGeometries(shell), M.trim);
+      } else mesh(fore, mergeGeometries(wraps), M.shirt);
       mesh(fore, mergeGeometries([
         limb({ length: 0.05, r0: fa1 - 0.006, r1: fa1 - 0.004, radial: 8, rings: 2, capSegs: 1 }).translate(0, -DIM.foreArm + 0.07, 0),
         ellipsoidGeometry(0.034 * HK, 0.04 * HK, 0.042 * HK, { widthSegs: 10, heightSegs: 6 }).translate(0, -DIM.foreArm + 0.022, 0.004),
@@ -167,9 +177,38 @@ export const ROBE_PANELS = [
   { az: -2.45, w: [0.16, 0.24, 0.31], len: [0.35, 0.37], strips: [0.04, 0.07], fork: [1, 0], out: 0.006, flare: 0.16, skew: 0.4 },
 ];
 
+/** (ADR-289, `?ashRef`) the brick-red inner fold showing down the front (by the wrap's edge, a little to his
+ *  left) and down the back (identity anchor: "inner fold (brick-red)"; front, side and back views): a narrow
+ *  red fold on its own springs, laid a hair proud of the panels it shows between (inside them, the wrap
+ *  hid it from every side). */
+const RED_PANELS = [
+  { az: 0.1, w: [0.075, 0.105, 0.13], len: [0.34, 0.35], strips: [], fork: [], out: 0.06, flare: 0.1, mat: 'facing', inner: true },
+  { az: Math.PI - 0.15, w: [0.07, 0.095, 0.12], len: [0.34, 0.34], strips: [], fork: [], out: 0.06, flare: 0.12, mat: 'facing', inner: true },
+];
+const refPanels = () => [...RED_PANELS, ...ROBE_PANELS];
+
+/** (ADR-289, `?ashRef`) the robe layered and ragged, in every phase: the over-robe's torn edge at mid-thigh
+ *  (the lower quarter of the upper sheet again, a hair proud of it, its bottom edge torn into a sawtooth)
+ *  and the hem run out into ragged ends (the bottom of the lower sheet again, longer, torn deeper). Slices
+ *  of the robe's own sheet, not tatter strips: ~100 triangles each (strips cost ~7 times that). `C` the
+ *  panel's handles; returns the meshes made. */
+const RAG = Object.freeze({ proud: [0.012, 0.005], jag: [0.09, 0.13], t0: [0.74, 0.86], longer: 1.1 });
+function raggedRobe(C, i, { M, mesh }) {
+  const P = C.def, [s0, s1] = C.segs, L0 = P.len[0], L1 = P.len[1];
+  const R1 = C.r0 + 0.25 * L0, sk = P.skew ?? 0, w0 = P.w[0];
+  const nF = Math.max(1, Math.round(P.w[2] / 0.09)) + 0.5, fph = i * 2.3 + 0.4;
+  const over = skirtSheet(L0, P.w[0], P.w[1] * 1.03, C.r0 + RAG.proud[0], 0.25, RAG.jag[0], 3100 + i * 31, [0.006, 0.014, nF, fph], RAG.t0[0], 1, sk, w0).translate(0, 0, RAG.proud[0]);
+  const hem = skirtSheet(L1 * RAG.longer, P.w[1], P.w[2] * 1.02, R1 + RAG.proud[1], 0.25, RAG.jag[1], 3500 + i * 31, [0.012, 0.024, nF, fph], RAG.t0[1], 1, sk, w0).translate(0, 0, RAG.proud[1]);
+  return [mesh(s0, over, M.coat), mesh(s1, hem, M.coat)];
+}
+
 function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
   const coat = [];
-  ROBE_PANELS.forEach((P, i) => {
+  const ref = refLook();
+  (ref ? refPanels() : ROBE_PANELS).forEach((P, n0) => {
+    // (the robe's own panels keep their seeds under ?ashRef: its inner panels come first)
+    const i = ref ? (P.inner ? 90 + n0 : n0 - RED_PANELS.length) : n0;
+    const MAT = P.mat ? M[P.mat] : M.coat;
     const sa = Math.sin(P.az), ca = Math.cos(P.az);
     const R0 = 1 / Math.hypot(sa / DIM.coatR, ca / (DIM.coatR * 0.69)) + P.out * 0.5;
     const anchor = joint(pelvis, sa * R0, DIM.coatY + 0.02, ca * R0);
@@ -186,13 +225,13 @@ function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
       return 0.5 + 0.6 * Math.sin(ph) - 0.9 * Math.max(0, 1 - d / 0.12);
     };
     const g0 = foldLines(skirtSheet(L0, P.w[0], P.w[1], R0, 0.25, 0, 51 + i, [0.003, 0.012, nF, fph], 0, 1, sk, w0), pleat(0));
-    mesh(s0, g0, M.coat);
-    mesh(s0, g0, M.lining);
+    mesh(s0, g0, MAT);
+    if (!P.inner) mesh(s0, g0, M.lining); // (the red fold's inside is never seen: one side)
     const s1 = joint(s0, 0, -L0, 0);
     const R1 = R0 + 0.25 * L0;
     const g1 = foldLines(skirtSheet(L1, P.w[1], P.w[2], R1, 0.25, 0.008, 71 + i, [0.012, 0.024, nF, fph], 0, 1, sk, w0), pleat(L0));
-    mesh(s1, g1, M.coat);
-    mesh(s1, g1, M.lining);
+    mesh(s1, g1, MAT);
+    if (!P.inner) mesh(s1, g1, M.lining);
     const strips = [];
     const n = P.strips.length, R2 = R1 + 0.25 * L1, wr = P.w[2] / Math.max(1, n);
     for (let k = 0; k < n; k++) {
@@ -204,7 +243,9 @@ function buildRobeSkirt({ pelvis, M, DIM, mesh, joint }) {
       mesh(sj, tatterStrip(P.strips[k], sw, { fork: !!P.fork[k], curl: 0.2, seed: 2000 + i * 31 + k * 7 }), M.coat);
       strips.push({ joint: sj, len: P.strips[k], rest: a, phase: (i * 1.9 + k * 2.1) % (Math.PI * 2) });
     }
-    coat.push({ anchor, segs: [s0, s1], def: P, strips, len: [L0, L1 + (n ? Math.max(...P.strips) * 0.8 : 0)], r0: R0 });
+    const C = { anchor, segs: [s0, s1], def: P, strips, len: [L0, L1 + (n ? Math.max(...P.strips) * 0.8 : 0)], r0: R0, inner: !!P.inner };
+    coat.push(C);
+    if (ref && !P.inner) raggedRobe(C, i, { M, mesh });
   });
   return { coat };
 }

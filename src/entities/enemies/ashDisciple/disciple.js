@@ -1,9 +1,10 @@
 import { damp } from '../../../core/math.js';
 import { Duelist, HERO_SCALE } from '../duelist/duelist.js';
+import { DuelBrain } from '../duelist/brain.js';
 import { perPhase } from '../duelist/realise.js';
 import { ASH_LOADOUT, JIAN } from './gear.js';
 import { DUEL_POSES } from './poses.js';
-import { MOVES, MOVE_NAMES, CLIP, realise, formOn } from './moves.js';
+import { MOVES, MOVE_NAMES, CLIP, realise, formOn, clipsNow } from './moves.js';
 import { TUNING } from './tuning.js';
 import { TerrainMoves } from './terrain.js';
 import { LINKS } from './links.js';
@@ -41,7 +42,20 @@ export const ASH_KIT = Object.freeze({
   animOpts: Object.freeze({ liftEase: () => (formOn() ? TUNING.formMotion.liftEase : 0) }),
 });
 
+/** His mind: the duelist's, with the reaction clips of the pose set playing now (ADR-289: the reference
+ *  pack's, round its lower guard, while `?ashRefMove` is on). */
+class AshBrain extends DuelBrain {
+  get C() {
+    return clipsNow();
+  }
+  set C(v) {} // (the base constructor assigns the kit's set: his follows the switch)
+}
+
 export class AshDisciple extends Duelist {
+  _makeBrain() {
+    return new AshBrain(this);
+  }
+
   constructor(game) {
     super(game, ASH_KIT);
     // (a bigger pool of crescents: the same records DuelFx makes, more of them)
