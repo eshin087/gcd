@@ -28,7 +28,7 @@ const { rigidBones } = await imp('src/render/rigidBatch.js');
 const { Colliders } = await imp('src/world/colliders.js');
 const { Scorch } = await imp('src/world/scorch.js');
 const { GroundFire } = await imp('src/world/fire.js');
-const { Scars } = await imp('src/world/scars.js');
+const { Scars, reseedMarks } = await imp('src/world/scars.js');
 const { Destructibles, STATE, reseedBreaks } = await imp('src/world/destructibles.js');
 const { BREAK, BLOW, FIRE, SCAR } = await imp('src/world/breakTuning.js');
 const { createForest } = await imp('src/world/forest.js');
@@ -2540,6 +2540,9 @@ const S = {
       ['tail arc', -55, -20, { kind: 'dash', power: 1.2, dx: 1, dz: 0, len: 6, arc: true, r: 4 }, [[4, 0], [4 * Math.cos(0.75), 4 * Math.sin(0.75)], [4 * Math.cos(1.4), 4 * Math.sin(1.4)]], [[0, 0]]],
       ['step', -55, 0, { kind: 'step', power: 1.2, dx: 1, dz: 0 }, [[0, 0]], [[1.5, 0]]],
     ];
+    // (the marks' jagged shapes come from scars.js's own stream: from a known point, not where the scenarios before
+    // left it; a new level's marks once moved the cut's edge off its middle sample)
+    reseedMarks();
     for (const [name, x, z, o, inside, outside] of kinds) {
       const tin = inside.map(([u, v]) => sc.tornAt(x + u, z + v));
       const ylift0 = scars.marks.length;
