@@ -162,21 +162,21 @@
     "geoMB": 34.42
   },
   "foundry": {
-    "meshes": 4,
-    "tris": 33596,
-    "shadowTris": 33596,
-    "bones": 202,
-    "breakables": 443,
-    "colliders": 34,
-    "geoMB": 21.11
+    "meshes": 5,
+    "tris": 109518,
+    "shadowTris": 109518,
+    "bones": 296,
+    "breakables": 492,
+    "colliders": 123,
+    "geoMB": 40.33
   },
   "foundry@phone": {
-    "meshes": 4,
-    "tris": 33596,
-    "shadowTris": 33596,
-    "bones": 202,
-    "breakables": 443,
-    "colliders": 34,
-    "geoMB": 21.11
+    "meshes": 5,
+    "tris": 109518,
+    "shadowTris": 109518,
+    "bones": 296,
+    "breakables": 492,
+    "colliders": 123,
+    "geoMB": 40.33
   }
 }
