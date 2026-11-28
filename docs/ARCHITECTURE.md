@@ -760,6 +760,15 @@ Render helpers for creature modules:
   `game.blackout?.beat()` every frame of it** (`DuelFx.charge` does, so every duelist and the wyrm get it; the Fox's
   Howl calls it in `thousandFox/beam.js`). Its numbers: `TELL_STYLE.black.out` / `.pale` (`rules.js`);
   `flareStyle(tell)` and `blackBody()` give the black flare's colours and the body's darkening for the switch.
+- The black impact (ADR-271, `?blackImpact=`): **`combat/blackImpact.js` `BlackImpact`** (`game.blackImpact`, built
+  and stepped by `ui/tells.js` with the blackout). A black `combat:flash` arms it with the boss in the slot: a
+  duelist's black beat in `brain.act` (it fires when `act.t` passes the beat's `impact`; the point
+  `tellPoint(part)`), the wyrm's `brain.action.cur` (when `a.T` passes `b.at + b.impactIn`; the point
+  `rig.pt.mouth`), else `impact.lead` s after the cue. An act / action gone before then (a cancel) lands nothing;
+  a retry or a new title / dead / victory state disarms it. `fire()` calls `world.groundBlow` (kind `blast`),
+  `world.impact` (marked), `world.gust`, `fx.shock` or `fx.groundShock`, `lights.add`, `game.shake` / `punch` /
+  `hitstop` (not when the hero was hurt: `player:hurt`), `audio.play('explosion')`, `play('sub')`,
+  `thump.dip`. No damage, no new event; `stats.fired` / `stats.last` for tests.
 - `game/grade.js` `ScreenGrade.dimPulse(k = 0.4, hold = 0.4)` (ADR-167): the world dims to k (`uExposure` × (1 − 0.6 k)) over ~4 frames, holds `hold` s, comes back over ~0.25 s; the perfect parry's cinema beat uses it in place of the white flash (lines printed hotter than the scene still stand out). `resetInstant` clears it.
 
 ## Module contracts

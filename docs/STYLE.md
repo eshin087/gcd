@@ -712,9 +712,9 @@ grid. Now (`render/fireField.js`, `render/firePalettes.js`):
   down with the zoom the fire's letters do too. Its tongues are counted in cells, so at a smaller
   step they are smaller; not yet looked at in phase 3.
 
-### The blackout and the red trail (2026-11-27, ADR-271; options, not picked yet)
-The owner's Phantom Blade Zero reference (a boss fight, 2026-11-27). Both looks are behind switches and
-**off by default** until the owner picks from the films (`?black=0`, `?redTrail=0` are today's look).
+### The blackout, the red trail and the black impact (2026-11-27, ADR-271)
+The owner's Phantom Blade Zero reference (a boss fight, 2026-11-27). The owner picked from the films: the
+blackout **b** and the red trail **a** are the defaults (`?black=0`, `?redTrail=0`: the looks before).
 - **The blackout (`?black=a|b|c`, `combat/blackout.js`).** The one place a background's colour changes
   for a tell, and only for a BLACK blow (the owner's exception to "no background colour change"): as a
   boss charges it, the whole picture drains toward dark grey and dims; the boss keeps his colours and
@@ -737,6 +737,11 @@ The owner's Phantom Blade Zero reference (a boss fight, 2026-11-27). Both looks 
   longer (~0.45 s), a little hotter. One cell wide and outside the edge, so it neither covers the
   contact nor reads as the white cross (it is red and curved). Blades only; the bare-handed bosses and
   the wyrm are left out (a fist's or claw's path is short and lies on the contact).
+- **The black impact (`?blackImpact=a`, the default; `combat/blackImpact.js`).** A black blow lands, hit or miss,
+  as the biggest blow in the fight, all through the existing systems: a crater (`world.groundBlow` kind
+  `blast` + `world.impact` at power 1.8: what stands near breaks letter by letter), a shock front of dust in the
+  fire field (`DuelFx.shock`, the wyrm's `groundShock`), a pale light, the camera's shake and punch, a short held
+  frame. Calm in colour (dust and pale steel, no new colour), big in size and in the shake.
 
 ### Text effects (2026-11-15, ADR-113)
 Things only a world made of letters can do. One rule for all of them: **a loose letter is always

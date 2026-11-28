@@ -5,14 +5,17 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and forty-two pieces of work since 0.4.0:
-- **A black blow can darken the whole picture, a red string can cut in red** (2026-11-27, ADR-271). *Added (options, off by default until the owner picks):* `?black=a|b|c` replaces the
+- **A black blow can darken the whole picture, a red string can cut in red** (2026-11-27, ADR-271). *Changed (the owner's picks, the defaults: blackout b, red trail a):* `?black=a|b|c` replaces the
   violet look of a charged (black) blow with a blackout, after the owner's reference film: as the boss charges, the
   whole picture drains to dark grey, the boss stays lit with a white point on his weapon, the black flare is a
   white-hot streak, and colour snaps back on the strike (a: the dark drops in over the last 0.3 s before the cue,
   b: it builds through the whole charge, c: as a, darker); every boss with a charged blow has it, and it clears on
   a stagger, a posture break, a Lab interrupt, a retry or his death. `?redTrail=a|b`: from a red blow's flare on,
   a blade's cut leaves a thin red crescent just outside its edge, so every cut of a red string reads red (a short,
-  b longer); the sword bosses only. The Lab's `black` and `redTrail`; `npm run perf -- --black`.
+  b longer); the sword bosses only. *Added:* every black blow, hit or miss, lands with a devastating impact
+  (`?blackImpact=a`, the default; `0` as before): a crater and what stands near broken, a shock front of dust,
+  a light, a hard shake, a held frame, an explosion's sound. The Lab's `black`, `redTrail` and `blackImpact`;
+  `npm run perf -- --black`.
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s

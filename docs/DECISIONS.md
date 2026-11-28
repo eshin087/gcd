@@ -7926,8 +7926,17 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
      wake would hide the blow, and the flare already marks it.
   4. Numbers in `TELL_STYLE` (`rules.js`): `black.out`, `black.pale`, `red.trail`. Lab: `black`, `redTrail` in the
      streak grid. `npm run perf -- --black` measures a frame with the blackout pinned on.
+  5. THE OWNER'S PICKS (2026-11-27, from the films): the blackout **b** and the red trail **a**, the defaults.
+  6. THE BLACK IMPACT (`?blackImpact=0|a`, default `a`; the owner: "we need all blackout attacks to end with a
+     devasting impact even if it misses the player ... the dragon blackout attack looks like it does nothing when
+     it misses"). Hit or miss, a black blow lands as the fight's biggest blow: a crater and broken pieces round
+     its point, a shock front of dust, a light, a hard shake and punch, a short held frame on a miss, an
+     explosion's sound. One module for every boss (`combat/blackImpact.js`), armed by the black cue, fired by the
+     beat's own impact clock read off the boss (`brain.act` / `brain.action`), so it lands on the frame the blow
+     does and never after a cancel. No extra damage: the black blows already deal the most of each boss's moves
+     (38 - 44) with a knock-down; the impact is what the player and the world feel.
 - **Consequences:** the black flare in the blackout is white, the colour of a parryable glint; it is a streak, not
   the cross, and the whole frame is dark around it, but the owner should judge it. The mask is the scene's flag,
   so what is drawn only in the fire field near the boss (his spell, the Fox's spirit) dims with the world unless
-  it is bright. Open: the owner's pick of a / b / c and a / b (films in the PR, made with the scratch film rig), the phone, and a
-  red wake for fists and claws if the owner wants one.
+  it is bright. Open: the phone; a red wake for fists and claws if the owner wants one; on the bare-handed bosses and the Fox's
+  Howl (a beam) the impact lands a stride in front of the body, not along the beam.

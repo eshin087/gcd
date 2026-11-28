@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-27 — The blackout for a black blow, red trails for a red string (ADR-271; `claude/combat-blackout-red-trails-892472`)
+## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
 
 **Goal:** two looks from the owner's Phantom Blade Zero reference (a boss fight they sent): a charged (black) attack
 drains the whole picture to dark grey, the boss alone readable with a white glint, colour back on the strike; a red
@@ -34,9 +34,19 @@ string leaves a long thin red crescent on every cut. Options behind switches, fi
   pinned on (+0.01 ms GPU, the five flag taps); the whole frame 0.85 / 1.01 ms (Cinderwood) and 0.97 - 1.05 / 1.05 -
   1.10 ms (Ashfall) in all three runs. Script: the blackout's step is a few multiplies; the frame's 2.6 - 2.9 ms moved
   within run-to-run noise. No triangles or draws added (`cost.mjs` unchanged).
-- **Open:** the owner's picks (both default to today's look); the black flare is white, the colour of a parryable
-  glint (a streak in a dark frame, not the cross: their call); things drawn only in the fire field near the boss dim
-  with the world unless bright; a red wake for fists and claws if wanted; the phone.
+- **The owner's picks:** blackout **b**, red trail **a**, made the defaults. Then: "we need all blackout attacks to end
+  with a devasting impact even if it misses the player ... the dragon blackout attack looks like it does nothing when
+  it misses". Added `combat/blackImpact.js` (`?blackImpact=a`, default): the black cue arms it, the beat's own
+  impact clock fires it (a duelist's `brain.act`, the wyrm's `brain.action`), hit or miss: a crater + breakables
+  struck at power 1.8 in 3.2 m, a shock front of dust 6.5 m (wyrm x 1.8), light, shake 0.45 - 0.85 + punch, a 0.07 s
+  held frame on a miss, an explosion + sub + music dip. No extra damage. A cancel before the impact lands nothing.
+  Checked: duel `blackout` (one blast at the impact on a guard and on a miss 12 m off, none with `0`, none after a
+  stagger), integ `flare` (Black maw missing a hero 16 m off). Films: `impact-ash-compare.mp4`,
+  `impact-wyrm-compare.mp4` (before | after on a miss, and on a guard). The pale charge now draws the fight's stream
+  (rnd) exactly as the violet one did and the red trail uses the look stream, so the looks never move a seeded fight.
+- **Open:** the black flare is white, the colour of a parryable glint (a streak in a dark frame, not the cross);
+  things drawn only in the fire field near the boss dim with the world unless bright; a red wake for fists and claws;
+  on the bare-handed bosses and the Fox's Howl the impact lands a stride in front of the body; the phone.
 
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
 

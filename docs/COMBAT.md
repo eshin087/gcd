@@ -266,7 +266,7 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   on it (a disc of blacked-out cells with a pale corona), motes of pale light pulled in from all
   round, the body darkening (`TELL_STYLE.black.warn`), the screen edge dimming (`combat:charge`).
   The levels are dark, so black is drawn by what rings it. Then the black flare.
-- **The blackout (`?black=a|b|c`, ADR-271; off by default until the owner picks).** The Phantom Blade
+- **The blackout (`?black=a|b|c`, ADR-271; the owner picked b, the default; `?black=0` = the violet look).** The Phantom Blade
   Zero reference: instead of the violet look, the whole picture drains toward dark grey and dims as a
   black blow charges, the boss stays lit with a white point on the striking part, the black flare is a
   white-hot streak, and colour snaps back on the strike. a: the dark drops in over the last 0.3 s
@@ -275,10 +275,19 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   whatever draws the charge each frame (`DuelFx.charge`: every duelist and the wyrm; the Fox's Howl),
   and the black `combat:flash`; it clears on every path the charge clears on (below), a cancelled
   charge over 0.25 s. STYLE.md "The blackout and the red trail".
-- **The red trail (`?redTrail=a|b`, ADR-271; off by default).** From a red blow's flare on, a blade's
+- **The red trail (`?redTrail=a|b`, ADR-271; the owner picked a, the default; `?redTrail=0` = none).** From a red blow's flare on, a blade's
   cut leaves a thin red crescent just outside its white edge, so every cut of a red string reads red;
   nothing before the cue, nothing on a white or blue blow. a: thin, ~0.2 s; b: longer, ~0.45 s. Blades
   only (Shen Hui, the Starless Lord, Lu Wusheng); the bare-handed bosses and the wyrm are left out.
+- **The black impact (`?blackImpact=a`, the default; ADR-271).** The owner: every black blow ends with a
+  devastating impact even if it misses, one of the strongest, most felt blows a boss has. Hit or miss, where its
+  striking part comes down: a blast on the world (a crater and its scorch; every breakable within 3.2 m struck
+  at power 1.8, so what stands there breaks), a ragged shock front of dust out 6.5 m (x 1.8 on the wyrm), the grass
+  and the living world thrown, a pale light, a hard camera shake (0.45 far, 0.85 near) and a punch, a 0.07 s held
+  frame on a miss (a hit has its own), an explosion's sound with the sub under it and the music ducked. It deals
+  no extra damage: the blow's own damage and knock-down are unchanged. A blow cancelled before its impact
+  (stagger, posture break, death, a Lab interrupt) never lands it. `combat/blackImpact.js`, numbers
+  `TELL_STYLE.black.impact`; `?blackImpact=0` lands the blow as before.
 - **Parryable (`normal`, `blue`) — the animation is the tell.** No colour coding during the windup
   (audio: the blue warning for `blue`; nothing for `normal`). On the cue a brief **white cross** pops at
   the striking part (a `blue` one with the blue timing sound): one row of `-` (13 cells) through one column of `|`

@@ -196,7 +196,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `?black=a|b|c`: a black blow drains the picture to dark grey, the boss lit, the violet gone; clears on every cancel
 - [x] `?redTrail=a|b`: a red string's blade cuts leave a red crescent from the flare on
 - [x] Films of today and every variant at the game camera (Shen Hui, the wyrm, the Lord); `npm run perf -- --black`
-- [ ] The owner's pick (both default to today's look until then); a red wake for fists and claws if wanted
+- [x] The owner's picks made the defaults: blackout b, red trail a
+- [x] Every black blow lands a devastating impact, hit or miss (`?blackImpact=`), filmed on Shen Hui and the wyrm
+- [ ] A red wake for fists and claws if wanted; the impact along the Fox's Howl beam
 ## M1.93 — Boss motion: Lu Wusheng, Wen Yao, the wyrm (2026-11-26, `claude/enemies-grove-fox-wyrm-motion-59bc46`, ADR-223)
 - [x] The audit tool (`tests/integration/motionAudit.mjs`): hands, pops, sliding feet, facing, the held windup per tell
 - [x] Held blue / red windups, coloured (blue tall, red low), behind `?sheathMotion=` `?foxMotion=` `?wyrmMotion=`
