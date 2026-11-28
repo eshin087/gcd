@@ -5,24 +5,26 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-28 — Bai Wuji round 4: the chip, 16000, the barrier's silhouette (branch `wj3/barrier-playtest`; ADR-266)
+## 2026-11-28 — Bai Wuji round 4: the chip, 16000, the barrier as his outline for the hit (branch `wj3/barrier-playtest`; ADR-266)
 
 **Owner:** "right now it takes too much time to chip at [him] so balance it to be bit easier to do damage on him.
 when the player hits him and the sword is hitting the [barrier], show a cool ascii effect of the sword hitting the
 barrier and it showing its silhouette briefly."
 
 **What changed.** A cut stopped on the shell chips x0.25 of its damage (`wjBarrier.chip`, `barrier._chip`; never
-his last HP; the number rides `dragon:barrier` stop to the HUD). hp 20000 -> 16000. `untouched/fxStrike.js`: the
-shell's silhouette on a stop behind `?wjStrike=a|b|c` (a the oval, b his outline from his mesh points by marching
-squares, c three outlines rippling out); '0' (the default until the owner picks) keeps the ripple. Lab LOOKS row,
-PENDING.
+his last HP; the number rides `dragon:barrier` stop to the HUD). hp 20000 -> 16000. `untouched/fxStrike.js`: three
+filmed looks (an oval, his outline, rippling outlines, each a wave of light) were turned down: "a subtle barrier that's
+an outline of his body ... only shows the full ascii outline during the hit, and goes away after the hit ends". Now a
+stop draws only that: his outline (mesh points, marching squares) a hand off his body, faint (heat 0.42), whole, for
+0.16 s, one stroke per letter cell (the first film stacked pieces into white digits). `?wjStrike=a` PICKED, `0` the
+ripple.
 
 **Verification.** Bench (6 seeds): today's main, the good bot 4/6 in 163 - 211 s; the chip alone 4/6 in 160 - 187 s;
 16000 + chip 4/6 in 120 - 150 s (deaths with 5 % of his bar left), fencing 5/6; blocker and pace still die.
 `veil.mjs . strike` (the chip, its event, every look draws and is gone in a second); filmed on headless Edge
-(`docs/looks/veil/wjStrike-options.jpg`); full `npm test` before the PR.
+(`docs/looks/veil/wjStrike-outline.jpg`); full `npm test` before the PR.
 
-**Next.** The owner's pick of `?wjStrike`; a sound for the chip if they want one.
+**Next.** The owner plays it; a sound for the chip if they want one.
 
 ---
 
