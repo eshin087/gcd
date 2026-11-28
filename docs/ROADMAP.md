@@ -1272,6 +1272,7 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       the sparks at the meeting, the struck part answering (the hero's HitReact, arms), an optional reach for a boss's
       short blows; behind `?contact=a|b`, the contact audit, draft PR, films sent
   - [x] The owner's pick from the films (2026-11-27): `b`, the default
+  - [x] Second round: the execution's and plunge's bursts at the wound, the wyrm's bite drawn onto the hero, `?contact=c`
   - [ ] Next: the wyrm's poses on its blows (its jaws still short when its hit spheres connect), the execution's
         thrust and the plunge, blows whose hit zone outreaches the drawn limb (move data, the boss sessions')
 
