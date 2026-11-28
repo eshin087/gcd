@@ -1,4 +1,4 @@
-import { lookOf, lookExplicit } from '../duelist/lookSwitch.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 import { setFill } from '../ashDisciple/bodyArt.js';
 
 // Halcyon's look options (duelist/lookSwitch.js PENDING; never in PICKED: the owner picks from the
@@ -12,14 +12,12 @@ import { setFill } from '../ashDisciple/bodyArt.js';
 //            b   the idol: a navy suit, gold shoulder pieces of his own shape, white gloves, a cape with
 //                a bright lining, blond slick hair.
 //            c   tomorrow's tyrant: black and chrome, a crimson cape, white hair.
-//   ?halRef=a   THE ANCHOR (ADR-289; docs/art/character-packs-v04/halcyon/00-original-anchor.png, the owner's
-//                selected identity, 2026-11-28; PENDING: waiting for the owner's in-game look; over any ?halLook=,
-//                as ADR-277's ?lordRef=a; drawn as the outfit 'd' below): blond hair swept back
-//                with a lift at the brow, a navy armoured suit with thin gold seams on its plates and a
-//                gold strap across the chest, gold diamond clasps where the red cape pins, a gold belt and
-//                cuffs, BARE HANDS, navy boots with gold toes, the cape long (~80 % unless ?halCapeSize= is
-//                given), his eyes dim until they kindle. The same meshes are built as for a (no new object;
-//                the bare hands then batch with his skin: 86 drawn against 90).
+//   ?halRef=a   THE ANCHOR (ADR-289; docs/art/character-packs-v04/halcyon, 00 and 01: the owner's selected
+//                identity, 2026-11-28; PENDING, waiting for the owner; over any ?halLook=, as ADR-277's
+//                ?lordRef=a): his body REBUILT after the sheets (refGear.js: a V-tapered man in sculpted navy
+//                plates edged in gold, a square jaw, blond hair swept back, bare hands, gold-capped boots, a
+//                crimson mantle and a cape to his heels), coloured as the outfit 'd' below; his eyes dim
+//                until they kindle. More objects than the shipped rig, only under the switch.
 //   ?glare=a|b|c   his eyes' heat (fx.js; the owner picked a, 2026-11-23): a crimson with a white-hot steel core, b crimson alone, c the
 //                  engine's orange fire with a steel core.
 //   ?halCape=0|1|2|3   how his cape and colours read at game size (the look pass of 2026-11-23: at
@@ -70,13 +68,8 @@ export function halPrintNow() {
 /** The cape's size (`?halCapeSize=`): its sheets' length and width times this. */
 export const HAL_CAPE_SIZE = Object.freeze({ 0: 1, a: 0.8, b: 0.65, c: 0.5 });
 export function halCapeSizeNow() {
-  // the anchor's cape reaches the boots: ~80 %, unless the URL or the Lab names a size
-  if (halLookNow() === 'd' && !lookExplicit('halCapeSize')) return HAL_CAPE_SIZE[HAL_LOOK_CAPE.d];
   return HAL_CAPE_SIZE[halLook('halCapeSize')] ?? HAL_CAPE_SIZE[HAL_LOOKS.halCapeSize];
 }
-
-/** The cape size a look asks for when ?halCapeSize= is not given (the anchor's long cape). */
-export const HAL_LOOK_CAPE = Object.freeze({ d: 'a' });
 
 /** The cape step his rig is built with: 0..3 (an unknown value draws the default). */
 export function halCapeNow() {
@@ -144,7 +137,7 @@ export const HAL_BRIGHT = {
   // clear gold, a pale blond
   d: {
     pants: [0.045, 0.075, 0.36], armor: [0.07, 0.13, 0.6], hair: [0.95, 0.58, 0.05], hairTip: [1.05, 0.78, 0.34],
-    collar: [0.05, 0.08, 0.34], coat: [1.5, 0.09, 0.05], lining: [2.1, 0.12, 0.07], hem: [1.4, 0.08, 0.05],
+    collar: [0.05, 0.08, 0.34], coat: [3.3, 0.2, 0.12], lining: [3.3, 0.2, 0.12], hem: [1.4, 0.08, 0.05],
   },
 };
 /** ?halCape=1 and up: the cape's own rim (the cool moonlit edge turned the red pink) and the lift. */
@@ -171,7 +164,14 @@ export function tintHalcyon(M) {
   // ?halPrint=a|b: the hero's quieter print (ADR-166)
   if (P) for (const k in P.fill) M[k]?.uniforms?.uArtFill?.value.multiplyScalar(P.fill[k]);
   // (d, the anchor: the cape's own ink red, so its lines print red, not pale)
-  if (o === 'd') for (const k of ['coat', 'lining']) M[k]?.uniforms?.uInk?.value.setRGB(1.1, 0.16, 0.1);
+  if (o === 'd') {
+    for (const k of ['coat', 'lining']) {
+      const u = M[k]?.uniforms;
+      u?.uInk?.value.setRGB(1.1, 0.16, 0.1);
+      // the cape crimson to its edge: no pale boss hem below the knee (the sheets' cape is red to the heels)
+      if (u?.uArtNoHem) u.uArtNoHem.value = 1;
+    }
+  }
   // the neon seams light themselves a little (their ink lines glow), the eyes burn
   const pu = M.piping?.uniforms;
   if (pu?.uInkGlow) pu.uInkGlow.value = 0.5;

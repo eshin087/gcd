@@ -5,11 +5,12 @@ import {
   shellGeometry, skirtSheet, tatterStrip, bandGeometry, boxGeometry, mergeGeometries, sub, foldLines, ribbonCrease, lerp, limb,
   gripFist, orient, orientTo, clumpGeometry, partGeometry,
 } from '../../player/heroGeo.js';
-import { halLookNow, halCapeNow, halCapeSizeNow, dressOf, at } from './look.js';
+import { halLookNow, halCapeNow, halCapeSizeNow, halRefOn, dressOf, at } from './look.js';
+import { REF_BUILD } from './refGear.js';
 
 // Halcyon's gear: the hero's skeleton (buildHero), no weapon (bare-handed: the right fist on the sword
 // joint), drawn in the hero's ink-line art. Three outfits (`?halLook=a|b|c`, look.js; read when his rig
-// is built; d: the anchor, `?halRef=a`, ADR-289). No letter, shield or symbol anywhere on him (ADR-160, the line on the homage): what reads is
+// is built); `?halRef=a` builds every slot from refGear.js instead (ADR-289). No letter, shield or symbol anywhere on him (ADR-160, the line on the homage): what reads is
 // the colour and the shape: the suit, the cape, the belt, the eyes.
 //
 // His material instances (look.js tintHalcyon writes the colours): `pants` = the suit (torso, arms,
@@ -60,9 +61,7 @@ function buildHead(ctx) {
   const look = halLookNow();
   // the scalp, and the hair combed straight back over it: flat locks from the brow to the crown (a
   // little quiff at the front for b, swept higher for c)
-  // (d, the anchor: blond, in the hero's gold-hair part `hairTip`: its lines are warm, not white)
-  const hairM = look === 'd' ? M.hairTip : M.shirt;
-  mesh(head, partGeometry('hair.cap'), hairM);
+  mesh(head, partGeometry('hair.cap'), M.shirt);
   const locks = [];
   const n = 9;
   for (let i = 0; i < n; i++) {
@@ -70,8 +69,7 @@ function buildHead(ctx) {
     const a = scalp(az, el, 0.98);
     const dir = nrm([Math.sin(az) * 0.25, look === 'b' ? 0.35 : 0.2, -1]);
     const L = 0.16 + 0.05 * Math.cos(az) + (look === 'c' ? 0.03 : 0);
-    // (d: fuller locks, a little more curl: the anchor's swept-back mane has volume, not a slick cap)
-    const g = clumpGeometry(L, look === 'd' ? 0.058 : 0.05, look === 'd' ? 0.022 : 0.016, { curl: look === 'd' ? 0.12 : 0.06, taper: 0.9, cols: 6, rows: 2 });
+    const g = clumpGeometry(L, 0.05, 0.016, { curl: 0.06, taper: 0.9, cols: 6, rows: 2 });
     locks.push(sub(orientTo(g, a, dir, nrm([0, -0.6, -1])), i & 1));
   }
   // the sides combed back flat over the ears
@@ -83,12 +81,8 @@ function buildHead(ctx) {
     // the idol's quiff: a lifted wave at the front
     const g = clumpGeometry(0.1, 0.09, 0.02, { curl: 0.3, taper: 1.1, cols: 6, rows: 2 });
     locks.push(sub(orientTo(g, scalp(0.15, 0.75, 1.0), nrm([0, 0.8, -0.4]), BACK), 0));
-  } else if (look === 'd') {
-    // the anchor's lift at the brow, swept back (lower and wider than the idol's quiff)
-    const g = clumpGeometry(0.09, 0.1, 0.022, { curl: 0.25, taper: 1.0, cols: 6, rows: 2 });
-    locks.push(sub(orientTo(g, scalp(-0.08, 0.7, 1.0), nrm([0, 0.85, -0.5]), BACK), 0));
   }
-  mesh(head, mergeGeometries(locks), hairM);
+  mesh(head, mergeGeometries(locks), M.shirt);
   // the eyes: two points of red light over his own (the `flask` part glows; look.js dressHalcyon)
   const eyes = mergeGeometries([0.032, -0.032].map((ex) => ellipsoidGeometry(0.017, 0.009, 0.006, { widthSegs: 8, heightSegs: 4 }).translate(ex, 0.128, 0.1)));
   const e = mesh(head, eyes, M.flask);
@@ -116,28 +110,13 @@ function buildChest(ctx) {
     seams.push(boxGeometry(0.11, 0.006, 0.006, s * 0.07, ySp(1.285), 0.128, 0, s * 0.25, 0));
     seams.push(boxGeometry(0.006, 0.16, 0.006, s * 0.19, ySp(1.3), 0.03, 0, 0, 0));
   }
-  if (look === 'd') {
-    // the anchor's gold strap: from the right shoulder's clasp across the chest to the left ribs, on
-    // the plate's surface (merged into the seams: no new object)
-    const P0 = [-0.15, 1.46], P1 = [0.15, 1.2], n = 6;
-    for (let k = 0; k < n; k++) {
-      const t = (k + 0.5) / n, x = lerp(P0[0], P1[0], t), y = lerp(P0[1], P1[1], t);
-      const z = 0.125 + 0.035 * Math.cos(x * 5) - 0.02 * Math.abs(y - 1.36) * 4;
-      seams.push(boxGeometry(0.075, 0.016, 0.008, x, ySp(y), z, 0, -x * 2.2, Math.atan2(P1[1] - P0[1], P1[0] - P0[0])));
-    }
-  }
-  // (d: the seams are thin gold, as the anchor's plates are edged)
-  mesh(spine, mergeGeometries(seams.map((g, i) => sub(g, i & 1))), look === 'd' ? goldOf(M) : M.piping);
+  mesh(spine, mergeGeometries(seams.map((g, i) => sub(g, i & 1))), M.piping);
   // the collar: a high armoured neck ring
   mesh(chest, sub(bandGeometry(0.068, 0.062, 0.05, 20).translate(0, yCh(1.53), -0.004), 1), M.armor);
   // the clasps where the cape pins: a plain gold disc at each shoulder's front (b: the idol's shoulder pieces)
   const clasps = [];
   const cr = 0.032 + 0.012 * goldK();
-  // (d: the anchor's square gold clasps, set as diamonds)
-  for (const s of [-1, 1]) {
-    const g = look === 'd' ? boxGeometry(cr * 1.5, cr * 1.5, 0.016, s * 0.14, yCh(1.47), 0.1, 0, 0, Math.PI / 4) : ellipsoidGeometry(cr, cr, 0.012, { widthSegs: 10, heightSegs: 5 }).rotateX(Math.PI / 2).translate(s * 0.14, yCh(1.47), 0.1);
-    clasps.push(sub(g, s > 0 ? 1 : 0));
-  }
+  for (const s of [-1, 1]) clasps.push(sub(ellipsoidGeometry(cr, cr, 0.012, { widthSegs: 10, heightSegs: 5 }).rotateX(Math.PI / 2).translate(s * 0.14, yCh(1.47), 0.1), s > 0 ? 1 : 0));
   mesh(chest, mergeGeometries(clasps), goldOf(M));
   if (look === 'b') {
     // gold shoulder pieces of his own shape: a swept plate over each shoulder, three stepped edges
@@ -155,8 +134,7 @@ function buildArms(ctx) {
   const { arms, sword, M, DIM, BODY, mesh } = ctx;
   const look = halLookNow();
   const [ua0, ua1] = BODY.upperArm, [fa0, fa1] = BODY.foreArm, HK = BODY.hand;
-  // (d, the anchor: bare hands)
-  const glove = look === 'b' ? M.welt : look === 'd' ? M.skin : M.pants;
+  const glove = look === 'b' ? M.welt : M.pants;
   for (const side of [-1, 1]) {
     const { upper, fore } = arms[side < 0 ? 'R' : 'L'];
     mesh(upper, mergeGeometries([
@@ -171,7 +149,7 @@ function buildArms(ctx) {
     ]), M.pants);
     // the forearm plate and its seam
     mesh(fore, sub(limb({ length: 0.14, r0: fa0 + 0.016, r1: fa1 + 0.012, radial: 10, rings: 2, capSegs: 1 }).translate(0, -0.08, 0), 0), M.armor);
-    mesh(fore, boxGeometry(0.006, 0.13, 0.006, 0, -0.15, fa0 + 0.02), look === 'd' ? goldOf(M) : M.piping);
+    mesh(fore, boxGeometry(0.006, 0.13, 0.006, 0, -0.15, fa0 + 0.02), M.piping);
     // the gold cuff at the wrist
     const y1 = -DIM.foreArm + 0.04;
     const cl = 0.045 + 0.03 * goldK();
@@ -190,7 +168,6 @@ function buildArms(ctx) {
 // ================================================================= the legs: the suit, shin plates, the boots
 function buildLegs(ctx) {
   const { pelvis, legs, M, DIM, BODY, mesh } = ctx;
-  const look = halLookNow();
   const [hx, hy, hz] = BODY.hips.r;
   mesh(pelvis, orient.up(ellipsoidGeometry(hx + 0.006, hz + 0.006, hy + 0.012)), M.pants, ...BODY.hips.c);
   const [th0, th1] = BODY.thigh, [sh0, sh1] = BODY.shin, F = BODY.foot;
@@ -198,7 +175,7 @@ function buildLegs(ctx) {
   for (const side of [-1, 1]) {
     const { thigh, shin, foot } = legs[side < 0 ? 'R' : 'L'];
     mesh(thigh, limb({ length: DIM.thigh, r0: th0 + 0.008, r1: th1 + 0.006, bulge: 0.014 }), M.pants);
-    mesh(thigh, boxGeometry(0.006, 0.2, 0.006, side * (th0 * 0.7), -0.2, th0 * 0.72), look === 'd' ? goldOf(M) : M.piping);
+    mesh(thigh, boxGeometry(0.006, 0.2, 0.006, side * (th0 * 0.7), -0.2, th0 * 0.72), M.piping);
     mesh(shin, limb({ length: -bootTop + 0.02, r0: th1 + 0.006, r1: sh0 + 0.004, bulge: 0.008 }), M.pants);
     // the boot to below the knee, its gold top, the foot
     const shaft = DIM.shin + bootTop - 0.01;
@@ -209,8 +186,7 @@ function buildLegs(ctx) {
     ]), M.collar);
     const bl = 0.022 + 0.02 * goldK();
     mesh(shin, limb({ length: bl, r0: t + 0.03, r1: t + 0.028, radial: 12, rings: 1, capSegs: 1 }).translate(0, bootTop + 0.012 + bl - 0.022, 0), goldOf(M));
-    // (d, the anchor: navy boots with gold toes: at game size the foot is a letter or two, so it is gold)
-    mesh(foot, ellipsoidGeometry(F.r[0] * 1.0, F.r[1] * 0.95, F.r[2] * 1.02, { widthSegs: 10, heightSegs: 6 }).translate(F.c[0], F.c[1] - 0.002, F.c[2] + 0.006), look === 'd' ? goldOf(M) : M.collar);
+    mesh(foot, ellipsoidGeometry(F.r[0] * 1.0, F.r[1] * 0.95, F.r[2] * 1.02, { widthSegs: 10, heightSegs: 6 }).translate(F.c[0], F.c[1] - 0.002, F.c[2] + 0.006), M.collar);
   }
   return {};
 }
@@ -299,9 +275,7 @@ function buildCape(ctx) {
     mesh(s1, g1, M.coat);
     mesh(s1, g1, M.lining);
     const g2 = foldLines(skirtSheet(L1, w1, w2, R1, 0.25, 0.03, d.seed + 7, fold, 0.62, 1), pleat(L0));
-    // (d, the anchor: the cape one red to its edge: the `hem` part's lavender lines read pink)
-    const hemM = halLookNow() === 'd' ? M.coat : M.hem;
-    const h0 = mesh(s1, g2, hemM), h1 = mesh(s1, g2, M.lining);
+    const h0 = mesh(s1, g2, M.hem), h1 = mesh(s1, g2, M.lining);
     if (TORN.has(i)) {
       // phase 3: the lower edge gone, three tatters in its place
       for (const m of [h0, h1]) {
@@ -310,7 +284,7 @@ function buildCape(ctx) {
       }
       for (let k = 0; k < 3; k++) {
         const x = (k - 1) * w1 * 0.3;
-        const t = mesh(s1, foldLines(tatterStrip(L1 * (0.38 + 0.12 * k), w1 * 0.22, { fork: true, curl: 0.2, seed: d.seed + k }), ribbonCrease(w1 * 0.22, k)).translate(x, -L1 * 0.58, R1 * 0.02), hemM);
+        const t = mesh(s1, foldLines(tatterStrip(L1 * (0.38 + 0.12 * k), w1 * 0.22, { fork: true, curl: 0.2, seed: d.seed + k }), ribbonCrease(w1 * 0.22, k)).translate(x, -L1 * 0.58, R1 * 0.02), M.hem);
         at(D, t, 3, 3);
         keep.push(t);
       }
@@ -324,12 +298,12 @@ function buildCape(ctx) {
 
 /** The set (registered into the hero's gear registry on import: gear/index.js registerItem). */
 export const HAL_ITEMS = [
-  { id: 'hal.head', slot: 'head', name: 'Slick Hair', hidesHair: true, build: buildHead },
-  { id: 'hal.suit', slot: 'chest', name: 'Saviour Plate', build: buildChest },
-  { id: 'hal.arms', slot: 'arms', name: 'Saviour Gauntlets', build: buildArms },
-  { id: 'hal.legs', slot: 'legs', name: 'Saviour Boots', build: buildLegs },
-  { id: 'hal.belt', slot: 'waist', name: 'Gold Belt', build: buildWaist },
-  { id: 'hal.cape', slot: 'back', name: 'Long Red Cape', build: buildCape },
+  { id: 'hal.head', slot: 'head', name: 'Slick Hair', hidesHair: true, build: (c) => (halRefOn() ? REF_BUILD.head(c) : buildHead(c)) },
+  { id: 'hal.suit', slot: 'chest', name: 'Saviour Plate', build: (c) => (halRefOn() ? REF_BUILD.chest(c) : buildChest(c)) },
+  { id: 'hal.arms', slot: 'arms', name: 'Saviour Gauntlets', build: (c) => (halRefOn() ? REF_BUILD.arms(c) : buildArms(c)) },
+  { id: 'hal.legs', slot: 'legs', name: 'Saviour Boots', build: (c) => (halRefOn() ? REF_BUILD.legs(c) : buildLegs(c)) },
+  { id: 'hal.belt', slot: 'waist', name: 'Gold Belt', build: (c) => (halRefOn() ? REF_BUILD.waist(c) : buildWaist(c)) },
+  { id: 'hal.cape', slot: 'back', name: 'Long Red Cape', build: (c) => (halRefOn() ? REF_BUILD.back(c) : buildCape(c)) },
 ];
 for (const item of HAL_ITEMS) registerItem(item);
 

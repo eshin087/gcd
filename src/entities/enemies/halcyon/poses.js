@@ -77,7 +77,8 @@ export function hoverLoco(p, A) {
     to3(p, P.lH, 0.1, -0.36, -0.3, g);
     p[P.pitch] += 0.25 * g;
   }
-  if (lookOf('halMotion', '0') === 'b') hoverLegs(p, t);
+  // (ADR-289, `?halRefMove=a`: the sheets' hover (01 B7, B8), the right knee drawn up, the left hanging, as above)
+  if (lookOf('halMotion', '0') === 'b' && lookOf('halRefMove', '0') === '0') hoverLegs(p, t);
 }
 
 const LEG = DIM.thigh + DIM.shin;

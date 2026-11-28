@@ -174,11 +174,6 @@ export function lookOf(name, def = '0', pick = 'a') {
   return allNew && def === '0' ? pick : def;
 }
 
-/** True when switch `name` was set by the URL or live (setLook), not left to its default or pick. */
-export function lookExplicit(name) {
-  return forced.get(name) != null || fromUrl.get(name) != null;
-}
-
 /** The option switch `name` ships with (the owner's pick), or null for a switch not in the table. */
 export function pickedOf(name) {
   return PICKED[name] ?? null;

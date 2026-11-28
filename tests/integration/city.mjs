@@ -1719,13 +1719,13 @@ async function scenarioHalRef() {
     const inv = d.object3d.matrixWorld.clone().invert();
     const at = (j) => v.setFromMatrixPosition(j.matrixWorld).applyMatrix4(inv).clone();
     const fR = at(d.rig.legs.R.foot), fL = at(d.rig.legs.L.foot), hR = at(d.rig.legs.R.thigh), hL = at(d.rig.legs.L.thigh);
-    const r = { width: Math.abs(fR.x - fL.x) * d.drawScale, behind: Math.min(hR.z - fR.z, hL.z - fL.z) * d.drawScale, y: d.position.y, mode: d.mode };
+    const r = { width: Math.abs(fR.x - fL.x) * d.drawScale, lift: (fR.y - fL.y) * d.drawScale, y: d.position.y, mode: d.mode };
     LS.setLook('halRefMove', null);
     return r;
   };
   const rows = ['ward', 'clash', 'flinch', 'backstep', 'lock'].map((k) => [k, legs(false, k), legs(true, k)]);
-  for (const [k, a, b] of rows) out(`   ${k.padEnd(8)} at ${b.y.toFixed(2)} m: stance width ${a.width.toFixed(2)} -> ${b.width.toFixed(2)} m, feet behind the hips ${a.behind.toFixed(2)} -> ${b.behind.toFixed(2)} m`);
-  assert(rows.every(([, a, b]) => b.mode === 'react' && b.y > 0.3 && b.behind > 0.05 && a.behind < 0.05), `at the hover his reactions trail the legs behind his hips, no planted stance (${rows.map(([k, a, b]) => `${k} ${a.behind.toFixed(2)} -> ${b.behind.toFixed(2)} m`).join(', ')})`);
+  for (const [k, a, b] of rows) out(`   ${k.padEnd(8)} at ${b.y.toFixed(2)} m: stance width ${a.width.toFixed(2)} -> ${b.width.toFixed(2)} m, right foot over the left ${a.lift.toFixed(2)} -> ${b.lift.toFixed(2)} m`);
+  assert(rows.every(([, a, b]) => b.mode === 'react' && b.y > 0.3 && b.lift > 0.15 && Math.abs(a.lift) < 0.1), `at the hover his reactions hang the sheets' legs (the right knee drawn up, the left hanging), no planted stance (${rows.map(([k, a, b]) => `${k} ${a.lift.toFixed(2)} -> ${b.lift.toFixed(2)} m`).join(', ')})`);
   // Meteor ends in the three-point landing: the right hand low by his knee in the recovery
   LS.setLook('halRefMove', 'a');
   {

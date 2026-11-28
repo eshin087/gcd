@@ -56,7 +56,7 @@ function fly(pose, beat, strike) {
   return o;
 }
 
-const cacheB = new WeakMap();
+const cacheB = new WeakMap(), cacheR = new WeakMap();
 /** His keys for a beat under the switch (null: the beat's own). `b` (ADR-254, limbs.js): `a`'s, then the
  *  flier's long legs in place of the folded ones, the straight blows on the line, the kicks long; his
  *  flying beats (the pass, the tower) their level flier's line. */
@@ -65,14 +65,17 @@ export function halKeys(beat) {
   if (m === '0' || !beat) return null;
   if (m === 'b' && !beat.mo) return flyKeys(beat);
   if (!beat.mo) return null;
-  const C = m === 'b' ? cacheB : cache;
+  // (ADR-289, `?halRefMove=a`: the sheets' legs, `refLegs`, in place of `b`'s long ones; `b`'s arms kept)
+  const ref = m === 'b' && halRefMoveOn();
+  const C = ref ? cacheR : m === 'b' ? cacheB : cache;
   if (C.has(beat)) return C.get(beat);
   const base = ASC_MOTION.keysFor(beat) ?? beat.keys ?? [];
   const cock = beat.cock ?? 0.7;
   let keys = base.map(([u, pose]) => [u, fly(pose, beat, u >= cock - 1e-6)]);
   if (m === 'b') {
     const kick = beat.mo.fam === 'kick';
-    if (!kick) keys = keys.map(([u, p]) => [u, legsFor(p, u >= cock - 1e-6)]);
+    if (ref) keys = keys.map(([u, p]) => [u, refLegs(p, beat, u >= cock - 1e-6)]);
+    else if (!kick) keys = keys.map(([u, p]) => [u, legsFor(p, u >= cock - 1e-6)]);
     else {
       // (a kick: the other leg hangs long, not folded under him as if he stood on air)
       const other = (beat.part ?? 'footR').endsWith('R') ? 'L' : 'R';
@@ -110,7 +113,30 @@ export const halRefMoveOn = () => lookOf('halRefMove', '0') !== '0';
 /** The reactions he takes in the air (the hover): their keys flown. */
 export const HOVER_REACT = Object.freeze(['ward', 'wardR', 'wardHigh', 'clash', 'deflect', 'wardHold', 'flinch', 'backstep', 'sidestep', 'lock']);
 
-/** A reaction clip's keys flown: the flier's legs on every key (build time). */
+/** A reaction clip's keys flown: the sheets' hovering legs on every key (build time; 07: the right knee
+ *  drawn up, the left hanging, the toes pointed). */
 export function flyReactKeys(keys) {
-  return keys.map(([t, pose]) => [t, legsFor(pose, false)]);
+  return keys.map(([t, pose]) => {
+    const o = { ...pose };
+    for (const f of LEG_FIELDS) o[f] = Array.isArray(LEGS_COIL[f]) ? LEGS_COIL[f].slice() : LEGS_COIL[f];
+    return [t, o];
+  });
+}
+
+/** THE SHEETS' LEGS (02, 03, 07; `?halRefMove=a` over `?halMotion=b`): through a blow's windup the right
+ *  knee drawn up high and the left leg hanging, the toes pointed (crouched in the air); from the strike
+ *  both legs bent and trailing behind him (LEGS_HIT); a kick keeps its striking leg (the builder's,
+ *  carried out straight by limbs.js) and draws the other knee up under him (REF_KICK_OTHER). */
+const REF_COIL = { rF: [-0.1, ANK + 0.4, 0.14], lF: [0.12, ANK + 0.08, -0.04], rK: [-0.1, 0.4, 1], lK: [0.1, 0.1, 1], flat: 0.2, rFy: -0.12, lFy: 0.1 };
+const REF_KICK_OTHER = { R: { rF: [-0.1, ANK + 0.38, 0.1], rK: [-0.1, 0.4, 1], rFy: -0.1 }, L: { lF: [0.1, ANK + 0.38, 0.1], lK: [0.1, 0.4, 1], lFy: 0.1 } };
+function refLegs(p, beat, strike) {
+  const o = { ...p };
+  if (beat.mo?.fam === 'kick') {
+    const other = (beat.part ?? 'footR').endsWith('R') ? 'L' : 'R';
+    for (const [f, v] of Object.entries(REF_KICK_OTHER[other])) o[f] = Array.isArray(v) ? v.slice() : v;
+    return o;
+  }
+  const L = strike ? LEGS_HIT : REF_COIL;
+  for (const f of LEG_FIELDS) o[f] = Array.isArray(L[f]) ? L[f].slice() : L[f];
+  return o;
 }
