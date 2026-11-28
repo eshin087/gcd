@@ -33,10 +33,11 @@ export const TUNING = {
   minFirstWindup: 0.7,
   minHitGap: 0.45,
   // faster each phase; realise scales every unfixed windup, the minimums still hold (saint.mjs DATA)
-  // (the tuning pass: [1, 0.94, 0.88, 0.84] / [0.8, 0.72, 0.66, 0.6] before: the later phases faster, phase 1
-  // as it was (its punish windows); every floor still holds: 0.7 x 0.8 = 0.56 s, a follow-up >= 0.49 s apart)
-  windupScale: [1, 0.92, 0.86, 0.8],
-  recoveryScale: [0.8, 0.66, 0.58, 0.48],
+  // (the tuning pass tried [1, 0.92, 0.86, 0.8] / [0.8, 0.66, 0.58, 0.48]: phase 4 +5 - 9 cues a minute, but the
+  // striking bot (85 % of the cues answered, swinging at him) then lost all three seeds (it won 2 of 3 as here):
+  // kept as they were)
+  windupScale: [1, 0.94, 0.88, 0.84],
+  recoveryScale: [0.8, 0.72, 0.66, 0.6],
   close: { first: 3.2, next: 1.6, speed: 15 },
   reach: { fist: 1.7, kick: 2.1, line: 2.2, lineW: 0.8 },
 
@@ -90,11 +91,12 @@ export const TUNING = {
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
     pursue: { margin: 0.5, after: 0.06, gap: 0.06, closeK: [1.0, 1.4, 1.6, 1.6], dashK: [1.0, 1.4, 1.5, 1.6], away: 1.2, leapLead: 0.35, blinkLead: 0.4, blinkKeep: 0.6, miss: 0, lead: 0.6, habit: 0.6, habitMax: 3, habitDecay: 0.1 },
     // what tests/integration/saint.mjs tunePace asserts (the tuning pass, 2026-11-28; a god-mode guarding bot that
-    // roams 2.5 / 5 / 9 m, seeds 4242 / 7 / 99 x 60 s a phase): each phase busier than the one before in the
-    // seeds' mean (x rampMean), at least minRate cues a minute per seed, no gap between two cues over maxGap s,
-    // the jet step at least `steps` x as frequent as the phase before (P3, P4). Measured: 47.7 / 54.1 / 60.0 /
-    // 65.6 cues a minute (seeds 43.7 - 53.6, 51.3 - 57.7, 53.3 - 68.0, 56.0 - 71.1), gaps <= 6.4 / 4.5 / 4.8 / 5.9 s
-    meter: { rampMean: [1, 1.04, 1.04, 1.03], minRate: [40, 46, 48, 50], maxGap: [7.0, 5.2, 5.5, 6.5], steps: 0.9 },
+    // roams 2.5 / 5 / 9 m, seeds 4242 / 7 / 99 x 60 s a phase): each phase at least rampMean x the one before in
+    // the seeds' mean (phase 3 only as busy as phase 2: its beams, swarm and pass join the strings), at least
+    // minRate cues a minute per seed, no gap between two cues over maxGap s, the jet step at least `steps` x as
+    // frequent as the phase before (P3, P4). Measured: 47.7 / 53.8 / 53.7 / 63.4 cues a minute (seeds 43.7 -
+    // 53.6, 50.3 - 56.7, 48.5 - 59.4, 61.8 - 66.1), gaps <= 6.4 / 4.5 / 4.9 / 4.6 s, steps 0 / 1.7 / 3.7 / 3.0 a minute
+    meter: { rampMean: [1, 1.04, 0.97, 1.05], minRate: [40, 46, 44, 56], maxGap: [7.0, 5.2, 5.5, 5.2], steps: 0.75 },
   },
   punish: { weight: 4 },
   fullDeflect: { minHits: 5, posture: 70 },
