@@ -5629,8 +5629,10 @@ A `Duelist` with `LORD_KIT`; COMBAT.md → "The Starless Lord" has the fight. Th
 kind = 'duelist';  name = 'VARR NIHIL, THE STARLESS LORD';  phase 1..4 = his blade FORM
 lives: { total: 4, left }      // the forms still to beat (this one included); hp / maxHp = this form's bar
 lit: 0..1                      // how far the blades are lit (they extend from the hilt)
-blades: { A, B, hiltB, Q, off, L }   // main blade, the staff's second blade + joined hilt, the cross-hilt's
-                               // side blades, the off-hand saber's joint and its blade (gear.js names them)
+blades: { A, B, hiltB, Q, off, L, cores }   // main blade, the staff's second blade + joined hilt, the cross-hilt's
+                               // side blades, the off-hand saber's joint and its blade (gear.js names them);
+                               // cores: [[blade, slit]] the split blades' dark slits (`?lordRef=a`, ADR-276;
+                               // empty otherwise), kept shown and scaled with their blades by _showForm
 _onHpZero()                    // an empty bar BREAKS him (no death): on one knee for posture.breakTime
 onExecute({ damage })          // the DEATHBLOW: the form ends ('dragon:plunged {execution, deathblow, form}');
                                // forms 1-3: react 'executed', then kit.transitions[form + 1] (enterPhase: a

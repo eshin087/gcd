@@ -5,6 +5,51 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — Varr Nihil after the reference pack (ADR-276; `enemies/varr-reference-v04`)
+
+**Goal:** the owner's reference pack for Varr Nihil (`docs/art/character-packs-v04/varr-nihil`, kept out of the repo:
+CLAUDE-HANDOFF.md, COVERAGE.md, inventory.json, fifteen sheets; pages 13 - 15 correct the earlier ones) turned into
+his look and his motion, in stages, with no change to balance, and filmed before / after at the game camera. The
+owner approves the art; both pieces sit behind switches until then.
+
+- **Stage 1, the look (`?lordRef=a`, read when his rig is built; `starlessLord/refLook.js`):** no form-by-form
+  dressing (the hood, helm, plate, skirt and whole cape in all four forms, over `?lordLook=b`); every blade split:
+  two rails of the blade's light meeting at the point with a dark slit (`armor`) between them, for the main blade,
+  the staff's back blade, the off-hand blade and the cross-hilt's side blades (`blades.cores`, kept shown and scaled
+  with their blades in `_showForm`); a short dark cross-guard; the blade field draws two rails of steel half a cell
+  each side and no middle stroke, its heat sheath pushed out and lower, the mesh's bloom halved (without those the
+  slit filled with glow even at 2 m); the thrown blade two rails; the crimson sash and clasp (`piping`: `lining` is a
+  back-face material and never showed from the front); the cape's side sheets turned out and standing off him, every
+  sheet lagging further; the crimson inks stronger.
+- **Stages 2 - 3, the poses (`?lordRefMove=a`, live):** a pose layer over whatever keys the shipped switches pick,
+  the same key times and eases (moves.js `refKey` / `refKeysOf`, `REALISERS_REF`, `CLIPS_BY_FORM_REF`, `clipsOf`;
+  poses.js `GUARDS_REF`, `FORM_POSES_REF`, `GLIDE_REF`; lord.js `staffHands`). Guards 9 cm lower on feet 12 cm wider
+  and a longer stride; form 1's free fist at his side; form 3's hands wide on the staff (`offAt` -0.14, reset to 0
+  every frame outside form 3: the duelist's poses never write it, and -0.24 leaked into form 4 and left the hand off
+  the staff); form 4 nearer upright, the hands under the guard (13 H1). Loads sink 0.05, strikes and follow-throughs
+  sink 0.09 and lean 0.1 rad, never below -0.4 (a crouch is not pushed deeper: the knees folded shut), feet 3 cm
+  wider, not in a flight; the free fist out behind through a one-handed cut. Vigil's Fall lower in its follow-through
+  (13 H2; its blade path kept: a steeper path bent his wrist to 70 - 73°), Starfall landing on the staff pointed down
+  ahead of his feet (13 H3; straight down, the animator swings a blade out of his legs). Reactions bigger, the carried
+  steps and the glide leaning further.
+- **Stage 4, the spells:** their looks, origins, lifetimes and paths are the owner's earlier picks and stay; what
+  changed is what they are cast with (the split blade in the thrown blade and the blade field). Rupture's floor
+  plates (14 Q1) are already floor pieces; nothing of his armour detaches.
+- **Kept on purpose:** the two-handed chops on a diagonal (ADR-251, the owner's pick; 05 C6 draws one straight down).
+- **Verified:** `lord.mjs . lordref` (2710 realisations time every beat the same on / off; the same seeded 24 s fight
+  lands 16 blows at the same times either way; wrist <= 61°, blade >= 0.10 m from the head; four split blades, no
+  dressing), `data,timing,forms,spells,swordmotion,lordform` green; an in-browser audit of all 67 moves before /
+  after (foot slide, knees, pops, the blade's distance to the hero at each impact, the staff grip); films of 16 moves
+  at the game camera (720p) and a close three-quarter view, before / after, impacts at the same times in every take.
+- **Open:** the owner's pick of both switches from the films; a per-move pass on what they name; the split at 720p is
+  two rails of letters (the blade mesh is ~2 px wide there); the crimson still reads faint at the game camera; the
+  form-3 off hand sits further from the staff's line (the audit's wrist-to-line 0.12 -> 0.26 - 0.3 m in the staff's
+  long moves); a little more foot slide in Lightning Verse and Wheel of Stones (+0.15 - 0.2 m) and the staff's
+  flurry (its flits); harder pops (the second difference of a joint's path) in Severance, Starfall, Void Waltz and
+  Vigil's Fall (+30 - 65 %); the phone.
+
+
+
 ## 2026-11-28 — The wyrm's death neck, every white spark seen, the scythe and the leap (ADR-274; branch `dragon/death-neck-tells`)
 
 **Owner:** "when the dragon dies and flies up, the head and neck looks unnatural ... like the neck is broken";

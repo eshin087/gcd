@@ -8006,3 +8006,54 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the wyrm's sleep curl on a standing body: the film rig's `debug.reset()` put it to sleep beside the hero, a state
   the game never shows; re-filmed from its combat stance.)
 
+## ADR-276 — Varr Nihil after the reference pack: his look and his poses behind two switches (`?lordRef`, `?lordRefMove`) (2026-11-28)
+
+- **Context:** the owner generated a reference pack for Varr Nihil (`docs/art/character-packs-v04/varr-nihil`:
+  fifteen sheets, a handoff, a coverage table of 70 moves / 256 beat variants / 19 reaction clips; pages 13 - 15
+  correct the earlier sheets) and asked for his look and his animation to follow it: the hood, the closed helm, the
+  armour, the war-skirt and the whole crimson-lined cape kept in all four forms (this overrides the form-by-form
+  wear of `?lordLook=b`, the owner's earlier pick), every blade split into two red-white rails with a dark slit, the
+  silhouette readable at the game camera, and every move, reaction, step, transition and spell posed after the
+  strips, with no change to balance (damage, reach, hitboxes, active windows, tells, travel, cooldowns, AI weights,
+  phase eligibility, cue scheduling). Final art approval stays with the owner.
+- **Decision:**
+  1. TWO SWITCHES, '0' (as shipped) until the owner picks (CLAUDE.md: a change to how something looks is shown as
+     options first; both are in `lookSwitch.js` PENDING and the Lab's LOOKS rows marked awaiting).
+     `?lordRef=a` (read when his rig is built) is the look; `?lordRefMove=a` (live, from his next move) the poses.
+     `starlessLord/refLook.js` holds both readers and the look's pieces.
+  2. THE LOOK. No dressing while `lordRef` is on, whatever `lordLook` says (`look.js lordLookNow`). Every blade (the
+     main, the staff's back blade, the off-hand blade, the cross-hilt's side blades) is built as two rails of the
+     blade's light meeting at the point, with a dark slit (`armor`) between them, a short dark cross-guard on the
+     hilt; the slits are kept shown and scaled with their blades (`blades.cores`, `_showForm`), so a thrown blade
+     leaves an empty hand and its slit with it. The blade is drawn in the field as two rails of steel half a cell
+     to each side and no stroke down the middle, its sheath of heat pushed out and lower; the rails' bloom halved
+     (a blade is thinner than a letter cell: at 720p it is the field that shows the split). The thrown blade is
+     two rails too. The crimson sash and its clasp across the chest (00 / 01 / 03), in `piping` (the `lining`
+     material draws only the inside of a sheet). The cape's two side sheets turned out and standing off him so the
+     lining frames him from the front; every sheet lags and overshoots further (lag 0.55 -> 0.72, swing 1.4 -> 1.6
+     rad). The crimson inks stronger (the same hue).
+  3. THE POSES, never the timing. A pose layer over whatever keys the shipped switches pick (ADR-226's held tells,
+     ADR-251's form, ADR-251's pace): the same key times and eases, so the realiser (which times a beat from its
+     windup, hold, active and the key times, never from a pose) lands every impact, flash, end and recovery where
+     it did; no root-motion field is touched. Each form's guard lower on wider feet (`GUARDS_REF`); form 1's free
+     hand a fist at his side; form 3's hands wide on the staff (the off hand down the joined hilt, `offAt`); form 4
+     upright with the hands under the guard and the point over his head (13 H1). The load before a blow sinks a
+     little, the strike and its follow-through sink and lean into the cut, feet on the floor a little wider (not in
+     a flight or a leap); the free fist out behind in opposition through a one-handed cut. Two corrections that name
+     a move: Vigil's Fall ends low over its point (13 H2 replaces 08 M3; the body drops, the blade keeps its path: a
+     steeper one bent his wrist past the sword audit's 62°), Starfall lands with the staff pointed down ahead of his
+     feet (13 H3 replaces 07 A6; straight down, the animator swings a blade out of his legs, so it reads only a little
+     steeper than today's landing). The reactions read bigger (recoils further back,
+     the stagger lower) and the carried backstep / sidestep lean further; the glide leans further in with the legs
+     trailing further (02 L2 - L5).
+  4. KEPT AS THEY ARE: the owner's earlier motion picks that the strips draw differently stay (the two-handed chops
+     on a diagonal, ADR-251: 05 C6 draws one straight down the middle, which reads as one upright bar at the game
+     camera); the spells' looks (the owner's picks, ADR-122 / ADR-251) and every origin, lifetime and trajectory.
+  5. CHECKED: `lord.mjs . lordref`: every move / form / branch / flurry count realised on and off times every beat
+     the same; the same seeded fight against the defender lands the same blows at the same times; the sword audit's
+     limits hold with the new poses; the split blades and no dressing under `?lordRef`.
+- **Consequences:** the default game is unchanged until the owner picks. The pose layer is broad (every beat at
+  once), not a hand-keyed redo of 256 variants: it moves the whole set toward the strips' bearing, and the few
+  strips that differ from today's paths in kind (13 H2, 13 H3) are keyed by name; a per-move pass is open if the
+  owner wants one. At 720p the blade is about two pixels wide: the split reads in close views, at 1440p and up,
+  and as two rails of letters in the field.

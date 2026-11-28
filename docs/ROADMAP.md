@@ -792,6 +792,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] A joint-by-joint audit of the new poses (done for the sword: ADR-226, `audit`); a palm strike for Shen Hui's free hand
   - [ ] On the iPhone: frame rate in the Lord's fourth form with the weather and Starless Night
   - [ ] Remove the looks that were turned down and their switches, once the picks have been played
+  - [x] Varr Nihil after the reference pack (ADR-276): his body whole in every form, split blades, the sash, the cape;
+        the poses after the strips over the same timing (`?lordRef=a`, `?lordRefMove=a`)
+  - [ ] The owner picks `?lordRef` / `?lordRefMove` from the films; a per-move pass on what they name
 
 ## M1.45 — The wyrm ablaze, a forest that breaks, letters that follow the zoom (2026-11-16, `dragon/menace-and-ruin`, ADR-120)
 - [x] Every tree of Cinderwood is a breakable that wears down in stages (664 breakables on 228 bones)
