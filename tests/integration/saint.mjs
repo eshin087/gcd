@@ -1995,7 +1995,8 @@ async function scenarioWorld() {
 // ================================================================== arsenal (the arsenal agent's: moves/arsenal.js, arsenal.js)
 // Vigil, Absolution, Triptych, Choir, Passing Bell, Kyrie, Verdict, Revelation: each move's tells and
 // windups as realised, its hit on a hero who stands, nothing on one who answers it, what it breaks, its
-// ledger handling (missiles and shells cued, cut, never inside a guard's window), the barrage's lanes.
+// ledger handling (missiles and shells cued, cut, never inside a guard's window: arFair, 3 seeds; the
+// measure in the report: GCD_ARSEEDS=1,2,3,4,5,6,7,8,9,10), the barrage's lanes.
 const ar = (G) => G.game.dragon.parts.arsenal;
 const AR_MOVES = ['vigil', 'absolution', 'triptych', 'choir', 'passingBell', 'kyrie', 'verdict', 'revelation'];
 /** A build in phase `form`, his AI off, the hero `dist` m before him; world.groundBlow counted by kind. */
@@ -2487,7 +2488,7 @@ async function scenarioArWorld() {
 }
 
 async function scenarioArFair() {
-  const SEEDS = (process.env.GCD_ARSEEDS ?? '1,2,3,4,5,6,7,8,9,10').split(',').map(Number).filter(Number.isFinite);
+  const SEEDS = (process.env.GCD_ARSEEDS ?? '1,2,3').split(',').map(Number).filter(Number.isFinite);
   const SECS = Number(process.env.GCD_ARSECS ?? 24);
   out(`\n== scenario ARFAIR (the fairness guard over ${SEEDS.length} seeds x ${SECS} s of phase 3 and 4 with his swarm and barrage likely: no missile or shell lands within the guard's sep of a cued blow that needs the other answer) ==`);
   const G0 = TUNING.pressure.guard, sep = G0.sep;

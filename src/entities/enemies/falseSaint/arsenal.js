@@ -83,6 +83,7 @@ const clamp01 = (v) => (v > 1 ? 1 : v > 0 ? v : 0);
 const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph | 0)) - 1] : v);
 const LANDED = new Set([RESULT.HIT, RESULT.BLOCKED, RESULT.PARRIED, RESULT.CLASHED]);
 const WANT = Object.freeze(['fsPalmK', 'fsGunK', 'fsPetalK', 'fsTubeK', 'fsCoreK', 'eyesK']);
+const OWN = Object.freeze(['fsPalmK', 'fsGunK', 'fsPetalK', 'fsTubeK', 'eyesK']); // (the values it alone drives)
 
 /** The 2D distance from (px, pz) to the segment a → b. */
 function segD(px, pz, ax, az, bx, bz) {
@@ -138,6 +139,7 @@ export class FsArsenal {
     this.Bo = Array.from({ length: 6 }, () => ({ rec: null, id: 0, b: null, ox: 0, oy: 0, oz: 0, dx: 0, dy: 0, dz: 1, cover: null, back: false, leg: 0 }));
     this.want = Object.fromEntries(WANT.map((k) => [k, 0]));
     this.k = Object.fromEntries(WANT.map((k) => [k, 0]));
+    this._drove = Object.fromEntries(OWN.map((k) => [k, false]));
     this._hand = false;
     this._boltLand = (r) => this._onBolt(r);
     this._boltHome = (r) => this._onBoltHome(r);
@@ -168,7 +170,10 @@ export class FsArsenal {
     this._stations.clear();
     for (const k of WANT) this.want[k] = this.k[k] = 0;
     const d = this.d;
-    for (const k of ['fsPalmK', 'fsGunK', 'fsPetalK', 'fsTubeK', 'eyesK']) d[k] = 0;
+    for (const k of OWN) {
+      d[k] = 0;
+      if (this._drove) this._drove[k] = false;
+    }
     if (this._hand) d.fsHandR = 'guard';
     this._hand = false;
     try {
@@ -298,11 +303,13 @@ export class FsArsenal {
       this.k[k] = w > this.k[k] ? Math.min(w, this.k[k] + dt * 6) : Math.max(w, this.k[k] - dt * 2.5);
       this.want[k] = 0;
     }
-    d.fsPalmK = this.k.fsPalmK;
-    d.fsGunK = this.k.fsGunK;
-    d.fsPetalK = this.k.fsPetalK;
-    d.fsTubeK = this.k.fsTubeK;
-    d.eyesK = Math.min(this.T.beams.eyes, this.k.eyesK);
+    // (written only while it drives them, and once more as each comes back to 0: a value set by someone
+    // else (the Lab, the body's checks) is left alone while the arsenal is idle)
+    for (const k of OWN) {
+      const v = k === 'eyesK' ? Math.min(this.T.beams.eyes, this.k[k]) : this.k[k];
+      if (v > 0 || this._drove[k]) d[k] = v;
+      this._drove[k] = v > 0;
+    }
     // (raised only: the boost handler's Last Rite drives the core too, and it decays it)
     if (this.k.fsCoreK > fin(d.fsCoreK)) d.fsCoreK = this.k.fsCoreK;
     // the hand: open and reaching while a palm aims or fires, back to the guard after
