@@ -78,6 +78,16 @@ const SAINT_POSES = Object.freeze({
   },
 });
 
+/** His feet (the tuning pass, from the V04 audit; ADR-0FS): a foot a key lifts while it is planted (or still being
+ *  stepped by the foot planner) eases off its spot over `ease` s instead of snapping (anim.js liftEase /
+ *  liftFromStep: the engine's MOTION_FIX, Wen Yao's precedent, ADR-249). Live: saint.mjs tuneFeet measures it
+ *  (off / on). 0.2 s, not the engine's MOTION_FIX.liftEase 0.12: measured (the largest foot jump in a frame;
+ *  the planted foot's peak slide), off / 0.12 / 0.2 / 0.3 s: benediction 0.79 / 0.32 / 0.24 / 0.36 m, 8.1 /
+ *  18.9 / 11.6 / 7.5 m/s; genuflect 0.62 / 0.35 / 0.20 / 0.20 m; lauds 0.71 / 0.27 / 0.27 / 0.27 m, 7.1 / 16.1
+ *  / 10.4 / 8.2 m/s (the 0.12 ease's slide was its own last jump, still near the floor). No move's timing
+ *  changes (the animator's, not realise's). */
+export const FS_FEET = { ease: 0.2 };
+
 /** Everything the shared duelist needs to be him (duelist.js: kit). */
 export const SAINT_KIT = Object.freeze({
   id: 'saint',
@@ -91,6 +101,7 @@ export const SAINT_KIT = Object.freeze({
   blade: FS_FIST,
   scale: TUNING.scale,
   REACT, OPEN,
+  animOpts: Object.freeze({ liftEase: () => FS_FEET.ease, liftFromStep: true }),
   dress: (d, dt) => dressSaint(d, dt),
   get letters() {
     return fsLettersOn();

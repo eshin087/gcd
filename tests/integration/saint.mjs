@@ -3386,6 +3386,64 @@ async function scenarioTuneWreck() {
   assert(b3 < plates * 0.6, `after three slams the floor still reads: under 60 % of its plates broken (${b3} / ${plates})`);
 }
 
+/** FEET: his feet through the strings the V04 audit named, with the lift's ease off (0) and on (saint.js
+ *  FS_FEET.ease): the largest jump of a foot in one frame (a pop), and how fast a PLANTED foot (both this
+ *  frame and the last within 3 cm of its height in his guard) slides over the floor (its peak, and its mean over the planted frames),
+ *  the hero 2.2 m off in god mode, AI off. The moves' timing is untouched by it (realise is the same). */
+async function scenarioTuneFeet() {
+  out('\n== scenario TUNEFEET (foot pops and planted-foot slide per move, the lift ease off vs on) ==');
+  const { FS_FEET } = await imp('src/entities/enemies/falseSaint/saint.js');
+  const ease0 = Number(process.env.GCD_FEASE ?? FS_FEET.ease), easeWas = FS_FEET.ease;
+  const list = (process.env.GCD_FMOVES ?? 'benediction:1,genuflect:1,lauds:3,anathema:3,interdict:2,rebuke:1,castOut:2,thurible:3').split(',').map((x) => x.split(':'));
+  const res = {};
+  const v = new THREE.Vector3();
+  for (const ease of [0, ease0]) {
+    FS_FEET.ease = ease;
+    for (const [name, f] of list) {
+      const G = build();
+      const { game } = G;
+      const d = game.dragon;
+      duel(G, { dist: 2.2, ai: false, form: Number(f) });
+      game.player.debug.god = true;
+      place(G, 2.2);
+      const prev = { L: null, R: null }, rest = {};
+      for (const k of ['L', 'R']) rest[k] = v.setFromMatrixPosition(d.rig.legs[k].foot.matrixWorld).y - d.position.y;
+      let pop = 0, popAt = '', slideMax = 0, slideSum = 0, slideN = 0;
+      d.brain.trigger(name);
+      let acted = false;
+      run(G, 7, () => game.mouseGround.set(d.position.x, 0, d.position.z), () => {
+        if (d.mode === 'act') acted = true;
+        for (const k of ['L', 'R']) {
+          v.setFromMatrixPosition(d.rig.legs[k].foot.matrixWorld);
+          const p = prev[k];
+          if (p && game.dt > 0) {
+            const j = Math.hypot(v.x - p.x, v.y - p.y, v.z - p.z);
+            if (j > pop) { pop = j; popAt = `${k} @${(d.brain.act?.t ?? 0).toFixed(2)}`; }
+            if (v.y - d.position.y < rest[k] + 0.03 && p.y - p.root < rest[k] + 0.03) {
+              const sp = Math.hypot(v.x - p.x, v.z - p.z) / game.dt;
+              slideMax = Math.max(slideMax, sp);
+              slideSum += sp;
+              slideN++;
+            }
+          }
+          prev[k] = { x: v.x, y: v.y, z: v.z, root: d.position.y };
+        }
+        return acted && d.mode !== 'act';
+      });
+      (res[name] ??= {})[ease] = { pop, popAt, slideMax, slideMean: slideSum / Math.max(1, slideN) };
+    }
+  }
+  FS_FEET.ease = easeWas;
+  out(`   (on: ease ${ease0} s)`);
+  out('   move           pop off (m)   pop on (m)    slide peak off / on (m/s)   slide mean off / on (m/s)');
+  for (const [name] of list) {
+    const a = res[name][0], b = res[name][ease0];
+    out(`   ${name.padEnd(14)} ${a.pop.toFixed(2).padStart(5)} ${a.popAt.padEnd(8)} ${b.pop.toFixed(2).padStart(5)} ${b.popAt.padEnd(8)}  ${a.slideMax.toFixed(1).padStart(5)} / ${b.slideMax.toFixed(1).padEnd(5)}               ${a.slideMean.toFixed(2)} / ${b.slideMean.toFixed(2)}`);
+  }
+  const A1 = realise('benediction', 1, () => 0.5);
+  assert(Number.isFinite(A1.end), 'realise unchanged in kind (the ease is the animator\'s, not the move\'s)');
+}
+
 /** TRAINING: every situation of the Lab's Training catalogue that applies to him plays out and shows what
  *  it promises (city.mjs's TRAINING; GCD_TONLY=id,id runs those only). */
 async function scenarioTuneTraining() {
@@ -3481,9 +3539,10 @@ const S = {
   tunePace: scenarioTunePace,
   tuneTraining: scenarioTuneTraining,
   tuneWreck: scenarioTuneWreck,
+  tuneFeet: scenarioTuneFeet,
 };
 // (opt-in scenarios: listed here, run only by name; tests/run.mjs may run one as a process of its own)
-const OPT_IN = new Set(['tuneFight', 'tuneWreck']);
+const OPT_IN = new Set(['tuneFight', 'tuneWreck', 'tuneFeet']);
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');
 for (const k of list) {
