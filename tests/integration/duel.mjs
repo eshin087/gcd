@@ -990,7 +990,10 @@ async function scenarioClash() {
   const late = d.takeHit({ damage: 30, part: 'body', heavy: false, poise: 5, point: { x: d.position.x, y: 1.2, z: d.position.z } });
   assert(wasAct && late === 0 && d.hp === hpB && d.mode === 'react' && ['ward', 'wardR', 'wardHigh'].includes(d.brain.react?.kind), `late in it he breaks the recovery off into his guard (${late} damage; ${d.brain.react?.kind})`);
   settle(G, 8);
-  // (6) the blade lock: the two close to the lock's distance and the blades cross
+  // (6) the blade lock: the two close to the lock's distance and the blades cross (?dbLock=lock: the deathblow
+  // does not take the perfect blue parry from it; ADR-274)
+  const DBM = await imp('src/entities/player/deathblow.js');
+  DBM.setDbLock('lock');
   home(G);
   place(G, 2.2);
   run(G, 0.3);
@@ -1006,6 +1009,7 @@ async function scenarioClash() {
   const dist = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
   far = p.deflect.gap;
   assert(locked && p.state === 'lock' && Math.abs(dist - 1.3) < 0.25 && far < 0.2, `blades locked: the two stand ${dist.toFixed(2)} m apart and the blades cross (${far.toFixed(2)} m between them)`);
+  DBM.setDbLock(DBM.DBLOCK_DEFAULT);
   run(G, 4, () => { if (n++ % 4 === 0) input.click(0); }, () => p.state !== 'lock');
   settle(G, 8);
   return G;
