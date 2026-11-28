@@ -8150,3 +8150,64 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
   guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
   change is a combo where a lock was.
+
+## ADR-281 — The wyrm's motion audit: every unnatural motion flagged, and fixed behind one switch (`?wyrmFix`) (2026-11-28)
+- **Context:** the owner: "there are still some weird dragon animations and movement that looks unnatural and off
+  ... analyze all the movements and flag the ones to be fixed", then "Yes, fix them all"; and "the dragon
+  incantation randomly appears not beneath him but next to him and moves like an object".
+- **The audit** (`tests/integration/wyrmMotion.mjs`, opt-in `integ wyrmmotion`; `GCD_MOVES`, `GCD_POPDBG`,
+  `GCD_AUDIT_OUT`): every attack, idle, a chase round the hero, stagger, posture break, phases 2 / 3, the wake and
+  the death, frame by frame (hit-stop frames skipped): a part's one-frame change of velocity (a snap), its speed,
+  the head off the neck's last segment, the sharpest neck and tail joint, planted feet skating, anything under the
+  ground or inside the trunk, spins in place, limb stretch. Four read-only investigations found the causes.
+- **Decision** (all behind `motionFix.js` `fixOn()`: `?wyrmFix=0` / `GCD_NOFIX=1` = before; the Lab's `wyrmFix`):
+  1. WINGS: a soft floor on the flap angle (the wing swung rigidly about its root, bisected so every point keeps
+     0.3 x SCALE; the stroke slows into it), the finger clamps lift by a hinge about the flap axis (they set y and
+     normalized, which undid them), the beat's fold eases in, spread and flap amplitude are critically damped springs.
+  2. LIMBS: the feet's lead along the body's travel is eased (a lunge moved every home 2.2 m in a frame), a foot
+     landing does not take a home that just jumped, the overhead's paw slides onto its plant, a landing foot plants
+     where it is drawn (only its height eases from the air pose), an elbow that would go under the ground bends up.
+  3. HEAD: the bite's snap starts `pre` s (0.2, less for a later impact) before the active, from rest (a Hermite to
+     0.9 x its average speed), on an arc round the neck's base, arriving on the beat; the held colour pose leaves
+     the head to it; a bite connects no sooner than `biteEarly` (0.06 s) before its impact; the neck pulls a head
+     outside its cone back in at 18 rad/s after the turn-rate limit; the snout keeps 0.3 m above the ground; dives
+     carry the head 2.2 m up and tip it less; a banking wheel's head follows faster and looks along the flight.
+  4. BODY: the yaw rate grows at most 25 rad/s a second (turnToward); wing sweeps pivot 0.9 rad over the whole
+     stroke; `Chain.relaxKinks` on the tail (every frame) and the drawn neck (when the head is not pinned); the sky
+     strafe's landing glide starts at the pass's speed.
+  5. THE INCANTATION: the wisps cast on the ground under the wyrm (`under`: a circle that follows its root).
+- **Measured** (59 moves and states, before → after): under the ground 17 → 0; tail kinks > 50° 37 → 2; paw
+  snaps > 120 m/s 9 → 1; head > 70° off the neck 11 → 2; feet skating > 0.3 m 10 → 2; snout in the chest 2 → 0;
+  worst paw / head / wing snap 297 / 247 / 350 → 124 / 137 / 221 m/s. Integ timing: every string contact within
+  ±85 ms (worst 67).
+- **Not done:** the tail sweeps / whips (tail, tail lash, pivot lash, rear guard, cinder rake, cataclysm) still turn
+  the body ~700°/s: a slower spin needs the turn aimed at the hero's bearing (a fixed slower profile missed the hit
+  timing by up to 283 ms); the death's and the wake's feet still skate (~0.4 - 0.6 m: the hind toe is not pinned
+  while the ankle sinks); the measured neck still meets its bend limit in strikes (its FABRIK starts from a high
+  base); the neck's resting curve could spread its bend further (a look change: the owner's call).
+- **Consequences:** the hit spheres ride on what moved (the snout, the paws, the wing tips now at hero height
+  instead of under the ground): the timing, strings, melee, reach, flight, plunge, death, brood and paw-tell
+  suites pass. `integ wyrmfix` holds the worst offenders under the new limits.
+
+## ADR-282 — The aimed tail spin: the sweeps and whips steer onto the beat (2026-11-28)
+- **Context:** ADR-281 left the tail sweeps and whips spinning the body ~700°/s (the sweep: 220° in 0.45 s on an
+  ease, its impact at 0.2 s; the whip: 180° in 0.3 s), with ~130° after the blow. A fixed slower curve that started
+  in the windup missed `integ timing` by up to 283 ms: near and straight-behind heroes were hit early, flank ones
+  late. The owner: "Yes, the spins next".
+- **Decision** (`attacks.js` `aimSpin`, `SPIN`; behind `?wyrmFix`): the turn starts `pre` 0.35 s before the active
+  (after the backswing; not while the tail still lies within 0.45 rad of the hero) and is STEERED every frame: the
+  yaw rate = the angle still to go / the time to the cue's impact, the angle measured to whatever touches him
+  first (the mid joint's crossing, less the hit's tolerance, or a tail sphere at his distance, less its angular
+  size), its growth capped at 20 rad/s²; past him the body runs on to the old curve's final facing on a damped
+  spring (the next blow of a string was timed from that facing; braking short of it put the wing sweep after a
+  whip 100 - 170 ms early). The blow keeps the old curve where steering missed the beat: a hero within ~10° of
+  straight behind (the old backswing is tuned for a tail lying on his bearing), phase 3 (its windups x0.78 left
+  too little time: five contacts 100 - 183 ms off), more than 3.5 rad still to turn or more than 5.5 rad/s on
+  average needed when steering would begin, the tail jab and a string's tail sweep (steered, they reached a close hero up to
+  0.23 s early), a string's second whip.
+- **Measured:** spin in place (the audit's placements): the tail sweep 674 → 153°/s, pivot lash 706 → 271, rear
+  guard 703 → 286, cinder rake 705 → 319 (phases 1 - 2); the tail lash (~680) and phase 3 (the cataclysm) keep the old curve.
+  `integ timing`: every contact within ±85 ms, no first hit missed.
+- **Consequences:** the tail lash's spins and the straight-behind cases are the old motion; a later pass could
+  steer them with a longer windup (a timing change: the owner's call).
+
