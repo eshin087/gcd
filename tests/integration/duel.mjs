@@ -2106,12 +2106,15 @@ async function scenarioPerfectFx() {
   const { game } = G;
   const d = game.dragon, p = game.player;
   let peak = 0;
+  const clash0 = PFX.parryClashMode();
+  PFX.setParryClash('0'); // (the mark as built, its rings and echoes; the default draws it as a pinpoint: ?parryClash=c, ADR-264)
   for (let i = 0; i < 10; i++) {
     PFX.perfectParryMark(game, (p.position.x + d.position.x) / 2, 1.2, (p.position.z + d.position.z) / 2, { mode: i & 1 ? 'cinema' : 'sharp', beat: 'full', streak: 12 });
     run(G, 0.3, () => { peak = Math.max(peak, game.fx.fire.count); });
   }
   run(G, 1);
   assert(peak < 400 && !PFX.perfectBusy() && PFX.PERFECT_LAST.echo === 2, `a mark every 0.3 s: at most ${peak} blobs alive at once, all gone after; at streak tier ${STK.streakTier(12)} cinema's ring has ${PFX.PERFECT_LAST.echo} echoes`);
+  PFX.setParryClash(clash0);
   assert(PFX.perfectBeat('cinema', true, 100) === 'full' && PFX.perfectBeat('cinema', true, 100.3) === 'short' && PFX.perfectBeat('cinema', true, 101.5) === 'full' && PFX.perfectBeat('sharp', true, 105) === '', 'cinema: a second last-blow parry within the gap gets the short beat');
   const fire = game.fx.fire;
   game.fx.fire = null;
@@ -4615,7 +4618,7 @@ async function scenarioDeathblow() {
     SG.setStrikeGap(SG.STRIKE_GAP_DEFAULT);
     // the clash's size (?parryClash=a|b): a perfect parry still met and answered with the mark drawn smaller
     const PF = await imp('src/combat/perfectFx.js');
-    assert(PF.PARRY_CLASH_DEFAULT === '0' && PF.parryClashSpec() === null, "(g) the clash is drawn as before by default until the owner picks");
+    assert(PF.PARRY_CLASH_DEFAULT === 'c' && PF.parryClashSpec()?.clash === 0, "(g) the clash's default is the owner's pick, c (a pinpoint and the sparks)");
     const base = {};
     for (const mode of ['0', 'a', 'b', 'c']) {
       PF.setParryClash(mode);
@@ -4629,7 +4632,7 @@ async function scenarioDeathblow() {
     PF.setParryClash(PF.PARRY_CLASH_DEFAULT);
     // the small blue tell (?blueTell=a): a small blue cross on his blade, the blow parried as before
     const DF = await imp('src/entities/enemies/duelist/fx.js');
-    assert(DF.BLUE_TELL_DEFAULT === '0' && DF.TELL_GLINT.blueSmall.w < DF.TELL_GLINT.blue.w && !DF.TELL_GLINT.blueSmall.ring && DF.TELL_GLINT.blueSmall.tint, '(g) the small blue tell: narrower, no ring, dyed blue; off by default until the owner picks');
+    assert(DF.BLUE_TELL_DEFAULT === 'a' && DF.TELL_GLINT.blueSmall.w < DF.TELL_GLINT.blue.w && !DF.TELL_GLINT.blueSmall.ring && DF.TELL_GLINT.blueSmall.tint, "(g) the small blue tell: narrower, no ring, dyed blue; the owner's pick, the default");
     DF.setBlueTell('a');
     {
       const t = take('deathblow', { move: 'fallingAsh', run: 3, perfect: false, secs: 6, posture: 20 });

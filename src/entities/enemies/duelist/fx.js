@@ -60,7 +60,7 @@ export const TELL_GLINT = Object.freeze({
   blueSmall: { w: 4, h: 2, diag: 0, ring: 0, life: 0.28, heart: 2.2, arm: 1.17, tip: 0.7, light: 1.2, tint: true, sparkle: 0.5 },
 });
 const BLUE_TELL_OPTS = ['0', 'a'];
-export const BLUE_TELL_DEFAULT = '0'; // (until the owner picks from the films)
+export const BLUE_TELL_DEFAULT = 'a'; // (the owner's pick from the films, 2026-11-27: 'Yes, new look'; '0' the big white star)
 let BLUE_TELL = BLUE_TELL_DEFAULT;
 try {
   const q = new URLSearchParams(globalThis.location?.search ?? '').get('blueTell');
