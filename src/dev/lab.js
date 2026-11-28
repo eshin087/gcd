@@ -40,8 +40,8 @@ import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combo
 import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.js';
 import { CONTACT_IDS, contactMode, setContactMode } from '../combat/contact.js';
 import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
-import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
-import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
+import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS, syncStandArm } from '../entities/player/idles.js';
+import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard, HOLD_IDS, HOLD_NAMES, holdMode, setHold } from '../entities/player/refStance.js';
 import { CLASH_IDS, clashMode, setClashMode } from '../combat/clashDance.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
 import { RUN_SWORD_IDS, RUN_SWORD_NAMES, runSwordMode, setRunSword } from '../entities/player/runSword.js';
@@ -834,6 +834,7 @@ export class Lab {
   _syncIdleBtns() {
     for (const { m, el: b } of this.ui.idleBtns ?? []) setClass(b, 'on', idlesMode() === m);
     for (const { m, el: b } of this.ui.guardBtns ?? []) setClass(b, 'on', guardMode() === m);
+    for (const { m, el: b } of this.ui.holdBtns ?? []) setClass(b, 'on', holdMode() === m);
   }
 
   _syncStanceBtns() {
@@ -1212,6 +1213,21 @@ export class Lab {
         this._syncIdleBtns();
       });
       b.title = `?idles=${m}: ${IDLES_NAMES[m]}`;
+      return { m, el: b };
+    });
+    // the hero's fight hold (player/refStance.js, ADR-275; ?hold=): the middle guard (the owner's pick), the
+    // two-handed hold before, and the three turned down
+    const hdr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'hold', hdr).title = "the hero's fight stance: the middle guard (a, the default), the hold before (ref, ?hold=ref) or the three turned down (b high, c sword fingers, d low trailing)";
+    const hdg = el('div', 'lab-grid', null, hdr);
+    hdg.style.flex = '1';
+    this.ui.holdBtns = HOLD_IDS.map((m) => {
+      const b = button(hdg, m, () => {
+        setHold(m);
+        syncStandArm();
+        this._syncIdleBtns();
+      });
+      b.title = `?hold=${m}: ${HOLD_NAMES[m]}`;
       return { m, el: b };
     });
     // the hero's guard (player/refStance.js, ADR-207; ?guard=ward): the reference's braced guard, the blade
