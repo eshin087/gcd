@@ -10285,10 +10285,15 @@ async function scenarioTouch() {
     const pad = cls('tc-pad'), geo = t.padGeo, T = geo.tiles;
     assert(!!pad && atk.classList.contains('tc-tile') && hvy.classList.contains('tc-tile') && blk.classList.contains('tc-tile') && dge.classList.contains('tc-tile') && !flask.classList.contains('tc-tile'), 'ATTACK / HEAVY / BLOCK / DODGE are tiles of the pad; FLASK is its own button');
     const touchSide = (a, b) => (a[2] === b[0] || b[2] === a[0]) ? Math.min(a[3], b[3]) - Math.max(a[1], b[1]) : (a[3] === b[1] || b[3] === a[1]) ? Math.min(a[2], b[2]) - Math.max(a[0], b[0]) : 0;
-    // (ADR-115: a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK: each tile shares an edge with the two beside it)
-    const sides = [touchSide(T.attack, T.heavy), touchSide(T.attack, T.dodge), touchSide(T.block, T.heavy), touchSide(T.block, T.dodge)];
-    assert(sides.every((v) => v >= 40), `each tile shares an edge with the two beside it (${sides.map((v) => v.toFixed(0)).join(' / ')} px)`);
-    const A = t.padPoint('attack'), Bk = t.padPoint('block'), Dg = t.padPoint('dodge');
+    // (ADR-270: FLASK | HEAVY over BLOCK | ATTACK, DODGE under ATTACK: ATTACK shares an edge with each other tile)
+    const sides = [touchSide(T.attack, T.heavy), touchSide(T.attack, T.dodge), touchSide(T.attack, T.block)];
+    assert(sides.every((v) => v >= 40), `ATTACK shares an edge with HEAVY, DODGE and BLOCK (${sides.map((v) => v.toFixed(0)).join(' / ')} px)`);
+    const A = t.padPoint('attack'), Bk = t.padPoint('block'), Dg = t.padPoint('dodge'), Hv = t.padPoint('heavy');
+    {
+      const fx = innerWidth - parseFloat(flask.style.right) - parseFloat(flask.style.width) / 2, fy = innerHeight - parseFloat(flask.style.bottom) - parseFloat(flask.style.height) / 2;
+      assert(near(Bk.y, A.y, 1) && Bk.x < A.x - 40 && Dg.y > A.y + 40 && near(Dg.x, A.x, 1) && Hv.y < A.y - 40, `BLOCK beside ATTACK, DODGE under it, HEAVY over it (${[A, Bk, Dg, Hv].map((q) => `${q.x.toFixed(0)},${q.y.toFixed(0)}`).join(' ')})`);
+      assert(Number.isFinite(fx) && fx < A.x - 40 && fy < Bk.y - 30, `FLASK above BLOCK, where BLOCK stood (${fx.toFixed(0)},${fy.toFixed(0)})`);
+    }
     assert(innerWidth - A.x >= 80 && innerHeight - A.y >= 80, `ATTACK sits out of the corner (its middle ${(innerWidth - A.x).toFixed(0)} px in, ${(innerHeight - A.y).toFixed(0)} px up)`);
     const P = (type, id, x, y) => pad.dispatch(type, { pointerType: 'touch', pointerId: id, clientX: x, clientY: y });
     const held = (code) => input.down(code);
@@ -10347,6 +10352,32 @@ async function scenarioTouch() {
     t.cyclePad('size');
     t.cyclePad('size');
     assert(t.padPos === 'mid' && t.padSize === 'm' && near(t.padPoint('attack').x, a0.x, 1e-6), 'cycled back to the default');
+    // the padlock (ADR-270): open, a drag moves the pad and presses nothing; shut, it is kept there
+    {
+      const lockB = cls('tc-padlock'), root = cls('tc-root');
+      assert(!!lockB && !t.editing, 'a padlock beside the pad, shut');
+      lockB.dispatch('pointerdown', { pointerType: 'touch', pointerId: 60 });
+      assert(t.editing && root.classList.contains('editing'), 'tapped: open (the pad shows it can be dragged)');
+      const s0 = t.padPoint('attack');
+      P('pointerdown', 61, s0.x, s0.y);
+      P('pointermove', 61, s0.x - 50, s0.y - 20);
+      assert(!held('@attack') && !held('@block') && !held('@dodge'), 'a drag on the open pad presses nothing');
+      P('pointerup', 61, s0.x - 50, s0.y - 20);
+      const s1 = t.padPoint('attack');
+      assert(near(s1.x, s0.x - 50, 1) && near(s1.y, s0.y - 20, 1), `the pad followed the drag (${s0.x.toFixed(0)},${s0.y.toFixed(0)} → ${s1.x.toFixed(0)},${s1.y.toFixed(0)})`);
+      lockB.dispatch('pointerdown', { pointerType: 'touch', pointerId: 62 });
+      const kept = globalThis.localStorage ? JSON.parse(globalThis.localStorage.getItem('gcd.touchPad') ?? 'null')?.off : [t.padOff.x, t.padOff.y];
+      assert(!t.editing && Array.isArray(kept) && kept[0] > 40, `shut: kept where it was dragged (${JSON.stringify(kept)})`);
+      P('pointerdown', 63, s1.x, s1.y);
+      assert(held('@attack'), 'shut: the moved pad presses again, where it now is');
+      P('pointerup', 63, s1.x, s1.y);
+      t.resetPadOffset();
+      assert(near(t.padPoint('attack').x, a0.x, 1e-6), 'RESET puts it back');
+      frames(0.9);
+    }
+    // the touch layer fits the screen (ADR-270): an iPhone on its side is the reference; a small
+    // near-square screen (a fold's cover screen) gets smaller controls, a tablet larger ones
+    assert(near(t._fitFor(852, 393), 1, 0.02) && t._fitFor(380, 470) < 0.7 && t._fitFor(1180, 820) > 1.15, `fit: phone ${t._fitFor(852, 393).toFixed(2)} · small square ${t._fitFor(380, 470).toFixed(2)} · tablet ${t._fitFor(1180, 820).toFixed(2)}`);
     P('pointerdown', 44, t.padPoint('dodge').x, t.padPoint('dodge').y);
     assert(held('@dodge'), 'the hit test follows the placement');
     P('pointerup', 44, 0, 0);

@@ -29,11 +29,32 @@ export const RELEASES = [
       },
       {
         date: '2026-11-28',
+        title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
+        notes: [
+          'On a phone, one tap on a world, BEGIN HERE or BOSS RUSH now starts it: no more second tap.',
+          'The title and the pause menu have new buttons and panels: the world and its two buttons, BEGIN HERE and BOSS RUSH, share one panel.',
+          'Touch: BLOCK now sits beside ATTACK, DODGE right under it, and the FLASK where BLOCK was. The buttons sit a little further in from the edge and size themselves to your screen.',
+          'Tap the small padlock above the buttons to drag them where your thumb likes them; tap it again to keep them there.',
+          'On touch the fight now starts locked on to the boss, and the phase call no longer covers your health.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: "Bai Wuji's barrier shows where your blade hits it, and he goes down quicker",
         notes: [
           "A cut that stops on Bai Wuji's barrier now still takes a little off his health, and he has less health to begin with: the fight is about a fifth shorter.",
           'Every cut his barrier stops now shows it for a moment: a faint net of the invisible shield, right where your blade landed.',
           'The ring on the floor that counted down his opened barrier is gone.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The parry and the deathblow, readable',
+        notes: [
+          'The parry that starts a deathblow now throws the boss open, arms wide and stumbling back, and you hold a beat before you step in and cut him while he reels.',
+          'You strike from further away and every blow drives him back, so the two of you never merge into one shape, and the flash at each cut no longer covers the wound. The blows and their damage are unchanged; ?dbread=0 plays it as before.',
+          "A perfect parry is now a pinpoint where the two blades cross and its sparks, with no gold burst over the fighters, so you can see the swords meet.",
+          "A boss's blue parry cue is a small blue cross on his blade instead of a big white star, so it no longer covers you. ?parryClash=0 and ?blueTell=0 show them as before.",
         ],
       },
       {

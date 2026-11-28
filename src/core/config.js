@@ -98,24 +98,32 @@ export const CONFIG = {
     //   pos    where the cluster's bottom-right corner sits, [in from the right edge, up from the
     //          bottom]; the player picks one in the pause menu (PAD POSITION), as its size (PAD SIZE)
     //   tall   screens taller than 560 px (tablets): everything this much larger
-    // (ADR-115, the owner's pick: a 2 x 2 square, BLOCK | HEAVY over DODGE | ATTACK; every tile
-    // touches the two beside it and the slide works between them)
+    // (ADR-270, the owner's call, after ADR-115's 2 x 2 square): ATTACK in the middle with HEAVY
+    // over it, BLOCK beside it where DODGE stood and DODGE right under it; the FLASK sits where BLOCK
+    // stood (its own button, out of the slide). ATTACK touches the other three tiles.
+    //   FLASK | HEAVY
+    //   BLOCK | ATTACK
+    //         | DODGE
     pad: {
       tiles: {
-        attack: { x: 0, y: 0, w: 92, h: 84 },
-        heavy: { x: 0, y: 84, w: 92, h: 66 },
-        dodge: { x: 92, y: 0, w: 80, h: 84 },
-        block: { x: 92, y: 84, w: 80, h: 66 },
+        dodge: { x: 0, y: 0, w: 92, h: 56 },
+        attack: { x: 0, y: 56, w: 92, h: 80 },
+        heavy: { x: 0, y: 136, w: 92, h: 60 },
+        block: { x: 92, y: 56, w: 80, h: 80 },
       },
-      flask: { x: 106, y: 158, w: 58, h: 42 },
+      flask: { x: 100, y: 142, w: 66, h: 48 },
       reach: 26,
       slide: true,
       stick: 10,
-      pos: { low: [26, 26], mid: [48, 52], high: [56, 84] },
+      // (ADR-270: further in from the right edge than before, where a thumb rests holding a phone)
+      pos: { low: [44, 18], mid: [78, 34], high: [92, 64] },
       // the same three places on a screen held upright (thumbs come up from the bottom corners)
-      posPortrait: { low: [12, 44], mid: [14, 104], high: [14, 170] },
+      posPortrait: { low: [20, 44], mid: [30, 104], high: [30, 170] },
       size: { s: 0.88, m: 1, l: 1.14 },
-      tall: 1.14,
+      // the whole touch layer scales with the screen (ADR-270): k = clamp(min(short / base[0],
+      // long / base[1]), min, max), so a small near-square screen (a fold's cover screen) gets
+      // smaller controls and a tablet larger ones; an iPhone on its side stays at 1
+      fit: { base: [390, 760], min: 0.62, max: 1.25 },
       // PAD LAYOUT 'split' (ADR-131): the guard goes to the LEFT hand, so one thumb never has to
       // both cut and parry. The right cluster keeps ATTACK, HEAVY and DODGE (the flask where BLOCK
       // stood); GUARD is a button of its own beside the stick's ring.
@@ -137,6 +145,9 @@ export const CONFIG = {
     // Not while the guard is held (the guard has the hero), and not for `quiet` s after DODGE,
     // HEAVY or FLASK was pressed (the repeat must not write over that press in the input buffer).
     hold: { after: 0.22, every: 0.1, quiet: 0.32 },
+    // the fight starts locked on (ADR-270): on touch the hero takes the lock as the boss fight
+    // begins (retried for `autoLock` s while the boss is out of lock range); 0 = off
+    autoLock: 4,
   },
 
   // Gamepad (src/ui/gamepad.js; the Gamepad API "standard" layout). Stick values are 0..1 deflection.

@@ -2106,12 +2106,15 @@ async function scenarioPerfectFx() {
   const { game } = G;
   const d = game.dragon, p = game.player;
   let peak = 0;
+  const clash0 = PFX.parryClashMode();
+  PFX.setParryClash('0'); // (the mark as built, its rings and echoes; the default draws it as a pinpoint: ?parryClash=c, ADR-264)
   for (let i = 0; i < 10; i++) {
     PFX.perfectParryMark(game, (p.position.x + d.position.x) / 2, 1.2, (p.position.z + d.position.z) / 2, { mode: i & 1 ? 'cinema' : 'sharp', beat: 'full', streak: 12 });
     run(G, 0.3, () => { peak = Math.max(peak, game.fx.fire.count); });
   }
   run(G, 1);
   assert(peak < 400 && !PFX.perfectBusy() && PFX.PERFECT_LAST.echo === 2, `a mark every 0.3 s: at most ${peak} blobs alive at once, all gone after; at streak tier ${STK.streakTier(12)} cinema's ring has ${PFX.PERFECT_LAST.echo} echoes`);
+  PFX.setParryClash(clash0);
   assert(PFX.perfectBeat('cinema', true, 100) === 'full' && PFX.perfectBeat('cinema', true, 100.3) === 'short' && PFX.perfectBeat('cinema', true, 101.5) === 'full' && PFX.perfectBeat('sharp', true, 105) === '', 'cinema: a second last-blow parry within the gap gets the short beat');
   const fire = game.fx.fire;
   game.fx.fire = null;
@@ -4409,6 +4412,8 @@ async function scenarioDeathblow() {
   const { game, input } = G;
   const d = game.dragon, p = game.player, DB = DEFENSE.deathblow;
   const { deathblowMoves } = await imp('src/entities/player/deathblow.js');
+  const DR0 = await imp('src/entities/player/deathblow.js');
+  DR0.setDbRead('0'); // (a) - (e) measure ADR-211's combo as built: the read (ADR-264, the default 'all') is part (f)
   const MOVES = deathblowMoves();
   assert(MOVES.length >= 8, `the move library has at least 8 moves (${MOVES.length})`);
   run(G, 0.4);
@@ -4428,13 +4433,13 @@ async function scenarioDeathblow() {
     p.streakT = 0;
     p.parryRun = o.run ?? 0;
     const move = o.move ?? 'plumThrust';
-    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, brokenAny: false, streaks: [], cine: null, run1: -1, streakAfter: -1, runAfter: -1, clips: [], winds: [], hitT: [], hitR: [], reeled: false, minGap: 99, ghost: 0, tFlurry: -1, tCut: -1 };
+    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, brokenAny: false, streaks: [], cine: null, run1: -1, streakAfter: -1, runAfter: -1, clips: [], winds: [], hitT: [], hitR: [], reeled: false, minGap: 99, ghost: 0, tFlurry: -1, tCut: -1, tParryR: -1, reacts: new Set(), hitGap: [], flashMax: 0, steps: [], parryGap: -1 };
     let flashT = null, pressed = false, pressedAtk = false, lastAtk = null;
     G.watch = (nm, e) => {
       if (nm === 'combat:flash' && e?.attack === move && flashT === null) flashT = game.time;
-      if (nm === 'player:parry' && !t.parry) { t.parry = { ...e }; t.ox = p.position.x; t.oz = p.position.z; t.run1 = p.parryRun; }
+      if (nm === 'player:parry' && !t.parry) { t.parry = { ...e }; t.ox = p.position.x; t.oz = p.position.z; t.run1 = p.parryRun; t.tParryR = game.realTime; t.parryGap = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z); }
       if (nm === 'player:flurry') { t.ev = { ...e }; t.tFlurry = game.realTime; }
-      if (nm === 'player:flurryHit') { t.hits.push({ ...e }); t.hitT.push(game.time); t.hitR.push(game.realTime); }
+      if (nm === 'player:flurryHit') { t.hits.push({ ...e }); t.hitT.push(game.time); t.hitR.push(game.realTime); t.hitGap.push(Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z)); t.steps.push(p.db.step ?? 0); }
       if (nm === 'player:flurryEnd') { t.end = { ...e }; t.tCut = game.realTime; }
       if (nm === 'player:hurt') t.hurt++;
       if (nm === 'player:streak') t.streaks.push(e.count);
@@ -4457,6 +4462,8 @@ async function scenarioDeathblow() {
         if (p.atk?.quick) t.atk = true;
         if (p.atk && p.atk !== lastAtk && p.atk.rip?.db) { lastAtk = p.atk; t.winds.push(p.atk.def.windup); }
         if (d.broken) t.brokenAny = true;
+        t.reacts.add(d.mode === 'react' ? d.brain?.react?.kind : d.mode);
+        if (t.hits.length && !t.end) t.flashMax = Math.max(t.flashMax, d.flash ?? 0);
         if (t.end && t.tEnd < 0) { t.tEnd = game.time; t.brokenAtEnd = d.broken; }
         if (!isFinite(p.position.x + p.position.z)) t.nan = true;
       }
@@ -4557,6 +4564,82 @@ async function scenarioDeathblow() {
     out(`   (e) ${mode}: streak events ${t.streaks.join(',')} · parryRun ${t.runAfter} · art ${t.ev?.art}`);
     assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(e) ${mode}: the parry counts in the streak, no deathblow`);
     if (mode === 'planted') assert(t.ghost < 0.05, '(e) planted: the single cut takes no cold cast (' + t.ghost.toFixed(2) + ')');
+  }
+  // (f) THE READ (?dbread=, ADR-264): a the break, b space, c a clean contact, all. The same blows and damage as today
+  // (combo's own checks less the disc and the spacing, which a and b change on purpose), and each piece does its one thing
+  {
+    const DR = await imp('src/entities/player/deathblow.js');
+    const FX = await imp('src/combat/deathblowFx.js');
+    const RD = DB.read;
+    assert(DR.DBREAD_DEFAULT === 'all', `(f) the read's default is the owner's pick, all (${DR.DBREAD_DEFAULT})`);
+    for (const mode of ['0', 'a', 'b', 'c', 'all']) {
+      DR.setDbRead(mode);
+      const R = DR.dbRead();
+      for (const [kind, o] of [['break', { near: true, run: 2 }], ['blue', { move: 'fallingAsh', run: 3, perfect: false, secs: 6, posture: 20 }]]) {
+        const t = take('deathblow', o);
+        const n = 3, k = n, mid = DB.mid.base + DB.mid.per * k, fin = DB.fin.base + DB.fin.per * k, exp = mid * (n - 1) + fin;
+        const wait = t.tFlurry - t.tParryR, after = t.hitGap.slice(1);
+        out(`   (f) ${mode} ${kind}: hits ${t.hits.length} · hp lost ${t.hpLost} (${exp}) · parry → combo ${wait.toFixed(2)} s · gaps at the hits ${t.hitGap.map((x) => x.toFixed(2)).join(' ')} · steps ${t.steps.map((x) => x.toFixed(2)).join(' ')} · his reactions ${[...t.reacts].join(',')} · hurt flash ${t.flashMax.toFixed(2)} · fx clean ${FX.DBFX_LAST.clean} · hurt ${t.hurt}`);
+        assert(t.ev?.art === 'deathblow' && t.hits.length === n && t.hits.every((h, i) => Math.abs(h.damage - (i === n - 1 ? fin : mid)) < 0.51) && Math.abs(t.hpLost - exp) < 0.51, `(f) ${mode} ${kind}: ${n} blows, ${exp} damage, as today (${t.hits.length}, ${t.hpLost})`);
+        assert(t.hurt === 0 && !t.nan && t.end?.art === 'deathblow' && t.runAfter === 0, `(f) ${mode} ${kind}: never hurt, it ends, parryRun spent`);
+        assert(t.winds.length === n && Math.abs(t.winds[n - 1] - DB.finWind) < 1e-6 && t.winds.slice(1, n - 1).every((w, i) => w <= t.winds[i] + 1e-6), `(f) ${mode} ${kind}: the tempo quickens, the finisher held (${t.winds.map((w) => w.toFixed(2)).join(' ')})`);
+        // a: the beat between the parry and the first blow; thrown open (a broken foe stays on his knee)
+        if (R.beat) {
+          assert(wait >= RD.beat - 0.03 && wait <= RD.beat + 0.25, `(f) ${mode} ${kind}: the break holds ${RD.beat} s before the combo (${wait.toFixed(2)} s)`);
+          if (kind === 'blue') assert(t.reacts.has('reeling') && !t.reacts.has('flinch'), `(f) ${mode} ${kind}: he is thrown open (reeling) and stays open while the blows land (${[...t.reacts].join(',')})`);
+          if (kind === 'break') assert(t.reacts.has('broken'), `(f) ${mode} ${kind}: a broken foe stays broken (${[...t.reacts].join(',')})`);
+          assert(t.winds[0] >= RD.entryWind - 1e-6, `(f) ${mode} ${kind}: the first blow's step in is seen (wind-up ${t.winds[0].toFixed(2)} s)`);
+        } else assert(wait < 0.3, `(f) ${mode} ${kind}: no beat (${wait.toFixed(2)} s)`);
+        // b: never nearer than the gap once the first blow has landed (he is driven back, the hero follows)
+        // (a broken foe is never shoved: the hero steps back for room, the finisher excepted)
+        if (R.space) assert(after.slice(0, -1).every((x) => x >= RD.gap - 0.15) && after.every((x) => x >= Math.min(RD.gap, t.hitGap[0]) - 0.15), `(f) ${mode} ${kind}: the blows land from ${RD.gap} m (${t.hitGap.map((x) => x.toFixed(2)).join(' ')})`);
+        // c: his hurt flash dim, the effect told the contact is clean
+        assert(FX.DBFX_LAST.clean === R.clean, `(f) ${mode} ${kind}: the hit effect's clean contact ${R.clean} (${FX.DBFX_LAST.clean})`);
+        if (R.clean) assert(t.flashMax <= RD.hurtFlash + 0.05, `(f) ${mode} ${kind}: his hurt flash is dim (${t.flashMax.toFixed(2)})`);
+        else assert(t.flashMax > RD.hurtFlash + 0.1, `(f) ${mode} ${kind}: today's hurt flash (${t.flashMax.toFixed(2)})`);
+      }
+    }
+    DR.setDbRead(DR.DBREAD_DEFAULT);
+  }
+  // (g) THE STRIKE GAP (?strikeGap=, ADR-264): his blade blows stop at the floor (never past their reach), every
+  // blow still met and parried; '0' as before
+  {
+    const SG = await imp('src/entities/enemies/duelist/strikeGap.js');
+    assert(SG.STRIKE_GAP_DEFAULT === '0', `(g) the strike gap is off by default (it bends Shen Hui's lunges: ashform) (${SG.STRIKE_GAP_DEFAULT})`);
+    const gaps = {};
+    for (const mode of ['0', 'a', 'b']) {
+      SG.setStrikeGap(mode);
+      const t = take('deathblow', { move: 'fallingAsh', run: 0, perfect: false, secs: 6, posture: 0 });
+      gaps[mode] = t.parryGap;
+      out(`   (g) strikeGap ${mode}: parried ${!!t.parry} (${t.parry?.tell}) at ${t.parryGap.toFixed(2)} m · combo ${!!t.ev} · hurt ${t.hurt}`);
+      assert(t.parry && t.parry.tell === 'blue' && t.ev?.art === 'deathblow' && t.hurt === 0, `(g) ${mode}: the blue blow still reaches and is parried, the deathblow follows`);
+    }
+    assert(gaps.a >= gaps['0'] - 0.02 && gaps.b >= gaps.a - 0.02 && gaps.b >= 1.4, `(g) the floor holds him off: ${gaps['0'].toFixed(2)} → a ${gaps.a.toFixed(2)} → b ${gaps.b.toFixed(2)} m`);
+    SG.setStrikeGap(SG.STRIKE_GAP_DEFAULT);
+    // the clash's size (?parryClash=a|b): a perfect parry still met and answered with the mark drawn smaller
+    const PF = await imp('src/combat/perfectFx.js');
+    assert(PF.PARRY_CLASH_DEFAULT === 'c' && PF.parryClashSpec()?.clash === 0, "(g) the clash's default is the owner's pick, c (a pinpoint and the sparks)");
+    const base = {};
+    for (const mode of ['0', 'a', 'b', 'c']) {
+      PF.setParryClash(mode);
+      const C = PF.parryClashSpec();
+      const t = take('deathblow', { move: 'fallingAsh', run: 0, secs: 6, posture: 0 });
+      const got = { perfect: t.parry?.perfect, art: t.ev?.art ?? t.end?.art ?? null, hits: t.hits.length, hp: t.hpLost };
+      out(`   (g) parryClash ${mode}: ${JSON.stringify(C)} · ${JSON.stringify(got)}`);
+      if (mode === '0') Object.assign(base, got);
+      else assert(C && C.mark < 1 && C.clash < 1 && C.clash >= 0 && got.perfect === true && JSON.stringify(got) === JSON.stringify(base), `(g) parryClash ${mode}: the mark ${C?.mark} x, the burst ${C?.clash} x; the perfect parry and what follows as with 0`);
+    }
+    PF.setParryClash(PF.PARRY_CLASH_DEFAULT);
+    // the small blue tell (?blueTell=a): a small blue cross on his blade, the blow parried as before
+    const DF = await imp('src/entities/enemies/duelist/fx.js');
+    assert(DF.BLUE_TELL_DEFAULT === 'a' && DF.TELL_GLINT.blueSmall.w < DF.TELL_GLINT.blue.w && !DF.TELL_GLINT.blueSmall.ring && DF.TELL_GLINT.blueSmall.tint, "(g) the small blue tell: narrower, no ring, dyed blue; the owner's pick, the default");
+    DF.setBlueTell('a');
+    {
+      const t = take('deathblow', { move: 'fallingAsh', run: 3, perfect: false, secs: 6, posture: 20 });
+      out(`   (g) blueTell a: parried ${!!t.parry} (${t.parry?.tell}) · combo ${t.ev?.art} · hurt ${t.hurt}`);
+      assert(t.parry?.tell === 'blue' && t.ev?.art === 'deathblow' && t.hurt === 0, '(g) blueTell a: the blue blow is still cued, parried and answered');
+    }
+    DF.setBlueTell(DF.BLUE_TELL_DEFAULT);
   }
   RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
   assert(RC.RIPOSTE_CUT.opts.includes('old') && RC.RIPOSTE_CUT.opts.includes('planted') && RC.RIPOSTE_DEFAULT === 'deathblow', 'deathblow is the default; old and planted stay options');

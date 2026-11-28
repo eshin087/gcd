@@ -16,7 +16,9 @@ import { injectTitleMenuStyle } from './titleMenuStyle.js';
 //
 // One selection drives all three: the mouse's hover, the pad's focus or the arrow keys pick the world
 // shown in detail; a click / tap / A / Enter on the selected entry acts on it (travel there, or begin at
-// the current fire). A click or a tap acts at once.
+// the current fire). A click or a tap acts at once: only a mouse's hover (or a keyboard's focus)
+// selects, never a touch, since iOS Safari takes a tap whose hover changes the page as a hover alone
+// and wants a second tap for the click (the owner's two taps to begin; ADR-270).
 
 const MENUS = ['a', 'b', 'c'];
 
@@ -94,8 +96,12 @@ export class TitleMenu {
   _entry(parent, kind, id, cls, act) {
     const b = button(parent, `gm-e gm-${kind} ${cls}`.trim(), () => this._click(id, act));
     b.dataset.level = id;
-    b.addEventListener('mouseenter', () => this.select(id));
-    b.addEventListener('focus', () => this.select(id));
+    b.addEventListener('pointerenter', (e) => {
+      if (e?.pointerType === 'mouse') this.select(id);
+    });
+    b.addEventListener('focus', () => {
+      if (b.matches?.(':focus-visible')) this.select(id);
+    });
     const E = { id, kind, btn: b, act };
     this.entries.push(E);
     return E;
@@ -156,8 +162,12 @@ export class TitleMenu {
       el('span', 'gm-name', String(W.name).replace(/^The /, '').toUpperCase(), txt);
       E.grade = el('span', 'gm-g', '', txt);
     }
+    // one panel (ADR-270, the owner's call): the world in focus on the left, its button and BOSS RUSH
+    // stacked on the right (the rush is an entry of its own there, kept across re-draws)
     this.detail = el('div', 'gm-detail gm-open', null, this.body);
-    this.xList = el('div', 'gm-xlist', null, this.body);
+    this.infoEl = el('div', 'gm-info', null, this.detail);
+    this.xList = el('div', 'gm-acts', null, this.detail);
+    this.actSlot = el('div', 'gm-actslot', null, this.xList);
   }
 
   /** BOSS RUSH, WHAT'S NEW and CONTROLS: under the list (a), the rush under the grid / path and the
@@ -166,9 +176,12 @@ export class TitleMenu {
     const R = this.records;
     if (R?.startRush) {
       const E = this._entry(this.xList, 'rush', 'rush', 'gm-x', () => R.startRush());
-      el('span', 'gm-name', 'BOSS RUSH', E.btn);
-      el('span', 'gm-sub', 'every keeper, one clock', E.btn);
+      el('span', 'gm-remb', '◆', E.btn);
+      const tx = el('span', 'gm-rtx', null, E.btn);
+      el('span', 'gm-name', 'BOSS RUSH', tx);
+      el('span', 'gm-sub', 'every keeper, one clock', tx);
       E.grade = el('span', 'gm-g', '', E.btn);
+      el('span', 'gm-chev', '›', E.btn);
       this.rushButton = E.btn;
       this.screen.rushButton = E.btn;
     }
@@ -254,7 +267,7 @@ export class TitleMenu {
     const id = this.sel === 'news' || this.sel === 'ctrl' ? this._shown ?? this.current : this.sel ?? this.current;
     if (id === this._shown && !force) return;
     this._shown = id;
-    const D = this.detail;
+    const D = this.infoEl ?? this.detail;
     if (!D) return;
     D.textContent = '';
     this._detailFire = null;
@@ -264,8 +277,11 @@ export class TitleMenu {
       el('span', 'gm-dname', 'BOSS RUSH', h);
       el('div', 'gm-dsub2', `every keeper back to back, on one clock · ${this.worlds.length} fires`, D);
       this._recLine(D, b);
+      if (this.actSlot) return; // (one panel: the rush's own button is beside the world's)
       const act = button(D, 'gm-act', () => this.records?.startRush?.());
-      el('span', '', 'BEGIN THE RUSH ›', act);
+      const row = el('span', 'gm-arow', null, act);
+      el('span', 'gm-al', 'BEGIN THE RUSH', row);
+      el('span', 'gm-chev', '›', row);
       return;
     }
     const W = this.worlds.find((w) => w.id === id);
@@ -285,8 +301,11 @@ export class TitleMenu {
     el('span', 'gm-ke', `, ${W.names.title}`, k);
     el('div', 'gm-dsub2', W.sub ?? '', D);
     this._recLine(D, this._best(W.id));
-    const act = button(D, 'gm-act', () => this._world(W.id));
-    el('span', '', here ? 'BEGIN HERE ›' : 'TRAVEL ›', act);
+    if (this.actSlot) this.actSlot.textContent = '';
+    const act = button(this.actSlot ?? D, `gm-act${here ? '' : ' gm-travel'}`, () => this._world(W.id));
+    const row = el('span', 'gm-arow', null, act);
+    el('span', 'gm-al', here ? 'BEGIN HERE' : 'TRAVEL', row);
+    el('span', 'gm-chev', '›', row);
     if (!here) el('span', 'gm-actsub', 'the sword opens the way', act);
   }
 

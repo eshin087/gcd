@@ -6,7 +6,7 @@ import { impactK } from '../../combat/impact.js';
 import { stampHit } from '../../combat/impactStamp.js';
 import { calmLook, calmA, calmS } from '../../combat/impactCalm.js';
 import { perfectMode } from '../../combat/streak.js';
-import { perfectFeel, perfectBeat, perfectParryMark, perfectDodgeLine, perfectArrive, perfectGhost } from '../../combat/perfectFx.js';
+import { perfectFeel, perfectBeat, perfectParryMark, perfectDodgeLine, perfectArrive, perfectGhost, parryClashSpec } from '../../combat/perfectFx.js';
 import { parryFxSpec, parrySparks } from '../../combat/parrySparks.js';
 
 // Glyph-particle effects owned by the Wanderer: cyan slash arcs (the light swings, the slam, the
@@ -686,13 +686,13 @@ export class PlayerFx {
    * (combat.js), C = player._cut (the blade's travel and direction there) or null (the cut's line
    * then falls back across the blade), crit, k = the charge. Returns the spawn count.
    */
-  contact(p, tier, C, crit = false, k = 0) {
+  contact(p, tier, C, crit = false, k = 0, lite = false) {
     if (!p || !this.add) return 0;
     const o = this._co ?? (this._co = { tier, cut: { x: 0, y: 0, z: 0 }, edge: { x: 0, y: 0, z: 0 }, hilt: null, crit, power: 0, low: false, target: null });
     o.tier = tier;
     o.crit = !!crit;
     o.power = k;
-    o.low = this.game.settings?.quality === 0;
+    o.low = this.game.settings?.quality === 0 || lite === true; // (lite: the low quality's lighter burst; the deathblow's clean contact)
     if (C) {
       o.cut.x = C.cx; o.cut.y = C.cy; o.cut.z = C.cz;
       o.edge.x = C.ex; o.edge.y = C.ey; o.edge.z = C.ez;
@@ -831,7 +831,8 @@ export class PlayerFx {
     // no rings or cross of glyphs, and the mark printed in the letter grid at the crossing
     const PF = o?.perfect && !o?.light ? o?.feel?.F : null;
     if (PF) {
-      clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power, spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
+      const CS = parryClashSpec(); // (?parryClash: the clash drawn smaller, ADR-264; c: none at all)
+      if (!CS || CS.clash > 0) clashBurst(this.game, x, y, z, { pal: CLASH.perfect, power: (1 + 0.12 * (n - 1)) * PF.clash.power * (CS ? CS.clash : 1), spray, e1: o?.e1 ?? null, e2: o?.e2 ?? null, ring: PF.clash.ring, cross: PF.clash.cross, light: PF.clash.light, embers: PF.clash.embers });
       perfectParryMark(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, mode: o.feel.mode, beat: o.feel.beat, streak: o.feel.streak });
       // ?parryFx= (combat/parrySparks.js; '0' as shipped): a spit of orange sparks off the crossed steel
       if (parryFxSpec()) parrySparks(this.game, x, y, z, { e1: o?.e1 ?? null, e2: o?.e2 ?? null, spray, met: !!o?.met, fdx, fdz, last: !!o?.last, streak: o?.streak });

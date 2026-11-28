@@ -886,6 +886,42 @@ const CSS = `
 .ab-btn.confirm .v { color: var(--ab-ember); }
 .ab-btn .v { color: var(--ab-gold); }
 .ab-sep { height: 1px; margin: 14px 0 12px; background: var(--ab-line); }
+/* the finish (ADR-270): the menus' buttons and the pause panel in the title menu's cut-corner look.
+   A button: a hairline frame, two corners cut, an ember edge and a warm wash from the left on a
+   hover or the pad's focus, a small press. */
+.ab-btn {
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px rgba(207, 214, 230, 0.16);
+  background: linear-gradient(90deg, rgba(207, 214, 230, 0.05), rgba(207, 214, 230, 0.02));
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.ab-btn:hover, .ab-btn.pad-focus {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.2), rgba(255, 138, 61, 0.05) 70%);
+  box-shadow: inset 0 0 0 1px rgba(255, 138, 61, 0.6), inset 3px 0 0 var(--ab-ember);
+}
+.ab-btn:active { transform: translateY(1px); }
+.ab-btn.confirm { border-color: transparent; box-shadow: inset 0 0 0 1px var(--ab-ember), inset 3px 0 0 var(--ab-ember); }
+.ab-pause-panel {
+  position: relative;
+  border: 1px solid rgba(207, 214, 230, 0.14);
+  background: linear-gradient(180deg, rgba(14, 17, 24, 0.95), rgba(6, 8, 12, 0.96));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.ab-pause-panel::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 35%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.85), rgba(255, 138, 61, 0));
+  pointer-events: none;
+}
 
 /* ---------- gamepad in use (src/ui/gamepad.js adds html.gcd-pad) ---------- */
 html:not(.gcd-pad) .pad-only { display: none !important; }

@@ -76,6 +76,13 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
   will-change: transform;
 }
 .tc-stick.on { opacity: 0.9; transition: opacity 0.05s; }
+/* the stick scales with the screen (--tc-f, CONFIG.touch.pad.fit): each part round the stick's centre */
+.tc-disc, .tc-ring, .tc-centre, .tc-knob, .tc-tag { scale: var(--tc-f, 1); }
+.tc-disc { transform-origin: 64px 64px; }
+.tc-ring { transform-origin: 0 0; }
+.tc-centre { transform-origin: 5px 8px; }
+.tc-knob { transform-origin: 19px 19px; }
+.tc-tag { transform-origin: 40px -78px; }
 .tc-disc {
   position: absolute;
   left: -64px;
@@ -259,11 +266,12 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
 .tc-guard.low::after { background: linear-gradient(90deg, #ff9a5a, #ff9a5a) left / calc(var(--tc-gd, 1) * 100%) 100% no-repeat, rgba(255, 138, 61, 0.2); }
 .tc-guard.low { border-color: rgba(255, 138, 61, 0.55); }
 .tc-flask { box-sizing: border-box; }
-/* top right, left of the small minimap (phones, either way up) */
-.tc-lock { right: 98px; top: 6px; width: 38px; height: 38px; }
-.tc-pause { right: 54px; top: 6px; width: 38px; height: 38px; }
-.tc-flask .g, .tc-lock .g, .tc-pause .g { font-size: 16px; }
-.tc-flask .t, .tc-lock .t { font-size: 7px; letter-spacing: 0.12em; padding-left: 0.12em; }
+/* top right, left of the small minimap (phones, either way up); sized with the screen (--tc-f) */
+.tc-lock { right: calc(98px * var(--tc-f, 1)); top: 6px; width: calc(38px * var(--tc-f, 1)); height: calc(38px * var(--tc-f, 1)); }
+.tc-pause { right: calc(54px * var(--tc-f, 1)); top: 6px; width: calc(38px * var(--tc-f, 1)); height: calc(38px * var(--tc-f, 1)); }
+.tc-lock .g, .tc-pause .g { font-size: calc(16px * var(--tc-f, 1)); }
+.tc-flask .g { font-size: calc(18px * var(--tc-k, 1)); }
+.tc-flask .t, .tc-lock .t { font-size: calc(7.5px * var(--tc-k, 1)); letter-spacing: 0.12em; padding-left: 0.12em; }
 .tc-lock .t { display: none; }
 .tc-flask .g { color: var(--tc-gold); text-shadow: 0 0 6px rgba(216, 184, 106, 0.45); }
 
@@ -272,6 +280,67 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
   .tc-lock { right: 142px; top: 12px; }
   .tc-pause { right: 96px; top: 12px; }
 }
+
+/* ---------- the padlock: move the right-hand controls (ADR-270) ---------- */
+.tc-padlock {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 5px;
+  margin: 0;
+  color: rgba(207, 214, 230, 0.55);
+  background: rgba(6, 9, 14, 0.35);
+  border: 1px solid rgba(207, 214, 230, 0.16);
+  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  opacity: 0.7;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, border-color 0.15s, opacity 0.15s, background 0.15s;
+}
+.tc-padlock svg { display: block; }
+.tc-root.editing .tc-padlock {
+  opacity: 1;
+  color: #ffe2cc;
+  background: rgba(255, 138, 61, 0.22);
+  border-color: rgba(255, 138, 61, 0.85);
+  box-shadow: 0 0 12px rgba(255, 138, 61, 0.45);
+}
+.tc-root.off.peek .tc-padlock { opacity: 0; }
+.tc-edit-hint {
+  position: absolute;
+  display: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  font-size: calc(9px * var(--tc-f, 1));
+  letter-spacing: 0.24em;
+  color: #ffd2a4;
+  text-shadow: 0 1px 2px #000, 0 0 6px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+.tc-root.editing .tc-edit-hint { display: flex; }
+.tc-edit-hint .t { animation: tc-blink 1.6s ease-in-out infinite; }
+.tc-edit-reset {
+  pointer-events: auto;
+  touch-action: none;
+  font: inherit;
+  font-size: calc(9px * var(--tc-f, 1));
+  letter-spacing: 0.18em;
+  color: var(--tc-ink);
+  background: rgba(6, 9, 14, 0.6);
+  border: 1px solid rgba(207, 214, 230, 0.3);
+  padding: 5px 9px;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+/* the padlock open: the pad is a piece to drag, not buttons (dashed, ember, every tile awake) */
+.tc-root.editing .tc-pad { outline: 1px dashed rgba(255, 138, 61, 0.7); outline-offset: -2px; background: rgba(255, 138, 61, 0.05); }
+.tc-root.editing .tc-tile, .tc-root.editing .tc-flask { opacity: 0.9; border-style: dashed; border-color: rgba(255, 138, 61, 0.5); }
+@keyframes tc-blink { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 
 /* ---------- a screen held upright: the left thumb's zone is the lower left ---------- */
 @media (orientation: portrait) {

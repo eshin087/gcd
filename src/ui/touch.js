@@ -10,10 +10,12 @@ import { aimWithoutCursor } from './aim.js';
 // reading the same actions and every edge (tap / hold / release) is the real device's:
 //   stick → move (analog; pushed to the rim = @sprint)   ATTACK → @attack (tap light, hold the charged cleave)
 //   BLOCK → @block (hold block, tap parry)   DODGE → @dodge   FLASK → @flask   LOCK → @lockOn   || → @pause
-// ATTACK, BLOCK and DODGE are one cluster of three tiles that all touch (the pad, CONFIG.touch.pad):
+// ATTACK, HEAVY, BLOCK and DODGE are one cluster of tiles that touch (the pad, CONFIG.touch.pad):
 // a touch on or near it goes to the nearest tile, and a thumb that slides from one tile onto another
 // releases the first and presses the second without lifting. The player moves and sizes the cluster
-// in the pause menu (PAD POSITION / PAD SIZE, kept in localStorage). Two more switches there
+// in the pause menu (PAD POSITION / PAD SIZE, kept in localStorage), and drags it where the thumb
+// likes it after tapping the small padlock beside it (ADR-270: the offset is kept too; the padlock
+// again locks it). Everything scales with the screen (CONFIG.touch.pad.fit, --tc-f). Two more switches there
 // (ADR-131, both off by default): PAD LAYOUT 'split' moves the guard to the left hand (a GUARD button
 // beside the stick; the right cluster keeps ATTACK, HEAVY and DODGE), and HOLD ATTACK makes a thumb
 // that rests on ATTACK keep cutting (input.pulse, CONFIG.touch.hold). ?pad=split|classic and
@@ -104,6 +106,8 @@ export const PAD_POS = ['low', 'mid', 'high'];
 export const PAD_SIZE = ['s', 'm', 'l'];
 export const PAD_LAYOUT = ['classic', 'split'];
 const PAD_KEY = 'gcd.touchPad';
+const LOCK_SVG = (open) =>
+  `<svg viewBox="0 0 16 16" width="100%" height="100%" aria-hidden="true"><path d="${open ? 'M5 7V5a3 3 0 0 1 5.6-1.5' : 'M5 7V5a3 3 0 0 1 6 0v2'}" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="3.5" y="7" width="9" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="7.3" y="9.3" width="1.4" height="2.6" fill="currentColor"/></svg>`;
 const GUARD_STEPS = 25; // the BLOCK tile's guard gauge is written in this many steps
 
 export class TouchControls {
@@ -133,6 +137,10 @@ export class TouchControls {
     this.padGeo = null; // { k, cx, cy, reach, stick, tiles: { id: [u0, v0, u1, v1] } } (px, client)
     this.padPos = 'mid';
     this.padSize = 'm';
+    this.padOff = { x: 0, y: 0 }; // the player's drag (px at fit 1: + left, + up), kept
+    this.editing = false; // the padlock is open: a drag on the pad moves it
+    this._drag = null; // { id, x, y, ox, oy } while a finger drags the pad
+    this.fit = 1; // the touch layer's scale from the screen (CONFIG.touch.pad.fit)
     this.layout = 'classic'; // PAD_LAYOUT: 'split' = the guard on the left hand
     this.holdAttack = false; // a held ATTACK keeps cutting
     this.guardGeo = null; // split: the GUARD button { x, y, w, h } (its middle, client px)
@@ -248,7 +256,10 @@ export class TouchControls {
     if (live !== this._shown) {
       this._shown = live;
       this.ui?.root.classList.toggle('off', !live);
-      if (!live) this._releaseControls();
+      if (!live) {
+        this._releaseControls();
+        if (this.editing) this.setEditing(false);
+      }
     }
     // paused: the controls show through, inert, so PAD POSITION / PAD SIZE are seen as they change
     const peek = st === 'paused';
@@ -331,14 +342,56 @@ export class TouchControls {
       this.layout = PAD_LAYOUT[(PAD_LAYOUT.indexOf(this.layout) + 1) % PAD_LAYOUT.length];
     } else if (what === 'hold') this.holdAttack = !this.holdAttack;
     else this.padPos = PAD_POS[(PAD_POS.indexOf(this.padPos) + 1) % PAD_POS.length];
-    try {
-      globalThis.localStorage?.setItem?.(PAD_KEY, JSON.stringify({ pos: this.padPos, size: this.padSize, layout: this.layout, hold: this.holdAttack }));
-    } catch {
-      /* private mode: the choice lasts for this page */
-    }
+    this._savePad();
     this._padLayout();
     if (this.stick.id === null) this._restStick();
     return what === 'size' ? this.padSize : what === 'layout' ? this.layout : what === 'hold' ? this.holdAttack : this.padPos;
+  }
+
+  _savePad() {
+    try {
+      const o = { pos: this.padPos, size: this.padSize, layout: this.layout, hold: this.holdAttack, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)] };
+      globalThis.localStorage?.setItem?.(PAD_KEY, JSON.stringify(o));
+    } catch {
+      /* private mode: the choice lasts for this page */
+    }
+  }
+
+  /** The padlock: open (a drag moves the pad; its tiles press nothing) or shut (kept where it is). */
+  setEditing(on) {
+    on = !!on;
+    if (on === this.editing) return this.editing;
+    this._releaseControls();
+    this.editing = on;
+    this._drag = null;
+    const u = this.ui;
+    if (u) {
+      u.root.classList.toggle('editing', on);
+      if (u.lockBtn) {
+        u.lockBtn.innerHTML = LOCK_SVG(on);
+        u.lockBtn.setAttribute?.('aria-label', on ? 'Lock the controls here' : 'Move the controls');
+      }
+    }
+    if (!on) this._savePad();
+    return on;
+  }
+
+  /** Put the dragged pad back where PAD POSITION puts it. */
+  resetPadOffset() {
+    this.padOff.x = 0;
+    this.padOff.y = 0;
+    this._savePad();
+    this._padLayout();
+    if (this.stick.id === null) this._restStick();
+  }
+
+  /** The touch layer's scale for a w x h screen (CONFIG.touch.pad.fit). */
+  _fitFor(w, h) {
+    const F = CONFIG.touch.pad?.fit;
+    if (!F) return 1;
+    const s = Math.min(w, h), l = Math.max(w, h);
+    const k = Math.min(s / fin(F.base?.[0], 390), l / fin(F.base?.[1], 760));
+    return Math.min(fin(F.max, 1.25), Math.max(fin(F.min, 0.62), fin(k, 1)));
   }
 
   /** The screen point (client px) at the middle of a pad tile ('attack' / 'block' / 'dodge'), or null. */
@@ -355,6 +408,10 @@ export class TouchControls {
       if (PAD_SIZE.includes(o?.size)) this.padSize = o.size;
       if (PAD_LAYOUT.includes(o?.layout)) this.layout = o.layout;
       if (typeof o?.hold === 'boolean') this.holdAttack = o.hold;
+      if (Array.isArray(o?.off)) {
+        this.padOff.x = fin(Number(o.off[0]));
+        this.padOff.y = fin(Number(o.off[1]));
+      }
     } catch {
       /* no storage / a broken entry: the defaults */
     }
@@ -393,11 +450,10 @@ export class TouchControls {
   _padLayout() {
     const P = CONFIG.touch.pad, u = this.ui;
     const w = fin(globalThis.innerWidth, 1), h = fin(globalThis.innerHeight, 1);
-    const tall = h > 560 ? fin(P.tall, 1) : 1;
-    const k = fin(P.size[this.padSize], 1) * tall;
+    const fit = (this.fit = this._fitFor(w, h));
+    const k = fin(P.size[this.padSize], 1) * fit;
     const places = (h > w && P.posPortrait) || P.pos;
     const pos = places[this.padPos] ?? places.mid;
-    const px = pos[0] * tall, py = pos[1] * tall, reach = P.reach * k;
     const split = this.layout === 'split' && !!P.split;
     const from = split ? P.split.tiles : P.tiles;
     const tiles = {};
@@ -408,14 +464,26 @@ export class TouchControls {
       W = Math.max(W, tiles[id][2]);
       H = Math.max(H, tiles[id][3]);
     }
+    // the player's drag, kept on screen (the cluster and its padlock whole, clear of the top buttons)
+    const reach = P.reach * k;
+    const fl = (split && P.split.flask) || P.flask;
+    const H2 = Math.max(H, fl ? (fl.y + fl.h) * k : 0) + 34 * fit;
+    let px = pos[0] * fit + this.padOff.x * fit, py = pos[1] * fit + this.padOff.y * fit;
+    px = Math.min(Math.max(px, 4), Math.max(4, w * 0.62 - W));
+    py = Math.min(Math.max(py, 4), Math.max(4, h - H2 - 52 * fit));
+    // (the kept drag is the clamped one: dragging back from past an edge moves at once)
+    if (this.padOff.x || this.padOff.y) {
+      this.padOff.x = (px - pos[0] * fit) / fit;
+      this.padOff.y = (py - pos[1] * fit) / fit;
+    }
     this.padGeo = { k, cx: w - px, cy: h - py, reach, stick: P.stick * k, tiles };
     // split: GUARD beside the stick's ring (held upright: above it), on the cluster's bottom line
     let guard = null;
     if (split) {
       const rest = this._stickRest(), up = h > w, g = (up && P.split.guardPortrait) || P.split.guard;
       const gw = g.w * k, gh = g.h * k;
-      const left = up ? Math.max(8, rest.x - gw / 2) : rest.x + RING_R + fin(g.gap, 14);
-      const bottom = up ? h - rest.y + RING_R + fin(g.lift, 14) : py + fin(g.y) * k;
+      const left = up ? Math.max(8, rest.x - gw / 2) : rest.x + RING_R * fit + fin(g.gap, 14);
+      const bottom = up ? h - rest.y + RING_R * fit + fin(g.lift, 14) : py + fin(g.y) * k;
       guard = { left, bottom, w: gw, h: gh };
       this.guardGeo = { x: left + gw / 2, y: h - bottom - gh / 2, w: gw, h: gh };
     } else this.guardGeo = null;
@@ -427,6 +495,7 @@ export class TouchControls {
     S.width = px2(W + reach * 2);
     S.height = px2(H + reach * 2);
     setVar(u.root, '--tc-k', k.toFixed(3));
+    setVar(u.root, '--tc-f', fit.toFixed(3));
     u.root.classList.toggle('split', split);
     const gs = this.btn?.guard?.el.style;
     if (guard && gs) {
@@ -443,21 +512,35 @@ export class TouchControls {
       s.width = px2(r[2] - r[0]);
       s.height = px2(r[3] - r[1]);
     }
-    const f = (split && P.split.flask) || P.flask, fs = this.btn?.flask?.el.style;
+    const f = fl, fs = this.btn?.flask?.el.style;
     if (f && fs) {
       fs.right = px2(px + f.x * k);
       fs.bottom = px2(py + f.y * k);
       fs.width = px2(f.w * k);
       fs.height = px2(f.h * k);
     }
+    // the padlock: a small button over the cluster's top-left corner, out of the thumb's way
+    const ls = u.lockBtn?.style, lw = Math.max(22, 26 * fit);
+    if (ls) {
+      ls.right = px2(px + W - lw * 0.35);
+      ls.bottom = px2(py + H2 - lw);
+      ls.width = px2(lw);
+      ls.height = px2(lw);
+    }
+    const hs = u.editHint?.style;
+    if (hs) {
+      hs.right = px2(px);
+      hs.bottom = px2(py + H2 + 4 * fit);
+      hs.width = px2(Math.max(W, 150 * fit));
+    }
   }
 
   /** Where the stick's ring rests (client px): the bottom left corner; held upright, level with the
    *  pad (the thumbs come up from below). */
   _stickRest() {
-    const R = RING_R + 22, G = this.padGeo, w = fin(globalThis.innerWidth, 800), h = fin(globalThis.innerHeight, 400), up = h > w;
+    const R = RING_R * this.fit + 22, G = this.padGeo, w = fin(globalThis.innerWidth, 800), h = fin(globalThis.innerHeight, 400), up = h > w;
     const lift = up && G ? h - G.cy + 24 * G.k : 14;
-    return { x: R + (up ? 8 : 18), y: Math.max(R, h - R - lift) };
+    return { x: R + (up ? 8 : 18 * this.fit), y: Math.max(R, h - R - lift) };
   }
 
   /** The cluster's corner on screen from the laid-out element (safe areas, a host that is not the
@@ -528,6 +611,35 @@ export class TouchControls {
       this.btn = Object.fromEntries(this.buttons.map((b) => [b.def.id, b]));
       this._bindPad(pad);
 
+      // the padlock: tap to move the right-hand controls (drag the pad), tap again to keep them there
+      const lockBtn = el('button', 'tc-padlock', null, root);
+      lockBtn.type = 'button';
+      lockBtn.tabIndex = -1;
+      lockBtn.innerHTML = LOCK_SVG(false);
+      lockBtn.setAttribute?.('aria-label', 'Move the controls');
+      lockBtn.addEventListener('pointerdown', (e) =>
+        this._guard('padlock', () => {
+          e.preventDefault?.();
+          e.stopPropagation?.();
+          if (this._live()) this.setEditing(!this.editing);
+        }, e),
+      );
+      lockBtn.addEventListener('click', (e) => e.preventDefault?.());
+      const editHint = el('div', 'tc-edit-hint', null, root);
+      el('span', 't', 'DRAG TO MOVE', editHint);
+      const reset = el('button', 'tc-edit-reset', 'RESET', editHint);
+      reset.type = 'button';
+      reset.tabIndex = -1;
+      reset.addEventListener('pointerdown', (e) =>
+        this._guard('padreset', () => {
+          e.preventDefault?.();
+          e.stopPropagation?.();
+          this.resetPadOffset();
+        }, e),
+      );
+      this.ui.lockBtn = lockBtn;
+      this.ui.editHint = editHint;
+
       // the HUD prompt ("[@interact] Rest at bonfire") is a tap target on touch
       const prompt = this.game.hud?.promptEl;
       if (prompt?.addEventListener) {
@@ -558,6 +670,7 @@ export class TouchControls {
     const down = (e) => {
       e.preventDefault?.(); // no compatibility mouse events, no focus, no text selection
       if (!this._live() || rec.ids.has(e.pointerId)) return;
+      if (this.editing && def.id === 'flask') return; // (the padlock is open: nothing on the pad acts)
       try {
         b.setPointerCapture?.(e.pointerId);
       } catch {
@@ -603,6 +716,10 @@ export class TouchControls {
         } catch {
           /* synthetic pointer */
         }
+        if (this.editing) {
+          if (!this._drag) this._drag = { id: e.pointerId, x: fin(e.clientX), y: fin(e.clientY), ox: this.padOff.x, oy: this.padOff.y };
+          return;
+        }
         this._padOrigin();
         const rec = this._padPick(fin(e.clientX, NaN), fin(e.clientY, NaN), null);
         if (!rec) return;
@@ -612,6 +729,14 @@ export class TouchControls {
     );
     pad.addEventListener('pointermove', (e) =>
       this._guard('pad', () => {
+        const D = this._drag;
+        if (D && D.id === e.pointerId) {
+          const f = Math.max(0.1, this.fit);
+          this.padOff.x = D.ox - (fin(e.clientX, D.x) - D.x) / f;
+          this.padOff.y = D.oy - (fin(e.clientY, D.y) - D.y) / f;
+          this._padLayout();
+          return;
+        }
         const cur = held.get(e.pointerId);
         if (!cur || !CONFIG.touch.pad.slide) return;
         const next = this._padPick(fin(e.clientX, NaN), fin(e.clientY, NaN), cur);
@@ -622,6 +747,11 @@ export class TouchControls {
       }, e),
     );
     const end = (e) => {
+      if (this._drag?.id === e.pointerId) {
+        this._drag = null;
+        this._savePad();
+        return;
+      }
       const cur = held.get(e.pointerId);
       if (!cur) return;
       held.delete(e.pointerId);
@@ -644,7 +774,7 @@ export class TouchControls {
         }
         S.id = e.pointerId;
         // floating stick: it centres under the thumb (kept fully on screen)
-        const m = RING_R + 14;
+        const m = RING_R * this.fit + 14;
         S.ox = Math.min(Math.max(fin(e.clientX), m), Math.max(m, fin(globalThis.innerWidth, 800) * 0.5));
         S.oy = Math.min(Math.max(fin(e.clientY), m), Math.max(m, fin(globalThis.innerHeight, 400) - m));
         this._stickTo(fin(e.clientX, S.ox), fin(e.clientY, S.oy));
@@ -665,7 +795,7 @@ export class TouchControls {
 
   /** Stick at screen point (x, y): virtual axis, sprint, aim direction, knob + ring. */
   _stickTo(x, y) {
-    const S = this.stick, T = CONFIG.touch, R = T.stickRadius;
+    const S = this.stick, T = CONFIG.touch, F = Math.max(0.1, this.fit), R = T.stickRadius * F;
     const dx = x - S.ox, dy = y - S.oy;
     const len = Math.hypot(dx, dy);
     const m = Math.min(1, len / R);
@@ -691,7 +821,7 @@ export class TouchControls {
     if (!u) return;
     const kl = Math.min(len, R), kx = len > 0 ? (dx / len) * kl : 0, ky = len > 0 ? (dy / len) * kl : 0;
     u.stick.style.transform = `translate3d(${S.ox.toFixed(1)}px, ${S.oy.toFixed(1)}px, 0)`;
-    u.knob.style.transform = `translate3d(${kx.toFixed(1)}px, ${ky.toFixed(1)}px, 0)`;
+    u.knob.style.transform = `translate3d(${(kx / F).toFixed(1)}px, ${(ky / F).toFixed(1)}px, 0)`; // (inside the scaled stick)
     this._stickClass(true, sprint);
     const lit = m > T.deadZone ? ((Math.round((Math.atan2(dy, dx) / TAU) * RING) % RING) + RING) % RING : -1;
     this._ring(lit);

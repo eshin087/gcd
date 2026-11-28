@@ -32,6 +32,68 @@ button and the charged cleave.
 
 ---
 
+## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
+
+**Owner:** one tap on the path or BEGIN HERE must start; BOSS RUSH and BEGIN HERE looked bad, the menus should look
+like a real game's. On the phone: BLOCK where DODGE was, DODGE under ATTACK, the FLASK where BLOCK was, lock on at the
+fight's start, the phase call ran over the HUD, the controls too big on a small passport-shaped phone, the right
+controls further left, and a lock / unlock button to move them (kept).
+
+- **Two taps, found:** the entries selected on `mouseenter` / `focus` and re-drew the detail; iOS takes that first
+  tap as a hover. Now only a mouse's hover / a keyboard's focus selects (`titleMenu.js`). The desktop always worked
+  with one click (checked).
+- **The finish:** cut-corner buttons and panels, an ember BEGIN HERE with a sheen, a cooler TRAVEL, then (the owner:
+  the gold rush card looked out of place, empty space on the right) one panel: the world on the left, BEGIN HERE and
+  an ember-outline BOSS RUSH stacked on the right; quiet corner buttons; the pause menu in the same look; upright, the open world's panel sticks to the bottom.
+- **The pad:** FLASK | HEAVY / BLOCK | ATTACK / DODGE under ATTACK; PAD POSITION's places further in; the whole
+  layer scales with the screen (`pad.fit`, replaces `pad.tall`); the padlock drags it (`padOff`, kept, RESET).
+- **Lock-on:** `flow._enterBoss` → `player.takeLock()` each frame for up to 4 s, on touch only.
+- **The phase call:** `banner.js _clearHud` puts it under the player's frame and the boss bar.
+- **Checked:** the browser at 852 x 393 (title, the pad, the padlock drag and its saved place, the lock-on as the
+  fight starts, the phase call below the HUD) and 420 x 500 (fit 0.66, the sticky panel); `integ.mjs . touch` green
+  with new checks (the layout, the padlock, the fit).
+- **Open:** the owner on a real iPhone and the small phone; the fit's floor (0.62); start lock-on for mouse / pad?
+## 2026-11-27 — The parry → deathblow exchange, readable (ADR-264; branch `claude/sweet-morse-33ddad`)
+
+**Goal:** the owner could not follow the moment between a parry and the deathblow it starts (a bot parrying Shen
+Hui's Riposte): no beat saying he is broken, the two bodies stacked, flashes over the contact. Their rule: nothing a
+watcher can't follow. Prototype 2-3 options behind a switch, film them at the game camera, ship none as the default.
+
+**Measured** (the exchange replayed in headless Edge, frame by frame): the combo starts 0.11 s after the parry and
+his recoil is replaced by a flinch 0.15 s later; the centres stay ~1.0 m apart for the whole combo; each contact's
+heat flash is aged on the hit-pause's slowed clock (~0.5 s real), his hurt flash lights his whole body, and the
+brightest thing at the finisher is the hero's own white thrust streak (scene objects hidden in turn, bright pixels
+counted; then `fx.add`'s spawns by caller). The white star before the thrust is his blue tell glint: kept.
+
+**Changed** (`?dbread=0|a|b|c|all`, default `0`; the Lab's `dbread`; `DEFENSE.deathblow.read`, `DBFX_TUNE.clean`):
+a) the break: he is thrown into his reeling, the hero holds 0.35 s, then steps in (the blows land while he reels:
+duelist `takeHit` `keepOpen`); b) space: the hero strikes from 1.3 m (follows, or a short step back) and every blow
+drives him back 0.3 m (`takeHit` `shove`); c) a clean contact: the heat flash smaller, on his far side, on the real
+clock; a thinner exit burst; no thrust streak on a deathblow; the lighter impact burst (`PlayerFx.contact` `lite`);
+his hurt flash 0.3.
+
+**Verified:** duel `deathblow` (f): every mode, a posture break and a blue parry: the same 3 blows and 141 damage, the
+beat 0.35 s, he reels and stays open (a broken foe stays on his knee), b's gaps 1.3 - 1.6 m, the dim flash. Films
+(today beside each option, real and half speed, Shen Hui's Riposte, 3 blows): the shared notes folder's
+`dbread-films/`; gaps today 1.08 m, a 1.6 m, b 1.3 - 1.75 m, all 1.4 m.
+
+**The owner's pick:** `all`, made the default. Then: "during the parries you cant see the swords parrying and clashing
+with each other because the characters are clumped up". Measured: the cut parried at 1.42 m, the blue thrust at 1.01 m
+(his step-in aims at ~0.7 x a blow's reach, the thrust's dash stops at 1.0 m). Added `?strikeGap=a|b` (a floor of
+1.5 / 1.8 m on a duelist's own root motion for blade blows, capped by the blow's reach; off until picked), filmed
+beside today. Zoomed, the bodies stand apart up to the contact, but the perfect parry's gold clash, mark and sparks
+cover the hero's chest where the blades cross at any gap. The owner said film a smaller one: `?parryClash=a|b` (the mark
+0.55 x with rings and the burst 0.6 x / the X alone at 0.4 x and the burst 0.4 x; the sparks as they are), filmed with
+the 1.8 m gap beside today, plus a zoom sheet of the first parry in four rows. The blue tell glint before the thrust is
+the largest thing over the crossing: a gameplay cue, left alone. The owner picked "Gap b + clash b". As defaults the
+full suites failed: any strike-gap floor bends Shen Hui's authored lunges (`ashform`, at 1.5 m too), Thousand Li (a
+dash through the hero) stopped short, the pace sims drifted. The floor is now dashes only, never a dash through him,
+and off by default. Then the owner turned the gold parry burst down and the white star with a ring (his BLUE TELL,
+not the parry): `?parryClash=c` (no gold, a pinpoint and the sparks) and `?blueTell=a` (a small cross dyed blue),
+filmed beside today (`newparry-vs-today`). **The owner's pick:** "Yes, new look": both the defaults.
+
+---
+
 ## 2026-11-26 — Wen Yao's motion audit: straight limbs at the contact, one cue one meaning (ADR-249; `claude/wen-yao-motion-674ba7`)
 
 **Owner:** a motion audit of every boss (one session each; this is the fox's): weird arm angles, kicks bent at the

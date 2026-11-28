@@ -44,6 +44,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Classic ASCII-art creatures (screen-grid conversion, owner's references); hero drawn bigger and leaned (ADR-017)
 - [~] Phone support: touch controls, phone camera, Lab toggle (released; needs a real-device check)
   - [x] The right thumb's pad: three tiles that touch, slide between them, placed and sized by the player (ADR-096)
+  - [x] FLASK | HEAVY over BLOCK | ATTACK, DODGE under ATTACK; the layer fits the screen; a padlock to drag it (kept); the fight starts locked on (ADR-270)
+  - [ ] Owner's verdict on the iPhone and the small phone: the new pad, the fit's floor, the padlock's place
+- [x] The title and the menus with a finish; one tap begins on a phone (ADR-270)
   - [x] The guard meter: blocks cost guard, not HP; parries and hits restore it (ADR-095)
   - [x] Played upright (portrait) as well as in landscape; see-through controls; a 70 px minimap on phones (ADR-097)
   - [x] An ASCII HUD: text meters, block-letter banners, no panels in play, a 40 – 72 px minimap (ADR-098)
@@ -440,6 +443,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] Played and seen on the iPhone
 - [x] The perfect parry's own reward from the owner's reference: posture break -> deathblow, the chain's sparks grow (ADR-211)
 - [ ] The deathblow played on the iPhone; the wyrm's parry answer (it keeps the flurry riposte)
+- [x] The parry → deathblow exchange readable to a watcher: a break beat, space, a clean contact, filmed (`?dbread=`, ADR-264)
+- [x] The owner's pick of `?dbread=` made the default (`all`)
+- [x] The parry's look: `?parryClash=c` (a pinpoint and sparks) and `?blueTell=a` (a small blue cross): the owner's pick, the defaults
+- [ ] The strike gap (`?strikeGap=b`, off): re-key Shen Hui's lunges for the room, or keep the spacing as authored
 - [ ] A next round on the perfect dodge, if any: from a concrete reference and one narrow prototype; never the background
 
 ## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)
