@@ -2,6 +2,7 @@ import { lookOf } from '../duelist/lookSwitch.js';
 import { MOTION as ASC_MOTION } from '../ascendant/moves.js';
 import { ANK } from '../ascendant/motion.js';
 import { TUNING } from './tuning.js';
+import { legsFor, limbKeys, flyKeys } from './limbs.js';
 
 // Halcyon's reworked motion (ADR-225), `?halMotion=a`, played through his realiser's `keysOf`
 // (moves.js). His blows are Tian Lei's builders' (ascendant/moves.js), keyed for a fighter standing on
@@ -55,16 +56,35 @@ function fly(pose, beat, strike) {
   return o;
 }
 
-/** His keys for a builder's beat under the switch (null: the beat's own). */
+const cacheB = new WeakMap();
+/** His keys for a beat under the switch (null: the beat's own). `b` (ADR-254, limbs.js): `a`'s, then the
+ *  flier's long legs in place of the folded ones, the straight blows on the line, the kicks long; his
+ *  flying beats (the pass, the tower) their level flier's line. */
 export function halKeys(beat) {
-  if (lookOf('halMotion', '0') === '0' || !beat?.mo) return null;
-  if (cache.has(beat)) return cache.get(beat);
+  const m = lookOf('halMotion', '0');
+  if (m === '0' || !beat) return null;
+  if (m === 'b' && !beat.mo) return flyKeys(beat);
+  if (!beat.mo) return null;
+  const C = m === 'b' ? cacheB : cache;
+  if (C.has(beat)) return C.get(beat);
   const base = ASC_MOTION.keysFor(beat) ?? beat.keys ?? [];
   const cock = beat.cock ?? 0.7;
-  const keys = base.map(([u, pose]) => [u, fly(pose, beat, u >= cock - 1e-6)]);
-  cache.set(beat, keys);
+  let keys = base.map(([u, pose]) => [u, fly(pose, beat, u >= cock - 1e-6)]);
+  if (m === 'b') {
+    const kick = beat.mo.fam === 'kick';
+    if (!kick) keys = keys.map(([u, p]) => [u, legsFor(p, u >= cock - 1e-6)]);
+    else {
+      // (a kick: the other leg hangs long, not folded under him as if he stood on air)
+      const other = (beat.part ?? 'footR').endsWith('R') ? 'L' : 'R';
+      keys = keys.map(([u, p]) => [u, legsFor(p, u >= cock - 1e-6, other)]);
+    }
+    keys = limbKeys(beat, keys);
+  }
+  C.set(beat, keys);
   return keys;
 }
 
 /** True when the switch is on (flight.js: the dip; halcyon.js: the open arms). */
 export const halMotionOn = () => lookOf('halMotion', '0') !== '0';
+/** True under `b` (ADR-254: the flier's limbs, the level pass; read live). */
+export const halLimbsOn = () => lookOf('halMotion', '0') === 'b';

@@ -14,8 +14,10 @@ import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_PHASE, CLIPS_GEAR2, TRANSITIONS, COUN
 import { TUNING, GEARED } from './tuning.js';
 import { LINKS } from './links.js';
 import { IronMoves } from './iron.js';
+import { GunAim } from './gunAim.js';
 import { FlurryMoves } from './flurry.js';
 import { SourceMoves } from './source.js';
+import { clashOn, clashRegenK } from '../../../combat/clashDance.js';
 
 // Xin Yi, the One Who Woke: the boss of the Hall of Falling Script (`?level=code`; ADR-156). A duelist on
 // the shared engine (duelist/duelist.js: the body, the contract, the guard, posture, the duel's moments;
@@ -302,6 +304,7 @@ export class WokenOne extends Duelist {
     GEARED.now = 1;
     super.reset();
     (this.iron ??= new IronMoves(this)).reset();
+    this.gunAim ??= new GunAim(this);
     (this.source ??= new SourceMoves(this)).reset();
     (this.flurry ??= new FlurryMoves(this)).reset();
   }
@@ -379,7 +382,9 @@ export class WokenOne extends Duelist {
     if (this.broken || this.posture <= 0) return;
     const P = this.T.posture;
     if (this.postureTimer > P.regenDelay) {
-      const k = lerp(P.regenByHp[1], P.regenByHp[0], clamp(this.hp / this.maxHp, 0, 1));
+      // (the clash dance, ADR-247: the steps by his health replace the curve)
+      const f = clamp(this.hp / this.maxHp, 0, 1);
+      const k = clashOn() ? clashRegenK(f) : lerp(P.regenByHp[1], P.regenByHp[0], f);
       this.posture = Math.max(0, this.posture - P.regenRate * k * dt);
       this.emitPosture();
     }
@@ -537,7 +542,7 @@ export class WokenOne extends Duelist {
   weigh(name, def, w, dist) {
     // the gears (phase 1): gear 2's moves wait for it; gear 1's lighter once it is on
     if (def.gear === 2 && (this.phase !== 1 || this.gear < 2)) return 0;
-    if (def.fast && oneMovesNow() !== 'a') return 0; // (the rebuild's fast strings: ?oneMoves=a)
+    if (def.fast && oneMovesNow() === '0') return 0; // (the rebuild's fast strings: ?oneMoves=a, b)
     if (this.phase === 1 && this.gear >= 2 && def.phase === 1 && !def.gear) w *= 0.55;
     if (def.needs === 'held3' && (this.source?.held.length ?? 0) < this.T.stop.max) return 0;
     if (this.source?.held.length >= this.T.stop.max && !def.transition && def.needs !== 'held3') w *= 0.15; // (three hang: he sends them)
@@ -887,6 +892,11 @@ export class WokenOne extends Duelist {
     return w;
   }
 
+  /** A gun's muzzle as drawn (?oneMoves=b, gunAim.js), else the hand as drawn (handPoint). */
+  muzzlePoint(left, out) {
+    return this.gunAim?.muzzle(left, out) ? out : this.handPoint(left, out);
+  }
+
   /** The right / left hand as drawn (a muzzle, a bolt's start; fx). */
   handPoint(left, out) {
     const h = left ? this._handL : this._hand;
@@ -922,7 +932,7 @@ export class WokenOne extends Duelist {
   _animate(dt) {
     // (the rebuild's limbs, ?oneMoves=a: straight kicks and long punches; read live, three numbers)
     if (this.anim) {
-      const reb = oneMovesNow() === 'a';
+      const reb = oneMovesNow() !== '0';
       this.anim.legSoft = reb ? TUNING.legSoftA : TUNING.legSoft;
       this.anim.armSoft = reb ? TUNING.armSoftA : TUNING.armSoft;
       this.anim.kickStretch = reb ? TUNING.kickStretch : null;
@@ -930,7 +940,10 @@ export class WokenOne extends Duelist {
     this.pilot.form = this.phase;
     this.pilot.pset = this.phase === 1 && this.gear >= 2 ? 4 : this.phase;
     planFeet(this, dt);
+    // (the guns on the line of fire, ?oneMoves=b: drawn after the animator, its kick put back before it)
+    this.gunAim?.restore();
     super._animate(dt);
+    this.gunAim?.apply(dt);
   }
 
   // ---------------------------------------------------------------- after the pose

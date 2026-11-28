@@ -14,7 +14,14 @@ import './combos.js'; // (`?combo=`: four light combos for the ending slash, wor
 import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
+import { CONTACT, ContactBody, contactOn, findContact, newPin, pinAt, pinStep } from '../../combat/contact.js';
+import { HitReact } from '../enemies/duelist/react.js';
+import { impactK } from '../../combat/impact.js';
 import { Flurry } from './flurry.js';
+import { riposteMode, startRiposteCut, riposteTakeHit, riposteCutLanded, riposteContact } from './riposteCut.js';
+import { newDeathblowState, armDeathblow, tickDeathblow, deathblowTakeHit, deathblowLanded } from './deathblow.js';
+import { deathblowFxUpdate, deathblowFxClear } from '../../combat/deathblowFx.js';
+import { deathblowMatrixUpdate, deathblowMatrixClear } from '../../combat/deathblowMatrix.js';
 import { SwordMystic } from './swordMystic.js';
 import { BREAK, SCAR } from '../../world/breakTuning.js';
 import { chipLook, cutStops } from '../../world/destructibles.js';
@@ -211,6 +218,9 @@ export class Player {
     this.critTimer = 0;
 
     this.time = 0;
+    // blows that landed on him (a hit, a guard broken; not a contact stream's chip): the clash dance's run
+    // starts over when it moves (combat/clashDance.js; ADR-247)
+    this.hurtN = 0;
     this.control = false;
     this.intent = { x: 0, z: 0, len: 0, sprint: false };
     this.buf = { action: null, t: 0 };
@@ -245,6 +255,8 @@ export class Player {
     // since the last one (DEFENSE.flurry.keepStreak)
     this.streak = 0;
     this.streakT = 0;
+    this.parryRun = 0; // ?parryRiposte=deathblow: the perfect parries of blows since the foe's posture was last empty
+    this.db = newDeathblowState(); // the deathblow's own state (deathblow.js)
     // the guard meter (combat/rules.js GUARD, ADR-095): a blocked blow costs guard, not HP; it
     // refills by itself once guardWait (s) has run out. staggerLen: how long this stagger lasts
     this.maxGuard = GUARD.max;
@@ -358,6 +370,9 @@ export class Player {
     // camera lean (model.js LEAN): visual only; hits and the dragon's aim use unleaned positions
     this.lean = installLean(this.object3d, this.drawScale);
     this.sweep = new SwordSweep(this.rig.sword, (v) => this.unlean(v));
+    // CONTACT (?contact=a): his body answers where a blow met it (the duelists' HitReact, drawn only: after
+    // the sword's sweep is read, off again before the animator runs)
+    this.hitReact = new HitReact(this);
 
     markCaster(this.object3d);
     // one draw call per material instead of one per mesh (render/rigidBatch.js)
@@ -379,7 +394,7 @@ export class Player {
 
   /** Clip time for the animator: attacks run on their own clock (a held light pauses at the coil). */
   get animT() {
-    return this.atk && (this.state === 'attack' || this.state === 'heavy') ? this.atk.t : this.stateT;
+    return this.atk && (this.state === 'attack' || this.state === 'heavy') ? this.atk.t - fin(this.atk.show, 0) : this.stateT;
   }
 
   /** True while the blade is cutting (a light / heavy swing's active frames): bullets.js cuts bullets on it. */
@@ -542,10 +557,13 @@ export class Player {
         return RESULT.BLOCKED;
       }
       if (blockable) {
+        this._blowBy = hit.steel || hit.melee ? attacker : null; // (CONTACT: _block poses his blow on the guard)
         this._block(dmg, tell, attack, chip, nx, nz, hit.guardCost, hit.blockPush);
+        this._blowBy = null;
         return RESULT.BLOCKED;
       }
       this._streakEnd();
+      this.parryRun = 0;
       this._guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc);
       return RESULT.HIT;
     }
@@ -559,14 +577,19 @@ export class Player {
     const guarded = (chip && this.chipGuard > 0) || stunned;
     if (chip) this.chipGuard = TUNE.chipGuard;
     this._streakEnd(); // hurt: the streak of perfect dodges is over
+    this.parryRun = 0; // (and the perfect parries toward a deathblow)
     if (!chip) this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
+    if (!chip) this.hurtN++;
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
     this._crashArm(hit, attacker, kb);
     this.flash = 1;
     const big = knockdown || dmg >= 25;
-    this.getChestPos(this._v, true);
+    // (CONTACT, ?contact=a: the blow is posed where it meets his body, the hurt drawn there)
+    const met = this._strikeMet(attacker, big || tell === TELL.BLUE, false, this._v) || (hit.melee === true && this._pointMet(hit.point, hasSrc ? sx : NaN, hasSrc ? sz : NaN, this._v));
+    if (!met) this.getChestPos(this._v, true);
     this.fx.hurt(this._v.x, this._v.y, this._v.z, nx, nz, big);
+    if (met) this._reactTo(this._v, this.struck, nx, nz, big || tell === TELL.BLUE);
     this._emit('player:hurt', { damage: dmg, kind, hp: this.hp });
 
     if (this.hp <= 0) {
@@ -732,6 +755,11 @@ export class Player {
     this.pl.phase = PL.VANISH;
     this.streak = 0;
     this.streakT = 0;
+    this.parryRun = 0;
+    this.db.phase = '';
+    this.db.att = null;
+    deathblowFxClear?.(this.game);
+    deathblowMatrixClear?.(this.game);
     this.guard = this.maxGuard;
     this.guardWait = 0;
     this.riposte.att = null;
@@ -892,11 +920,19 @@ export class Player {
     this._updateLean();
     // the animator poses the plain upright body; the drawn one (lean, drawScale) is applied after
     this.lean.on = false;
+    this.hitReact.restore(); // (CONTACT: last frame's drawn reaction off his joints)
     // (the flurry runs on real time while the world is held: so do his pose and his cloth)
     this.anim.update(this.state === 'flurry' ? this.flurry.animDt : dt);
     this.lean.on = true;
     this.object3d.updateMatrixWorld(true);
     this._combat();
+    if (this.hitReact.active) {
+      // (drawn only, after the sweep read the blade: his hits and guards never see it)
+      this.lean.on = false;
+      this.hitReact.apply(dt);
+      this.lean.on = true;
+      this.object3d.updateMatrixWorld(true);
+    }
     this._updateFx(dt);
     this._updateMaterials(dt);
 
@@ -1108,6 +1144,7 @@ export class Player {
   }
 
   _tick(dt) {
+    if (this.guardNudge?.k > 0) this.guardNudge.k = Math.max(0, this.guardNudge.k - dt / CONTACT.guard.nudgeBack); // (CONTACT: _guardOnto)
     switch (this.state) {
       case 'idle':
       case 'run':
@@ -1294,6 +1331,9 @@ export class Player {
         nz = -dz / l;
       }
     }
+    // ?parryRiposte=deathblow, against a duelist: the parry builds posture, not the dodge streak (deathblow.js)
+    const dbFoe = !light && riposteMode() === 'deathblow' && hit?.attacker ? hit.attacker : null;
+    const db = !!dbFoe && this.flurry.reach(dbFoe, true) === 'ground';
     const D = this.deflect;
     this.rmb.chain = true; // the next RMB press may parry again without the anti-mash re-arm
     D.n = this.time - D.t <= TUNE.deflectChainGap ? Math.min(99, D.n + 1) : 1;
@@ -1320,7 +1360,7 @@ export class Player {
     // today | sharp | cinema); `PM.T` null = today's numbers below. Nothing of the rules moves
     // (a parry moment ends his string: it counts as its last blow for cinema's full beat)
     const PM = perfect && !light ? this.fx.perfectMoment?.('parry', last || moment, fin(this.streak) + 1) : null, PT = PM?.T ?? null;
-    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met, feel: PM });
+    this.fx.parry(cv.x, cv.y, cv.z, big, D.n, -nx, -nz, { e1, e2, spray, perfect: !!perfect && !light, light, ring: light ? 0 : perfect || big ? 2 : last ? 1 : 0, met, feel: PM, last: !!last, streak: db ? this.parryRun + (perfect ? 1 : 0) : light ? undefined : fin(this.streak) + 1 });
     if (moment) this.fx.flareParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (ret) this.fx.perfectParry?.(cv.x, cv.y, cv.z, -nx, -nz);
     if (light) {
@@ -1343,26 +1383,36 @@ export class Player {
     this._guardGain((light ? GUARD.parryLight : GUARD.parry[tell] ?? GUARD.parry.normal) + (perfect ? GUARD.perfect : 0));
     // a perfect parry of a blow (not a bullet) readies the counter cut (DEFENSE.perfectParry)
     if (perfect && !light) this.quickUntil = this.time + DEFENSE.perfectParry.cutWindow;
+    // (deathblow mode: a parried last blow recoils him and opens the counter cut's window, perfect or not)
+    if (db && last) this.quickUntil = this.time + DEFENSE.perfectParry.cutWindow;
     if (!light) {
       // a blade met counts in the streak; meeting a string's LAST blow (or a single one) answers
       // with the riposte once this parry's freeze is over (update)
-      this._streakUp();
+      if (db) {
+        if (perfect) this.parryRun = Math.min(99, this.parryRun + 1);
+      } else this._streakUp();
       const att = hit?.attacker ?? null, R = this.riposte;
-      R.att = (last || moment) && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
+      // (the deathblow: a flare moment is a blue parry, and the combo answers it: no counter cut of its own)
+      R.att = !db && (last || moment) && att && hit?.melee === true && !this.debug.noRiposte ? att : null;
+      if (db && !this.debug.noRiposte) armDeathblow(this, att, attack, tell, tell === TELL.BLUE);
       R.counter = moment;
       R.t = 0;
       R.attack = attack;
       R.tell = tell;
     }
     // (`feel` / `beat`: the perfect parry's look, PERFECT_FEEL's mode and cinema's 'full' | 'short'; the
-    // screen reads them: flow.js)
-    this._emit('player:parry', { tell, attack, chain: D.n, light, perfect: !!perfect, last, flare: moment, feel: PM?.mode ?? 'today', beat: PM?.beat ?? '' });
+    // screen reads them: flow.js). `clash`: the clash dance's run this parry makes on a duelist (his
+    // clashPeek, before his onParried counts it; 0: off, or no blade / body of a duelist's: audio.js rings it)
+    const clash = !light && typeof hit?.attacker?.clashPeek === 'function' ? hit.attacker.clashPeek() | 0 : 0;
+    this._emit('player:parry', { tell, attack, chain: D.n, clash, light, perfect: !!perfect, last, flare: moment, feel: PM?.mode ?? 'today', beat: PM?.beat ?? '' });
   }
 
   /** The riposte a parried last blow asked for: starts as the parry's freeze ends, if the hero is
    *  still free and the foe in its reach; dropped by a blade lock, a hurt, or half a second. */
   _tickRiposte(dt) {
     const R = this.riposte, g = this.game;
+    if (this.db.phase && tickDeathblow(this, dt)) return;
+    if (this.parryRun > 0 && !(g.dragon?.posture > 0) && !g.dragon?.broken && this.db.phase !== 'combo') this.parryRun = 0; // his posture is back to empty
     if (!R.att) return;
     R.t += dt > 0 ? fin(g.realDt, dt) : 0;
     if (!this.alive || R.t > 0.5 || !RIPOSTE_FROM.has(this.state)) {
@@ -1378,6 +1428,8 @@ export class Player {
     const T = this.flurry._v, p = this.position;
     const tp = kind === 'air' ? (this._plungePoint(att, T) ? T : null) : att.position;
     if (!tp || !(Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange[kind])) return;
+    // (?parryRiposte=planted: against a duelist he stays where he parried and cuts once: riposteCut.js)
+    if (kind === 'ground' && (riposteMode() === 'planted' || riposteMode() === 'deathblow') && startRiposteCut(this, att, this.streak, R.attack, R.counter)) return;
     this.flurry.start(att, kind === 'air', this.streak, R.attack, R.tell, { riposte: true, counter: R.counter });
   }
 
@@ -1490,9 +1542,137 @@ export class Player {
     return M;
   }
 
+  /**
+   * CONTACT (combat/contact.js, ADR-259; ?contact=a): the blow of `att` (a duelist: strikeContact) is posed
+   * where it meets him, on his drawn body, or with `guard` on his drawn blade (and on his body where it
+   * would get past the blade). The meeting point goes into `out`; this.struck = the part it met ('guard'
+   * on the blade). False (out untouched) when it is off or the attacker cannot say.
+   */
+  _strikeMet(att, heavy, guard, out) {
+    this.struck = null;
+    if (!contactOn() || typeof att?.strikeContact !== 'function') return false;
+    const B = this._cBody ?? (this._cBody = new ContactBody(THREE));
+    this.object3d.updateMatrixWorld(true);
+    if (!B.fromRig(this.rig, this.drawScale || 1)) return false;
+    const s = this.rig.sword, G0 = (this._cG0 ??= new THREE.Vector3()), G1 = (this._cG1 ??= new THREE.Vector3());
+    G0.set(0, 0, DIM.bladeBase).applyMatrix4(s.matrixWorld);
+    G1.set(0, 0, DIM.drawnTip).applyMatrix4(s.matrixWorld);
+    this._cGuard = !!guard;
+    // (made once: the gap of a striker to his body, or to his blade first)
+    this._meetFn ??= (a, b, r, o) => {
+      const gB = B.gap(a, b, r, o, r <= CONTACT.edge * 1.01 && !this._cGuard ? CONTACT.bite : 0);
+      if (!this._cGuard) return gB;
+      // (a guard: his blade, or the shell before his body where the blow would get past it)
+      const P = this._cP, Q = this._cS;
+      const gs = closestOnSegments(a, b, G0, G1, P, Q) - r - CONTACT.edge, gb = gB - CONTACT.guard.shell;
+      this._cOnBlade = gs <= gb;
+      if (this._cOnBlade) o?.lerpVectors(P, Q, 0.5);
+      return Math.min(gs, gb);
+    };
+    this._cOnBlade = false;
+    // (the way his steel or fist was travelling into him: the reaction's line)
+    const tv = (this._cutTv ??= { x: 0, z: 0 });
+    tv.x = fin(att._tip?.x - att._tipPrev?.x, 0);
+    tv.z = fin(att._tip?.z - att._tipPrev?.z, 0);
+    let P = null;
+    try {
+      P = att.strikeContact(this._meetFn, !!heavy, guard ? CONTACT.guard.bite : null);
+    } catch (err) {
+      console.error('[player] attacker.strikeContact failed', err);
+    }
+    if (!P) {
+      // (a blow that never comes within CONTACT.near of him, the reach band's: not posed, but its hurt is
+      // drawn on him where it points, not on his chest)
+      const h = att._hilt, t = att._tip;
+      if (guard || !att._tipOk || !h || !t) return false;
+      const limb = typeof att._part === 'string' && att._part !== 'sword';
+      const P2 = (this._cK5 ??= new THREE.Vector3());
+      const g = limb ? B.gap(t, t, CONTACT.fist, P2) : B.gap(h, t, CONTACT.edge, P2);
+      if (!(g < CONTACT.farFx)) return false;
+      out.copy(P2);
+      this.struck = B.struck;
+      return true;
+    }
+    out.copy(P);
+    this.struck = guard ? 'guard' : B.struck;
+    if (guard) this._guardOnto(att, out);
+    return true;
+  }
+
+  /** CONTACT: his body answers the blow that met it at `pt` (drawn) on `limb` (ContactBody's part), pushed
+   *  along (nx, nz), its steel travelling this._cutTv (_strikeMet). Drawn only (HitReact). */
+  _reactTo(pt, limb, nx, nz, heavy) {
+    const k = impactK('react') * CONTACT.react.hero;
+    if (!(k > 0) || !this.alive) return;
+    const R = (this._reactHit ??= { k: 0, part: 'body', limb: null, point: null, cut: { x: 0, z: 0 }, dir: { x: 0, z: 0 }, thrust: NaN, heavy: false, crit: false, reel: 0, skid: 0, moved: { x: 0, z: 0 } });
+    const tv = this._cutTv ?? null;
+    R.k = k;
+    R.part = limb === 'head' ? 'head' : limb?.startsWith('leg') ? 'leg' : 'body';
+    R.limb = limb;
+    R.point = pt;
+    R.dir.x = nx;
+    R.dir.z = nz;
+    const tl = tv ? Math.hypot(tv.x, tv.z) : 0;
+    R.cut.x = tl > 1e-4 ? tv.x / tl : nx;
+    R.cut.z = tl > 1e-4 ? tv.z / tl : nz;
+    R.thrust = NaN;
+    R.heavy = !!heavy;
+    try {
+      this.hitReact.hit(R);
+    } catch (err) {
+      console.error('[player] the hit reaction failed', err);
+    }
+  }
+
+  /** CONTACT: a blow that cannot be posed (the wyrm's jaws, claws, tail) but says what struck (`pt`): its hurt
+   *  drawn on his body nearest it (within CONTACT.farFx), into `out`; this.struck the part. (sx, sz): where it
+   *  came from (the reaction's line). False when off or too far. */
+  _pointMet(pt, sx, sz, out) {
+    this.struck = null;
+    if (!contactOn() || !pt || !Number.isFinite(pt.x + pt.y + pt.z)) return false;
+    const B = this._cBody ?? (this._cBody = new ContactBody(THREE));
+    this.object3d.updateMatrixWorld(true);
+    if (!B.fromRig(this.rig, this.drawScale || 1)) return false;
+    const g = B.gap(pt, pt, CONTACT.fist, out);
+    if (!(g < CONTACT.farFx)) return false;
+    this.struck = B.struck;
+    const tv = (this._cutTv ??= { x: 0, z: 0 });
+    tv.x = Number.isFinite(sx) ? this.position.x - sx : 0;
+    tv.z = Number.isFinite(sz) ? this.position.z - sz : 0;
+    return true;
+  }
+
+  /** CONTACT, a block: the guard nudged onto the blow (its steel, or the striking fist), posed now, and the
+   *  meeting of the two put in `out`. The nudge eases off over CONTACT.guard.nudgeBack s (_tickBlock). */
+  _guardOnto(att, out) {
+    const N = (this.guardNudge ??= { x: 0, y: 0, z: 0, k: 0 }), K = CONTACT.guard;
+    const h = att._hilt, t = att._tip, G0 = this._cG0, G1 = this._cG1, C = this._cp;
+    if (!h || !t || !Number.isFinite(h.x + t.x)) return;
+    const limb = typeof att._part === 'string' && att._part !== 'sword';
+    closestOnSegments(G0, G1, limb ? t : h, t, C[0], C[1]);
+    const S = this.drawScale || 1, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+    const gx = C[1].x - C[0].x, gy = C[1].y - C[0].y, gz = C[1].z - C[0].z, gl = Math.hypot(gx, gy, gz);
+    // (the blades already crossed: no nudge; else move the grip by the gap, at most K.nudge)
+    const k = gl > 0.04 ? Math.min(1, K.nudge / gl) : 0;
+    N.x = ((gx * c - gz * sn) / S) * k;
+    N.y = (gy / S) * k;
+    N.z = ((gx * sn + gz * c) / S) * k;
+    N.k = k > 0 ? 1 : 0;
+    if (N.k > 0) {
+      this._poseNow();
+      this.object3d.updateMatrixWorld(true);
+      const s = this.rig.sword;
+      G0.set(0, 0, DIM.bladeBase).applyMatrix4(s.matrixWorld);
+      G1.set(0, 0, DIM.drawnTip).applyMatrix4(s.matrixWorld);
+      closestOnSegments(G0, G1, limb ? t : h, t, C[0], C[1]);
+    }
+    out.lerpVectors(C[0], C[1], 0.5);
+  }
+
   /** Pose the body NOW (outside the frame's own animator step): an impact's contact pose must be on
    *  screen in the frame the freeze holds, and the blade's points read from it. */
   _poseNow() {
+    this.hitReact?.restore();
     this.lean.on = false;
     this.anim.update(0); // (no time passes: the cross-fade is none, the elbows are not rate-limited)
     this.lean.on = true;
@@ -1716,7 +1896,8 @@ export class Player {
     const push = Number.isFinite(own) && own >= 0 && !chip ? clamp(own, 0, 14) : (DEFENSE.blockPushback[tell] ?? DEFENSE.blockPushback.normal) * (chip ? TUNE.chipPush : 1);
     this._setKb(nx, nz, Math.max(fin(this.kb.x * nx + this.kb.z * nz) / TUNE.knockbackDecay, push));
     const heavy = tell === TELL.BLUE && !chip;
-    this._bladePoint(0.45, this._v);
+    // (CONTACT, ?contact=a: his blow is posed where it meets the guard, the block drawn there)
+    if (chip || !this._strikeMet(this._blowBy, heavy, true, this._v)) this._bladePoint(0.45, this._v);
     if (chip) this.chipGuard = TUNE.chipGuard; // standing in a stream: rolling out of it is no perfect dodge
     if (chip) {
       this.recoil = Math.max(this.recoil, 0.35);
@@ -1748,6 +1929,7 @@ export class Player {
   _guardBreak(dmg, kind, burn, kb, attack, nx, nz, hasSrc) {
     const g = this.game;
     this.guardWait = Math.max(this.guardWait, GUARD.regenDelay);
+    this.hurtN++;
     this._damage(dmg);
     if (burn > 0) this.burnT = Math.max(this.burnT, burn);
     this.flash = 1;
@@ -2235,12 +2417,19 @@ export class Player {
     } catch (err) {
       console.error('[player] onExecute failed', err);
     }
+    // CONTACT (?contact=): the burst where the drawn steel enters him (it runs him through)
+    const M = this._plungeEntry(d);
     // the drawn contact (the blade run into his drawn body), else his lock point
     const C = this._contactPoint(d, 'thrust', this._cut) ? this._cut : null;
+    if (M && C) {
+      C.x = M.x;
+      C.y = M.y;
+      C.z = M.z;
+    }
     const pt = C ?? d.lockPoint?.(this._v) ?? this._v.set(d.position.x, 1.2, d.position.z);
     if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'body', point: { x: pt.x, y: pt.y, z: pt.z }, heavy: true, crit: true, kind: 'execute', combo: 1, weight: 'execute' });
     this._emit('player:plungeHit', { damage: dealt, execution: true });
-    a.hitAt = a.t;
+    a.hitAt = a.pin?.pin ? a.pin.tc : a.t;
     a.cutDir = this._cutDir(C, a.cutDir);
     this.bladeFlare = Math.max(this.bladeFlare, TUNE.bladeFlare.hit[1]);
     const X = THRUST.exec;
@@ -2474,10 +2663,29 @@ export class Player {
     g.shake?.(exec ? P.execShake : P.impactShake);
     g.world?.gust?.(hp.x, hp.z, 1.4, 8);
     this.anim.kickCoat(0.9, this.anim.noise);
-    this.fx.plungeImpact(hp.x, hp.y, hp.z, pl.dx, pl.dz, exec);
+    // (CONTACT: the burst where the drawn steel enters the head, not at the gameplay point under it)
+    const E = this._plungeEntry(pl.att);
+    this.fx.plungeImpact(E ? E.x : hp.x, E ? E.y : hp.y, E ? E.z : hp.z, pl.dx, pl.dz, exec);
     if (dealt > 0) this._emit('player:hitDragon', { damage: dealt, part: 'head', point: { x: hp.x, y: hp.y, z: hp.z }, heavy: true, crit: exec, kind: 'plunge' });
     this._emit('player:plungeHit', { damage: dealt, execution: exec });
     this.flurry.burst(dealt, hp); // the cuts a flurry left hanging open on this blow
+  }
+
+  /** CONTACT: where the hero's drawn steel enters a body it runs into (the plunge's head, the execution's foe), or null (off). */
+  _plungeEntry(att) {
+    if (!contactOn() || !att || !this.rig.loadout?.weapon) return null;
+    const B = this._cFoe ?? (this._cFoe = new ContactBody(THREE, 48));
+    if (!(att.rig?.pelvis && typeof att.drawnPoint === 'function' ? B.fromRig(att.rig, fin(att.drawScale, 1)) : B.fromSpheres(att.hurtSpheres))) return null;
+    this.object3d.updateMatrixWorld(true);
+    const s = this.rig.sword, A0 = (this._cK0 ??= new THREE.Vector3()), A1 = (this._cK1 ??= new THREE.Vector3()), P = (this._cK2 ??= new THREE.Vector3());
+    A0.set(0, 0, DIM.bladeBase).applyMatrix4(s.matrixWorld);
+    A1.set(0, 0, DIM.drawnTip).applyMatrix4(s.matrixWorld);
+    // (the entry: walk the steel from the hilt to the first point inside the body)
+    for (let i = 0; i <= 12; i++) {
+      P.lerpVectors(A0, A1, i / 12);
+      if (B.gap(P, P, 0) <= 0) return P;
+    }
+    return null;
   }
 
   /** Rip the blade out and spring off: a backflip arc to a clear landing in front of the head. */
@@ -2895,6 +3103,8 @@ export class Player {
     }
     a.t = a.pending ? Math.min(W, a.t + dt) : a.t + dt; // a held light waits at the coil
     const t = a.t;
+    if (a.pin?.pin) a.show = pinStep(a.pin, t, dt); // (CONTACT: the swing shown held where it met him, _cutContact)
+    else a.show = 0;
     if (t < W && !d.keepYaw) this.yaw = turnToward(this.yaw, this._aimYaw(this.yaw), TUNE.windupSteer * dt);
     // lunge forward through the strike (stretched by the step-in assist); a dashing heavy's root
     // travel (the cleave, the execution's thrust) is front-loaded through its active frames
@@ -3024,6 +3234,7 @@ export class Player {
     this.slowmoPending = 0;
     this.blockStunT = 0;
     this._streakEnd();
+    this.parryRun = 0;
     this._setLock(false);
     // killed on the ground (falling or lying in the knockdown): he dies where he lies
     const down = this.state === 'knockdown' && this.stateT < TUNE.knockdownDur - TUNE.getUpIframes + 0.1;
@@ -3586,7 +3797,10 @@ export class Player {
     const spheres = dr.hurtSpheres;
     if (!Array.isArray(spheres) || !spheres.length) return;
     const h = this._hit;
-    if (!this.sweep.test(spheres, h, fin(a.def.up, REACH.up))) return;
+    if (!this.sweep.test(spheres, h, fin(a.def.up, REACH.up))) {
+      if (!a.rip) return;
+      riposteContact(dr, h); // the planted riposte lands whatever the sweep found (its one blow)
+    }
     this._applyHit(a, h);
   }
 
@@ -3603,16 +3817,18 @@ export class Player {
     const d = a.def, heavy = !!d.heavy;
     const part = typeof h.sphere.part === 'string' ? h.sphere.part : 'body';
     const crit = this.critTimer > 0 || !!a.crit;
-    const damage = a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
+    const damage = a.rip ? a.rip.damage : a.damage * (crit ? DEFENSE.ghostep.critMult : 1); // raw: the dragon applies part multipliers
     const dir = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) }; // the facing: the shove
     const C = !viaShards && this._contactPoint(dr, d.kind, this._cut) ? this._cut : null;
     const point = C ? { x: C.x, y: C.y, z: C.z } : { x: h.x, y: h.y, z: h.z };
     const cut = C ? { x: C.gx, z: C.gz } : null; // the blade's ground-plane travel: his spray
+    // (CONTACT: the part of his drawn body the drawn steel is nearest now: his reaction's limb)
+    const limb = !viaShards && !a.rip ? this._limbNear(dr) : null;
     const dp = dr.position, x0 = fin(dp?.x, NaN), y0 = fin(dp?.y, NaN), z0 = fin(dp?.z, NaN);
     let dealt = damage;
     try {
       // (`reel` 2: a blow that throws a duelist out of what he is doing, the Rising Crescent)
-      const r = dr.takeHit({ damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true, ...(d.reel ? { reel: d.reel } : null) });
+      const r = dr.takeHit(a.rip ? (a.rip.db ? deathblowTakeHit : riposteTakeHit)(this, point, { cut }) : { damage, part, point, dir, cut, poise: a.poise, heavy, crit, swing: true, ...(d.reel ? { reel: d.reel } : null), ...(limb ? { limb } : null) });
       if (Number.isFinite(r)) dealt = r;
     } catch (err) {
       console.error('[player] dragon.takeHit failed', err);
@@ -3632,6 +3848,21 @@ export class Player {
     }
     // (this.atk may be gone: a deflect or a trade clash bounced him)
     const guarded = (!!a.guarded || !!a.traded) && dealt === 0;
+    // CONTACT (?contact=a): the swing is posed where the drawn steel meets his drawn body, held there
+    // through the freeze, then carried on; the cut is drawn at that meeting
+    if (!guarded && !viaShards && this.atk === a && Number.isFinite(mx + my + mz)) {
+      const M = this._cutContact(dr, mx, my, mz, heavy, false);
+      if (M) {
+        point.x = M.x;
+        point.y = M.y;
+        point.z = M.z;
+        if (C) {
+          C.x = M.x;
+          C.y = M.y;
+          C.z = M.z;
+        }
+      }
+    }
     // (the slam's ground shards: the blade is in the ground, no cut: no cut weight, no blade sound)
     this._emit('player:hitDragon', { damage: dealt, part, point, heavy, crit, kind: d.kind, guarded, combo: d.combo ?? 1, weight: viaShards ? null : d.contact ?? (heavy ? 'slam' : 'light'), shards: viaShards });
     // turned by a guard: the guard draws the clash and sets its own freeze; no cut, no sparks of his
@@ -3652,7 +3883,79 @@ export class Player {
     if (km > 0 && C) this.game.kick?.(C.cx, C.cy, C.cz, km);
     if (!viaShards) this.fx.contact(point, d.contact ?? 'light', C, crit || dr.broken === true, k);
     if (C) this._edgeFlash(C, heavy, crit, d.glint === 'ridge');
-    if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);
+    if (d.kind === 'cleave') this.fx.cleaveImpact(point.x, point.y, point.z, C ? C.gx : dir.x, C ? C.gz : dir.z, k, crit, true);    if (a.rip) (a.rip.db ? deathblowLanded : riposteCutLanded)(this, dealt);
+  }
+
+  /**
+   * CONTACT (combat/contact.js, ADR-259; ?contact=a): the hero's swing shown where his DRAWN steel meets
+   * the boss: on his drawn body (a cut), or with `guard` on his blade (and before his body where it would
+   * get past it). The swing's clock is searched from now (back where the steel is already through, on
+   * where it is still short), he is posed there now (_poseNow: the freeze holds this frame) and the pose
+   * pinned to that time (atk.pin / atk.show: animT), then carried on. (dx, dy, dz): the shove the boss was
+   * given this frame (he is drawn there). Returns the meeting point (world, drawn) or null.
+   */
+  _cutContact(dr, dx = 0, dy = 0, dz = 0, heavy = false, guard = false, thrust = false) {
+    const a = this.atk;
+    if (!contactOn() || !a || (a.exec && !thrust) || !dr || !this.rig.loadout?.weapon) return null;
+    const B = this._cFoe ?? (this._cFoe = new ContactBody(THREE, 48));
+    const ok = dr.rig?.pelvis && typeof dr.drawnPoint === 'function' ? B.fromRig(dr.rig, fin(dr.drawScale, 1), dx, dy, dz) : B.fromSpheres(dr.hurtSpheres);
+    if (!ok) return null;
+    const s = this.rig.sword, K = CONTACT.hero;
+    const A0 = (this._cK0 ??= new THREE.Vector3()), A1 = (this._cK1 ??= new THREE.Vector3()), P = (this._cK2 ??= new THREE.Vector3());
+    const H0 = (this._cK3 ??= new THREE.Vector3()), H1 = (this._cK4 ??= new THREE.Vector3()), C = this._cp;
+    // his steel (a guard): his blade as drawn, shifted with him
+    const steel = guard && dr._tipOk && dr._hilt && dr._tip;
+    if (steel) {
+      H0.set(dr._hilt.x + dx, dr._hilt.y + dy, dr._hilt.z + dz);
+      H1.set(dr._tip.x + dx, dr._tip.y + dy, dr._tip.z + dz);
+    }
+    const t0 = a.t, show0 = fin(a.show, 0);
+    let onSteel = false;
+    const at = (t) => {
+      a.show = t0 - t;
+      this._poseNow();
+      this.object3d.updateMatrixWorld(true);
+      A0.set(0, 0, DIM.bladeBase).applyMatrix4(s.matrixWorld);
+      A1.set(0, 0, DIM.drawnTip).applyMatrix4(s.matrixWorld);
+      const gB = B.gap(A0, A1, CONTACT.edge, P, guard || thrust ? 0 : CONTACT.bite);
+      // (a thrust: its POINT shown CONTACT.exec.depth m in; the burst where the steel enters, P)
+      if (thrust) return B.gap(A1, A1, 0) + CONTACT.exec.depth;
+      if (!guard) return gB;
+      const gs = steel ? closestOnSegments(A0, A1, H0, H1, C[0], C[1]) - 2 * CONTACT.edge : Infinity, gb = gB - CONTACT.guard.shell;
+      onSteel = gs <= gb;
+      if (onSteel) P.lerpVectors(C[0], C[1], 0.5);
+      return Math.min(gs, gb);
+    };
+    let tc = NaN;
+    try {
+      tc = findContact(at, t0 - show0, thrust ? 0 : guard ? CONTACT.guard.bite : CONTACT.bite, K, 0);
+    } catch (err) {
+      console.error('[player] the cut contact failed', err);
+    }
+    if (!Number.isFinite(tc)) {
+      a.show = show0;
+      this._poseNow();
+      return null;
+    }
+    at(tc);
+    this.struckFoe = guard ? (onSteel ? 'steel' : 'guard') : B.struck;
+    const P0 = (a.pin ??= newPin());
+    pinAt(P0, tc, t0, guard ? K.guardHold : heavy ? K.holdHeavy : K.hold, guard ? K.guardFollow : K.follow);
+    a.show = P0.show;
+    this.sweep.sample(); // (the blade where it is shown: its arc runs on from last frame's to here)
+    return Number.isFinite(P.x + P.y + P.z) ? P : null;
+  }
+
+  /** CONTACT: the capsule of the boss's drawn body nearest the hero's drawn steel now ('head' | 'body' |
+   *  'armR' | 'armL' | 'legR' | 'legL'; null when off, or a body without capsules: the wyrm). One gap, no pose. */
+  _limbNear(dr) {
+    if (!contactOn() || !dr?.rig?.pelvis || typeof dr.drawnPoint !== 'function') return null;
+    const B = this._cFoe ?? (this._cFoe = new ContactBody(THREE, 48));
+    if (!B.fromRig(dr.rig, fin(dr.drawScale, 1))) return null;
+    const s = this.rig.sword, A0 = (this._cK0 ??= new THREE.Vector3()), A1 = (this._cK1 ??= new THREE.Vector3());
+    A0.set(0, 0, DIM.bladeBase).applyMatrix4(s.matrixWorld);
+    A1.set(0, 0, DIM.drawnTip).applyMatrix4(s.matrixWorld);
+    return Number.isFinite(B.gap(A0, A1, CONTACT.edge)) ? B.struck : null;
   }
 
   /** The unit world travel of the blade at contact C (into `out`, reused), or null without one. */
@@ -3769,6 +4072,8 @@ export class Player {
 
   _updateFx(dt) {
     const p = this.position;
+    deathblowFxUpdate?.(this.game, fin(this.game.realDt, dt));
+    deathblowMatrixUpdate?.(this.game, fin(this.game.realDt, dt));
     if (this.state === 'heal') {
       const t = this.stateT;
       this.fx.healTick(dt, p.x, p.z, smoothstep(0.27, 0.5, t) * (1 - smoothstep(0.7, 0.84, t)));

@@ -15,7 +15,11 @@ import { setCutStyle, cutStyle } from '../combat/cutFx.js';
 import { IMPACT } from '../combat/impact.js';
 import { STREAK_FX, setPerfectMode, perfectMode } from '../combat/streak.js';
 import { RIP_MODES, ripMode, setRipMode } from '../entities/player/timeRip.js';
-import { PARRY_FX, parryFxMode, setParryFx } from '../combat/parrySparks.js';
+import { DB_FX, getDbFx, setDbFx } from '../combat/deathblowFx.js';
+import { DB_MATRIX, getDbMatrix, setDbMatrix } from '../combat/deathblowMatrix.js';
+import { DB_SFX, getDbSfx, setDbSfx } from '../audio/deathblowSfx.js';
+import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
+import { RIPOSTE_CUT, riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
 import { BURST_LOOK, setBurst, burstLevel } from '../entities/player/flurryBurst.js';
 import { CALM_LOOK, setCalm, calmLevel } from '../combat/impactCalm.js';
 import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../audio/samples.js';
@@ -27,9 +31,11 @@ import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
 import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combos.js';
 import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.js';
+import { CONTACT_IDS, contactMode, setContactMode } from '../combat/contact.js';
 import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
+import { CLASH_IDS, clashMode, setClashMode } from '../combat/clashDance.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
 import { RUN_SWORD_IDS, RUN_SWORD_NAMES, runSwordMode, setRunSword } from '../entities/player/runSword.js';
 import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
@@ -1326,6 +1332,35 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.parryFxBtn.title = "the perfect parry's spit of sparks (?parryFx=): a (the default) a few fast orange sparks off the crossed steel, 0 the parry as before";
+    this.ui.parryGrowBtn = button(stkGrid, `parryGrow ${parryGrowMode()}`, () => {
+      setParryGrow(parryGrowMode() === 'a' ? '0' : 'a');
+      this._syncCutBtns();
+    });
+    this.ui.parryGrowBtn.title = "a parry chain grows (?parryGrow=): a = more sparks each streak tier, embers that linger, a short heat flash at the blades; 0 = as before";
+    this.ui.riposteBtn = button(stkGrid, `riposte ${riposteMode()}`, () => {
+      const M = RIPOSTE_CUT.opts;
+      setRiposteMode(M[(M.indexOf(riposteMode()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.riposteBtn.title = "the answer to a parried last blow against a duelist (?parryRiposte=): old (the default) the flurry's flash cuts, planted: he stays where he parried and cuts once, the foe reels; deathblow: parries build posture (not the dodge streak), a parry that breaks him or meets a blue blow is answered by a planted combo of as many blows as perfect parries behind it. Read as the riposte starts";
+    this.ui.dbfxBtn = button(stkGrid, `dbfx ${getDbFx()}`, () => {
+      const M = DB_FX.opts;
+      setDbFx(M[(M.indexOf(getDbFx()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbfxBtn.title = "the deathblow's hit effect (?dbfx=): a Steel Bloom (orange heat bloom, sparks, embers), b Shatter Web (long cut-lines through him that snap on the finisher), c Storm Crack (lightning crawling over him, a bolt on the finisher), d Gold Crescent (gold arcs along each swing)";
+    this.ui.dbmatrixBtn = button(stkGrid, `dbmatrix ${getDbMatrix()}`, () => {
+      const M = DB_MATRIX.opts;
+      setDbMatrix(M[(M.indexOf(getDbMatrix()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbmatrixBtn.title = "the deathblow's code (?dbmatrix=): rain = columns of tiny green letters falling round the fight (they freeze in every hit-pause, burst on the finisher) with a light green cast; world = the whole frame goes green-on-black code view with blinking letters and a scan line; 0 = the cold cast only. Read as the combo starts";
+    this.ui.dbsfxBtn = button(stkGrid, `dbsfx ${getDbSfx()}`, () => {
+      const M = DB_SFX.opts;
+      setDbSfx(M[(M.indexOf(getDbSfx()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.dbsfxBtn.title = "the deathblow's sound (?dbsfx=): 0 the dodge flurry's sounds, a Flesh (wet tear per blow, deep impact), b Steel (metal strike and ring, a huge clang), c Cinematic (muffled thump, reverse swell, deep boom)";
     this.ui.burstBtn = button(stkGrid, `burst ${burstLevel()}`, () => {
       setBurst((Math.max(0, burstLevel()) + 1) % BURST_LOOK.levels.length);
       this._syncCutBtns();
@@ -1385,9 +1420,9 @@ export class Lab {
       b.title = `equip ${SWORD_PARAM[k]}`;
       return { k, el: b };
     });
-    // the free arm on the run (player/runArms.js, ADR-187, ADR-204; ?runArm=a|b|c|d|old), live
+    // the free arm on the run (player/runArms.js, ADR-187, ADR-204, ADR-229; ?runArm=a|b|c|d|e|f|old), live
     const rar = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint; full pump = a runner's pump, the fist before the belly and the elbow high behind him; dash = swept back behind him; by speed = natural, the dash at a sprint; before = the swing before";
+    el('span', 'lab-lbl', 'run arm', rar).title = "the free (left) arm on the run (?runArm=): natural = a runner's swing, pumping at a sprint; full pump = a runner's pump, the fist before the belly and the elbow high behind him; dash = swept back behind him; by speed = natural, the dash at a sprint; open (the default, the owner's pick) / wider = the full pump opened out from his side, so from behind the arm shows past the coat; before = the swing before";
     const raGrid = el('div', 'lab-grid', null, rar);
     raGrid.style.flex = '1';
     this.ui.runArmBtns = RUN_ARM_IDS.map((m) => {
@@ -1398,9 +1433,9 @@ export class Lab {
       b.title = `?runArm=${m}: ${RUN_ARM_NAMES[m]}`;
       return { m, el: b };
     });
-    // the sword arm on the run (player/runSword.js, ADR-204; ?runSword=hip|old), live
+    // the sword arm on the run (player/runSword.js, ADR-204, ADR-229; ?runSword=g2 (default)|g1|g3|nat|n1|n3|flail|b15..b45|a1..a4|hip|trail|swept|side|old), live
     const rsr = el('div', 'lab-row', null, body);
-    el('span', 'lab-lbl', 'run sword', rsr).title = "the sword arm on the run (?runSword=): forward at the hip = the blade points ahead, low at the right hip, and rocks with the forearm; before = the carry before (the blade trailing back)";
+    el('span', 'lab-lbl', 'run sword', rsr).title = "the sword arm on the run (?runSword=): forward at the hip = the blade points ahead, low at the right hip, and rocks with the forearm; trailing (the default, the owner's pick: the arm relaxed out at his side, the blade down and out to his right) / swept back / out to the side = the owner's sketch: the blade going on from the forearm's line, behind and down; before = the carry before (the blade trailing back on a cocked wrist)";
     const rsGrid = el('div', 'lab-grid', null, rsr);
     rsGrid.style.flex = '1';
     this.ui.runSwordBtns = RUN_SWORD_IDS.map((m) => {
@@ -1454,6 +1489,8 @@ export class Lab {
       ['endbeat', BEAT_IDS, setBeat, 'beatBtns', 'when the ending slash comes: beat = a short pause after the swing, 0 = as it ends (?endbeat=)', (m) => m],
       ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
       ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', "the free hand in a one-handed swing: auto = the feel's own, prod = as it ships, side = loose at his side, back = behind his back, quiet = its gestures pulled in (?offhand=)", (m) => (m === '0' ? 'prod' : m)],
+      ['clash', CLASH_IDS, setClashMode, 'clashBtns', "the clash dance against the duelists (?clash=): dance = parries in a row inside one of his moves pay more posture each (x1, x1.25, x1.5, x1.75), their ring rises a little, and his posture recovers more slowly as his health drops; old = today's numbers. Read at each parry", (m) => (m === '0' ? 'old' : m)],
+      ['contact', CONTACT_IDS, setContactMode, 'contactBtns', "where blows meet (?contact=, ADR-259): a = every hit, block and guard is drawn ON what it strikes (the edge bites in, a fist lands on the body; held through the freeze, a heavy longer, then the swing carries on), the sparks at the meeting, and the body hit answers by where it was struck; b = a, and a boss's blow that would fall short is reached into (his drawn body eases into it, feet planted): the default, the owner's pick; c = b, and past the reach his whole drawn body steps in; old = as before. Read at each contact", (m) => (m === '0' ? 'old' : m === 'b' ? 'b reach' : m === 'c' ? 'c step' : m)],
     ]) {
       const r = el('div', 'lab-row', null, body);
       el('span', 'lab-lbl', lbl, r).title = tip;
@@ -1585,8 +1622,15 @@ export class Lab {
     for (const { m, el: b } of this.ui.counterBtns ?? []) setClass(b, 'on', counterMode() === m);
     for (const { m, el: b } of this.ui.placeBtns ?? []) setClass(b, 'on', placeMode() === m);
     for (const { m, el: b } of this.ui.beatBtns ?? []) setClass(b, 'on', beatMode() === m);
+    for (const { m, el: b } of this.ui.clashBtns ?? []) setClass(b, 'on', clashMode() === m);
+    for (const { m, el: b } of this.ui.contactBtns ?? []) setClass(b, 'on', contactMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;
+    if (this.ui.parryGrowBtn) this.ui.parryGrowBtn.textContent = `parryGrow ${parryGrowMode()}`;
+    if (this.ui.riposteBtn) this.ui.riposteBtn.textContent = `riposte ${riposteMode()}`;
+    if (this.ui.dbfxBtn) this.ui.dbfxBtn.textContent = `dbfx ${getDbFx()}`;
+    if (this.ui.dbmatrixBtn) this.ui.dbmatrixBtn.textContent = `dbmatrix ${getDbMatrix()}`;
+    if (this.ui.dbsfxBtn) this.ui.dbsfxBtn.textContent = `dbsfx ${getDbSfx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;
     if (this.ui.calmBtn) {
       this.ui.calmBtn.textContent = `calm ${calmLevel()}`;

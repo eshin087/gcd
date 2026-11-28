@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ui, AUDIO, resetWindow } from './shim.mjs';
 import { attachMarks, marksCheck } from './marks.mjs';
-import { swordAudit, printAudit, heldTip } from './swordAudit.mjs';
+import { swordAudit, printAudit, printImpacts, heldTip } from './swordAudit.mjs';
 
 const ROOT = process.argv[2];
 const SCEN = process.argv[3] || 'all';
@@ -34,6 +34,9 @@ const { Duelist } = await imp('src/entities/enemies/duelist/duelist.js');
 const { glaiveHome } = await imp('src/entities/enemies/duelist/ledger.js');
 const { MOVES, MOVE_NAMES, CLIPS_BY_FORM, COUNTERS, STREAKS, TRANSITIONS, realise } = await imp('src/entities/enemies/starlessLord/moves.js');
 const { TUNING } = await imp('src/entities/enemies/starlessLord/tuning.js');
+const { paceOn } = await imp('src/entities/enemies/starlessLord/pace.js');
+/** The cue's lead of a melee blow now: the readable pace's (ADR-251, `?lordPace=a`) or the fast pace's. */
+const meleeLead = () => (paceOn() ? TUNING.pace.flashLead : TUNING.flashLead);
 const { LORD_ITEMS, LORD_LOADOUT, LORD_CAPE, LORD_PANELS } = await imp('src/entities/enemies/starlessLord/gear.js');
 const { Hud } = await imp('src/ui/hud.js');
 const { Bindings, installActions } = await imp('src/core/bindings.js');
@@ -747,7 +750,12 @@ async function scenarioData() {
   // the gaps really tighten form by form
   const gap = (f) => { const A = realise(f === 1 ? 'litany' : f === 2 ? 'tempest' : f === 3 ? 'cyclone' : 'judgment', f, () => 0.2); const h = A.beats.filter((b) => !b.feint); return h[1].impact - h[0].impact; };
   const gaps = [1, 2, 3, 4].map(gap);
-  assert(gaps[0] > gaps[1] && gaps[1] > gaps[2] && gaps[2] > gaps[3] && gaps[3] >= TUNING.minHitGap, `a string's hits come faster form by form: ${gaps.map((g) => g.toFixed(3)).join(' > ')} s`);
+  if (!paceOn()) assert(gaps[0] > gaps[1] && gaps[1] > gaps[2] && gaps[2] > gaps[3] && gaps[3] >= TUNING.minHitGap, `a string's hits come faster form by form: ${gaps.map((g) => g.toFixed(3)).join(' > ')} s`);
+  else {
+    // (ADR-251, the readable pace: every gap at rule 10's floor, the first blows still quicker form by form)
+    const first = [1, 2, 3, 4].map((f) => realise(f === 1 ? 'litany' : f === 2 ? 'tempest' : f === 3 ? 'cyclone' : 'judgment', f, () => 0.2).beats.find((b) => !b.feint).impact);
+    assert(gaps.every((g) => g >= TUNING.pace.gap - 1e-6) && first[0] > first[1] && first[1] > first[2] && first[2] > first[3], `the readable pace: a string's hits ${gaps.map((g) => g.toFixed(3)).join(' / ')} s apart (>= ${TUNING.pace.gap}), its first blow sooner form by form: ${first.map((t) => t.toFixed(3)).join(' > ')} s`);
+  }
 }
 
 // ================================================================== scenario: timing (flash → contact)
@@ -778,7 +786,11 @@ async function scenarioTiming() {
       let w = 0;
       for (const c of contacts) {
         const fl = flashes.filter((t) => t <= c + 1e-6).pop();
-        const lead = fl === undefined ? Infinity : Math.abs(c - fl - TUNING.flashLead);
+        // (the readable pace, ADR-251: a melee blow is cued pace.flashLead before; a spell keeps its own lead,
+        // so a blow's earlier glint may come between a thrown stone's glint and its contact: any glint of the
+        // last 0.6 s that cued it on time counts)
+        const leadOf = (t) => Math.min(Math.abs(c - t - TUNING.flashLead), paceOn() ? Math.abs(c - t - TUNING.pace.flashLead) : Infinity);
+        const lead = fl === undefined ? Infinity : paceOn() ? Math.min(...flashes.filter((t) => t <= c + 1e-6 && t >= c - 0.6).map(leadOf)) : leadOf(fl);
         w = Math.max(w, lead);
       }
       worst = Math.max(worst, Number.isFinite(w) ? w : 9);
@@ -789,7 +801,43 @@ async function scenarioTiming() {
     }
   }
   if (only) return;
-  assert(moves >= 30 && worst <= 0.09, `${moves} move × form runs: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${TUNING.flashLead} s, and every move's first hit lands`);
+  assert(moves >= 30 && worst <= 0.09, `${moves} move × form runs: every contact within ${(worst * 1000).toFixed(0)} ms of its flash + ${paceOn() ? `${TUNING.pace.flashLead} (a blow) / ${TUNING.flashLead} (a spell)` : TUNING.flashLead} s, and every move's first hit lands`);
+}
+
+// ================================================================== scenario: clashdance (his posture's recovery by HP)
+// The clash dance (?clash=dance, combat/clashDance.js, ADR-247) on a boss whose recovery already scales by
+// HP (posture.regenByHp, a curve from the full bar to the empty one): off, the curve as it was; on, the
+// dance's steps replace it (DEFENSE.clashDance.regenByHp), never faster than the curve. duel.mjs `clashdance` has the run.
+async function scenarioClashDance() {
+  out('\n== scenario CLASHDANCE (the Lord: his posture recovers by the steps instead of the curve) ==');
+  const { setClashMode, clashRegenK } = await imp('src/combat/clashDance.js');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, P = TUNING.posture;
+  duel(G, { dist: 6 });
+  game.player.debug.god = true;
+  const drain = (frac) => {
+    d.hp = d.maxHp * frac;
+    d.posture = 150;
+    d.postureTimer = P.regenDelay + 0.01;
+    d._updatePosture(0.5);
+    return (150 - d.posture) / (P.regenRate * 0.5);
+  };
+  const fr = [1, 0.7, 0.5, 0.2, 0.05];
+  try {
+    setClashMode('0');
+    const off = fr.map(drain);
+    assert(off.every((v, i) => Math.abs(v - (P.regenByHp[1] + (P.regenByHp[0] - P.regenByHp[1]) * fr[i])) < 1e-6), `off: his curve as it was (x${off.map((v) => v.toFixed(2)).join(', x')} at ${fr.map((f) => f * 100).join(' / ')} % HP)`);
+    setClashMode('dance');
+    const on = fr.map(drain);
+    assert(on.every((v, i) => Math.abs(v - clashRegenK(fr[i])) < 1e-6), `on: the steps replace the curve (x${on.map((v) => v.toFixed(2)).join(', x')})`);
+    assert(on.every((v, i) => v <= off[i] + 1e-9), `never faster than his curve at any HP`);
+  } finally {
+    setClashMode('0');
+    d.hp = d.maxHp;
+    d.posture = 0;
+  }
+  return G;
 }
 
 // ================================================================== scenario: forms (four bars, a deathblow each)
@@ -1202,8 +1250,10 @@ async function scenarioTraining() {
   const cats = new Set(L.map((s) => s.cat));
   out(`   ${L.length} situations in ${cats.size} categories: ${[...cats].join(', ')}`);
   const bad = [];
+  let si = 0;
   for (const s of L) {
     if (s.cat === 'BOSS MOVES' && !true) continue;
+    Math.random = mulberry32(SEED + 0x7a11 + 977 * si++); // (each situation on a stream of its own: its result does not hang on what the ones before it drew)
     T.run(s.id);
     let frames = 0;
     while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++;}
@@ -1824,7 +1874,7 @@ async function scenarioFlare() {
     input.up(1);
     return { ev, flashT, warnPre, rings, charges, hits: G.hits.slice(h0), lost: hp0 - p.hp, has: (n) => ev.some((x) => x[0] === n), get: (n) => ev.find((x) => x[0] === n)?.[1], all: (n) => ev.filter((x) => x[0] === n).map((x) => x[1]) };
   };
-  const at = (fT, lead) => fT !== null && game.time >= fT + TUNING.flashLead - lead - DT;
+  const at = (fT, lead) => fT !== null && game.time >= fT + meleeLead() - lead - DT;
   // Red Meridian: two red blows, nothing on the floor, nothing on him before the cue
   p.debug.god = true;
   const mer = play('meridian', 3.0);
@@ -1834,8 +1884,15 @@ async function scenarioFlare() {
   // Severance parried: the counter
   let pressed = false;
   // a plain parry: Severance is also a `lock` blow, and a perfect parry of it locks the blades first
-  const sev = play('severance', 5.0, (fT) => { if (!pressed && at(fT, PLAIN_LEAD + DT)) { pressed = true; input.up(1); input.click(1); } });
-  const cnt = sev.get('player:flareCounter');
+  // (the press PLAIN_LEAD before the blow's own impact: the glint's lead is the fast pace's 0.26 s or the
+  // readable pace's 0.35 s, ADR-251, and the realised beat knows which)
+  const sev = play('severance', 5.0, (fT) => {
+    const A = d.brain.act, b = A?.name === 'severance' ? A.beats.find((x) => !x.feint && x.impact > A.t - 1e-6) : null;
+    if (!pressed && fT !== null && b && b.impact - A.t <= PLAIN_LEAD + DT) { pressed = true; input.up(1); input.click(1); }
+  });
+  // (the answer to a blue flare parried: the counter cut, or, in the default deathblow mode, the combo that replaces it)
+  const dbEnd = sev.get('player:flurryEnd')?.art === 'deathblow' ? sev.get('player:flurryEnd') : null;
+  const cnt = sev.get('player:flareCounter') ?? (dbEnd ? { damage: dbEnd.damage, strikes: dbEnd.strikes } : null);
   assert(sev.get('combat:flash')?.flare === true && sev.get('player:parry')?.flare === true && sev.get('dragon:parried')?.last === true && !!cnt && cnt.damage > 0 && sev.lost === 0,
     `Severance (a blue flare) parried: his move ends and the hero counters (${cnt?.strikes} blow(s), the last ${cnt?.damage?.toFixed(0)}; DEFENSE.flareCounter ${DEFENSE.flareCounter.damage} before his posture rule)`);
   // Nightfall on a held guard: the meter gone, no damage; unanswered it lands
@@ -2273,6 +2330,7 @@ const S = {
   moves: scenarioMoves,
   timing: scenarioTiming,
   forms: scenarioForms,
+  clashdance: scenarioClashDance,
   spells: scenarioSpells,
   bounds: scenarioBounds,
   flow: scenarioFlow,
@@ -2294,6 +2352,7 @@ const S = {
   flare: scenarioFlare,
   fxlooks: scenarioFxlooks,
   swordmotion: scenarioSwordMotion,
+  lordform: scenarioLordForm,
 };
 /**
  * SWORDMOTION (ADR-226): the sword motion pass behind `?lordMotion=a`. On: his sword held in line with his
@@ -2350,6 +2409,89 @@ async function scenarioSwordMotion() {
   setLook('lordMotion', null);
   return last;
 }
+/**
+ * LORDFORM (ADR-251): his form behind `?lordForm=a`, measured at each blow's impact (swordAudit.mjs, the impact
+ * table): a thrust lands on a long arm (the elbow past 150°, before 121 - 140°) with the point on the arm's line
+ * (≤ 8°, before 18 - 23°) and the lunge's front knee bent (≤ 120°, before 176° locked); a low sweep turns on his
+ * feet (they never cross: before -0.73 m); a two-handed overhead comes down on a diagonal (the point's path
+ * ≤ 65° off level, before 71 - 80°); the front foot is down at most cuts. Every move's windups, impacts and ends
+ * the same to the frame on and off (only poses change). Void Lightning's and the ignitions' looks (`?boltFx`
+ * / `?igniteFx`, every option) finite and cheap (< 300 blobs over today's peak).
+ */
+async function scenarioLordForm() {
+  out('\n== scenario LORDFORM (the form pass, ADR-251: thrusts, lunges, sweeps, overheads, the footfall; the specials\' looks) ==');
+  const { setLook, lookOf: lookOfF } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const keep = lookOfF('lordForm', '0');
+  setLook('lordForm', 'a');
+  let last = null;
+  const H = { THREE, build: (...a) => (last = build(...a)), duel, run, DT, MOVES, names: ['lunge', 'riposte', 'reap', 'meridian', 'severance', 'grasp', 'litany'], formOf: () => 1 };
+  const rows = swordAudit(H);
+  printImpacts(rows, out);
+  const ok = rows.filter((r) => !r.fail);
+  assert(ok.length === H.names.length, `${ok.length} of ${H.names.length} moves audited`);
+  const imps = ok.flatMap((r) => r.impacts.map((x) => ({ ...x, name: r.name })));
+  const spell = (x) => { const raw = MOVES[x.name].beats[x.i]; return !!raw && (raw.pick ?? [raw]).some((b) => b.bolt || b.pull || b.grip); };
+  const thr = imps.filter((x) => x.thrust && !spell(x));
+  const thrOk = thr.filter((x) => x.elbow >= 150 && x.armLine <= 8);
+  assert(thr.length >= 3 && thrOk.length === thr.length, `thrusts on a long straight arm: ${thr.map((x) => `${x.name} b${x.i} ${x.elbow}°/${x.armLine}°`).join(', ')} (elbow ≥ 150, off the line ≤ 8)`);
+  const lungeR = ok.find((r) => r.name === 'lunge').impacts[0];
+  assert(Math.min(lungeR.knR, lungeR.knL) <= 120, `the lunge on a bent front knee: ${lungeR.knR}° / ${lungeR.knL}° (one ≤ 120; before both 176)`);
+  const sweeps = ok.filter((r) => r.name === 'reap' || r.name === 'meridian');
+  assert(sweeps.every((r) => r.feet.cross >= 0), `the low sweeps turn on his feet: crossing ${sweeps.map((r) => `${r.name} ${r.feet.cross} m`).join(', ')} (≥ 0; before -0.73)`);
+  const over = ['severance', 'grasp'].map((n) => ok.find((r) => r.name === n)).map((r) => r.impacts.find((x) => x.tell === 'blue'));
+  assert(over.every((x) => x && x.tilt <= 65), `overheads on a diagonal: the point's path ${over.map((x) => x?.tilt).join(' / ')}° off level (≤ 65; before 71 - 80)`);
+  const cuts = imps.filter((x) => !x.thrust);
+  const down = cuts.filter((x) => /down/.test(x.front)).length;
+  assert(down / cuts.length >= 0.75, `the front foot down as the blow lands: ${down} of ${cuts.length} cuts (≥ 75 %)`);
+  // the timings: only poses change
+  let same = 0;
+  const diff = [];
+  for (const name of MOVE_NAMES) {
+    const def = MOVES[name];
+    for (const ph of [1, 2, 3, 4]) {
+      if ((def.phase ?? 1) > ph) continue;
+      setLook('lordForm', 'a');
+      const A = realise(name, ph, () => 0.37);
+      setLook('lordForm', '0');
+      const B = realise(name, ph, () => 0.37);
+      if (!A || !B) continue;
+      const k = (X) => X.beats.map((x) => `${x.start.toFixed(4)}/${x.impact.toFixed(4)}/${x.end.toFixed(4)}`).join(' ') + ` ${X.end.toFixed(4)}`;
+      if (k(A) === k(B)) same++;
+      else diff.push(`${name} P${ph}`);
+    }
+  }
+  assert(!diff.length && same > 100, `${same} realisations time every beat the same on and off (${diff.join(', ') || 'none differ'})`);
+  // the specials' looks: every option draws, finite, and costs the field little more than today
+  const peaks = [];
+  for (const [move, sw, form] of [['voidBolt', 'boltFx', 1], ['ignite2', 'igniteFx', 1], ['ignite4', 'igniteFx', 3]]) {
+    const base = [];
+    for (const o of ['0', 'a', 'b', 'c']) {
+      setLook(sw, o);
+      const G = build();
+      duel(G, { dist: move === 'voidBolt' ? 6 : 3, form });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      run(G, 0.5);
+      const trig = d.debug.trigger(move);
+      let peak = 0, bad = false;
+      run(G, 3.2, () => {
+        p.hp = p.maxHp;
+        peak = Math.max(peak, game.fx.fire.count);
+        if (!Number.isFinite(d.position.x + d.position.y + d.position.z)) bad = true;
+      });
+      base.push(peak);
+      peaks.push(`${sw}=${o} ${move} ${peak}${bad ? ' NaN' : ''}${trig ? '' : ' (not triggered)'}`);
+      assert(!bad && trig, `${sw}=${o} (${move}): triggered, finite throughout`);
+      last = G;
+    }
+    assert(base.slice(1).every((x) => x - base[0] < 300), `${move}'s looks cost the field < 300 blobs over today's ${base[0]} (${base.slice(1).join(' / ')})`);
+    setLook(sw, null);
+  }
+  out(`     blob peaks: ${peaks.join(' | ')}`);
+  setLook('lordForm', /lordForm=/.test(process.env.GCD_LOOKS ?? '') ? keep : null);
+  return last;
+}
 /** AUDIT (opt-in, ADR-226): every move's sword motion in its own form (tests/integration/swordAudit.mjs). */
 async function scenarioAudit() {
   out('\n== scenario AUDIT (every move in its form: the sword wrist, the blade off his body, facing, elbows, the free hand, feet, pops) ==');
@@ -2357,9 +2499,115 @@ async function scenarioAudit() {
   const names = MOVE_NAMES.filter((n) => !only.length || only.includes(n));
   const rows = swordAudit({ THREE, build, duel, run, DT, MOVES, names, formOf: (n) => Math.min(4, Math.max(1, MOVES[n].phase ?? 1)) });
   printAudit(rows, out);
+  if (process.env.GCD_AUDIT_IMPACT) printImpacts(rows, out);
   if (process.env.GCD_AUDIT_JSON) fs.writeFileSync(process.env.GCD_AUDIT_JSON, JSON.stringify(rows, null, 1));
 }
-const OPT_IN = { strategy: scenarioStrategy, probe: scenarioProbe, defend: scenarioDefend, audit: scenarioAudit }; // run only when named
+/**
+ * FORMAUDIT (opt-in, ADR-251): every move in EVERY form it is used in (a move compiled round another form's
+ * guard is not the move he plays there), through the sword audit (GCD_AUDIT_IMPACT=1 prints its impact
+ * table), and two things the shared audit does not read: the planted feet's true slide (an ankle on the floor
+ * in both frames, within 1.5 cm of its height standing, its travel summed: a step in the air is not a slide)
+ * and, in form 2, the off-hand blade's arm: the left elbow at each off-hand blow's impact and the angle of
+ * that blade off the left forearm (the hero holds ≤ 60°). `GCD_AUDIT=a,b` picks moves, GCD_AUDIT_FORMS=1,2
+ * forms, GCD_AUDIT_JSON a file for the rows.
+ */
+const phaseOfA = (a, t) => {
+  for (const b of a.beats) {
+    if (t < b.start) continue;
+    const i = b.index ?? a.beats.indexOf(b);
+    if (t < b.impact - 0.12) return `b${i} windup`;
+    if (t <= b.impact + 0.06) return `b${i} strike`;
+    if (t <= b.end + 1e-6) return `b${i} active`;
+  }
+  return t < (a.recoveryStart ?? a.end) ? 'follow' : 'recovery';
+};
+async function scenarioFormAudit() {
+  out('\n== scenario FORMAUDIT (every move in every form it is used in: the sword audit, the true slide, the off-hand arm) ==');
+  const only = (process.env.GCD_AUDIT ?? '').split(',').filter(Boolean);
+  const forms = (process.env.GCD_AUDIT_FORMS ?? '1,2,3,4').split(',').map(Number);
+  const DEG = 180 / Math.PI;
+  const usedIn = (n, f) => {
+    const def = MOVES[n];
+    if (def.transition) return def.phase === f;
+    if (def.counter || def.streak || weightIn(def, f) === 0) return (def.phase ?? 1) === f && weightIn(def, f) === 0 && (def.counter || def.streak);
+    return weightIn(def, f) > 0;
+  };
+  const rowsAll = [];
+  for (const f of forms) {
+    const names = MOVE_NAMES.filter((n) => (!only.length || only.includes(n)) && usedIn(n, f) && !MOVES[n].transition && !MOVES[n].terrain);
+    if (!names.length) continue;
+    const rows = swordAudit({ THREE, build, duel, run, DT, MOVES, names, formOf: () => f });
+    rows.forEach((r) => (r.form = f));
+    rowsAll.push(...rows);
+    printAudit(rows, out);
+    if (process.env.GCD_AUDIT_IMPACT) printImpacts(rows, out);
+  }
+  // the true slide and the off-hand arm: one more pass per move (its own build, the audit's set-up)
+  out('   move              f   slide(m, feet on the floor)   off-hand: elbow @impacts / blade off the forearm max');
+  const v = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Vector3();
+  for (const f of forms) {
+    for (const n of MOVE_NAMES.filter((x) => (!only.length || only.includes(x)) && usedIn(x, f) && !MOVES[x].transition && !MOVES[x].terrain)) {
+      const def = MOVES[n];
+      const G = build();
+      const band = def.band ?? [0, 4];
+      const dist = Math.min(7, Math.max(1.6, (band[0] + Math.min(band[1], 8)) / 2));
+      duel(G, { dist, form: f });
+      const { game } = G;
+      const d = game.dragon, p = game.player;
+      p.debug.god = true;
+      run(G, 0.6);
+      d.position.set(0, 0, 0);
+      d.yaw = Math.PI / 2;
+      p.debug.teleport(dist, 0);
+      run(G, 0.7);
+      if (!d.debug.trigger(n)) continue;
+      const A = d.brain.act, R = d.rig, foot0 = 0.07 * TUNING.scale + 0.015;
+      let slide = 0, prev = null, wristL = 0, after = -1;
+      const left = [], slideAt = {};
+      for (let i = 0; i < 1500; i++) {
+        p.hp = p.maxHp;
+        p.debug.teleport(p.position.x, p.position.z);
+        const inAct = d.brain.act === A;
+        if (!inAct && after < 0) after = 0;
+        if (after >= 0 && after++ > 14) break;
+        R.root.updateMatrixWorld(true);
+        const fr = { R: new THREE.Vector3().setFromMatrixPosition(R.legs.R.foot.matrixWorld), L: new THREE.Vector3().setFromMatrixPosition(R.legs.L.foot.matrixWorld), y: d.position.y };
+        const air = d.position.y > 0.05 || !!d.brain.leap || (inAct && !!A.beats.find((b) => (b.def.dash || b.def.flit || b.def.blink) && A.t >= b.start && A.t <= b.end + 0.1));
+        if (prev && !air && !prev.air) for (const k of ['R', 'L']) if (fr[k].y < foot0 && prev[k].y < foot0) {
+          const m = Math.hypot(fr[k].x - prev[k].x, fr[k].z - prev[k].z);
+          slide += m;
+          const ph = inAct ? phaseOfA(A, A.t) : 'blend out';
+          slideAt[ph] = (slideAt[ph] ?? 0) + m;
+        }
+        fr.air = air;
+        prev = fr;
+        // the off-hand blade's line against the left forearm (form 2)
+        const off = d.blades?.off;
+        if (f === 2 && off) {
+          const el = v.setFromMatrixPosition(R.arms.L.fore.matrixWorld).clone(), wr = w.setFromMatrixPosition((R.arms.L.wrist ?? R.arms.L.fore).matrixWorld).clone();
+          const fore = wr.clone().sub(el).normalize();
+          const bl = q.set(0, 0, 1).transformDirection(off.matrixWorld).normalize();
+          const a = Math.acos(Math.max(-1, Math.min(1, fore.dot(bl)))) * DEG;
+          wristL = Math.max(wristL, a);
+          if (inAct) for (const b of A.beats) {
+            if (!b.def.left || b.feint || b._audL || A.t < b.impact) continue;
+            b._audL = true;
+            const sh = new THREE.Vector3().setFromMatrixPosition(R.arms.L.upper.matrixWorld);
+            const u1 = sh.sub(el).normalize(), u2 = wr.clone().sub(el).normalize();
+            left.push(`${Math.round(Math.acos(Math.max(-1, Math.min(1, u1.dot(u2)))) * DEG)}°/${Math.round(a)}°`);
+          }
+        }
+        G.tick(DT);
+      }
+      const row = rowsAll.find((r) => r.name === n && r.form === f);
+      const worst = Object.entries(slideAt).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k, m]) => `${k} ${m.toFixed(2)}`).join(', ');
+      if (row) Object.assign(row, { trueSlide: +slide.toFixed(2), slideAt: worst, offHand: { impacts: left, wristMax: Math.round(wristL) } });
+      out(`   ${n.padEnd(17)} ${f}   ${String(slide.toFixed(2)).padStart(5)} (${worst})   ${f === 2 ? `${left.join(' ') || '-'} / ${Math.round(wristL)}°` : ''}`);
+    }
+  }
+  if (process.env.GCD_AUDIT_JSON) fs.writeFileSync(process.env.GCD_AUDIT_JSON, JSON.stringify(rowsAll, null, 1));
+}
+const OPT_IN = { strategy: scenarioStrategy, probe: scenarioProbe, defend: scenarioDefend, audit: scenarioAudit, formaudit: scenarioFormAudit }; // run only when named
 // `all`, one scenario or a comma list; GCD_SKIP (a comma list) leaves scenarios out of `all`
 // (tests/run.mjs runs the long ones as processes of their own, so a new scenario lands in `all`)
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));

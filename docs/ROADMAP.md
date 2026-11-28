@@ -195,12 +195,18 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Wen Yao's lifted feet no longer jump (the release ease)
 - [x] A quick white blow each behind `?sheathQuick=` `?foxQuick=` `?wyrmQuick=`
 - [x] The owner's picks made the defaults (a for all three, every quick blow)
-- [ ] Lu Wusheng's free hand in the scabbard cuts; the foot ease for Shen Hui and Varr Nihil
+- [x] Lu Wusheng's free hand in the scabbard cuts (the form, ADR-252); the foot ease for Shen Hui and Varr Nihil
 ## M1.96 — The living world's fast path (2026-11-26, `world/life-perf`, ADR-245)
 - [x] Measured per layer on five levels (GPU at 4K and phone size, CPU at 1x / 4x / 6x)
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.98 — Bai Wuji glides: quicker, one-handed, and his barrier opens easier (2026-11-27, `enemies/untouched`, ADR-250)
+- [x] Three motion takes behind `?wjMotion=0|a|b|c` (`untouched/motion.js`; the hand layer keeps his hands in his pockets); the owner picked b, the glide
+- [x] The barrier opens easier: two cracks, longer openings, cuts x2.5 through it; hp 20000; patience after 20 s
+- [x] The bench's bots answer falling pieces and paired cues as a person would; the perfect bot untouched on 12 seeds
+- [x] His mercy counts the lock in real time; no falling piece on a downed hero
+- [ ] The ledger forgets a landed red (shared duelist code); patience against a pure defender is slow
 
 ## M1.94 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-241 – ADR-243)
 - [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
@@ -261,6 +267,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Scenario `heroref`; the Lab's `idles` (ref / new / old), `guard` and `idle ▸` (`stow`) rows; pair sheets against the footage
 - [ ] The owner's look at the films (the hold's hands sit higher than the footage's, the guard from the game camera)
 - [ ] Played on the iPhone
+## M1.94 — The run from the owner's sketch (2026-11-26, `claude/hero-run-sketch-6baa40`, ADR-229)
+- [x] `player/runArms.js` `e` (open) / `f` (wider): the free arm off his side, drawn past the coat from behind (measured on the drawn frame)
+- [x] `player/runSword.js` `trail` / `swept` / `side`: the blade in the forearm's line, behind him and down, rocking with the arm
+- [x] A block / parry / flask / charge out of a trailing blade enters over 0.24 s (no one-frame flip)
+- [x] `herorun` bounds the opened arms and the trailing carries (the wrist, the legs, the coat, the grass, pops)
+- [x] The owner picks a sword carry and an arm width: `trail` and `e` (2026-11-26), now the defaults
+- [x] `trail`'s sword arm: the solver draws the asked elbow (`_swordOpen`); out along the owner's arrow from the game camera, a relaxed elbow
+- [x] `flail`, `b15`-`b45`, `a1`-`a4` tried; `nat` (a real grip: the blade ~right-angled to the forearm, the fist by his hip) the default
+- [x] Rebuilt from the hand's grip (`fistBlade`); `g2` the owner's pick, clear of every cloth sheet (≥ 12.6 cm), the default
+- [x] `runStyle.js` (four postures, behind `?runStyle=`); the free fist at the hip (`h`) and the guard (`g`), both turned down: the free arm stays `e`
+- [ ] The whole run (legs, lean, torso): its own pass
+- [ ] Played on the iPhone
+
 ## M1.90 — The run carried like the owner's reference (2026-11-25, `claude/run-sword-hand`, ADR-204)
 - [x] `player/runSword.js`: the sword carried forward at the hip, rocking with the forearm (`?runSword=hip|old`, the Lab's `run sword` row)
 - [x] `player/runArms.js` `d`: the full pump (the default)
@@ -297,6 +316,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] BENCH in `?perf`: each pipeline step's GPU cost on the device (ADR-215)
 - [x] The owner's BENCH from a busy moment on fox and grove; the step it names cut at AUTO's floor (options shown first): the world pass; the lite world, the owner's pick C (ADR-216)
 - [ ] BENCH on the iPhone with the lite world on: fox and grove
+- [x] AUTO BENCH: the readout benches by itself in a fight, the owner only taps REPORT (ADR-261)
 - [ ] AUTO's own step hitch on the phone (17 - 32 ms: the letter atlases rebuilt)
 - [ ] A starting step per level for a heavy level (so AUTO does not find it by a slow stretch)
 
@@ -398,7 +418,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] A calm spit of orange spark letters off the crossed blades on a perfect parry (`?parryFx=a`, the default; `0` as before)
 - [x] The shipped mark, freeze, slow motion, sound and the perfect dodge's afterimage unchanged (the owner's call after three rejected passes)
 - [ ] Played and seen on the iPhone
-- [ ] A next round on the perfect dodge / parry, if any: from a concrete reference and one narrow prototype; never the background
+- [x] The perfect parry's own reward from the owner's reference: posture break -> deathblow, the chain's sparks grow (ADR-211)
+- [ ] The deathblow played on the iPhone; the wyrm's parry answer (it keeps the flurry riposte)
+- [ ] A next round on the perfect dodge, if any: from a concrete reference and one narrow prototype; never the background
 
 ## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)
 - [x] The recorded / designed sounds off by default (`?sfx=new` turns them on; no files fetched while off)
@@ -1219,6 +1241,49 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       on the hero, one cue one meaning (Paper Rain's backfist), behind `?foxLimbs` / `?foxCues`; films sent
   - [ ] The owner's pick from the films
   - [ ] Hand to Hand's opening jab: a lead foot the root left behind jumps 0.43 m in a frame (anim.js `_feetClip`)
+- [x] Shen Hui's form (ADR-250, `?ashForm`): thrusts on the arm's line in a real lunge, diagonal overheads, sweeps
+      on the feet, a quiet free hand, the step landing with the blow; measured (`GCD_AUDIT_IMPACT`) and filmed
+  - [x] The owner's pick from the films: the form, Ember Whirl b (the cyclone), Heaven-Splitting Fall b (the split)
+  - [x] Heaven-Splitting Fall as a jump (the held coil covered his flight)
+- [x] Bai Wuji (ADR-255, on the glide of ADR-250): the anatomy audit (`veil.mjs . anatomy`), straight blows on the
+      line to the hero, a kick's return without the snap, phase 1's casting hand out of its pocket, behind
+      `?wjPolish` / `?wjCastHand`; films sent
+  - [x] The owner's pick from the films: both `a`, as the default
+  - [ ] A support foot jumps after a blink (Five Sides, Passing Through: anim.js `_feetClip`)
+- [x] The Starless Lord's form (ADR-251, `?lordForm`): thrusts on the arm's line in a real lunge, diagonal
+      two-handed overheads, sweeps on the feet, a quieter free hand, the step landing with the blow, all four forms;
+      measured per form (`lord.mjs . formaudit`) and filmed
+  - [x] The owner's picks from the films (2026-11-27): the form, the readable pace (`?lordPace=a`), Void Lightning
+        `?boltFx=c` (the storm), the ignitions `?igniteFx=a` (the cocoon)
+  - [ ] Grasp and Sever's chop skates 3.4 m over planted feet when the pull is rolled (a dash, as Severance's?)
+- [x] Xin Yi (ADR-253): the audit (`audit`, `guns`, `probe`); straight blows on the line, kicks held straight, blows
+      that reach, the sweep crossing the hero, the guns on the line of fire with a kick, behind `?oneMoves=b`; two
+      redrawn shots and bolts (`?oneGunFx`, `?oneBoltFx`); the `line` test; films sent
+  - [x] The owner's picks from the films: motion `b`, the shots `b` (the script), the bolts `a` (the seed), the default
+  - [ ] The hooks meeting the hero from the side, the sweep's knee at its very contact, Iron Rain's twin arms
+- [x] Lu Wusheng (ADR-252): the form audit (`sheath.mjs form`), the draw's hands (the fist on the hilt, the scabbard
+      drawn back) and its lunge, thrusts in line, the overhead on a diagonal, the sweep's feet, the free hand in the
+      scabbard cuts, behind `?sheathForm`; the readable pace `?sheathPace`; three looks for the draw `?drawFx`; films sent
+  - [x] The owner's picks from the films, made the defaults (the form a; the pace and the draw's look as shipped)
+- [x] The Cinder Wyrm (ADR-257): the anatomy audit at each blow's contact (`wyrmanatomy`), every bite led by the
+      body and snapped onto the beat, behind `?wyrmStrike=a`
+  - [x] The owner's pick from the films (2026-11-27): `a`, the default
+  - [x] The head in the meteors' roar no longer tips back past upright (ADR-258, `?wyrmHead=`)
+  - [ ] The flights' head in a banked body (skyStrafe's recovery, skyCataclysm's wheel) past vertical
+  - [ ] Next: the forelegs straight through the whole rake, the wing blows flapping as one rigid wing, the feet
+        skating up to ~1 m in some strings
+- [x] Halcyon (ADR-254): measured at every blow's contact in his upright frame (city `audit`, `GCD_AUDIT_IMPACT=1`);
+      straight punches on the line to the hero, straight kicks, a flier's long legs, a level pass (`?halMotion=b`),
+      rule 10's pace (`?halPace=a`), two looks each for his eye beams and his shockwaves; draft PR, films sent
+  - [x] The owner's picks made the default (2026-11-27: `halMotion` b, his fast pace kept, `halEyes` a, `halShock` a)
+
+- [x] Contact (ADR-259): every hit, block, guard and clash drawn ON what it strikes (the bite and follow-through),
+      the sparks at the meeting, the struck part answering (the hero's HitReact, arms), an optional reach for a boss's
+      short blows; behind `?contact=a|b`, the contact audit, draft PR, films sent
+  - [x] The owner's pick from the films (2026-11-27): `b`, the default
+  - [x] Second round: the execution's and plunge's bursts at the wound, the wyrm's bite drawn onto the hero, `?contact=c`
+  - [ ] Next: the wyrm's poses on its blows (its jaws still short when its hit spheres connect), the execution's
+        thrust and the plunge, blows whose hit zone outreaches the drawn limb (move data, the boss sessions')
 
 ### P3 — Arenas that are part of the fight, better backgrounds, cooler destruction
 - [ ] Arenas the fight uses: cover a boss's shot breaks, pillars a blow brings down, ledges and
@@ -1243,8 +1308,9 @@ five additions proposed to the owner, who picked the order:
 - [ ] The Break finisher: on a posture-broken boss, choose where to cut (head for damage, legs for guard back)
 - [ ] Cuts that split the letters: hits spray the boss's own letters along the blade, a killing cut splits him
       along the swing (looks to pick on film first)
-- [ ] The clash dance: parries in a row inside one string pay more posture each, the ring rises; his posture
-      recovers slower as his health falls
+- [x] The clash dance: parries in a row inside one string pay more posture each, the ring rises; his posture
+      recovers slower as his health falls (ADR-247): built behind `?clash=dance`, off by default
+- [ ] The owner's pick of the clash dance from film (and its ring by ear, on the iPhone too)
 - [ ] One answer per unblockable: jump a sweep (and kick off his head), grabs dodge-only, thrusts keep the mikiri
 - [ ] A sub-weapon and a swap strike (boss rewards: a few uses per fight; the swap strikes and refills the guard)
 

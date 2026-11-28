@@ -46,7 +46,14 @@ export const LOOK_SWITCHES = Object.freeze([
   ['ascMotion', ['0', 'a'], '0', 'a', false, ['ring'], 'Tian Lei\'s motion (ADR-225): a every blue and red blow out of a held windup pose of its own, and his snap blows (Snap Jab, Snap Hook; the default); 0 as before (live, from his next move)'],
   // --- the sword motion pass (ADR-226; live from his next move; the owner's pick: a)
   ['ashMotion', ['0', 'a'], '0', 'a', false, ['ash'], 'Shen Hui\'s sword motion: 0 as before; a the jian held in line with his forearm, his arms opening, blue / red blows held in their tell poses, two quick blows'],
+  ['ashForm', ['0', 'a'], '0', 'a', false, ['ash'], 'Shen Hui\'s form (ADR-250; live from his next move): a thrusts on a straight arm along the blade in a real lunge, overheads one-handed on a diagonal, the low sweeps turning on his feet, the free hand quieter, the front foot down as the blow lands; 0 as before'],
+  ['whirlFx', ['0', 'a', 'b', 'c'], '0', 'b', false, ['ash'], 'Ember Whirl\'s look (ADR-250): a the wheel (a ring of fire left by the point), b the cyclone (fire whirling up round him, embers off the point), c the disc (the swept width burns an instant); 0 as before'],
+  ['fallFx', ['0', 'a', 'b', 'c'], '0', 'b', false, ['ash'], 'Heaven-Splitting Fall\'s look (ADR-250): a the comet (a tail of fire down, a column where he lands), b the split (a seam of fire down the cut, the floor split in fire ahead and behind), c fire rain (fire falling on the locked ring, embers thrown out as he lands); 0 as before'],
   ['lordMotion', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s sword motion: 0 as before; a the blades held in line with his forearms, his arms opening, blue / red blows held in their tell poses, a shake of the steel for the end twirl, two quick blows'],
+  ['lordForm', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s form (ADR-251; live from his next move): a thrusts on a long arm along the blade out of a real lunge, the two-handed overheads down on a diagonal, the low sweeps turning on his feet, the free hand quieter, the front foot down as the blow lands; 0 as before'],
+  ['lordPace', ['0', 'a'], '0', 'a', false, ['starless'], 'Varr Nihil\'s pace (ADR-251; live from his next move): 0 as shipped; a COMBAT rule 10\'s floor: a move\'s first blow >= 0.7 s (x the form\'s windup scale), blows >= 0.45 s apart, the cue 0.35 s before, the time a held cock (his quick blows, counters, flurry and ignitions keep theirs)'],
+  ['boltFx', ['0', 'a', 'b', 'c'], '0', 'c', false, ['starless'], 'Void Lightning\'s look (ADR-251): a the thread (motes wound into his fingers, the bolt braided); b the tear (arcs up his arm, a tear left in the air); c the storm (the floor answers, the bolt grounds three times); 0 as shipped'],
+  ['igniteFx', ['0', 'a', 'b', 'c'], '0', 'a', false, ['starless'], 'a form\'s ignition, over the shipped look (ADR-251): a the cocoon (letters rise round him, burst out flat); b the writ (the new steel written in light where it will stand); c the eclipse (a ring of dark spreads, its red rim stands up as a wall); 0 as shipped'],
   //
   //
   // --- fox: Wen Yao (ADR-147; every one read when his rigs or his effects are built: a reload)
@@ -60,6 +67,7 @@ export const LOOK_SWITCHES = Object.freeze([
   ['grove', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the grove: a moonlit mist, b grey dawn, c first snow (a reload)'],
   ['sheathLook', ['a', 'b', 'c', 'd'], 'a', 'a', true, ['grove'], 'Lu Wusheng\'s body: a mourning white, b reed cloak, c one sleeve, d the wanderer (a reload)'],
   ['drawCut', ['a', 'b'], 'a', 'a', false, ['grove'], 'the draw\'s cut: a one white line, b with an afterimage'],
+  ['drawFx', ['0', 'a', 'b', 'c'], '0', '0', false, ['grove'], 'the draw\'s look (ADR-252): 0 as shipped; a the drawn breath (the air drawn into the scabbard\'s mouth, thrown out along the cut); b hanging leaves (the blade\'s arc, letters left hanging on the line, dropped on the click); c the late sound (a quiet cut; the line bursts open on the click) (0 the owner\'s pick, the default; live)'],
   // --- code: the Hall of Falling Script and Xin Yi (ADR-156, ADR-157; pending: the owner picks from the sheets)
   ['oneLook', ['a', 'b', 'c'], 'a', 'a', true, ['code'], 'Xin Yi\'s body: a the long coat, b the cassock, c the grey coat (a reload)'],
   ['hall', ['a', 'b'], 'a', 'a', true, ['code'], 'the hall: a pale marble, green-black inlay; b dark basalt, jade-lit edges (a reload)'],
@@ -69,7 +77,9 @@ export const LOOK_SWITCHES = Object.freeze([
   ['onePrint', ['0', 'a', 'b'], '0', 'a', true, ['code'], 'Xin Yi\'s print: 0 the lifted print and the shapes he shipped with; a the hero\'s quiet print, simpler shapes, a coat that stirs from phase 1 (the default); b a, and one letter size bolder on a small screen (a reload)'],
   // --- code: Xin Yi rebuilt (ADR-221; awaiting: the owner picks from the sheets and films)
   ['oneBody', ['0', 'a', 'b', 'c'], '0', 'b', true, ['code'], 'Xin Yi\'s figure: 0 as shipped; printed like the hero on a man\'s build: a the long coat closed in phase 1, b the coat open in every phase (the owner\'s pick, the default), c a duster to mid-shin (a reload)'],
-  ['oneMoves', ['0', 'a'], '0', 'a', false, ['code'], 'Xin Yi\'s moves: 0 as shipped; a the guns aimed down the arm, every blue / red blow held in its windup pose before the snap, two fast strings, straight kicks, long punches (the owner\'s pick, the default; live)'],
+  ['oneMoves', ['0', 'a', 'b'], '0', 'b', false, ['code'], "Xin Yi's moves: 0 as shipped; a the guns aimed down the arm, every blue / red blow held in its windup pose before the snap, two fast strings, straight kicks, long punches (ADR-221; live); b a, and the limbs on the line (ADR-253; the owner's pick, the default): punches down his centre, kicks held straight through the contact, the sweep crossing you, short blows that reach, the guns pointed down the line of fire with a kick"],
+  ['oneGunFx', ['0', 'a', 'b'], '0', 'b', false, ['code'], "Xin Yi's gun shots (ADR-253): 0 as shipped; a the tracer: a hot cone and a spent casing at the muzzle, a thin line of strokes behind each slug with small rings of stilled air where it passed; b the script: binary digits fanned from the muzzle, each slug leaving a curtain of tiny digits falling along its way (live)"],
+  ['oneBoltFx', ['0', 'a', 'b'], '0', 'a', false, ['code'], "Xin Yi's palm bolts in the Source (ADR-253): 0 as shipped; a the seed: a hot core in three thin turning rings of digits, digits falling behind it; b the fold: a core of four hot cells like a falling column, a ring of stilled air left across its way every few steps (live)"],
   // --- grove: Lu Wusheng readable (ADR-152): the palette picked; the print's five steps and the mark wait for the owner
   ['sheathArt', ['0', '1', '2', '3', 'a'], '0', 'a', true, ['grove'], 'Lu Wusheng\'s print, five steps: 0 the wyrm\'s digits as shipped, 1 digits in his colours, 2 digits lit and outlined, 3 ink-line flattened, a the hero\'s ink-line art (the default since ADR-194; a reload)'],
   ['sheathTone', ['a', 'b', 'c'], 'a', 'a', true, ['grove'], 'the Wanderer\'s palette: a indigo and sand, b pale and cold, c moss and rust (a reload)'],
@@ -77,6 +87,9 @@ export const LOOK_SWITCHES = Object.freeze([
   // --- the motion pass (ADR-223; live; the owner picked a for all, 2026-11-26): held blue / red windups, the quick blows
   ['sheathMotion', ['0', 'a', 'b'], '0', 'a', false, ['grove'], "Lu Wusheng's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk; b held only"],
   ['sheathQuick', ['0', 'a'], '0', 'a', false, ['grove'], 'Before the Word: a quick white pommel snap from his carry (a: in his moves)'],
+  // --- Lu Wusheng's audit (ADR-252; the owner's picks, 2026-11-27: the form a, the pace and the draw's look as shipped)
+  ['sheathForm', ['0', 'a'], '0', 'a', false, ['grove'], 'Lu Wusheng\'s form: 0 as shipped; a the fist on the hilt, the scabbard pulled back as he draws, a real lunge at the cut\'s end, thrusts on a long arm in line, the overhead on a diagonal, the sweep turning on his feet, the free hand half the travel (the owner\'s pick, the default; live, from his next move)'],
+  ['sheathPace', ['0', 'a'], '0', '0', false, ['grove'], 'Lu Wusheng\'s pace: 0 as shipped; a COMBAT rule 10\'s floor: a move\'s first blow >= 0.7 s, blows >= 0.45 s apart, the cue 0.35 s before, the time a held cock; the draws as before (0 the owner\'s pick, the default; live, from his next move)'],
   ['foxMotion', ['0', 'a', 'b'], '0', 'a', false, ['fox'], "Wen Yao's blue / red blows: 0 as shipped; a held at the cock, blue tall, red sunk, the feet no longer jump; b held only"],
   ['foxQuick', ['0', 'a'], '0', 'a', false, ['fox'], 'Fox Snap and Fox Knee: quick white blows from his guard (a: in his moves)'],
   // --- the boss motion audit (ADR-249; the owner picks from the films)
@@ -84,6 +97,8 @@ export const LOOK_SWITCHES = Object.freeze([
   ['foxCues', ['0', 'a'], '0', 'a', false, ['fox'], "Paper Rain's last blow: 0 an uppercut (white); a a backfist, so the uppercut is only ever the blue flare"],
   ['wyrmMotion', ['0', 'a', 'b'], '0', 'a', false, ['cinderwood'], "the wyrm's blue / red blows in its strings: 0 as shipped; a held at the cock, blue rears its head up, red sinks low, tail up; b held only"],
   ['wyrmQuick', ['0', 'a'], '0', 'a', false, ['cinderwood'], 'Snap swipe: a quick white paw from its stance (a: in its moves)'],
+  ['wyrmStrike', ['0', 'a'], '0', 'a', false, ['cinderwood'], "the wyrm's strikes (ADR-257): a in every bite its body surges first and the head snaps onto the beat (the owner's pick); 0 as shipped"],
+  ['wyrmHead', ['0', 'a'], '0', 'a', false, ['cinderwood'], "the meteors' roar (ADR-258): a the neck rises up and forward, the snout to the sky ahead of it; 0 the head tipped back past upright"],
   // --- city: Halcyon Plaza and Halcyon (ADR-161; every one waits for the owner, read when built: a reload)
   ['halLook', ['a', 'b', 'c'], 'a', 'a', true, ['city'], 'Halcyon\'s body: a blue suit and red cape, b the idol, c tomorrow\'s tyrant (a reload)'],
   ['halCape', ['0', '1', '2', '3'], '3', '3', true, ['city'], 'his cape and colours at game size: 0 as first built, 1 brighter, 2 + a wide flared cape, 3 + its billow and a long trail (a reload)'],
@@ -97,6 +112,12 @@ export const LOOK_SWITCHES = Object.freeze([
   ['wjLook', ['a', 'b', 'c'], 'c', 'c', true, ['veil'], 'Bai Wuji\'s body: a the black high-collared coat and a black band, b a long indigo-black robe and a white cloth band, c a bone-white coat with a dark collar and band (a reload)'],
   ['wjHair', ['a', 'b'], 'b', 'b', true, ['veil'], 'his white hair: a a tall swept crown over the band (phase 1), long soft locks once it falls; b a shorter spikier burst, a choppier fringe (a reload)'],
 
+  // Bai Wuji: motion rows (round 3; awaiting: the owner picks from the sheets and films)
+  ['wjMotion', ['0', 'a', 'b', 'c'], 'b', 'b', false, ['veil'], 'his melee motion: 0 as shipped; a pocket kicks (upright, planted, the leg straight at the contact, a blink when the hero slid away); b glide (the same blows, every later beat of a string out of a blink round the hero); c turned away (back kicks, spinning heels, backhand flicks, looking over his shoulder). Every take: blue / red held, snap blows, short recoveries, the hands in his pockets in phase 1, one out in phase 2, both in phase 3 (live, from his next move)'],
+
+  ['wjPolish', ['0', 'a'], 'a', 'a', false, ['veil'], 'his motion audit (ADR-255): a the kicks ease back to the chamber (no snap off a dead stop), the palm, the poke, Dark Spark and the fist of the Yank land on the line to your chest; 0 round 3 as built (live, from his next move)'],
+  ['wjCastHand', ['0', 'a', 'b'], 'a', 'a', false, ['veil'], 'in phase 1, Azure Draw and the Yank: a his right hand out of its pocket for the whole cast (the finger raised, the reach); b out only for the pull and the flick at the end; 0 kept in the pocket (live)'],
+
   // Bai Wuji: fx rows
   ['wjShell', ['a', 'b', 'c'], 'a', 'a', false, ['veil'], 'his barrier while up: a all but invisible, it shows where the blade comes at it; b a faint standing shell of sparse strokes; c two faint rings that breathe (live)'],
   ['wjNull', ['a', 'b'], 'a', 'a', false, ['veil'], 'the Violet Null\'s body: a a hard-edged slab, crisp strokes along both edges; b a round bore, brightest at its core, rings running down it (live)'],
@@ -105,7 +126,10 @@ export const LOOK_SWITCHES = Object.freeze([
   ['wjCity', ['a', 'b', 'c'], 'a', 'a', true, ['veil'], 'the crossing: a ash moon (cold moonlit ash-grey), b last lamps (sodium amber, dead screens), c black wet (wet black asphalt, pale bars) (a reload)'],
   ['wjVoid', ['a', 'b', 'c'], 'b', 'b', true, ['veil'], 'the void: a drifts (star clumps only), b the ring (a great pale ring on the floor round the fight), c the fall (stars falling as streaks, a line of light where the floor ends) (a reload)'],
 
-  ['halMotion', ['0', 'a'], '0', 'a', false, ['city'], 'Halcyon\'s motion (ADR-225): a a flier\'s legs in his blows, each blow aimed down at the hero (he dips into it), his arms open at the end, the held windups, his snap blows (Flick, Tap; the default); 0 as before (live, from his next move)'],
+  ['halMotion', ['0', 'a', 'b'], '0', 'a', false, ['city'], 'Halcyon\'s motion: b (ADR-254, the default) a plus straight punches on the line to the hero, straight kicks, long trailing legs, a level fly-by at chest height; a (ADR-225) a flier\'s legs in his blows, each blow aimed down at the hero (he dips into it), his arms open at the end, the held windups, his snap blows (Flick, Tap); 0 as before (live, from his next move)'],
+  ['halEyes', ['0', 'a', 'b'], '0', 'a', false, ['city'], 'Halcyon\'s eye beams (ADR-254): a heat vision (the default), twin threads meeting in one hard crimson line, a shimmer rising, a molten spot spitting sparks; b the crimson pulse, rings racing down it, a scorch ring on the beat; 0 Tian Lei\'s beam in crimson (live)'],
+  ['halShock', ['0', 'a', 'b'], '0', 'a', false, ['city'], 'Halcyon\'s shockwaves, Applause and Meteor (ADR-254): a a thunderclap ring of air, dust shoved ahead of it (the default); b a dome of pressure swelling out, grit lifted; 0 the dust front (live)'],
+  ['halPace', ['0', 'a'], '0', 'a', false, ['city'], 'Halcyon\'s pace (ADR-254): 0 the pace he shipped with (the default, the owner\'s pick); a COMBAT rule 10\'s floor, a first blow >= 0.7 s, blows >= 0.45 s apart, the cue 0.35 s before (a held cock) (live)'],
   // --- every human boss (ADR-194)
   ['bossPrint', ['0', 'a', 'b'], '0', 'b', false, ['ash', 'starless', 'ring', 'fox', 'grove', 'code', 'city', 'veil'], 'the bosses printed the hero\'s way: b in their own colours (the default), a in the hero\'s greys, 0 as before (lit letter bodies, his strokes and dotted rims, the pale hem below the knee)'],
   // --- drawn in the hero's style (ADR-220): per boss, 0 as he shipped, a shaded as the hero is, b outlined as the

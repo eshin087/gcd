@@ -3,7 +3,7 @@
 // src/main.js for `?level=veil`, on the level's real set (world/veiledCrossing.js: its breakables, its
 // scenes, its ambience). A bot drives the input. The harness is city.mjs's (its build, bots, helpers).
 // usage: node veil.mjs <repoRoot> [scenario]   (env: GCD_SEED=n reseeds the AI)
-//   scenario: levels | data | barrier | weight | crash | pull | domain | phases | fight | pace | events | all
+//   scenario: levels | data | barrier | weight | crash | pull | domain | phases | fight | pace | events | opened | all
 //   (later agents add theirs at their marked place in `S`, one entry per line)
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -28,6 +28,10 @@ const { createVeiledCrossing, CROSSING } = await imp('src/world/veiledCrossing.j
 const { Destructibles } = await imp('src/world/destructibles.js');
 const { Scars } = await imp('src/world/scars.js');
 const { Player } = await imp('src/entities/player/player.js');
+// (this suite measures the barrier, the pull and the domain, not the riposte: a parry here answers with the
+// old riposte, as the other suites that parry for something else do; the deathblow has its own, `duel deathblow`)
+const { setRiposteMode } = await imp('src/entities/player/riposteCut.js');
+setRiposteMode('old');
 const { Untouched } = await imp('src/entities/enemies/untouched/untouched.js');
 const { MOVES, MOVE_NAMES, CLIP, TRANSITIONS, realise, HANDLERS, COUNTER, STREAK } = await imp('src/entities/enemies/untouched/moves.js');
 const { TUNING } = await imp('src/entities/enemies/untouched/tuning.js');
@@ -409,6 +413,32 @@ function swing(G, dist = 1.6) {
   run(G, 0.9, () => game.mouseGround.set(d.position.x, 0, d.position.z));
   G.watch = w0;
   return { dealt: hp0 - d.hp, stops, state: p.state };
+}
+
+// ================================================================== scenario: opened (the tuning pass, round 3)
+// (the owner: "the barrier opens easier": two ordinary parries crack it open, it stays open longer, and the
+// hero's cuts hit harder while it is open: wjBarrier.openDamage on every cut that is not exact)
+async function scenarioOpened() {
+  out('\n== scenario OPENED (open, his cuts deal wjBarrier.openDamage x; exact hits as they are; up, nothing) ==');
+  const B = TUNING.wjBarrier, k = B.openDamage;
+  const G = build();
+  const d = G.game.dragon;
+  duel(G, { dist: 2 });
+  // (the same cut, straight to takeHit, in a reaction that does not guard: open, then up)
+  const cut = () => { d.brain.startReact('stagger'); const h0 = d.hp; d.takeHit({ damage: 100, part: 'body' }); run(G, 0.05); return h0 - d.hp; };
+  const exact = () => { const h0 = d.hp; d.takeHit({ damage: 100, part: 'body', exact: true }); run(G, 0.05); return h0 - d.hp; };
+  d.barrier.open('debug', 30);
+  const open = cut(), openExact = exact();
+  d.barrier.close();
+  const upExact = exact();
+  d._wjSurprised = true;
+  d.barrier.open('debug', 30);
+  const again = cut();
+  out(`   a 100 cut on the body: open ${open} (then ${again}), exact open ${openExact} / up ${upExact}; openDamage ${k}`);
+  assert(Number.isFinite(k) && k > 1, `openDamage is set above 1 (${k})`);
+  assert(Math.abs(open - Math.round(100 * TUNING.parts.body * k)) <= 1 && Math.abs(again - open) <= 1, `open, a cut deals x${k} (${open}, ${again})`);
+  assert(openExact === upExact && openExact === 100, `an exact hit deals the same open or up (${openExact} / ${upExact})`);
+  assert(B.cracks === 2, `two ordinary parries crack it open (cracks ${B.cracks})`);
 }
 
 // ================================================================== scenario: levels
@@ -1012,6 +1042,7 @@ async function scenarioDowntime() {
     const q = (v, f) => (v.length ? v[Math.min(v.length - 1, Math.floor(v.length * f))] : NaN);
     rows.push({ seed, n: downs.length, onDown, outMax, outMaxAt, nx, len: downs.map((k) => k.t1 - k.t0) });
     out(`   seed ${seed}: ${downs.length} knockdowns (each ${q(downs.map((k) => k.t1 - k.t0).sort(), 0.5)?.toFixed(2)} s); up -> his next cue: min ${nx[0]?.toFixed(2)} / median ${q(nx, 0.5)?.toFixed(2)} / max ${nx[nx.length - 1]?.toFixed(2)} s (down -> next cue median ${(q(nx, 0.5) + 1.3).toFixed(2)} s); longest stretch out of his own hands ${outMax.toFixed(2)} s; hits on him down: ${onDown.length}`);
+    if (process.env.GCD_DT_TRACE) out(`     the longest ends at ${outMaxAt.toFixed(2)} s; hits before it: ${G.hits.filter((h) => h.t > outMaxAt - 3.5 && h.t <= outMaxAt + 0.05).map((h) => `${h.attack} ${h.r} @${h.t.toFixed(2)}`).join(' · ')}`);
   }
   assert(rows.every((r) => r.n >= 3), `the half-skilled defender is knocked down in every fight (${rows.map((r) => r.n).join(', ')})`);
   assert(rows.every((r) => r.onDown.length === 0), `nothing of his lands on the hero while he is down (${rows.flatMap((r) => r.onDown).slice(0, 4).join(' · ') || 'none'})`);
@@ -1277,6 +1308,8 @@ const S = {
   floor: scenarioFloor, // (the tuning pass)
   bonfire: scenarioBonfire, // (the tuning pass, round 2)
   patience: scenarioPatience, // (the tuning pass, round 2)
+  // tune3: scenarios
+  opened: scenarioOpened, // (the tuning pass, round 3)
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)
@@ -1327,6 +1360,9 @@ const S = {
     assert(!out0.length, `never thrown out of his bound (${out0.slice(0, 5).join('; ')})`);
     assert(!still.length, `he always walks away after (${still.slice(0, 5).join('; ')})`);
   },
+  // motion: scenarios
+  motion: scenarioMotion,
+  polish: scenarioPolish,
   // body: scenarios
   body: scenarioBody,
   // fx: scenarios
@@ -1335,7 +1371,11 @@ const S = {
 // (run by tests/run.mjs as processes of their own; `all` leaves them out: GCD_SKIP)
 // (the tuning pass: the bench, tests/integration/bench.mjs: mortal bots, whole fights, opt-in)
 S.bench = async () => { const { benchScenario } = await import('./bench.mjs'); return benchScenario({ build, duel, run, TUNING, TELL, DT, THREE, out, mulberry32 }, 'veil'); };
-const OPT_IN = new Set(['bench']);
+S.motionaudit = scenarioMotionAudit; // (motion: opt-in, printed)
+S.anatomy = scenarioAnatomy; // (ADR-255: opt-in, printed)
+// (motion: WJ_MOTION=a|b|c plays every scenario with that take of his melee motion, ?wjMotion)
+if (process.env.WJ_MOTION) (await imp('src/entities/enemies/duelist/lookSwitch.js')).setLook('wjMotion', process.env.WJ_MOTION);
+const OPT_IN = new Set(['bench', 'motionaudit', 'anatomy']);
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');
 for (const k of list) {
@@ -2716,6 +2756,12 @@ async function scenarioSpellFight() {
   const { STREAK_FX } = await imp('src/combat/streak.js');
   const chain0 = STREAK_FX.chain;
   STREAK_FX.chain = false;
+  // (the spells' share is sampled over a fight as long as before round 3's numbers: the god-mode fencer
+  // parries every blow perfectly, so his barrier is always open, and at hp 20000 x openDamage the fight
+  // lasts 118 s, too few picks to measure a mix by)
+  const hp0 = TUNING.hp, od0 = TUNING.wjBarrier.openDamage;
+  TUNING.hp = 26000;
+  TUNING.wjBarrier.openDamage = 1;
   try {
     const G = build(Number(process.env.GCD_SEED ?? 4242), true);
     const { game } = G;
@@ -2741,6 +2787,8 @@ async function scenarioSpellFight() {
     assert(G.payload.size === 0, `no NaN in any event (${[...G.payload].join(', ')})`);
   } finally {
     STREAK_FX.chain = chain0;
+    TUNING.hp = hp0;
+    TUNING.wjBarrier.openDamage = od0;
   }
 }
 
@@ -2756,4 +2804,298 @@ async function scenarioUnveil() {
   out(`     unveils ${S.stats.unveils}, pieces flattened ${S.stats.flattened}; the hero pushed ${pushed.toFixed(2)} m, ${hp0} -> ${p.hp} HP`);
   assert(S.stats.unveils === 1 && d.dressPhase === 2, 'the unveiling burst goes off once, at the transition impact');
   assert(p.hp === hp0 && pushed >= 3, `it pushes the hero (${pushed.toFixed(2)} m) and costs no health`);
+}
+
+// ================================================================== motion: the motion agent's scenarios (round 3)
+// (`?wjMotion=0|a|b|c`: his melee's motion takes; moves/melee.js, untouched/motion.js)
+/** One melee move measured on the real rig, the hero standing still and blocking (god): per beat its tell,
+ *  windup, the snap (s from the release out of the held / cocked pose to the impact), the held stretch,
+ *  the striking end's speed at the impact, the kicking knee / striking elbow at the impact, his travel; per
+ *  move the hands' furthest from the pockets (phase 1) and the recovery. */
+function wjMeasure(G, name, { dist = 2.2, how = 'block' } = {}) {
+  const { game, input } = G;
+  const d = game.dragon, p = game.player;
+  d.debug.tidy();
+  d.brain.act = null;
+  d.mode = 'foot';
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  run(G, 0.3);
+  run(G, 3, null, () => ['idle', 'run'].includes(p.state));
+  place(G, dist, 0);
+  p.debug.god = true;
+  p.guard = 100;
+  input.axis = { x: 0, y: 0 };
+  run(G, 0.25, () => place(G, dist, 0));
+  const R = d.rig, inv = new THREE.Matrix4(), pinv = new THREE.Matrix4(), V = () => new THREE.Vector3();
+  const L = (o, x = 0, y = 0, z = 0) => V().set(x, y, z).applyMatrix4(o.matrixWorld);
+  const samp = () => {
+    R.root.updateWorldMatrix(true, true); // (from the scene down: the parent's own matrix may be a frame old)
+    inv.copy(R.root.matrixWorld).invert();
+    const W = {
+      wrR: L(R.arms.R.fore, 0, -0.26, 0), wrL: L(R.arms.L.wrist), shR: L(R.arms.R.upper), shL: L(R.arms.L.upper), elR: L(R.arms.R.fore), elL: L(R.arms.L.fore),
+      thR: L(R.legs.R.thigh), shnR: L(R.legs.R.shin), anR: L(R.legs.R.foot), thL: L(R.legs.L.thigh), shnL: L(R.legs.L.shin), anL: L(R.legs.L.foot), head: L(R.head, 0, 0.1, 0), pelvis: L(R.pelvis),
+    };
+    const B = {};
+    for (const k in W) B[k] = W[k].clone().applyMatrix4(inv);
+    const hB = V().set(p.position.x, 1.15, p.position.z).applyMatrix4(inv); // (the hero's chest in his frame)
+    // (the wrists in the pelvis's frame: in his pockets they go where his hips go)
+    pinv.copy(R.pelvis.matrixWorld).invert();
+    const Pv = { wrR: W.wrR.clone().applyMatrix4(pinv), wrL: W.wrL.clone().applyMatrix4(pinv) };
+    return { W, B, hB, scl: R.root.getWorldScale(V()).x || 1, Pv, x: d.position.x, z: d.position.z, t: d.brain.act?.t ?? 0, hx: p.position.x, hz: p.position.z, yaw: d.yaw, ryaw: (() => { const e = R.root.matrixWorld.elements; return Math.atan2(e[8], e[10]); })(), cyaw: (() => { const e = R.chest?.matrixWorld?.elements ?? R.root.matrixWorld.elements; return Math.atan2(e[8], e[10]); })() };
+  };
+  const ang = (a, b, c) => { const u = V().subVectors(a, b).normalize(), w = V().subVectors(c, b).normalize(); return (Math.acos(Math.max(-1, Math.min(1, u.dot(w)))) * 180) / Math.PI; };
+  const rest = samp();
+  if (!d.brain.trigger(name)) return { name, fail: 'trigger' };
+  const A = d.brain.act;
+  const F = [];
+  let nan = false;
+  for (let i = 0; i < 900; i++) {
+    game.mouseGround.set(d.position.x, 0, d.position.z);
+    if (how === 'block') { input.press(1); p.guard = 100; }
+    G.tick(DT);
+    p.debug.heal();
+    if (d.brain.act !== A) break;
+    const s = samp();
+    for (const k in s.W) if (!Number.isFinite(s.W[k].x + s.W[k].y + s.W[k].z)) nan = true;
+    F.push(s);
+    if (process.env.GCD_ANAT_TRACE) {
+      const bi = A.beats.findIndex((b) => s.t < b.end + 1e-6), b = A.beats[bi], u = null;
+      const q = (k) => s.B[k].toArray().map((x) => x.toFixed(2)).join(',');
+      out(`    t ${s.t.toFixed(3)} beat ${bi} ${b ? (s.t < b.impact ? 'wind' : s.t < b.impact + (b.def.active ?? 0.1) ? 'live' : 'rec') : '-'}${u != null ? ' u ' + u.toFixed(2) : ''}  anR ${q('anR')}  anL ${q('anL')}  wrR ${q('wrR')}  root ${s.x.toFixed(2)},${s.z.toFixed(2)} pelvisW ${s.W.pelvis.x.toFixed(2)},${s.W.pelvis.z.toFixed(2)} rigRoot ${R.root.getWorldPosition(new THREE.Vector3()).toArray().map((v) => v.toFixed(2)).join(",")} mw ${[12,13,14,0,5,10].map((i) => inv.clone().invert().elements[i].toFixed(2)).join(",")} pW ${s.W.pelvis.toArray().map((v) => v.toFixed(2)).join(",")} again ${s.W.pelvis.clone().applyMatrix4(inv).toArray().map((v) => v.toFixed(2)).join(",")} pelvisNow ${R.pelvis.getWorldPosition(new THREE.Vector3()).toArray().map((v) => v.toFixed(2)).join(",")} par ${R.pelvis.parent?.name ?? "?"}/${R.pelvis.parent === R.root} rootEuler ${new THREE.Euler().setFromQuaternion(R.root.getWorldQuaternion(new THREE.Quaternion()), "YXZ").toArray().slice(0, 3).map((v) => (+v).toFixed(2)).join(",")} scl ${R.root.getWorldScale(new THREE.Vector3()).toArray().map((v) => v.toFixed(2)).join(",")} pq ${new THREE.Euler().setFromQuaternion(R.pelvis.getWorldQuaternion(new THREE.Quaternion()), "YXZ").toArray().slice(0, 3).map((v) => (+v).toFixed(2)).join(",")} pelvisB ${s.B.pelvis.toArray().map((v) => v.toFixed(2)).join(",")} hero ${s.hx.toFixed(2)},${s.hz.toFixed(2)}`);
+    }
+  }
+  input.up(1);
+  const near = (t) => F.reduce((best, s) => (Math.abs(s.t - t) < Math.abs(best.t - t) ? s : best), F[0]);
+  const spd = (k, t) => { const i = F.indexOf(near(t)); if (i < 1) return 0; return F[i].W[k].distanceTo(F[i - 1].W[k]) / DT; };
+  // the hands from the pockets (his frame; m), over the whole move
+  let handOut = 0, outR = 0, outL = 0;
+  for (const s of F) {
+    outR = Math.max(outR, s.Pv.wrR.distanceTo(rest.Pv.wrR));
+    outL = Math.max(outL, s.Pv.wrL.distanceTo(rest.Pv.wrL));
+  }
+  handOut = Math.max(outR, outL);
+  // the largest pop: a joint that changes its speed in one frame (his frame; m; frames round a blink left out)
+  let pop = 0, popK = '', popT = 0;
+  for (let i = 2; i < F.length; i++) {
+    if (Math.hypot(F[i].x - F[i - 1].x, F[i].z - F[i - 1].z) > 0.4 || Math.hypot(F[i - 1].x - F[i - 2].x, F[i - 1].z - F[i - 2].z) > 0.4) continue;
+    for (const k of ['wrR', 'wrL', 'anR', 'anL', 'head', 'pelvis']) {
+      const a2 = V().copy(F[i].B[k]).addScaledVector(F[i - 1].B[k], -2).add(F[i - 2].B[k]).length();
+      if (a2 > pop) { pop = a2; popK = k; popT = F[i].t; }
+    }
+  }
+  const beats = [];
+  for (const b of A.beats) {
+    if (b.feint) continue;
+    const D = b.def, cock = D.cock ?? 0.8, part = b.def.part ?? '';
+    const rel = b.at(cock) + b.H; // the release out of the cock
+    const imp = near(b.impact), st = near(b.start);
+    const side = /L$/.test(part) ? 'L' : 'R';
+    const foot = /^foot|^knee/.test(part), palms = part === 'palms';
+    const endK = foot ? `an${side}` : palms ? 'wrR' : `wr${side}`;
+    // the held stretch of the windup (nothing tracked faster than 0.9 m/s in his frame)
+    let run0 = 0, best = 0;
+    for (let i = 1; i < F.length; i++) {
+      if (F[i].t < b.start || F[i].t > b.impact) continue;
+      let mv = 0;
+      for (const k of ['wrR', 'wrL', 'head', 'pelvis', 'elR', 'elL', ...(foot ? [`an${side}`] : [])]) mv = Math.max(mv, F[i].B[k].distanceTo(F[i - 1].B[k]) / DT);
+      run0 = mv < 0.9 ? run0 + 1 : 0;
+      best = Math.max(best, run0);
+    }
+    beats.push({
+      tell: D.tell, part, W: b.W, H: b.H, snap: b.impact - rel, held: best * DT,
+      speed: spd(endK, b.impact),
+      knee: foot ? ang(imp.W[`th${side}`], imp.W[`shn${side}`], imp.W[`an${side}`]) : null,
+      elbow: !foot ? ang(imp.W[`sh${side}`], imp.W[`el${side}`], imp.W[`wr${side}`]) : null,
+      travel: Math.hypot(imp.x - st.x, imp.z - st.z),
+      footY: foot ? imp.W[`an${side}`].y : null,
+      // (ADR-255) the striking arm's line: degrees off the line from his shoulder to the hero, flat on the
+      // ground (aim) and up / down (elev, + up), at the contact and at the release out of the cock; the
+      // elbow at the release
+      ...(!foot ? (() => {
+        // (in his own frame, the root's: the root carries a world tilt toward the camera, so world lines skew)
+        // (the hero where he stood the frame before the contact: the blow's own throw moves him in its frame)
+        const i0 = F.findIndex((f) => f.t >= b.impact - 1e-6), hRef = F[Math.max(0, i0 - 1)] ?? imp;
+        const rl = near(rel), line = (s) => {
+          // (the hero in his frame WITHOUT the root's world tilt: his place, his yaw, his scale only)
+          const dx = hRef.hx - s.x, dz = hRef.hz - s.z, cy = Math.cos(s.ryaw), sy = Math.sin(s.ryaw), k = s.scl;
+          const hc = { x: (dx * cy - dz * sy) / k, z: (dx * sy + dz * cy) / k };
+          const sh = s.B[`sh${side}`], wr = s.B[`wr${side}`], ax = wr.x - sh.x, az = wr.z - sh.z, tx = hc.x - sh.x, tz = hc.z - sh.z;
+          const a = Math.abs(((Math.atan2(ax, az) - Math.atan2(tx, tz) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+          return { aim: (a * 180) / Math.PI, elev: (Math.atan2(wr.y - sh.y, Math.hypot(ax, az)) * 180) / Math.PI };
+        };
+        const c = line(imp), r0 = line(rl);
+        if (process.env.GCD_ANAT_LINE) out(`      [line] t ${imp.t.toFixed(3)} sh ${imp.B[`sh${side}`].toArray().map((v) => v.toFixed(2))} wr ${imp.B[`wr${side}`].toArray().map((v) => v.toFixed(2))} hero ${imp.hB.toArray().map((v) => v.toFixed(2))} heroAt ${hRef.hx.toFixed(2)},${hRef.hz.toFixed(2)} from ${imp.x.toFixed(2)},${imp.z.toFixed(2)}`);
+        const fo = Math.abs(((imp.yaw - Math.atan2(imp.hx - imp.x, imp.hz - imp.z) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+        const brg = Math.atan2(imp.hx - imp.x, imp.hz - imp.z), off = (y) => Math.round((Math.abs(((y - brg + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) * 180) / Math.PI);
+        return { rig: off(imp.ryaw), chest: off(imp.cyaw), gap: Math.hypot(imp.hx - imp.x, imp.hz - imp.z), face: (fo * 180) / Math.PI, aim: c.aim, elev: c.elev, aimRel: r0.aim, elevRel: r0.elev, elRel: ang(rl.W[`sh${side}`], rl.W[`el${side}`], rl.W[`wr${side}`]) };
+      })() : {}),
+    });
+  }
+  return { name, phase: d.phase, frames: F.length, nan, handOut, outR, outL, pop, popK, popT, recovery: A.end - A.recoveryStart, dur: A.end, beats, impacts: A.beats.filter((b) => !b.feint).map((b) => b.impact) };
+}
+
+/** MOTIONAUDIT (opt-in): every melee move in every phase it is used in, measured (wjMeasure), printed per take. */
+async function scenarioMotionAudit() {
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { MOVE_OWNERS } = await imp('src/entities/enemies/untouched/moves.js');
+  const takes = (process.env.WJ_TAKES ?? '0').split(',');
+  const names = MOVE_NAMES.filter((n) => MOVE_OWNERS[n] === 'melee');
+  for (const tk of takes) {
+    setLook('wjMotion', tk);
+    out(`\n== scenario MOTIONAUDIT (take ${tk}) ==`);
+    for (const ph of [1, 2, 3]) {
+      const G = build();
+      duel(G, { dist: 2.2, form: ph });
+      for (const name of names) {
+        if (!phasesOf(name).includes(ph)) continue;
+        const r = wjMeasure(G, name);
+        if (r.fail) { out(`  P${ph} ${name} FAIL ${r.fail}`); continue; }
+        out(`  P${ph} ${name.padEnd(13)} ${r.frames}f  dur ${r.dur.toFixed(2)}  rec ${r.recovery.toFixed(2)}  hands out R ${r.outR.toFixed(2)} L ${r.outL.toFixed(2)} m  pop ${r.pop.toFixed(2)} ${r.popK}${r.nan ? '  NaN' : ''}`);
+        for (const b of r.beats) out(`       ${String(b.tell).padEnd(6)} ${b.part.padEnd(6)} W ${b.W.toFixed(2)}${b.H ? '+' + b.H.toFixed(2) : '     '}  snap ${b.snap.toFixed(2)}  held ${b.held.toFixed(2)}  v@imp ${b.speed.toFixed(1)} m/s  ${b.knee != null ? 'knee ' + Math.round(b.knee) + '° footY ' + b.footY.toFixed(2) : 'elbow ' + Math.round(b.elbow) + '°'}  travel ${b.travel.toFixed(2)} m`);
+      }
+    }
+  }
+  setLook('wjMotion', null);
+}
+
+/** ANATOMY (opt-in; ADR-255, the boss motion audit): EVERY move of his (melee, spells, terrain, the
+ *  transitions) in every phase it is used in, on the rig with the hero standing (god mode, no guard): each
+ *  blow's striking limb at its contact (a kick's knee, an arm's elbow: 180 = straight), and for an arm its
+ *  LINE: how many degrees it points off the line from his shoulder to the hero, flat (aim) and up / down
+ *  (elev), at the contact and at the release out of the cock (a spell's cast pose); the largest pop and
+ *  when (t in the move; the beats' impacts after it). `GCD_MOVES` a comma list, `WJ_TAKES` the takes,
+ *  `GCD_ANAT_OUT` the rows as JSON. */
+async function scenarioAnatomy() {
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); }
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : MOVE_NAMES;
+  const rows = [];
+  for (const tk of (process.env.WJ_TAKES ?? 'b').split(',')) {
+    setLook('wjMotion', tk);
+    out(`
+== scenario ANATOMY (take ${tk}: every blow's limb at its contact, an arm's line to the hero, pops) ==`);
+    for (const ph of [1, 2, 3]) {
+      for (const name of names) {
+        const def = MOVES[name];
+        if (!def || !phasesOf(name).includes(ph) || def.transition) continue;
+        const G = build();
+        duel(G, { dist: 2.2, form: ph });
+        const band = def.band ?? [0, 4];
+        const dist = process.env.GCD_ANAT_DIST ? +process.env.GCD_ANAT_DIST : Math.max(1.8, Math.min(7, band[0] + 0.6 > 2.2 ? band[0] + 0.6 : 2.2));
+        const r = wjMeasure(G, name, { dist, how: 'none' });
+        rows.push({ take: tk, ph, ...r });
+        if (r.fail) { out(`  P${ph} ${name} FAIL ${r.fail}`); continue; }
+        out(`  P${ph} ${name.padEnd(13)} d ${dist.toFixed(1)}  pop ${r.pop.toFixed(2)} ${r.popK} @${r.popT.toFixed(2)}  impacts ${r.impacts.map((t) => t.toFixed(2)).join(' ')}${r.nan ? '  NaN' : ''}`);
+        for (const b of r.beats) {
+          const limb = b.knee != null ? `knee ${Math.round(b.knee)}° footY ${b.footY.toFixed(2)}` : `elbow ${Math.round(b.elbow)}° (cock ${Math.round(b.elRel)}°)  line off ${Math.round(b.aim)}° / ${Math.round(b.elev)}° facing off ${Math.round(b.face)}° hero at ${b.gap.toFixed(2)} m rig ${b.rig}° chest ${b.chest}° (cock ${Math.round(b.aimRel)}° / ${Math.round(b.elevRel)}°)`;
+          out(`       ${String(b.tell).padEnd(6)} ${b.part.padEnd(6)} W ${b.W.toFixed(2)}  held ${b.held.toFixed(2)}  ${limb}`);
+        }
+      }
+    }
+  }
+  setLook('wjMotion', null);
+  if (process.env.GCD_ANAT_OUT) fs.writeFileSync(process.env.GCD_ANAT_OUT, JSON.stringify(rows, null, 1));
+}
+
+/** POLISH (ADR-255, the boss motion audit; `?wjPolish=0|a`, `?wjCastHand=0|a|b`): measured on the rig with
+ *  wjMeasure, take b. With the polish: every straight hand blow (the palm, the poke, Dark Spark, the Yank's
+ *  fist) lands with the arm on the line from his shoulder to the hero's chest (within 12 deg; round 3 had
+ *  12 - 31), and a kicking string's worst one-frame jump drops (Three Count: the foot no longer snaps back off
+ *  a dead stop). The casting hand: phase 1's Azure Draw and Yank cast with the right arm out (elbow open,
+ *  pointing at the hero at the contact) under 'a' and 'b', kept in the pocket under '0'. */
+async function scenarioPolish() {
+  out('\n== scenario POLISH (ADR-255: straight blows on the line, kick returns, the phase-1 casting hand) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  setLook('wjMotion', 'b');
+  const run1 = (name, ph, looks, dist = 2.2) => {
+    for (const [k, v] of Object.entries(looks)) setLook(k, v);
+    const G = build();
+    duel(G, { dist: 2.2, form: ph });
+    return wjMeasure(G, name, { dist, how: 'none' });
+  };
+  const lines = { 0: [], a: [] }, pops = {};
+  for (const pol of ['0', 'a']) {
+    for (const [name, ph] of [['palm', 2], ['notEvenClose', 1], ['darkSpark', 2], ['fiveSides', 3], ['azureYank', 2]]) {
+      const r = run1(name, ph, { wjPolish: pol, wjCastHand: 'a' }, name === 'azureYank' ? 3.4 : 2.2);
+      if (r.fail) { assert(false, `polish ${pol}: ${name} ran (${r.fail})`); continue; }
+      const b = r.beats.find((x) => x.aim != null && /^fist/.test(x.part));
+      if (b) lines[pol].push([`${name}`, Math.round(b.aim), Math.round(b.elbow)]);
+    }
+    const t = run1('threeCount', 2, { wjPolish: pol });
+    pops[pol] = t.pop;
+  }
+  const fmt = (L) => L.map(([n, a, e]) => `${n} ${a}°/${e}°`).join(', ');
+  assert(lines.a.length === 5 && lines.a.every(([, a, e]) => a <= 12 && e >= 150), `?wjPolish=a: every straight hand blow on the line to the hero, off <= 12 deg, elbow >= 150 (${fmt(lines.a)})`);
+  assert(lines['0'].some(([, a]) => a >= 20), `?wjPolish=0: round 3's lines as built (Dark Spark / the Yank 20+ deg off: ${fmt(lines['0'])})`);
+  assert(pops.a < pops['0'] - 0.08 && pops.a <= 0.4, `?wjPolish=a: Three Count's worst one-frame jump ${pops['0'].toFixed(2)} -> ${pops.a.toFixed(2)} m (<= 0.4)`);
+  // the casting hand (phase 1)
+  const cast = {};
+  for (const ch of ['0', 'a', 'b']) {
+    for (const name of ['azureDraw', 'azureYank']) {
+      const r = run1(name, 1, { wjPolish: 'a', wjCastHand: ch }, name === 'azureYank' ? 3.4 : 2.2);
+      const b = r.beats?.[0];
+      cast[ch + name] = b ? { el: Math.round(b.elbow), aim: Math.round(b.aim), elev: Math.round(b.elev) } : null;
+    }
+  }
+  const out3 = (ch) => ['azureDraw', 'azureYank'].map((n) => `${n} ${cast[ch + n]?.el}° off ${cast[ch + n]?.aim}° / ${cast[ch + n]?.elev}°`).join(', ');
+  for (const ch of ['a', 'b']) assert(['azureDraw', 'azureYank'].every((n) => cast[ch + n] && cast[ch + n].elev > -30 && cast[ch + n].aim <= 15), `?wjCastHand=${ch}: the arm out at the cast's contact, pointing at the hero (${out3(ch)})`);
+  assert(['azureDraw', 'azureYank'].every((n) => cast['0' + n] && cast['0' + n].elev < -60), `?wjCastHand=0: the hand kept in its pocket (${out3('0')})`);
+  for (const k of ['wjMotion', 'wjPolish', 'wjCastHand']) setLook(k, null);
+}
+
+/** MOTION: every take of his melee motion (?wjMotion=a|b|c): it loads, every melee move runs in every phase it
+ *  is used in (no NaN, no failure), every blow lands within a few frames of its release out of the cock, a
+ *  blue / red blow holds its pose, a kick lands with the leg straight, the hands stay in his pockets in
+ *  phase 1 (the left in phase 2) unless the blow uses them; '0' plays the shipped beats themselves. */
+async function scenarioMotion() {
+  out('\n== scenario MOTION (?wjMotion takes: every melee move in every phase; snaps, holds, straight kicks, the hands) ==');
+  const { setLook, lookOf } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const { MOVE_OWNERS } = await imp('src/entities/enemies/untouched/moves.js');
+  const { TAKES, MOTION_OPTS } = await imp('src/entities/enemies/untouched/motion.js');
+  const names = MOVE_NAMES.filter((n) => MOVE_OWNERS[n] === 'melee');
+  const was = lookOf('wjMotion', '0');
+  // '0': the shipped beats (no take field on any of them)
+  setLook('wjMotion', '0');
+  assert(names.every((n) => MOVES[n].beats.every((b) => (b.pick ?? [b]).every((x) => x.wjHands === undefined))), "take '0': every melee move plays its shipped beats");
+  assert(MOTION_OPTS.join() === '0,a,b,c' && ['a', 'b', 'c'].every((t) => TAKES[t]), 'the takes: 0, a, b, c');
+  const takes = (process.env.WJ_TAKES ?? 'a,b,c').split(',');
+  for (const tk of takes) {
+    setLook('wjMotion', tk);
+    let n = 0;
+    const bad = { fail: [], nan: [], snap: [], held: [], knee: [], hands: [] };
+    for (const ph of [1, 2, 3]) {
+      const G = build();
+      duel(G, { dist: 2.2, form: ph });
+      for (const name of names) {
+        if (!phasesOf(name).includes(ph)) continue;
+        const r = wjMeasure(G, name);
+        const tag = `P${ph} ${name}`;
+        if (r.fail) { bad.fail.push(`${tag} ${r.fail}`); continue; }
+        n++;
+        if (r.nan) bad.nan.push(tag);
+        const defs = MOVES[name].beats.flatMap((b) => b.pick ?? [b]).filter((b) => !b.feint);
+        const uses = defs.map((b) => b.wjHands ?? '').join('');
+        const dash = defs.some((b) => b.dash);
+        for (const b of r.beats) {
+          if (!(b.snap <= 0.16 + 1e-6)) bad.snap.push(`${tag} ${b.part} ${b.snap.toFixed(2)}`);
+          if ((b.tell === 'blue' || b.tell === 'red') && !dash && !(b.held >= 0.1)) bad.held.push(`${tag} ${b.tell} ${b.held.toFixed(2)}`);
+          if (b.knee != null && /^foot/.test(b.part) && b.footY > 0.5 && !(b.knee >= 158)) bad.knee.push(`${tag} ${Math.round(b.knee)}`);
+        }
+        // (in the pelvis's frame: a coil that twists the chest off the hips, Dark Spark's, the stomp's, carries
+        // the pocketed hand up to ~0.25 m off where it rests)
+        const tol = 0.26;
+        if (ph === 1 && !uses.includes('R') && r.outR > tol) bad.hands.push(`${tag} R ${r.outR.toFixed(2)}`);
+        if (ph <= 2 && !uses.includes('L') && r.outL > tol) bad.hands.push(`${tag} L ${r.outL.toFixed(2)}`);
+      }
+    }
+    const say = (k) => bad[k].slice(0, 6).join('; ');
+    assert(n >= 40 && !bad.fail.length, `take ${tk}: ${n} melee moves ran in their phases (${say('fail')})`);
+    assert(!bad.nan.length, `take ${tk}: no NaN on his joints (${say('nan')})`);
+    assert(!bad.snap.length, `take ${tk}: every blow lands within 0.16 s of its release (${say('snap')})`);
+    assert(!bad.held.length, `take ${tk}: every blue / red blow holds its pose >= 0.1 s (${say('held')})`);
+    assert(!bad.knee.length, `take ${tk}: every kick at the body lands with the leg straight, knee >= 158° (${say('knee')})`);
+    assert(!bad.hands.length, `take ${tk}: the hands in his pockets: phase 1 both, phase 2 the left, unless the blow uses them (${say('hands')})`);
+  }
+  setLook('wjMotion', was === '0' ? null : was);
 }

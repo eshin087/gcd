@@ -28,6 +28,364 @@ strike, unrealistic attacks; every attack readable; his spell effects are the ba
 **Next.** The owner's pick from the films (then the PR leaves draft). Open: Hand to Hand's opening jab's lead foot
 jumps 0.43 m in a frame (on main too; `anim.js _feetClip`, the hero session's file). His windups stay PBZ-fast
 (0.42 s first blows), under the audit brief's 0.7 s floor: asked in the PR.
+## 2026-11-27 — Blows land on what they strike (ADR-259; branch `claude/contact-motion-246eeb`)
+
+**Goal:** the owner's contact pass: every hit, deflect, guard, parry and deadly blow should look like it strikes the
+part it hits, from the game camera, and the struck one should flinch by where and how hard. Their picks: the blade
+bites then follows through (heavies hold longer); reactions by where and how hard; shared code only (the motion
+sessions own every move's data); a draft PR with films, behind a switch.
+
+**Measured** (an in-page audit, scratch only: at every contact of every duelist, the drawn striker against capsules
+on the struck rig, through the freeze; see the PR's table): the striker was 10 - 75 cm short as often as 10 - 40 cm
+through; blocks went through the guard into the body with the blades 0.2 - 0.9 m apart; the hurt sparks sat on the
+hero's chest 0.5 m from the meeting; parries already met.
+
+**Changed** (`?contact=a|b`, default `0` until the owner picks; the Lab's `contact` row): `combat/contact.js` (the
+search along a striker's clock, the pin, capsule bodies); the duelists' `strikeContact`, the pinned pose drawn over
+gameplay points on the clip's own time, the ward nudged onto the hero's blade, the reach (`b`); the hero's
+`_cutContact` (his swing's shown clock), his guard nudged onto a blocked blow, his own HitReact, the wyrm's hurt drawn
+where its snout / toe / tail struck; react.js gains the arm and the struck limb.
+
+**Verified:** duel / asc `contact` (new): one scripted exchange with 0, a and b, every result identical; hits and
+blocks drawn through the hero 41 / 33 % → 0 %; Tian Lei's short hits 64 → 32 % with b. The page audit's before /
+after table and the films (all nine bosses, 0 | a | b, half speed) in the PR.
+
+**The owner's pick:** `b` (a + the reach), made the default.
+
+**Second round** (the owner: the not-covered list, with before / after): the execution's burst at the wound (0.23 →
+0.01 m), the plunge's at the steel's entry, the wyrm's short bite lunging its head onto the hero (limited by its
+neck: 1.27 → 1.06 m), `?contact=c` (a drawn step past the reach: closes little, kept as an option). What stays short
+is move data (a string's later blows on a hero knocked back; the wyrm's bite sphere past its jaws).
+
+**Open:** the wyrm's poses; the execution's thrust, the plunge and the flurry's cuts; blows whose
+zone outreaches the drawn limb (the motion sessions' data, listed in the notes folder).
+## 2026-11-26 — The run from the owner's sketch: trailing sword carries, the free arm opened out (ADR-229; branch `claude/hero-run-sketch-6baa40`)
+
+**Owner (2026-11-25):** "from the back the left arm seems way too pressed in and makes it seem like he has no left
+arm during the run. also have the sword be in this angle when he's running instead of it being held in the front",
+with a sketch of a blade going on from the forearm, ~35-40° below level. **Measured** the free arm on the drawn
+frame (headless Edge, the hero rendered alone four ways: image masks, the camera lean's shear included): today's
+forearm clear of the coat on 10-40 % of a stride (gap ~0). **Built (options, defaults unchanged):** `?runArm=e`
+(open: 90-100 % clear, 9-12 cm) and `f` (wider: 100 %, 15-18 cm); `?runSword=trail|swept|side` (the blade in the
+forearm's line behind him, the wrist 15-40° against `old`'s 57-84°, the steel ≥ 20 cm off the legs, never through
+the coat). A block / parry / flask / charge out of a trailing blade now enters over 0.24 s (it flipped 75° in a
+frame, `old` too). **Verified:** `herorun` (new bounds for e / f and the trailing carries; the wrist, legs and coat
+newly measured), an in-page audit against today's `d` / `hip` (start, stop, sprint, strafe, turn, light, roll,
+block, heal). **Sent the owner** close-up films (today | A trail | B swept | C side; today | e | f; the game camera,
+behind, his side, the front; half-speed copies). **The owner picked** `e` + `trail`, "but the right arm needs to be straight ... instead of having an angle": the
+solver's soft reach had bent the asked 170° elbow to 151°; the trail carry now asks for the arm's full reach
+(`_swordOpen`) a hair past the arm's length (`over` 1.03: at exactly its length it still drew 168°, a kink the
+owner saw from the game camera), so the arm hangs straight back (176°), the blade 1-5° off it. **Then** the owner, with a game-camera
+screenshot and a red arrow down and out to his right: "too straight back ... the arm angle also looks unnatural".
+Measured screen angles at the game camera (arm and blade 74-75° down the screen) and searched live: the arm now
+hangs out from his side with a soft elbow (154-161°), the blade out along the arrow (~48° down the screen,
+azimuth ~117°, 23-35° below level), rocking with the stride; smoother than both versions before. **Then**,
+through the owner's asks: `flail` (the blade swinging loose, `pendulum()`), four solid back angles (`b15`-`b45`),
+four arms for A (`a1`-`a4`), and "all of them look unnatural ... make it ... anatomy wise correct". The cause:
+every carry put the blade near the forearm's line, a grip no fist makes (the blade leaves a fist at ~90° to the
+forearm). **`nat`** (the default): the arm relaxed at his side, the fist by his hip, the blade 45-82° off the
+forearm, behind him and a little out, steady; ~61° down the screen at the game camera. Films sent. **Then**
+the arm's joint (the elbow jutting back as he leans), then "all look bad" (the pointing back, the grip, a stiff arm,
+the whole run). Rebuilt from the hand (`fistBlade`: the blade set in the fist, a real grip, the arm a runner's);
+three concepts; the owner picked **`g2`** (the point down beside his leg) "but make sure the arm and sword doesn't
+clip with the cloak fabric": measured against every coat panel and cape streamer it passed within 0.3 cm; the hand
+further off his side and the thumb out, now ≥ 12.6 cm. The default; films sent. **Open:** the owner also ticked
+"the whole run" (legs, lean, torso): a separate pass (the loco lean is shared with the duelists' footwork).
+**Then** four run styles (`?runStyle=`, turned down), the fist at the hip from the owner's photo (`h`, turned down),
+and the guard (`?runArm=g`, the fist held before his chin and chest, posed in the chest's frame), turned down
+("looks really bad from the other angles"): the free arm is `e` again, then `a` (the owner's pick of the
+variations). **The sword hand's grip:** measured where the forearm enters the fist in the sword's frame; `g2`'s
+came in on the thumb's side (a fist wrung round); now opposite the thumb, as in his stand and his guard (`twist`). Both are the defaults now; films
+before | after sent. **Open:** setting
+off from an idle action that holds the blade up turns a trailing blade 11° a frame; the backpedal guard swings a
+trailing blade round at 12-15 cm a frame² (hip 8, old 13).
+
+## 2026-11-27 — Bai Wuji's motion audit (ADR-255; branch `claude/bai-wuji-motion-bd1653`, built on PR 176)
+
+**Owner:** the boss motion audit (2026-11-26): weird arm angles, unrealistic attacks, bent kicks; every attack
+readable; his spell effects (and the fox's) are the bar. His melee had just been rebuilt (ADR-250, the glide, PR
+176, open): this pass audits the glide and builds on that branch.
+
+**Measured** (`veil.mjs . anatomy`, new, opt-in): every move in every phase, the limb at each contact, an arm's line
+to the hero, the worst one-frame jump. The glide's kicks land straight (166 - 175 deg) and its straight blows
+open (152 - 169 deg). Found: straight hand blows 12 - 31 deg off the line to the hero's chest (Dark Spark's fist
+passed him by most of a metre); a string's kick snapping back off a dead hold (0.4 - 0.57 m in a frame); phase 1's
+Azure Draw and Yank cast from a pocket (the Yank's blue fist cue glinting in it). Measuring a line needs an
+untilted frame (the rig root leans toward the camera) and the hero's place the frame before the contact.
+
+**Changed:** `?wjPolish=a` (straight blows on the line: 1 - 10 deg; the kick's return a moving hold that eases into
+the chamber: Three Count 0.51 -> 0.34 m), `?wjCastHand=a|b` (the casting hand out). `veil.mjs . polish` asserts
+them. Films: before / after at the game camera and close, half speed, and the three casting hands.
+
+**Picked:** the owner kept the polish (`a`) and the casting hand out for the whole cast (`a`): the defaults.
+**Open:** a support foot jumps after a
+blink (Five Sides, Passing Through: anim.js `_feetClip`, the hero session's); PR 176 and Shen Hui's PR both use
+ADR-250.
+
+---
+
+## 2026-11-27 — AUTO BENCH: `?perf` benches by itself in a fight (ADR-261; branch `perf/auto-bench`)
+
+**Owner:** "Is there no way we can capture the benchmarks without me having to press it at the laggy moment?"
+**What:** `dev/perfReadout.js` `AUTO_BENCH` / `_autoBench`: in a fight, a bench 8 s in and on slow bursts (4 at
+most, 10 s apart); the frame after a bench is skipped; each bench records why, AUTO's step, the lite world; the
+line shows `bench n/4`; `?perf=manual` turns it off. Test: world `perfreadout`. **Checked:** a 25 s wyrm fight
+at the phone's size benched itself 8.9 s in (the desktop GPU never had a slow burst). **Next:** the owner's
+REPORT from Cinderwood on the iPhone.
+
+---
+
+## 2026-11-27 — The Starless Lord's form, a readable pace, looks for two specials (ADR-251; branch `claude/lord-motion`)
+
+**Owner:** the motion audit of every boss (weird arm angles and sword positions, unrealistic attacks, readable
+tells, special effects at the fox's and Bai Wuji's bar), one session and one draft PR per fighter; batch 2.
+
+**Measured first**, every move in every form it is used in (`lord.mjs . formaudit`, new: the shared sword audit's
+impact table, the feet's true slide on the floor, the form-2 off-hand blade's arm): thrusts on a bent arm (121 -
+140°) 18 - 23° off the arm's line, the long lunges on two locked knees, the two-handed overheads straight down (71 -
+80° off level), the low sweeps' legs crossing (-0.73 m, a knee pop), the front foot still up at half the impacts.
+Fine already: the wrist on the blade, the blade clear of his body, the off-hand blade at its own blows.
+
+**Changed** behind `?lordForm=a` (moves.js: each key helper pairs its keys with the form's; a post-pass makes
+`formKeys` / `formMotionKeys` / `formRecovery`, picks included; the realisers pick them; ADR-250's recipe, the
+overheads kept two-handed): after, thrusts 154 - 157° and 2 - 5° off the line, the lunge's front knee 95°, the
+sweeps' feet never cross, the overheads 43 - 61° off level, the front foot down at nearly every cut; timings
+identical (LORDFORM). `?lordPace=a` (pace.js, Tian Lei's recipe: rule 10 as a held cock). Effects to pick:
+`?boltFx=a|b|c`, `?igniteFx=a|b|c` (specialFx.js). Lab LOOKS rows.
+
+**Film.** Forms 1 - 4, before / after, at the game camera (cropped round the pair) and close from his side, real and
+half speed; the effect options as 2 × 2 grids. Rig: the batch's film server and `move.js`, my ports 5284 / 9484.
+
+**Picked** (the owner, from the films): the form, the readable pace, Void Lightning `c` (the storm), the ignitions
+`a` (the cocoon); all four in `PICKED`. Open: Grasp and Sever's chop skates 3.4 m when its pull is rolled (needs a root-motion change: asked); the
+strings' close-in slides the feet (the hero animator's planner); the off-hand blade points back along the forearm
+through form 2's two-handed chops.
+## 2026-11-27 — The wyrm's head in the meteors' roar (ADR-258; branch `claude/wyrm-head-motion`)
+
+**Owner:** "The dragons head twists too far back and looks unnatural when it raises its head up to shoot fire."
+
+**What changed:** Meteor Rain's rear-up and cast hold the head up and forward over the forelegs and look straight
+up above it (`fireAttacks.js` `HEAD_UP`, `?wyrmHead=a` the default, `0` as before). New opt-in integ `wyrmhead`
+measures every fire move's head: Meteor Rain was 90° up and 15° past vertical toward the tail, the head behind the
+neck's base, the brow rolled 149°; now 66° up in the chest's frame, never past upright, the head ahead of the
+neck's base. Films before / after sent.
+
+**Open:** the flights' head in a banked body (skyStrafe's recovery, skyCataclysm's wheel) also measures past
+vertical; not touched.
+
+## 2026-11-27 — Xin Yi's motion audit: limbs on the line, guns on the line of fire (ADR-253; branch `claude/xin-yi-motion`)
+
+**Owner (through the boss motion audit's lead session):** audit every boss with docs/ANIMATION.md, Sekiro, Phantom
+Blade Zero and Onimusha in mind: weird arm angles, unrealistic attacks, kicks bent at the strike, readable tells;
+special effects as 2-3 options in the fox's and Bai Wuji's style. One draft PR per boss, films, the owner picks.
+
+**Measured** (woke.mjs `audit` with each blow's line (`off`, `lat`), the new opt-in `guns` (the drawn barrel against
+the line of fire, the arm, the muzzle, the other hand) and `probe` (one move frame by frame round its contacts)):
+punches 22 - 63 degrees off the line (the back-fist 0.6 m short and wide); kicks straight two or three frames then
+folded (Sky Turns' first tornado 118 on its hit-stop frame); the elbow / spin kick / knee 0.44 - 0.73 m short; the
+sweep 94 degrees round and 1 m short, its leg flailing (keys a third of a turn apart; the foot the planner's); the
+mirrored palm on the wrong hand; the right gun's barrel 55 - 113 degrees off its shots, shots under the gun, no kick.
+
+**What changed** (all behind `?oneMoves=b`, now the default): `wokenOne/limbs.js` (onLine, holdKick, sweepOn,
+fitZone, aimEarly; `TUNING.motion`), `wokenOne/gunAim.js` (each gun on its line, the kick, the muzzle point;
+`muzzlePoint`), iron.js fires from the muzzle on `b`. Effect options (`fxIron.js`, default '0'): `?oneGunFx=a|b`,
+`?oneBoltFx=a|b`. Lab LOOKS rows. Tests: woke `line` (in the suite); `guns`, `probe` opt-in.
+
+**Verification:** woke `line` and the full woke suite; the audit before / after (ADR-253's numbers); films before
+(main) and after (`b`) at the game camera and from the side, every move of every phase; the effect options close and
+at the game camera.
+
+**The owner's picks** (from the films): motion `b`, the shots `b` (the script), the bolts `a` (the seed): PICKED.
+
+**Open / next:** the hooks from the side, the
+sweep's knee at its very contact, Iron Rain's twin arms; the feet jump in `anim.js _feetClip` belongs to the hero
+session.
+
+---
+
+## 2026-11-27 — Lu Wusheng audited: the form, the pace, three looks for the draw (ADR-252; branch `claude/lu-wusheng-motion`)
+
+**Goal:** the owner's motion audit of every boss (one session and one draft PR each, batch 2), for Lu Wusheng:
+measure every move against `docs/ANIMATION.md`, fix the anatomy and the strikes, keep every tell readable, and
+offer 2-3 looks for his special move.
+
+**Measured** (new opt-in `sheath.mjs form`, `tests/integration/sheathAudit.mjs`: the limbs and the weapon at every
+impact, the draw's hands through the windup; plus the sword audit's table): thrusts on a bent arm (121 - 124°) 24°
+off the scabbard's line; every draw ending in a locked split (176 / 176°) with a short arm, the fist 11 - 13 cm off
+the hilt at the cock, the scabbard hand going forward 26 - 51 cm through the draw; the overhead an upright bar
+(75 - 87° off level); the sweep's legs crossed; the free hand's 0.5 m swing in the scabbard cuts.
+
+**Changed** (behind switches; the owner's picks below):
+- `?sheathForm=a` (`sheathed/form.js`; the form's keys beside the authored ones; `kit.motion` opens his arms): the
+  numbers in COMBAT.md "The Sheathed" → "The audit". Poses only (FORMPACE: every timing identical).
+- `?sheathPace=a` (`sheathed/pace.js`, Tian Lei's method): rule 10's floor as held cocks, the draws untouched.
+- `?drawFx=a|b|c` (`sheathed/fx.js`; the click hook in `sheathed.js _onClick`): the drawn breath, hanging leaves,
+  the late sound.
+- Tests: `sheath.mjs formpace` (in the default run), `form` (opt-in table); `GCD_LOOKS` now applies to the whole run.
+
+**Verification:** `sheath.mjs` green with the defaults and with `GCD_LOOKS=sheathForm=a,drawFx=c`; films of every
+move before / after at the game camera and side-on, the draw looks at both cameras (sent to the owner).
+
+**The owner's picks** (from the films and the preview): the form `a` (now the default), the pace and the draw's
+look as shipped (their options stay behind `?sheathPace` / `?drawFx`).
+
+**Open:** a planted foot's one-frame jumps (the hero's `_feetClip`, the hero session's). PR 170
+(draft) also uses ADR-252.
+## 2026-11-27 — The Cinder Wyrm's motion audit: the bites (ADR-257; branch `claude/wyrm-motion-ccc88f`)
+
+**Owner:** the boss motion audit (one session and one draft PR per fighter, the shared brief): weird limb angles,
+unrealistic attacks, every attack readable; for the wyrm, keep its look (the owner's "perfect ascii look") and
+change motion and tells only, in small steps.
+
+**What changed:**
+- `tests/integration/wyrmAnatomy.mjs` + integ `wyrmanatomy` (opt-in): each blow measured at its contact: the gap
+  to the hero at the announced impact, a foreleg's elbow and reach, a bite's neck, the order the chain reaches top
+  speed, the tail's tip against its middle, the planted feet's skating, pops (hit-stop frames left out).
+- `dragon/strike.js` behind `?wyrmStrike=a` (the owner's pick from the films, the default; `0` as before; the Lab's LOOKS row): every bite's
+  body surges first (the chest drops and pitches in, the body lunges 0.4 units) while the head hangs, then the head
+  snaps onto the impact. Measured: the body 50 - 117 ms ahead of the head (was on one frame); the jaws 0.17 - 2.07 m
+  from the hero at the impact (was 0.79 - 3.10).
+- Films (before / after, the game camera and a close front three-quarter view, all three phases, real and half
+  speed) sent to the owner; the before set covers every melee move and the flights.
+
+**Found and left (ROADMAP):** the forelegs straight through the whole rake (the paw's path is beyond reach); the
+wing blows flap as one rigid wing; feet skate up to ~1 m in some strings. A tail with a softer tip was tried and
+dropped: the shipped tail already trails its middle by 44 - 123° and the film showed no difference. The first
+reading ("the tail swings as one rod") came from comparing top-speed times in a spin, where every point peaks
+together: measure the tip's bearing against the middle's instead.
+
+**Verification:** integ green with the switch off and forced on (`GCD_STRIKE_DEF`, a temporary hook, removed).
+
+**Owner's pick:** `a` ("AFTER, make it default"), 2026-11-27.
+
+**Next:** the forelegs and the wings, each with its hit spheres measured before and after.
+## 2026-11-27 — Halcyon's motion audit: a flier's limbs, the readable pace, eye-beam and shockwave looks (ADR-254; branch `claude/halcyon-motion-7d73eb`)
+
+**Owner (through the audit's lead session):** every boss audited with docs/ANIMATION.md; "weird looking arm angles
+... kicks aren't straight"; every attack readable; special effects to the Fox's and Bai Wuji's bar with 2 - 3 looks
+to pick; a draft PR and films each.
+
+**Measured** (city `audit`, `GCD_AUDIT_IMPACT=1`: the striking arm's reach and its line to the hero, both knees,
+the feet's trail, the body line, the fist's height, in his UPRIGHT frame: the drawn body is sheared toward the
+camera, duelist.js lean, which read a straight punch 20 - 40° off in world points): see ADR-254 and COMBAT.md
+"Halcyon" for the before / after numbers.
+
+**What changed** (all behind switches; the defaults are today's): `halcyon/limbs.js` (`?halMotion=b`: the
+straight blows on the line, the kicks long, the flier's legs on every key of his blows and his own beats, a level
+pass `FLY_B` / `LAUNCH_B`), `motion.js` (halKeys routes `b`; `halLimbsOn`), `poses.js` (hoverLegs), `flight.js`
+(the pass's root at `motion.b.passY` under `b`), `halcyon.js` (the animator's armSoft / legSoft, kickStretch only
+in a kick; the clap / landing ask HalFx.shockwave first), `pace.js` + `moves.js` (`?halPace=a`: a held cock through
+the realiser's `hold`, the cue 0.35 s), `fxEyes.js` / `fxShock.js` + `fx.js` (`?halEyes=a|b`, `?halShock=a|b`),
+`tuning.js` (`motion.b`, `pace`), the Lab's LOOKS rows. Tests: city `limbs`, `readable`; `audit` prints the
+contact anatomy.
+
+**Decisions:** fixed in `halcyon/` only (Tian Lei's PR 174 keeps its own pass behind his realiser); the legs trail
+further back rather than shorter where the hip is low (the animator keeps a foot over his root's floor, anim.js,
+the hero session's); `kickStretch` only through a kick (it locked his trailing legs straight).
+
+**The owner's picks** (from the films, 2026-11-27): `halMotion` b, his fast pace kept (`halPace` 0), `halEyes` a
+(heat vision), `halShock` a (the thunderclap): in PICKED, the Lab rows out of `awaiting`. The first cut of both
+effect options printed a white core the whole time (they read as white beams, his crimson lost): redrawn as crimson
+strokes, white only at the first peak, before the films were sent.
+
+**Open:** the kick and the palm snap harder at the contact (largest frame jolt 282 → 424, 174 → 236 mm/f²); the
+lead foot's step lives in the hero's animator (anim.js) and was left alone.
+
+## 2026-11-26 — Shen Hui's form, and looks for two of his specials (ADR-250; branch `claude/shen-hui-motion-d768f0`)
+
+**Owner:** the motion audit of every boss (weird arm angles and sword positions, unrealistic attacks, readable
+tells, special effects at the fox's and Bai Wuji's bar), one session and one draft PR per fighter.
+
+**Measured first** (the sword audit with a new impact table, `GCD_AUDIT_IMPACT=1`): thrusts on a bent arm with the
+point off the arm's line, the long lunges on two locked knees, overheads straight down (a bar at the game camera)
+with the free hand thrown onto the hilt at 17 - 19 m/s, the low sweeps' legs crossing, the front foot still up at
+most impacts. His kicks were already straight.
+
+**Changed** behind `?ashForm=a` (moves.js: each key helper pairs its keys with the form's; a post-pass makes
+`formKeys` / `formMotionKeys` / `formRecovery`; the realiser picks them): the lunge, the diagonal overhead, the
+sweep on the feet, the quieter free hand, the keyed step that lands with the blow; his own `formMotion` (the soft
+reach, a short foot ease). Effects to pick: `?whirlFx=a|b|c`, `?fallFx=a|b|c` (specialFx.js). Lab LOOKS rows.
+
+**Film.** Every move, before / after, at the game camera (cropped round him) and side-on, phases 1 - 3, real and
+half speed; the effect options at the game camera. Rig: `take.js` (a film per move, beat marks), `compose.sh`
+(2 x 2 grids), `keys.py` (key-frame sheets).
+
+**Picked** (2026-11-27, from one comparison video per decision): the form (`ashForm=a`), Ember Whirl b the cyclone,
+Heaven-Splitting Fall b the split; all three the default now (PICKED). The owner added that the Fall did not look
+natural in his body: ADR-226's held red coil covered his whole flight (a ground crouch 3.6 m up, the blade trailing
+behind, whipped over in 0.3 s). The form gives it its own keys, a jump: load, drive, tuck with the blade raised
+through the lock, legs reaching down, landing into the cut; filmed before / now side-on (a camera that follows his
+height) and at the game camera. Then the arms (the owner: "awkward and stiff"): one rising arc up his right side,
+the blade still cocking back behind his head through the lock instead of frozen, the hands leading into the cut. Then no backswing (the arms rise straight from his guard, in front of his face),
+the cut starting in the air, and a landing 1.6 m short of the hero (leap `short`, opt-in) so the blade meets him.
+
+**Open.** His pace unchanged (the owner chose it fast). Feet still slide 0.15 - 0.5 m over a long string where the
+close-in carries his root under a planted foot.
+
+---
+
+## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
+
+**Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its
+own session; then, on how it fits the deathblow (PR 145): "help me understand what the clash dance is", and after
+the explanation, "Yes, build it" (on its own, a small rise in the ring, the recovery steps for every duelist).
+
+**What changed** (all behind `?clash=dance`, the Lab's `clash` row; off by default):
+- `combat/clashDance.js` (the switch, `clashNext`, `clashMult`, `clashRing`, `clashRegenK`) and
+  `DEFENSE.clashDance` (rules.js: `mult`, `gap`, `ring`, `regenByHp`).
+- `duelist.js`: the run on `_clash {act, n, t, hurt}`, `clashPeek()` and `_clashMult()`; `onParried` (and
+  Halcyon's crash) multiply the parry's posture; `_updatePosture` x the HP step. The Lord, Tian Lei and Xin Yi
+  swap their `regenByHp` curve for the steps.
+- `player.js`: `hurtN` (blows that landed or broke the guard; not a stream's chip) and `player:parry {clash}`
+  (read from the duelist's `clashPeek` as he parries). `audio.js` `_parry`: the recorded clang x `clashRing(run)`.
+- Tests: duel `clashdance` (the table, the ring, off = today's posture, the x1 / x1.25 / x1.5 ladder, the three
+  resets, the recovery steps), lord `clashdance` (the steps replace his curve, never faster).
+
+**Decisions:** the run lives on his move beside the deflect chain's count and never reads the deathblow's
+`parryRun`. The first try kept the Lord family's x1.5 full-bar rate under the steps; that made them recover faster
+than today at 50 - 70 % HP, so the steps replace the curve outright (ADR-247).
+
+**Film** (a plain-parry bot, all-white strings so a parried blue blow's deathblow does not decide it, red blows
+rolled; the same strings both ways, game camera, close crop, a posture readout burnt in): Shen Hui (full HP; Parting Wind and Ember Fan in turn) breaks on the 9th parry instead of the 12th; the Starless Lord (50 % HP; Crushing Verse, Veiled Hand, Push Opening, ...) in his 3rd string instead of his 4th, 2.7 s sooner; Xin Yi (50 % HP, a posture bar of 1100) breaks after about 42 s, where today he stands unbroken at 977 / 1100 after 45 s. The first takes went through a stopped take's leftover in a second tab (two films interleaved); re-shot clean.
+
+**Verification:** duel `clashdance`, lord `clashdance`, changelogcheck, glyphcheck; full `npm test` before the PR;
+`npm run build`.
+
+**Open / next:** the owner's pick from the film (the default stays off until then) and the ring by ear in the
+preview (the film has no sound). With the deathblow merged, a dance-made break may come with fewer perfect parries
+banked, so the deathblow can be shorter. Next in P4: the Break finisher, cuts that split the letters, one answer per
+unblockable, a sub-weapon.
+
+---
+
+## 2026-11-27 — Bai Wuji round 3: the glide, a barrier that opens easier (branch `wj2/lead`; ADR-250)
+
+**Owner:** "the fight is pretty hard right now and takes forever to do damage to him. his animations and attacks
+also need to be much more improved. like his kicks and punches do not look natural and look off. he needs to be
+faster and cooler." Their answers: the barrier opens easier (hp near 20000, a good player in ~3 min);
+effortless, one-handed; film takes and they pick. They picked **b, the glide**.
+
+**What changed.**
+- `untouched/motion.js`: three hand-keyed takes behind `?wjMotion=0|a|b|c` (PICKED b; Lab LOOKS row). Why he
+  looked off: his realiser had no `keysOf`, so ADR-225's motion layer never reached him (bent knees at the
+  contact, Tian Lei's boxer fists, lunging strings). The hand layer (`poses.js` `wjHandsLayer`, `pilot.wjPin`)
+  keeps his hands in his pockets by phase.
+- `wjBarrier`: cracks 2, open 6 / 5 / 4.2 s (by cracks 5 / 4.2 / 3.4), cuts x2.5 while open
+  (`barrier.scaled`); hp 20000; patience after 20 s.
+- `bench.mjs`: the bots roll out of falling pieces as their cue comes, keep him in front, hold the guard for two
+  cues 0.3 s apart (the perfect bot's three hits under the glide were its own).
+- `WjMelee` counts the mercy stretch in real time (`game.realDt`; hit freezes held the hero 1.52 s in
+  `downtime` seed 7 while game time said 1.19 s) and counts a guard-emptying block as the open stagger;
+  `destructibles.js`: no falling piece on a downed hero.
+
+**Verification.** The bench (six seeds, take b): good 6 / 6 in 147 - 191 s, perfect 6 / 6 in 106 - 119 s
+untouched (12 seeds), blocker and pace dead. `veil.mjs . all` green; the full `npm test` before the PR.
+
+**Open.** The ordinary-parry band is about a frame since ADR-227, so cracks rarely open him (a wider window
+would touch every level: the owner's call). The ledger forgets a landed red (shared duelist code). Patience
+is slow on a pure defender (his blow lands in the opened guard ~1 in 10). Should x2.5 have its own hit mark?
+
+---
 
 ## 2026-11-26 — The flash chain, the new default (ADR-246; branch `player/issen-chain`)
 
@@ -433,6 +791,43 @@ the fight's busiest moments (the flurry on a staggered boss, the fox's twin fall
 script. **What:** BENCH (`perf.bench()`, a button): each step's share of the frame, the still map redrawn, the
 frame at ~0.7x pixels. Test: world `perfreadout`. **Next:** the owner's BENCH from a busy moment on fox and grove;
 then the step it names, cut at AUTO's floor, shown as options; AUTO's step hitch (the letter atlases rebuilt).
+
+## 2026-11-26 — The perfect parry's own streak: the deathblow (ADR-211; branch `claude/parry-riposte`, PR #145)
+
+**Owner:** "have perfect parry have its own streak animation/effect instead of using the perfect dodge one", with a
+reference clip of a sword-deflect chain; after the planted riposte: "riposte x3 / x7 ... doesn't seem as rewarding
+as the perfect dodge streak ... i also want the character to have to parry multiple sequences to get the reward".
+Picks (asked): posture break as the trigger, recoil + your own cut per string, a deathblow, separate counts; the
+chain grows "gently"; then "Yes, make it default".
+
+**Reference study.** Frames of the owner's clip at 30 fps through a headless Edge (CDP), a timing card of one
+deflect: an orange bloom at the contact 0.03 - 0.07 s, sparks spread and fall 0.2 - 0.3 s, stragglers to 0.5 s;
+contacts 0.30 - 0.35 s apart in a chain; the defender stays planted; the last deflect bigger, then the posture
+breaks. Our translation is smaller and calmer.
+
+**What.** `player/riposteCut.js` (`?parryRiposte=deathblow|planted|old`, default deathblow), `player/deathblow.js`
+(the finisher), `DEFENSE.riposteCut` / `DEFENSE.deathblow` (rules.js), `player.parryRun`, `combat/parrySparks.js`
+`?parryGrow=a|0` (default a: more sparks per tier, embers from tier 2 on the wind, a fire-field heat flash),
+flow.js skips the grade dip / flash / cold cast for a planted answer, the HUD's DEATHBLOW banner, the Lab's streak
+row (`riposte`, `parryGrow`), TRAINING: Deathblow x3 / x7 and the counter cut after a parried string. Built by
+three Sonnet subagents in worktrees (riposte, sparks, deathblow), merged and wired by the lead. Tests: duel
+`riposteplanted`, `parrygrow`, `deathblow`.
+
+**Verification.** Filmed at the game camera (headless Edge, `__tick`, ffmpeg; full frame + 3x inset): planted at
+streak 1 / 7, the deathblow at 3 and 7 (160 / 240 damage), the hero within 0.01 m of where he parried. The
+deathblow's thrust was a fully charged one and printed a large white blot at the tip: now uncharged (the tip's own
+small streak stays, as the shipped thrust has it).
+
+**Later rounds (same day).** The two-beat deathblow was turned down; the owner asked for "# of streak death
+blows" with a special effect per hit. Built by Sonnet subagents, filmed each round: N planted blows (13 moves) on a
+posture break or a blue-blow parry, a hit-pause per blow (~3 s for 7), the blade's real path into one straight cut
+on the body, blood (spray, wound, pools), four hit looks (`?dbfx`; Shatter Web picked), four sounds on an audition
+page (https://claude.ai/artifact/AiJ7MzqvymQrvzLZryLEfH; Flesh picked), a matrix look (`?dbmatrix`, skipped:
+off). The hero's own blade line is hidden during a combo (the owner: "huge slashes ... distracting"). The
+deathblow's fire-field heat was budgeted after it blew the phase-3 cap (4959 blobs).
+
+**Open.** The wyrm keeps today's flurry riposte. Played on the iPhone. `?dbmatrix` and the other looks / sounds
+can go if they stay unused.
 
 ## 2026-11-26 — The phone's frame: `?perf` on the device; the first break's upload and two spikes out (ADR-209; branch `perf/phone-spikes`)
 

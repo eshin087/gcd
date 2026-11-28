@@ -6,6 +6,7 @@ import { DUEL_WORLD, DUEL_MARK } from './worldTuning.js';
 import { CueLedger, throwsAt, glaiveHome } from './ledger.js';
 import { ATTACK_SOUND, beatSound } from './attackSound.js';
 import { answerOf, DODGE, prepareChoose, directWeight, booked, linkFor, linkUsable } from './director.js';
+import { newPin, pinAt, pinStep } from '../../../combat/contact.js';
 
 // ---------------------------------------------------------------------------------------------------
 // THE SECOND PASS: the director, the links, the cue ledger and the fairness guard. The API other
@@ -255,6 +256,8 @@ export class DuelBrain {
     this.clipT = 0;
     // the pose shown runs `off` s behind the clip (a parried blow held at the contact, setBack)
     this.back = { off: 0, t: 0 };
+    // the pose shown held where his blow met what it struck, then carried on (combat/contact.js: pinAt)
+    this.pin = newPin();
     // the guard raised over his footwork (0..1: poses.js blends the wardHold clip in) and how long
     // it stays up after a strike was met
     this.wardK = 0;
@@ -354,6 +357,7 @@ export class DuelBrain {
         if (d.mode === 'act') d.anim.play('duel', REBOUND.blend);
       }
     }
+    if (this.pin.pin) pinStep(this.pin, this.clipT, dt);
     // (the cue's spike on his body dies out in ~0.25 s; nothing glows through a windup: ADR-118)
     d.warn = Math.max(0, d.warn - dt * 6.4);
     this.zone = null;
@@ -754,6 +758,7 @@ export class DuelBrain {
     this.clip = clip;
     this.clipT = 0;
     this.back.off = this.back.t = 0;
+    this.pin.pin = false;
     this.d.anim.play('duel', blend, true);
   }
 
@@ -802,7 +807,15 @@ export class DuelBrain {
   /** The hero is parrying this blow (duelist.parryContact): the pose shown is held `off` s back on
    *  the strike, where the blade meets his guard; `rebound`: the blow is only deflected (the move
    *  goes on), so the blade is thrown back off the guard before the clip takes over again. */
+  /** CONTACT (combat/contact.js, ADR-259): the pose shown is held at clip time `tc` (where his blow met
+   *  what it struck), `hold` s more after the freeze, then catches up with the clip over `follow` s. */
+  pinAt(tc, hold, follow) {
+    if (!(tc >= 0)) return;
+    pinAt(this.pin, tc, this.clipT, hold, follow);
+  }
+
   setBack(off, rebound) {
+    this.pin.pin = false;
     this.back.off = Math.max(0, fin(off));
     this.back.t = rebound ? REBOUND.time : 0;
   }
@@ -849,6 +862,7 @@ export class DuelBrain {
     this.clip = null;
     this.clipT = 0;
     this.back.off = this.back.t = 0;
+    this.pin.pin = false;
     d.anim.play('loco', 0.18);
     if (this.pendingBreak) {
       this.pendingBreak = false;
@@ -1573,6 +1587,13 @@ export class DuelBrain {
       if (r > B) {
         tx *= B / r;
         tz *= B / r;
+      }
+      // `short` (m, opt-in): he lands that far short of the hero, so his blade, not his body, meets him
+      const sh = L.short ?? 0, gx = tx - J.x, gz = tz - J.z, D = Math.hypot(gx, gz);
+      if (sh > 0 && D > 1e-3) {
+        const f = Math.max(0.4 * D, D - sh) / D;
+        tx = J.x + gx * f;
+        tz = J.z + gz * f;
       }
       J.target.x = tx;
       J.target.z = tz;

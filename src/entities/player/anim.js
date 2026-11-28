@@ -497,8 +497,13 @@ function gaitParams(G, sp, sprintW) {
 import { runArm } from './runArms.js';
 // … and his sword arm on the run (ADR-204)
 import { runSword } from './runSword.js';
-const RSW = { h: [0, 0, 0], p: [0, 0, 0], d: [0, 0, -1], f: [0, 1, 0] };
+// … and his posture on the run (ADR-229)
+import { applyRunStyle, runStyle, runStyleArm } from './runStyle.js';
+const RSW = { h: [0, 0, 0], p: [0, 0, 0], d: [0, 0, -1], f: [0, 1, 0], open: 0 };
 export function loco(p, A) {
+  // (A.reachT: how much the sword arm reaches its full length in this clip's own pose, read by the
+  // solver through _swordOpen; only the clip's pose itself sets it, never a scratch pose)
+  if (p === A.target) A.reachT = 0;
   stand(p, A);
   const w = A.moveW;
   // (the sword lag outlasts moveW: dropping it at once snapped the last few % of the blade's
@@ -554,6 +559,8 @@ export function loco(p, A) {
   p[P.hdX] = lerp(p[P.hdX], 0.06 - (p[P.spX] + p[P.pelvX]) * 0.8 - 0.02 * st * runK, w);
   p[P.hdY] = lerp(p[P.hdY], -0.3 * (p[P.pelvY] + p[P.spY]), w);
   p[P.hdZ] = lerp(p[P.hdZ], 0.4 * A.bank, w);
+  // (ADR-229: the hero's run style, `?runStyle=`, over this posture: running forward only)
+  if (A.freeHand === true) applyRunStyle(p, P, runStyle(), w * smoothstep(0.2, 0.7, mz), runK, s, bob * st);
 
   // sword arm trailing: low behind the hip, blade back-down beside the right leg (run) → swept
   // back, blade nearly level (sprint); it bobs and swings a little with the stride. The sword
@@ -587,6 +594,8 @@ export function loco(p, A) {
   // the carry at ease (run → sprint): runSword.js's (ADR-204, `?runSword=`), or the one before ('old'); its
   // arm angles are against the torso's line, so it takes the lean set above
   const rs = hero && runSword(RSW, ph, armF, s, p[P.spX] + p[P.pelvX]), RH = RSW.h, RP = RSW.p, RD = RSW.d;
+  // (ADR-229: a straight trailing arm asks the solver for its full reach, as far as the carry shows)
+  if (rs && p === A.target) A.reachT = clamp(fin(RSW.open), 0, 1) * ws * (1 - bw) * (1 - fw);
   const h0 = rs ? RH[0] : lerp(-0.13, -0.15, s), h1 = rs ? RH[1] : lerp(-0.44, -0.37, s) + 0.02 * st, h2 = rs ? RH[2] : lerp(-0.08 + amp, -0.28 + amp * 0.6, s);
   to3(p, P.rH, lerp(lerp(h0, -0.02, bw), FR.h[0], fw), lerp(lerp(h1, -0.38 + 0.025 * st, bw), FR.h[1] + 0.022 * st, fw),
     lerp(lerp(h2, 0.3 + amp * 0.6, bw), FR.h[2] + amp * 0.5, fw), ws);
@@ -602,7 +611,7 @@ export function loco(p, A) {
   // free arm swings opposite the legs: ahead of the belt (run) → a pumping fist chin ↔ hip (sprint)
   const k = 0.5 - 0.5 * cs * armF; // 1 = fist forward
   // (ADR-187: the hero's free arm is runArms.js's, one of three carries, `?runArm=`; 'old' is this)
-  const ran = hero && runArm(p, P, A, ph, armF, s, runK, w, mz);
+  const ran = hero && runArm(p, P, A, ph, armF, s, runK, w, mz, runStyleArm());
   // (the run's back swing reaches further down and back, so the elbow opens behind him and folds as
   // the hand comes forward: it was one rigid 87° crook swinging from the shoulder)
   if (ran) {
@@ -1670,6 +1679,20 @@ function blockPose(p, A) {
   walkLegs(p, A);
 }
 
+/** CONTACT (combat/contact.js, ADR-259; ?contact=a): a guard nudged onto the blow it meets (`G`: the hero's
+ *  guardNudge on a block, a duelist pilot's on his ward: { x, y, z } body axes (x his left, z ahead), model
+ *  m, and k 0..1 easing off): the grip goes there, both hands if both are on it. On the pose as drawn. */
+function gripNudge(p, G) {
+  const gk = G ? smoothstep(0, 1, fin(G.k)) : 0;
+  if (!(gk > 0.001)) return;
+  const two = p[P.twoHand] > 0.5;
+  for (let c = 0; c < 3; c++) {
+    const d = fin(c === 0 ? G.x : c === 1 ? G.y : G.z) * gk;
+    p[P.rH + c] += d;
+    if (two) p[P.lH + c] += d;
+  }
+}
+
 // (the parry clip: deflectPose in the PLUNGE + DEFLECT block below)
 
 /** Ghostep: reappear crouched low behind the attacker, off hand braced on the ground, blade swept
@@ -2451,6 +2474,7 @@ function locoGuard(p, A) {
   idleLife(p, A);
   const g = clamp(fin(A.player?.guardHold), 0, 1);
   if (g < 0.001) return;
+  if (p === A.target) A.reachT = fin(A.reachT) * (1 - g);
   blockPose(SCR_GUARD, A);
   const ax = p[P.swD], ay = p[P.swD + 1], az = p[P.swD + 2];
   for (const i of GUARD_CH) p[i] += (SCR_GUARD[i] - p[i]) * g;
@@ -3138,6 +3162,7 @@ export class HeroAnimator {
     this.holdOff.x = this.holdOff.z = 0;
     this.hop.set = false;
     this.toeK = 0;
+    this.reachFrom = this._swordOpen(); // (the sword arm's reach fades with the pose: _swordOpen)
     this.from.set(this.cur);
     for (const i of ANGLES) this.from[i] = wrapAngle(this.from[i]); // a finished roll is 2π ≡ 0
     // how far round the body stood as this clip began (a whirl cut short): the reactions unwind it
@@ -3436,6 +3461,7 @@ export class HeroAnimator {
         break;
       }
     }
+    gripNudge(this.cur, this.player?.guardNudge); // (CONTACT: a guard nudged onto the blow it meets)
     this.apply(this.cur);
     this._coat(dt);
     this._hair(dt);
@@ -3520,6 +3546,13 @@ export class HeroAnimator {
     } else if (!old && this.key !== this.idleKey && this.idleKey === 'loco' && CUT_SLOW.has(this.key) && this.fightW < 0.05 && trailing(this) && this.blendT < this.blendDur) {
       // … and out of the trailing rest (its blade 170° round from a block's: in the block's 0.08 s the
       // point swept 1 m a frame). At ease only: in a fight he never trails the blade
+      this.blendDur = Math.max(this.blendDur, IDLES.cutFade);
+    } else if (this.key !== this.idleKey && this.idleKey === 'loco' && CUT_SLOW.has(this.key) && this.fightW < 0.05 && this.swordW > 0.3 && this.moveW > 0.3 && (this.from[P.swD + 2] < -0.35 || this.from[P.swD + 1] < -0.15) && this.blendT < this.blendDur) {
+      // … and out of the run with the blade trailing behind him or hanging low (runSword.js's carries, ADR-229,
+      // and `old`): in the block's 0.08 s the blade turned 75° in a frame, the point 1.2 m a frame² (pointing
+      // down and ahead, `g2`: 47 cm). Only out of the run (the sword's carry showing) and at ease, as the
+      // trailing rest's: the stand holds the blade low too (its block entries are the idle actions', HEROIDLES),
+      // and in a fight he runs in his guard (a longer block entry there sent the seeded wyrm fight another way)
       this.blendDur = Math.max(this.blendDur, IDLES.cutFade);
     }
     this.idleKey = this.key;
@@ -4493,6 +4526,16 @@ export class HeroAnimator {
     return _T;
   }
 
+  /** How far the sword arm reaches its full length (0 = the soft reach, ADR-044; 1 = straight as asked):
+   *  the loco clip's own value (A.reachT: the run's straight trailing arm, ADR-229) cross-faded like a
+   *  pose channel from where the last clip left it. */
+  _swordOpen() {
+    const tgt = this.key === 'loco' ? clamp(fin(this.reachT), 0, 1) : 0;
+    if (!(this.blendT < this.blendDur)) return tgt;
+    const u = clamp(this.blendT / this.blendDur, 0, 1);
+    return lerp(clamp(fin(this.reachFrom), 0, 1), tgt, this.easeOut ? smoothstep(0, ENTRY_EASE, u) : u * u * (3 - 2 * u));
+  }
+
   _arm(arm, T, p, pi, holdsSword, lock = 0) {
     _S.copy(arm.upper.position);
     if (T !== _T) _T.copy(T);
@@ -4512,11 +4555,13 @@ export class HeroAnimator {
       _v.subVectors(_T, _S);
       const d = _v.length();
       const capR = this.freeHand && arm === this.rig.arms.L ? LOCK_REACH : 1;
-      if (d > d0 && (lock < 1 || capR < 1)) {
+      // (the hero's sword arm may be asked for its full reach: a straight trailing arm on the run, ADR-229)
+      const full = holdsSword && this.freeHand ? Math.max(lock, this._swordOpen()) : lock;
+      if (d > d0 && (full < 1 || capR < 1)) {
         const span = (s1 - s0) * L;
         const d2 = d0 + span * (1 - Math.exp(-(d - d0) / span));
         const dl = capR < 1 ? Math.min(d, capR * L) : d;
-        _T.copy(_S).addScaledVector(_v, lerp(d2, dl, lock) / d);
+        _T.copy(_S).addScaledVector(_v, lerp(d2, dl, full) / d);
       }
     }
     // … and it never folds flatter than ARM_FOLD at the elbow: a hand asked for nearer its shoulder
