@@ -12,11 +12,11 @@ One hundred and thirty-nine pieces of work since 0.4.0:
   or both fists come down short so the heel and fists land on you, not him. Paper Rain ends on a backfist, so the
   uppercut is only ever the blue flare. Timings, tells and numbers unchanged. `?foxLimbs=0` / `?foxCues=0` play him as
   before.
-- **Bai Wuji's barrier shows itself when your blade hits it, and he goes down quicker** (2026-11-28, ADR-266). *Changed:* a cut that stops on Bai
+- **Bai Wuji's barrier shows where your blade hits it, and he goes down quicker** (2026-11-28, ADR-266). *Changed:* a cut that stops on Bai
   Wuji's barrier still takes a quarter of its damage off his bar (no stagger, never his last HP), its number shown
-  where the blade stopped; his health is 16000 (was 20000). *Added:* the barrier's silhouette lit from where the
-  blade hit it, three looks to try: `?wjStrike=a` (the shell's oval), `b` (its outline hugging him), `c` (outlines
-  rippling outward); without the parameter the ripple as before.
+  where the blade stopped; his health is 16000 (was 20000); every cut on the barrier shows a faint patch of it where
+  it landed, gone in a moment (`?wjStrike=0`: the ripple as before). *Removed:* the ring on the floor that counted
+  his barrier's opening down (`?wjSign=1` brings it back).
 - **The clash dance: parries in a row break him faster** (2026-11-27, ADR-247). *Changed (the owner's pick from the
   film):* against the human bosses, parries in a row inside one of his strings pay more posture each (x1, x1.25,
   x1.5, then x1.75); the run starts over when his string ends, when a blow lands on you, or after a pause. The

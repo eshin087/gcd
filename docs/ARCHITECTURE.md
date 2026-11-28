@@ -6281,9 +6281,10 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
   `weigh(name, def, w, dist) → w`, `onActStart(A) → false` (refused); every handler `frame(dt)`,
   `afterPose(dt, a)`, `stop()` (a reaction, a break, his death), `reset()`. A new move goes in its file, never in
   `moves.js`.
-- **THE STRIKE ON THE SHELL** (`fxStrike.js`, ADR-266; `?wjStrike=0|a|b|c`, PENDING): `WjFx.barrierStop` calls
-  `strikeStart(fx, fx._strikes, d, point, heavy)` (true: a look took the stop, no ripple) and `_wjUpdate` calls
-  `strikeUpdate`; b / c read his figure through `DuelFx._bodyPts` at the stop. `barrier._chip(o)` takes
+- **THE STRIKE ON THE SHELL** (`fxStrike.js`, ADR-266; `?wjStrike=0|a`, PICKED a): `WjFx.barrierStop` calls
+  `strikeStart(fx, fx._strikes, d, point, heavy)` (true: a patch took the stop and nothing else of it is drawn;
+  six at once, the oldest reused) and `_wjUpdate` calls `strikeUpdate` (a net of strokes on the shell's plane round
+  the point, one per letter cell through `fx._screen`). The open sign (`_openSign`) draws only with `?wjSign=1`. `barrier._chip(o)` takes
   `wjBarrier.chip` x a stopped cut off his bar through the engine's `_applyDamage` (never his last HP).
 - **THE MOTION TAKES** (`motion.js`, ADR-250; `?wjMotion=0|a|b|c`, PICKED b): `moves/melee.js` makes every melee
   move's `beats` / `recovery` live getters over `liveTakes(name, def)`; the take's beats carry `wjHands` ('R' /

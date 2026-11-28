@@ -122,12 +122,13 @@ export const PICKED = Object.freeze({
   wjMotion: 'b', // his melee motion: glide (the owner's pick of three takes, 2026-11-27; '0' = as first shipped)
   wjPolish: 'a', // his motion audit's fixes: kick returns, straight blows on the line (the owner's pick, 2026-11-27, ADR-255)
   wjCastHand: 'a', // phase 1's casting hand out of its pocket for the whole cast (the owner's pick, 2026-11-27, ADR-255; 0 / b the others)
+  wjStrike: 'a', // a cut on his barrier: a faint patch of the shell where it landed (the owner's own description, 2026-11-28, ADR-266; 0 the ripple)
 });
 
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['wjStrike', 'foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
 
 const fromUrl = new Map();
 const forced = new Map();

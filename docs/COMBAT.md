@@ -3037,10 +3037,11 @@ The hero's flurry, the flash counter and the execution pass (`exact`). It OPENS:
 - by cracks: each ordinary parry adds one, two open it for 5 / 4.2 / 3.4 s; they fade after 9 s without a
   new one.
 While it stands, a cut stopped on it still takes x0.25 of its damage off his bar (`wjBarrier.chip`, ADR-266;
-no stagger, no posture, never his last HP; the number prints where the blade stopped).
+no stagger, no posture, never his last HP; the number prints where the blade stopped). Every stop shows a faint
+patch of the shell where it landed (`?wjStrike`, STYLE.md).
 While it is open every cut of the hero's that is not `exact` deals x2.5 (`wjBarrier.openDamage`,
 `barrier.scaled`; no mark of its own: the open ring and the numbers read it).
-Open, a ring on the floor runs out with the time left and blinks in its last 0.5 s; it closes on the timer,
+Open, it shows no floor sign (ADR-266: the owner took the ring off; `?wjSign=1` draws it); it closes on the timer,
 never while a cut that landed is still in its active frames. Two strikes on the shell inside 2.2 s bring his
 counter (Not Even Close). The first cut that lands through an open barrier surprises him (once a fight).
 
