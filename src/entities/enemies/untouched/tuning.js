@@ -15,10 +15,11 @@ import { TUNING_TERRAIN } from './tuningTerrain.js';
 
 export const TUNING = {
   name: 'BAI WUJI, THE UNTOUCHED',
-  // the bar (the tuning pass, tests/integration/bench.mjs, god mode off, six seeds): 26000 puts the perfect
-  // answerer's fight at 234 - 245 s (20000: 176 - 186 s) and the fencing bot that answers 90 % of his cues
-  // at 2 wins in 6, in 260 - 272 s (20000 with the rest as before: 3 in 6, 184 - 209 s)
-  hp: 26000,
+  // the bar. Round 3 (the owner after playing: "takes forever to do damage to him"; their answer, "the
+  // barrier opens easier", hp back near 20000; a good player wins in about three minutes): 26000 -> 20000
+  // with wjBarrier's cracks 2, longer openings and openDamage (bench.mjs, six seeds, the table in
+  // ADR-250). Round 2: 26000 put the perfect answerer at 234 - 245 s and the fencing bot at 2 wins in 6.
+  hp: 20000,
   // one bar, three phases: 66 % THE BLINDFOLD COMES OFF, 30 % THE MEASURELESS
   phaseAt: [1, 0.66, 0.3],
   radius: 0.45,
@@ -106,9 +107,19 @@ export const TUNING = {
   wjBarrier: {
     // the shell: this much off his body's hurt spheres (a hand's width): the blade stops there
     shell: 0.14,
-    open: [4.0, 3.2, 2.6], // s open after a perfect parry / a perfect dodge of any blow of his
-    cracks: 4, // ordinary parries that open it (0: off; the tuning pass: 3 before, the fencing bot opened it mostly by cracks)
-    openCracked: [2.4, 2.0, 1.6], // s open by cracks
+    // (round 3: 4.0 / 3.2 / 2.6 before; the good bot's openings are mostly perfects and cracks: longer than
+    // this measured no faster, 7 / 6 / 5 s with 6 / 5 / 4 by cracks: 201 - 217 s)
+    open: [6, 5, 4.2], // s open after a perfect parry / a perfect dodge of any blow of his
+    cracks: 2, // ordinary parries that open it (0: off; the owner, round 3: two; 4 before, 3 at first)
+    openCracked: [5, 4.2, 3.4], // s open by cracks (2.4 / 2.0 / 1.6 before)
+    // x the damage of every cut of the hero's that is not exact while it is open (barrier.scaled; round 3:
+    // the owner's "the hero's cuts hit harder while it is open"; no new mark: the open ring and the damage
+    // numbers read it). Round 3: 1.3: the good bot 241 - 249 s; 1.6: 195 - 240 s; 2: 179 - 211 s; 2.2 shipped.
+    // Round 3b (take b, the glide, his default: faster strings out of blinks): 2.2 gave the good bot 2 wins
+    // in 6 (159 - 173 s, its deaths with 3 - 30 % of his bar left); 2.35: 4 in 6, 153 - 199 s; 2.5: 6 in 6,
+    // 147 / 166 / 191 s, the perfect bot 106 - 119 s untouched; hp 18000 at 2.2: 3 in 6; longer openings by
+    // cracks (6 / 5 / 4): no change (the good bot opens him by cracks 1 - 3 times a fight)
+    openDamage: 2.5,
     crackFade: 9, // s without a new crack: the cracks are gone
     // the stop on the hero's side: he is thrown back off the shell by this much (player.onGuarded push)
     push: 0.9,
@@ -154,7 +165,11 @@ export const TUNING = {
   // it alive in every seed; after 20: dead in 102 - 383 s; after 30: 201 - 525 s (mean 363); after 40: 83 -
   // 518 s. guardCost 0.7 (two blocks): alive in every seed. (His later phases' moves picked early were tried as
   // the press: they made him easier to wait out.) No other bot goes 20 s without reaching him.
-  wjPatience: { after: 30, cue: 1.2, guardCost: 1 },
+  // Round 3b (take b, the glide): after 30 the pace defender lived out 600 s on one seed of six (588 s; the
+  // others 53 - 575 s); after 25: one alive too; after 20: dead in all six, 95 - 553 s (mean 325). A hero who
+  // fights is never 20 s without reaching him (the bench's bots: 13 s at most). Why it is slow even so: one
+  // block knocks the guard open, but his next blow lands in the opening about one time in ten.
+  wjPatience: { after: 20, cue: 1.2, guardCost: 1 },
 
   // ---- the beam's drawing borrows Tian Lei's (fxBeam.js reads d.T.beam.look)
   beam: { ...BEAM_TUNING },

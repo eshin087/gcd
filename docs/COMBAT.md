@@ -2958,7 +2958,7 @@ wyrmanatomy`; `GCD_LOOKS=wyrmStrike=a` for the pass, `GCD_MOVES=` a list, `GCD_T
 ## Bai Wuji (2026-11-26, ADR-241; `?level=veil`)
 
 Bai Wuji, the Untouched: a tall, relaxed man in a bone-white coat, his eyes covered, his hands in his pockets,
-BARE-HANDED (untouched/; Tian Lei's strike builders). One health bar (26000), three phases at 66 % (THE
+BARE-HANDED (untouched/; Tian Lei's strike builders). One health bar (20000; 26000 before ADR-250), three phases at 66 % (THE
 BLINDFOLD COMES OFF) and 30 % (THE MEASURELESS). Tian Lei's minimums: `flashLead` 0.26, first windups at
 least 0.40 s, hits 0.34 s apart at least; `windupScale` [1, 0.92, 0.84], `recoveryScale` [0.8, 0.7, 0.64];
 posture [1000, 1150, 1300]; `damageScale` 1.54 (35 - 60 % over Halcyon's for the same kind of blow); the
@@ -2968,10 +2968,12 @@ barrier, never by a blow without a cue.
 **The barrier.** While it stands his hurt spheres grow by 0.14 m and the hero's blade stops there: no health,
 no posture, a short bounce (0.9 m) he may cancel with a guard or a roll at once; a ripple where it stopped.
 The hero's flurry, the flash counter and the execution pass (`exact`). It OPENS:
-- on a PERFECT parry or a PERFECT dodge of any blow of his: at once, 4.0 / 3.2 / 2.6 s by phase;
+- on a PERFECT parry or a PERFECT dodge of any blow of his: at once, 6 / 5 / 4.2 s by phase (ADR-250);
 - on the flash counter, and on a posture break (open through the break);
-- by cracks: each ordinary parry adds one, four open it for 2.4 / 2.0 / 1.6 s; they fade after 9 s without a
+- by cracks: each ordinary parry adds one, two open it for 5 / 4.2 / 3.4 s; they fade after 9 s without a
   new one.
+While it is open every cut of the hero's that is not `exact` deals x2.5 (`wjBarrier.openDamage`,
+`barrier.scaled`; no mark of its own: the open ring and the numbers read it).
 Open, a ring on the floor runs out with the time left and blinks in its last 0.5 s; it closes on the timer,
 never while a cut that landed is still in its active frames. Two strikes on the shell inside 2.2 s bring his
 counter (Not Even Close). The first cut that lands through an open barrier surprises him (once a fight).
@@ -2985,12 +2987,12 @@ puts back 27 between). His strings follow the slide (a step-in of up to 4.6 m or
 windup).
 
 **Patience.** He waits for the hero to come to him (the owner: a defender who never attacks must not outlast
-him). If no cut of the hero's has reached him for 30 s (a cut that lands, one stopped on the barrier, the
+him). If no cut of the hero's has reached him for 20 s (a cut that lands, one stopped on the barrier, the
 flurry), with the fight on and him himself (not in a transition, a break or the domain's hold), he STOPS
 WAITING: one cue, his eyes burning 1.2 s (through the band in phase 1 too) and the unveiling's sound; then,
 until a cut reaches him again, every blocked blow costs the whole guard meter (one block opens the guard).
 Every blow keeps its tell and its windup, a block still costs no health, the mercy rules hold. A hero who
-fights never sees it (`untouched/patience.js`, `TUNING.wjPatience { after 30, cue 1.2, guardCost 1 }`).
+fights never sees it (`untouched/patience.js`, `TUNING.wjPatience { after 20, cue 1.2, guardCost 1 }`; 30 before ADR-250).
 
 **Spells cannot be blocked.** Azure Draw's collapse, Crimson Cast's burst, the Wrecking Knot and the Null are
 RED (roll, or leave the place: each is fixed before it fires); a piece he throws and the Yank's fist are BLUE.
@@ -3007,7 +3009,8 @@ are his weapons), and his death brings the crossing back.
 
 **Mercy.** No blow, spell or falling piece of his reaches a hero who is down: a beat that would becomes a
 silent feint. A beat that would keep the hero out of his own hands longer than 1.2 s in a row is not thrown
-(0.2 s free ends the row). The domain's hold is capped at 1.2 s (`Player.hold`). Nothing else reaches a held
+(0.2 s free ends the row; counted in real time, so a hit's freeze counts; a blocked blow that would empty the
+guard meter counts as the open stagger, `GUARD.openDur`). The domain's hold is capped at 1.2 s (`Player.hold`). Nothing else reaches a held
 hero.
 
 ### His moves (N white, B blue, R red; `+` a flare; windups at phase 1; damage before x1.54)
@@ -3057,6 +3060,36 @@ at least; more likely when the hero is far or has been guarding.
   fixed); the hair falls, the eyes kindle blue; a burst from where he stands throws the hero 7 m (no damage,
   blockable, block push 4) and flattens what stands within 8 m.
 - **The Measureless (30 %)**: the domain, above.
+
+**His motion (ADR-250).** `?wjMotion=b`, the glide (the owner's pick; `0` as first shipped, `a` pocket kicks,
+`c` turned away; `untouched/motion.js`): normal blows snap out of the stance (windups cut toward the engine's
+floors), blue / red ones hold a readable pose from 0.28 of the windup, recoveries x0.66, every later beat of a
+string out of a short blink round the hero (his flank, behind, the other flank). His hands stay in his pockets
+unless the blow uses them: both in phase 1, the left in phase 2, none in phase 3. The table's windups are the
+take '0''s; the take's floors are checked by `veil.mjs` MOTION.
+
+**His motion audit (ADR-255, 2026-11-27).** Measured on the rig (`veil.mjs . anatomy`: every blow's limb at its
+contact, an arm's line to the hero, the largest one-frame jump), over the glide. Kicks land straight (knee 166 -
+175 deg at the contact; 107 - 132 before round 3); straight hand blows land open (elbow 152 - 169 deg). Two
+fixes, `?wjPolish=a` (the owner's pick; `0` = round 3 as built; no tell, timing, zone or damage moves):
+- **On the line.** The palm, the poke, Dark Spark's fist and the Yank's fist crossed past his centreline at the
+  contact, 12 - 31 deg off the line from his shoulder to the hero's chest (Dark Spark's fist passed the hero by
+  most of a metre): now 1 - 10 deg.
+- **The kick's return.** Inside a string the leg held its contact pose dead still, then snapped back to the
+  chamber in the last frames of a ~0.15 s follow-through (a 0.51 m one-frame jump in Three Count): now a moving
+  hold that eases into the chamber (0.34 m; what is left is the snap of the strike itself, the glide's pace).
+- **The casting hand** (`?wjCastHand=0|a|b`; the owner picked `a`): round 3's hand layer kept the right hand in its pocket through
+  phase 1's Azure Draw and the Yank, so the Draw had no gesture and the Yank's BLUE fist (the parry cue) glinted
+  inside a pocket. `a` brings the hand out for the whole cast (the finger raised, the reach, the fist on the line);
+  `b` only for the pull and the flick at the end; `0` keeps it in. Curb Pull stays hands-in-pockets by design.
+Measured, not changed: every blow faces the hero at its contact (0 deg off); the cast poses of phases 2 - 3 point
+at their spell (Crimson Cast 14, Point Blank 13, the Null 6, the Draw's flick 1 deg); a stop on the barrier draws
+no reaction from his body (the shell's ripple and the hero's bounce carry it: he is untouched by design).
+
+### The numbers measured, round 3 (the glide, 2026-11-27, ADR-250)
+Six seeds, god mode off, 600 s cap: the good bot 6 of 6 in 147 / 166 / 191 s (open 51 s a minute); the perfect
+answerer 6 in 106 - 119 s, no hit taken; fencing 3; the roller 4, in 167 - 191 s; the blocker dead at 39 s; the
+pace defender dead in all six, 95 - 553 s. DOWNTIME: the longest stretch out of his hands 1.43 s.
 
 ### The numbers measured (the bench, `veil.mjs . bench`, 2026-11-26, round 2)
 Six seeds, god mode off, 600 s cap (wins of 6): the perfect answerer 6, in 229 - 241 s, no hit taken; the

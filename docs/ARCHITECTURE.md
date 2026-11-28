@@ -639,7 +639,11 @@ Render helpers for creature modules:
   with each pipeline step left out (shadows, world, hero see-through, fire field, letters, effects, glow: the
   step's draws skipped by wrapping `renderer.render`), the still shadow map redrawn every frame, then at ~0.7x
   the device pixels and back through `applyQuality`; the results go in the report. A new pipeline pass gets a
-  line in its `is` table.
+  line in its `is` table. AUTO BENCH (ADR-261,
+  `AUTO_BENCH`; `?perf=manual` turns it off): in a fight (`game.state === 'boss'`) BENCH runs by itself
+  `firstAt` (8) s in, then on a slow burst (6 of the last 30 frames over 20 ms), 10 s apart, 4 in all, a
+  lighter one (k 3, 2 readings); each bench records why it ran, AUTO's step and whether the lite world is
+  on, and the frame after it (its freeze) is not recorded.
   BENCH also reads the LIVING WORLD in one extra reading (ADR-245): every batch `ship` has marked
   `userData.lifeBatch`, the wind (`uWind` 0), the step flash and the wake left out together; the report
   prints it as its own line (it overlaps the steps above) and everything is put back. The lamps' flames
@@ -6237,13 +6241,14 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
 - **The rules are objects on the actor**, stepped from `brainFrame`:
   `d.barrier` (THE UNREACHED: `takeHit` asks `barrier.stops(o)` first, every result of `d.hitPlayer` goes to
   `barrier.answer(r, o)`, a posture break and `onCounter` open it; its hurt spheres grow by `wjBarrier.shell`
-  while up; surface `up`, `cracks`, `openT`, `openDur`, `why`, `stats`, `open(why, dur)`, `close()`, `crack()`),
+  while up; surface `up`, `cracks`, `openT`, `openDur`, `why`, `stats`, `open(why, dur)`, `close()`, `crack()`,
+  `scaled(o)`: the hero's cut with `wjBarrier.openDamage` on it while open, `takeHit` after the stops; ADR-250),
   `d.pull` (Draw's knots: `add({ x, z, strength, r, life, falloff })` → a knot record the caller may move or end,
   `drift(x, z, out)`, `live`, `knots`; the drift is added to `player.kb`; nothing drags a hero who is down, rolling,
   held or in a move of his own), `d.domain` (the P2 → P3 transition: `state` 'off' | 'sign' | 'closing' | 'held' |
   'inside', `inVoid`, `holding`, `escape()`, `caught()`, `toVoid()`, `breakVoid()`), `d.patience` (patience.js,
   ADR-243: `idle` s since a cut of the hero's reached him, `impatient`, `cueK`, `stats { turns, touches }`;
-  `takeHit` calls `touch()`; after `TUNING.wjPatience.after` 30 s it turns once (his eyes through `fx.eyes` for
+  `takeHit` calls `touch()`; after `TUNING.wjPatience.after` 20 s it turns once (his eyes through `fx.eyes` for
   `cue` s, the sound `dragon:spell` 'wjUnveil'; no event of its own) and `_weighted` makes every blocked blow cost
   at least `guardCost` of the meter until a cut reaches him; the clock stops in a transition, a break, the
   domain's hold, or with the hero down), `d.fx` (`WjFx`; its head lists every method, per frame or once).
@@ -6257,6 +6262,11 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
   `weigh(name, def, w, dist) → w`, `onActStart(A) → false` (refused); every handler `frame(dt)`,
   `afterPose(dt, a)`, `stop()` (a reaction, a break, his death), `reset()`. A new move goes in its file, never in
   `moves.js`.
+- **THE MOTION TAKES** (`motion.js`, ADR-250; `?wjMotion=0|a|b|c`, PICKED b): `moves/melee.js` makes every melee
+  move's `beats` / `recovery` live getters over `liveTakes(name, def)`; the take's beats carry `wjHands` ('R' /
+  'L' / 'RL': the hands the blow uses) and `wjBlink.near` (a later beat blinks only when the hero is further). `WjMelee`
+  eases `pilot.wjPin { R, L }` (0..1, the hands kept in his pockets) and `poses.js` `wjHandsLayer` puts them there
+  over the duel clip. `wjMotionNow()` reads the switch. `WjMelee` also counts THE MERCY's stretch in `game.realDt`.
 - **Core's beat fields** (untouched.js): `wjBlink` (`{ behind: m } | { at: rad, r } | { side: ±1, r }` [, `u`]:
   he vanishes and is there late in the windup; a blow out of a blink holds from any side, `around`), `wjCrash`
   (`false | power`: by default every throw of `wjCrash.minKb` 3 m or more crashes), `wjMoment` ('unveil': the

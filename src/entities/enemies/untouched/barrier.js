@@ -13,7 +13,9 @@ import { perPhase } from './tuning.js';
 //   - on a posture break, and stays open through it;
 //   - by cracks: every ordinary parry adds one; `cracks` of them open it for openCracked[phase] s;
 //     they fade after `crackFade` s without a new one (`cracks: 0` turns cracks off).
-// While open he is hit like any duelist. It closes on the timer, never while a cut of the hero's that
+// While open he is hit like any duelist, harder: every cut of the hero's that is not `exact` deals
+// `openDamage` x its damage (the tuning pass, round 3: the owner's "the barrier opens easier"; no new mark:
+// the open ring on the floor is the sign, and the damage numbers read it). It closes on the timer, never while a cut of the hero's that
 // already landed is still in its active frames.
 // Two strikes on the shell in a row (within counterWindow s) and he answers with his counter.
 //
@@ -25,6 +27,7 @@ import { perPhase } from './tuning.js';
 //   barrier.why         what opened it last ('parry' | 'dodge' | 'cracks' | 'break' | 'counter' | 'domain' | 'debug')
 //   barrier.stats       { stops, cracks, opens: { why: n }, closes, passed }
 //   barrier.stops(o)    from Untouched.takeHit: true = the blade stopped on the shell (deal nothing)
+//   barrier.scaled(o)   from Untouched.takeHit, after stops: the cut with openDamage on it while open (o itself otherwise)
 //   barrier.answer(r, o)   from Untouched.hitPlayer: the hero's answer to one of his blows
 //   barrier.open(why, dur) / close() / crack()    (the domain, the Lab)
 //   barrier.frame(dt), reset()
@@ -136,6 +139,13 @@ export class Barrier {
       if (mv) d.brain.startAct(mv);
     }
     return true;
+  }
+
+  /** The hero's cut while it is open: `openDamage` x its damage (an exact hit, or it standing: o as it is). */
+  scaled(o) {
+    const k = Number(this.T.openDamage);
+    if (this.up || !o || o.exact || !(Number(o.damage) > 0) || !Number.isFinite(k) || k === 1 || !(k > 0)) return o;
+    return { ...o, damage: Number(o.damage) * k };
   }
 
   /** The hero's answer to a blow of his (Untouched.hitPlayer, after the engine's). */
