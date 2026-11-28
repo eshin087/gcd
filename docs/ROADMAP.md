@@ -1013,6 +1013,8 @@ The first of the changes from the genre review (owner: "lets implement your sugg
 - [x] The shaped step; the hips and chest lead the cut; bow stances; the edge bites; planted feet pivot and follow; the whirl hops (ADR-087)
 - [x] A cut drawn where it lands: the slash line, sparks along the cut, the flare and glint, the kick, the punch, the cut sound, the shudder (ADR-088)
 - [x] Three outfits (and their faces in shadow) and three sword looks behind `?heroLook=` / `?sword=`, with sheets for the owner (ADR-089)
+- [x] The hooded costume (COSTUME REFERENCE / 11) behind `?heroLook=hooded` (ADR-290)
+- [ ] The owner's pick of the hooded costume; if picked, it becomes `DEFAULT_LOADOUT`
 - [x] Fixed: a hero rebuild wiped a boss's own part ink
 - [x] The owner's call on the looks: today's look and sword stay the default; the three outfits and three sword looks are kept behind their switches for later (ADR-090)
 - [x] After the first preview: a fist that reads as a hand; the charged blade clear of his hood; arms that open at contact, elbows in on the run, arms that swing in a strafe (ADR-090)

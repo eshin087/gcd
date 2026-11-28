@@ -696,6 +696,26 @@ close-in carries his root under a planted foot.
 
 ---
 
+## 2026-11-28 — gcd in the hooded costume, behind `?heroLook=hooded` (ADR-290; branch `player/costume-ref11`, draft)
+
+**Owner:** sent COSTUME REFERENCE / 11 and asked to remake gcd's appearance after it, keeping today's sword, the
+cloak's worn lower colouring and its wind movement, the old look selectable, a held review PR, no deploy. Mid-task
+(relayed from another session): skip the full comparison-film batch, push a preview to try in the browser.
+
+- **Built:** `gear/hooded.js` (hood, tunic + silver belt + jade inset, arms with silver gauntlets, legs with plated
+  boots, the robe, the cowl + clasp + shoulder drape + long back cloak with the silver glyph line), the look
+  `hooded` in `gear/looks.js`, `model.js` `LOOK_ONLY_MATS` (`silver`, `jade`; `createHeroMaterials(U, { extra })`,
+  `buildHero` resolves the loadout first), an item's `mats` field (gear/README.md).
+- **Clearance:** the first cloak (no `inMax`) was in his body on 24 % of the route's frames; `inMax` on the back sheets
+  and the drape brought it to 2.1 % (today's cloak: 30 %); `floor` and spring segments as long as today's cloak's kept
+  the tips off the grass as he rises from a roll.
+- **Checked:** `integ looks` (new `hooded` checks), close-ups (six sides, the hood, both hands in ASCII and solid), the
+  game camera at 1440p from 8 sides, a brighter silver chosen from four fills at the game camera, seven short clips
+  today | hooded side by side (the same poses frame for frame: timing unchanged).
+- **Open / next:** the owner's verdict from the preview. Then the default (and the tests and the cost baseline that go
+  with it). Not matched: the cloth's woven texture and the gloves' engraving (below the letter size); the sword-hand
+  fingers read as plates round the grip up close.
+
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
 
 **Owner:** picked "the clash dance" as the second of the five P4 combat additions (after the flash chain), in its

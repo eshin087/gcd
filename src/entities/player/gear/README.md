@@ -26,6 +26,7 @@ buildHero(U, {});                                         // the plain undersuit
 | `sheet.js` | `hangSheet(ctx, parent, d, mats)`: one cloth sheet or ribbon on the streamer springs, from data; `panelSkirt(ctx, PANELS, { seed })`: a skirt of coat panels on the pelvis |
 | `looks.js` | the outfit options (kept for later use: the owner, 2026-11-14, keeps today's look as the default): `HERO_LOOKS` (id → `{ id, name, loadout, tint, of? }`; each new look also as `<id>-shade`, its face in shadow, `of` = the lit look), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
 | `moon.js`, `swallow.js`, `warden.js` | the three outfit options' items, loadouts (`MOON_LOADOUT`, ...) and colours (`MOON_TINT`, ...): the Moonlit Robe, the Swallow, the Moon Warden |
+| `hooded.js` | the Hooded set (COSTUME REFERENCE / 11, ADR-290; `?heroLook=hooded`): `HOODED_ITEMS`, `HOODED_LOADOUT`, `HOODED_SHEETS` (the long back cloak and the shoulder drape on today's cloak springs, with `inMax` / `floor` clearance), `ROBE_PANELS`; silver gauntlets (`gauntletGrip` round today's grip, `gauntletFist` on `fistHand`) |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |
 
@@ -103,6 +104,10 @@ torso surface.
   add with `userData.slot`, which is how the rig knows what belongs to your slot.
 - `slot`, `item`: the slot being built and the item itself (for an item's own data, like a
   weapon's `dims`).
+
+An item may list `mats: ['silver', ...]`: hero materials only an outfit option draws (`model.js`
+`LOOK_ONLY_MATS`). They are built only for a rig that wears such an item (`M.silver` is undefined
+otherwise: fall back, `M.silver ?? M.trim`), so the default rig and the seeded tests are unchanged.
 
 Axes: the hero faces +Z, Y is up, his RIGHT is −X. Limb joints point down −Y: the upper arm runs
 from `y = 0` to `−DIM.upperArm`, the forearm to `−DIM.foreArm` (the grip centre), the thigh to
