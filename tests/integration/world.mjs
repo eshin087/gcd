@@ -1152,6 +1152,9 @@ const S = {
 
   // ---------------------------------------------------------------- wreckage stays, stops nothing, sinks at the cap
   wreck() {
+    // (from a known point of the break stream: what the felled trunk does is drawn from it, and where the
+    // scenarios before left it decided whether the check below passed: green on one PR, red on the next)
+    reseedBreaks(0x51ed);
     const { D, world, game, colliders, step } = build();
     const t = D.list.find((b) => b.kind === 'deadTree' && !b.wall);
     const n0 = colliders.circles.length;
@@ -1160,7 +1163,9 @@ const S = {
     D.topple(t, 1, 0, 'boss');
     step(2);
     const e = D.wreck.live.find((w) => w.kind === 0);
-    assert(e && e.on && e.mesh.visible && t.stub.visible && Math.abs(e.x - t.x) < 1 && e.dx > 0.99, `a felled tree's trunk lies along its fall (${e?.len.toFixed(1)} m, from its stump)`);
+    // (it lands turned off its fall by up to the blow's own `yaw`, BREAK.fell, by design: ADR-128)
+    const yawMax = (BREAK.fell[t.fk] ?? BREAK.fell.blunt).yaw;
+    assert(e && e.on && e.mesh.visible && t.stub.visible && Math.abs(e.x - t.x) < 1 && e.dx >= Math.cos(yawMax) - 0.005, `a felled tree's trunk lies along its fall, turned at most its blow's ${yawMax} rad (${e?.len.toFixed(1)} m from its stump, ${(Math.acos(Math.min(1, e?.dx ?? 0)) || 0).toFixed(2)} rad off)`);
     assert(colliders.circles.length === n0, `its wreckage adds no collider (${n0 - t.colliders.length + 1} circles: the stump's only)`);
     const mx = e.x + e.dx * e.len * 0.6, mz = e.z + e.dz * e.len * 0.6;
     const pos = new THREE.Vector3(mx, 0, mz);
