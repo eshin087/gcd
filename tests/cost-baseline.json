@@ -160,5 +160,23 @@
     "breakables": 299,
     "colliders": 101,
     "geoMB": 34.42
+  },
+  "foundry": {
+    "meshes": 4,
+    "tris": 33596,
+    "shadowTris": 33596,
+    "bones": 202,
+    "breakables": 443,
+    "colliders": 34,
+    "geoMB": 21.11
+  },
+  "foundry@phone": {
+    "meshes": 4,
+    "tris": 33596,
+    "shadowTris": 33596,
+    "bones": 202,
+    "breakables": 443,
+    "colliders": 34,
+    "geoMB": 21.11
   }
 }
