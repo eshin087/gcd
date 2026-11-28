@@ -26,7 +26,7 @@ import { sfxMode, setSfxMode, chainMode, setChainMode, CHAIN_MODES } from '../au
 import { PARRY_CHAIN } from '../audio/parryChain.js';
 import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
-import { SLASH_IDS, slashMode, setSlash } from '../entities/player/slashFx.js';
+import { SLASH_IDS, slashMode, setSlash, SOFT_IDS, softMode, setSoft } from '../entities/player/slashFx.js';
 import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
 import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combos.js';
@@ -1483,6 +1483,7 @@ export class Lab {
     // ?offhand=side|back|quiet), live
     for (const [lbl, ids, set, key, tip, name] of [
       ['slash', SLASH_IDS, setSlash, 'slashBtns', "every swing's mark: line = the instant straight slash, arc = the curved crescent as before (?slash=arc)", (m) => m],
+      ['slashSoft', SOFT_IDS, setSoft, 'softBtns', "how soft the instant slash is: today = the line as it was, a gentle, b soft (the default), c a whisper: thinner, dimmer, shorter-lived and shorter at each step (?slashSoft=)", (m) => (m === '0' ? 'today' : m)],
       ['combo', COMBO_IDS, setCombo, 'comboBtns', 'four light combos for the ending slash: prod = as it ships, a Iai, b Tempest, c Mountain, d Dancer (each with its feel and its free hand) (?combo=)', (m) => (m === '0' ? 'prod' : `${m} ${COMBOS[m].name}`)],
       ['counter', COUNTER_IDS, setCounterMode, 'counterBtns', 'the flash counter: chain (the default) = he strikes back after each one, three in a row and he reels; old = it ends his string and he reels at once (?counter=0)', (m) => (m === '0' ? 'old' : m)],
       ['endslash', PLACE_IDS, setPlace, 'placeBtns', "where the ending slash is drawn: target = ahead of him where the foe stands, body = across him, enemy = across what it hit, blade = along the blade's path (?endslash=)", (m) => m],
@@ -1616,6 +1617,7 @@ export class Lab {
     }
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     for (const { m, el: b } of this.ui.slashBtns ?? []) setClass(b, 'on', slashMode() === m);
+    for (const { m, el: b } of this.ui.softBtns ?? []) setClass(b, 'on', softMode() === m);
     for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
     for (const { m, el: b } of this.ui.feelBtns ?? []) setClass(b, 'on', feelMode() === m);
     for (const { m, el: b } of this.ui.comboBtns ?? []) setClass(b, 'on', comboMode() === m);
