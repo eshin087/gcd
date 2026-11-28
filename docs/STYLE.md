@@ -712,6 +712,37 @@ grid. Now (`render/fireField.js`, `render/firePalettes.js`):
   down with the zoom the fire's letters do too. Its tongues are counted in cells, so at a smaller
   step they are smaller; not yet looked at in phase 3.
 
+### The blackout, the red trail and the black impact (2026-11-27, ADR-271)
+The owner's Phantom Blade Zero reference (a boss fight, 2026-11-27). The owner picked from the films: the
+blackout **b** and the red trail **a** are the defaults (`?black=0`, `?redTrail=0`: the looks before).
+- **The blackout (`?black=a|b|c`, `combat/blackout.js`).** The one place a background's colour changes
+  for a tell, and only for a BLACK blow (the owner's exception to "no background colour change"): as a
+  boss charges it, the whole picture drains toward dark grey and dims; the boss keeps his colours and
+  light, a white point sits on the striking part, the black flare is a white-hot streak in the dark,
+  and colour snaps back on the strike (0.08 s, real time: a hit-stop must not hold it half dark). In
+  the final pass (`uBlack`, `uBlackK`, `uBlackKeep`): the world's colour drains (`grey`) and its light
+  drops to 1 - `depth`; a body is found on the scene's ASCII flag (the creatures' codes, the hero's
+  window, a human boss's ink, the wyrm's art), spread by `reach` of a letter cell so the letters round
+  it are its own, and kept whole (the boss) or `hero` of it (the hero, readable but not the subject);
+  a letter brighter than `keep` keeps its light (the flare, the glint), only its colour drains. The
+  HUD is DOM and is not touched. The violet goes in it: no eclipse, no violet strokes, no dye, no
+  darkened body, no dark screen edges (`TELL_STYLE.black.pale`). Variants, one dimension apart from
+  `a`: **a** the film (the dark drops in over the last 0.3 s before the cue), **b** the dark builds
+  through the whole ~1.5 s charge, **c** as a, darker (depth 0.93 against 0.78). Numbers:
+  `TELL_STYLE.black.out` (`rules.js`).
+- **The red trail (`?redTrail=a|b`, `combat/redTrail.js`).** From a red blow's flare to just past its
+  impact, a blade's cut (`DuelFx.sweep`) leaves one thin line of fire at a low heat (it prints as red
+  strokes) a hand's width outside the white edge of its sweep: a red crescent on every cut of a red
+  string, never before the cue (ADR-118), never on a white blow. **a** thin and short (~0.2 s), **b**
+  longer (~0.45 s), a little hotter. One cell wide and outside the edge, so it neither covers the
+  contact nor reads as the white cross (it is red and curved). Blades only; the bare-handed bosses and
+  the wyrm are left out (a fist's or claw's path is short and lies on the contact).
+- **The black impact (`?blackImpact=a`, the default; `combat/blackImpact.js`).** A black blow lands, hit or miss,
+  as the biggest blow in the fight, all through the existing systems: a crater (`world.groundBlow` kind
+  `blast` + `world.impact` at power 1.8: what stands near breaks letter by letter), a shock front of dust in the
+  fire field (`DuelFx.shock`, the wyrm's `groundShock`), a pale light, the camera's shake and punch, a short held
+  frame. Calm in colour (dust and pale steel, no new colour), big in size and in the shake.
+
 ### Text effects (2026-11-15, ADR-113)
 Things only a world made of letters can do. One rule for all of them: **a loose letter is always
 one art cell, pixel-snapped, from the wyrm's own atlas: never a scaled sprite.**

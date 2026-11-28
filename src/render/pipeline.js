@@ -1493,6 +1493,15 @@ export class Pipeline {
         uWarm: { value: 0 }, // boss-fight warm grade 0..1
         uMatrix: { value: 0 }, // the deathblow's code view 0..1 (game/grade.js matrixSet): green on black
         uMatrixFlash: { value: 0 }, // its finisher's brighter beat 0..1
+        // the blackout (combat/blackout.js, ?black=; ADR-271): a black blow's charge drains the world to
+        // dark grey 0..1; K = (the world's light left, its grey, the hero kept, the mask's reach in cells),
+        // Keep = the light from which a letter keeps its brightness. The actors are read off the scene's
+        // ASCII flag (sceneRT alpha: the hero's window, a boss's, the creatures' codes)
+        uBlack: { value: 0 },
+        uBlackK: { value: new THREE.Vector4(0.22, 0.92, 0.6, 0.7) },
+        uBlackKeep: { value: new THREE.Vector2(0.5, 0.85) },
+        uBlackCell: { value: this.artCell },
+        tFlag: { value: this.sceneRT.texture },
       },
       vertexShader: FS_VERT,
       fragmentShader: /* glsl */ `
@@ -1509,7 +1518,21 @@ export class Pipeline {
         uniform float uWarm;
         uniform float uMatrix;
         uniform float uMatrixFlash;
+        uniform float uBlack;
+        uniform vec4 uBlackK;
+        uniform vec2 uBlackKeep;
+        uniform vec2 uBlackCell;
+        uniform sampler2D tFlag;
         varying vec2 vUv;
+        // (x: a boss or a creature, y: the hero) at uv, from the scene's ASCII flag (materials.js FLAG,
+        // CREATURE_FLAG, HERO_ART): the creatures' codes 0.04 - 0.41, the hero 0.42 - 0.45, a human boss's
+        // ink 0.46 - 0.49, the wyrm's art 0.5; the world (props 0.57, leaves, stone, the ground) is not one
+        vec2 blackActor(vec2 uv) {
+          float a = texture2D(tFlag, uv).a;
+          float self = step(0.415, a) * step(a, 0.455);
+          float boss = max(step(0.035, a) * step(a, 0.415), step(0.455, a) * step(a, 0.515));
+          return vec2(boss, self);
+        }
         vec3 aces(vec3 x) {
           return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
         }
@@ -1539,6 +1562,22 @@ export class Pipeline {
             code *= 1.0 - 0.1 * strong * step(2.0, mod(gl_FragCoord.y, 3.0));
             code += vec3(0.0, 0.025, 0.006) * strong * exp(-pow((fract(uTime * 0.45) - vUv.y) * 45.0, 2.0));
             col = mix(col, max(code, 0.0), clamp(uMatrix, 0.0, 1.0));
+          }
+          if (uBlack > 0.001) {
+            // the blackout: the world drains to dark grey; a body's letters (the mask spread round it by
+            // uBlackK.w of a letter cell) keep their colour, the hero's uBlackK.z of it; a letter brighter
+            // than uBlackKeep keeps its light (the flare, the glint), only its colour drains
+            vec2 tap = uBlackCell * uBlackK.w / vec2(textureSize(tFlag, 0));
+            vec2 m = blackActor(vUv);
+            m = max(m, blackActor(vUv + vec2(tap.x, 0.0)));
+            m = max(m, blackActor(vUv - vec2(tap.x, 0.0)));
+            m = max(m, blackActor(vUv + vec2(0.0, tap.y)));
+            m = max(m, blackActor(vUv - vec2(0.0, tap.y)));
+            float k = clamp(uBlack, 0.0, 1.0) * (1.0 - max(m.x, m.y * uBlackK.z));
+            float bl = dot(col, vec3(0.2126, 0.7152, 0.0722));
+            float lit = smoothstep(uBlackKeep.x, uBlackKeep.y, bl);
+            col = mix(col, vec3(bl) * vec3(0.96, 0.98, 1.0), k * uBlackK.y);
+            col *= 1.0 - k * (1.0 - uBlackK.x) * (1.0 - lit);
           }
           vec2 q = (vUv - 0.5) * vec2(uAspect, 1.0);
           float r = length(q);

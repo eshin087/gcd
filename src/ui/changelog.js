@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'A black blow can darken the whole picture, a red string can cut in red',
+        notes: [
+          'A charged (black) blow now drains the whole picture to dark grey while the boss charges, his weapon lit by a white point, the colour snapping back as he strikes.',
+          'And it always lands like the heaviest blow of the fight, even when it misses you: the ground craters, what stands near breaks, dust tears out across the floor and the screen shakes.',
+          'A red string leaves a thin red crescent on every cut of a sword boss, from the red flash on.',
+        ],
+      },
+      {
         date: '2026-11-28',
         title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
         notes: [
