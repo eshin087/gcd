@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-six pieces of work since 0.4.0:
+One hundred and forty-seven pieces of work since 0.4.0:
+- **gcd in the hooded costume, to try** (2026-11-28, ADR-290). *Added (an outfit option, off by default: the owner
+  picks):* `?heroLook=hooded` (the Lab's OUTFIT row: "Hooded (costume 11)") dresses gcd after the owner's COSTUME
+  REFERENCE / 11: a deep ruffled hood with a short angular peak that hides the hair and the face for good, a heavy
+  cowl closed at the throat with a silver clasp, a drape over the sword shoulder, a black wrap tunic and strap, a
+  silver belt with a green inset, a long robe of six layered panels to mid-calf, a long cloak of three adjoining sheets
+  down his back from the shoulder blades to the calves (it covers the belt) with a narrow silver line of letters down
+  its middle, silver articulated gauntlets (the sword hand closed round today's grip, the thumb opposing the fingers;
+  the free hand a plated fist with the thumb outside the fingers) and black boots plated in silver. The cloth is
+  today's (the coat, lining and worn grey-violet hem materials, today's springs: lag 0.5, swing limit 1.45); the sword
+  is today's item, untouched. `gear/hooded.js`; the look-only materials `silver` and `jade` (`model.js`
+  `LOOK_ONLY_MATS`, built only for a rig that wears them).
 - **The deathblow is not cut short** (2026-11-28, ADR-280). *Fixed:* pressing guard during a deathblow ended it at
   once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
   boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of

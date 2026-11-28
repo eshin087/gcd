@@ -60,7 +60,7 @@ Cinderwood); the title screen and the Lab pick one too. The hero's idles and gua
 (ADR-186's rests, habits and tricks / the hand on the belt; default `ref`: the one-handed stand, the two-handed fight hold, the put-away
 and draw) and `?guard=ward` (the cross ward; default `ref`: the braced guard, the blade across his face); the fight stance `?hold=ref|b|c|d` (ADR-275; default `a`, the owner's pick: the middle guard, the blade at the foe; `ref` ADR-207's hold, b-d turned down) (Lab: `idles`, `guard`, `hold`, `idle ▸`).
 Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
-(`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
+(`-shade`: the face in shadow); `?heroLook=hooded` the costume after COSTUME REFERENCE / 11 (ADR-290, to try) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
 `?wyrmTop=0|a|b` the drake head from above before the owner's pick `c` (ADR-189); `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)
 and `tyrant|viper|revenant` (ADR-124) the heads the owner passed on. The owner's picks with the options turned down behind them: `?wyrmLook=0|a|b` (c: the
 wyrm's lean build; 0 = the wyrm before; ADR-123), `?zoomArt=a|c` (b: the letters

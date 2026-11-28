@@ -9479,7 +9479,7 @@ async function scenarioLooks() {
         for (const k of ['rim', 'sub', 'inkGlow', 'glowK']) if (t[k] != null && !Number.isFinite(t[k])) bad.push(`${id}: ${name}.${k}`);
       }
     }
-    assert(!bad.length && HERO_LOOKS.shroud.loadout === DEFAULT_LOADOUT && HERO_LOOKS.shroud.tint === null && LOOK_IDS.join() === 'shroud,robe,robe-shade,swallow,swallow-shade,warden,warden-shade' && DEFAULT_LOOK === 'shroud',
+    assert(!bad.length && HERO_LOOKS.shroud.loadout === DEFAULT_LOADOUT && HERO_LOOKS.shroud.tint === null && LOOK_IDS.join() === 'shroud,robe,robe-shade,swallow,swallow-shade,warden,warden-shade,hooded' && DEFAULT_LOOK === 'shroud',
       `the outfit options: ${LOOK_IDS.map((id) => `${id} "${HERO_LOOKS[id].name}"`).join(', ')}; every loadout resolves and every tint is a cloth / metal part (${bad.join('; ') || 'ok'})`);
   }
 
@@ -9529,7 +9529,9 @@ async function scenarioLooks() {
         assert(skin === 0 && eye === 0 && shade > 0 && own === headSlot[L.of], `${id}: ${L.of}'s head with the face in shadow (${shade} face meshes in the shirt's black, ${skin} skin, ${eye} eyes; ${own} head-item meshes, as ${L.of}'s ${headSlot[L.of]})`);
         continue;
       }
-      if (isNew) assert(skin > 0 && eye > 0 && shade === 0, `${id}: the face lit (${skin} skin, ${eye} eye meshes)`);
+      // (the Hooded look's deep hood hides the face for good: in its shadow, as a shaded twin's)
+      if (isNew && getItem(L.loadout.head)?.shadowsFace) assert(skin === 0 && eye === 0 && shade > 0, `${id}: the face in the hood's shadow (${shade} face meshes in the shirt's black, ${skin} skin, ${eye} eyes)`);
+      else if (isNew) assert(skin > 0 && eye > 0 && shade === 0, `${id}: the face lit (${skin} skin, ${eye} eye meshes)`);
     }
     // the cloth over the sword shoulder (today's mantle, the Warden's capelet: back-slot coat on the
     // chest) against the right upper arm, its top 15 % left out (the cloth lies over the joint)
@@ -9621,6 +9623,23 @@ async function scenarioLooks() {
       out(`   swallow: the tails' idle swing ${x0.toFixed(3)} rad at their own idleFlare (${own.join(' / ')}), ${x1.toFixed(3)} rad at 0.6`);
       assert(tk.length === 2 && own.every((x) => Number.isFinite(x)) && Math.abs(x1 - x0) > 0.15,
         `swallow: the tails take their own idle flare (a panel idleFlare of 0.6 swings them ${(x1 - x0).toFixed(2)} rad from ${x0.toFixed(2)})`);
+    } else if (id === 'hooded') {
+      // the owner's costume reference 11 (gear/hooded.js): the long cloak on today's springs, the robe, the
+      // hood that hides the hair and the face, today's sword untouched and gripped by the gauntlet
+      const lows = r.coat.map((C) => hemLow(p, C));
+      const back = r.streamers.filter((S) => rootOf(S) === r.chest), drape = r.streamers.filter((S) => rootOf(S) === r.arms.R.upper);
+      const backLow = back.map((S) => { ends(p, S, a, b); return b.y; });
+      const swordMeshes = r.sword.children.filter((o) => o.isMesh && o.userData.slot === 'weapon');
+      const swordMats = new Set(swordMeshes.map((o) => Object.keys(M).find((n) => M[n] === o.material)));
+      const gauntlet = r.sword.children.filter((o) => o.isMesh && o.userData.slot === 'arms' && o.visible);
+      out(`   hooded: robe hems ${lows.map((x) => x.toFixed(2)).join(' / ')} m; the back cloak's ends at ${backLow.map((x) => x.toFixed(2)).join(' / ')} m; the sword ${swordMeshes.length} meshes in ${[...swordMats].join(', ')}`);
+      assert(r.coat.length === 6 && strips === 12 && lows.every((x) => x >= 0.25 && x <= 0.5), `hooded: the robe's 6 panels to mid-calf (hems ${Math.min(...lows).toFixed(2)} - ${Math.max(...lows).toFixed(2)} m in 0.25-0.50), 12 torn points`);
+      assert(back.length === 3 && drape.length === 1 && r.streamers.length === 4 && back.every((S) => S.lag === 0.5 && S.max === 1.45) && drape[0].arm === 1
+        && backLow.every((y) => y >= 0.25 && y <= 0.6),
+        `hooded: three back sheets on today's springs (lag 0.5, max 1.45) to the calf (${backLow.map((x) => x.toFixed(2)).join(' / ')} m in 0.25-0.60), the drape on the sword arm`);
+      assert(bodyHair === 0 && headHair === 0 && headSkin === 0 && eyes === 0 && p.loadout.weapon === DEFAULT_LOADOUT.weapon
+        && [...swordMats].sort().join() === 'armor,blade,bladeTip,gem,leather,trim' && gauntlet.length >= 1 && M.silver && M.jade && M.trim !== M.silver,
+        `hooded: no hair, no face, today's sword in its own materials (${[...swordMats].sort().join(', ')}), the silver gauntlet on the grip, the look's own silver and jade`);
     } else if (id === 'warden') {
       const lows = r.coat.map((C) => hemLow(p, C));
       const rib = r.streamers.find((S) => rootOf(S) === r.head), man = r.streamers.find((S) => rootOf(S) === r.chest);

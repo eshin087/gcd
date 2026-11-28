@@ -2,6 +2,7 @@ import { DEFAULT_LOADOUT } from './index.js';
 import { MOON_LOADOUT, MOON_SHADED_LOADOUT, MOON_TINT } from './moon.js';
 import { SWALLOW_LOADOUT, SWALLOW_SHADED_LOADOUT, SWALLOW_TINT } from './swallow.js';
 import { WARDEN_LOADOUT, WARDEN_SHADED_LOADOUT, WARDEN_TINT } from './warden.js';
+import { HOODED_LOADOUT } from './hooded.js';
 
 // The hero's OUTFIT OPTIONS (ADR-089; kept for later use: the owner, 2026-11-14, "keep the new skins
 // for now to be used in the future", with today's look as the default): each look is a
@@ -22,6 +23,9 @@ export const HERO_LOOKS = Object.freeze({
   'swallow-shade': Object.freeze({ id: 'swallow-shade', name: 'Swallow (shaded)', loadout: SWALLOW_SHADED_LOADOUT, tint: SWALLOW_TINT, of: 'swallow' }),
   warden: Object.freeze({ id: 'warden', name: 'Moon Warden', loadout: WARDEN_LOADOUT, tint: WARDEN_TINT }),
   'warden-shade': Object.freeze({ id: 'warden-shade', name: 'Warden (shaded)', loadout: WARDEN_SHADED_LOADOUT, tint: WARDEN_TINT, of: 'warden' }),
+  // the owner's COSTUME REFERENCE / 11 (2026-11-28, gear/hooded.js): the deep hood, the silver gauntlets,
+  // belt and boots, the long cloak; no tint (its colours are today's materials; the sword untouched)
+  hooded: Object.freeze({ id: 'hooded', name: 'Hooded (costume 11)', loadout: HOODED_LOADOUT, tint: null }),
 });
 export const DEFAULT_LOOK = 'shroud';
 export const LOOK_IDS = Object.keys(HERO_LOOKS);

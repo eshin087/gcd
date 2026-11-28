@@ -8150,3 +8150,35 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
   guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
   change is a combo where a lock was.
+
+## ADR-290 — gcd in the hooded costume (COSTUME REFERENCE / 11) as an outfit option, `?heroLook=hooded` (2026-11-28)
+
+- **Context:** the owner sent a costume sheet (COSTUME REFERENCE / 11: front 3/4, side, rear, the hood, both fists,
+  the hem, the belt, the boots) and asked to remake gcd's appearance after it: a deep ruffled hood with a short angular
+  peak, the face, hair and neck hidden, black wrap clothes and an asymmetric shoulder drape, a continuous rear cloak over
+  the belt with a narrow silver glyph line down the back, a silver belt with a green inset, silver-accented boots,
+  silver articulated gloves on both hands (the right gripping today's sword, the left a fist). The sword, the cloak's
+  worn lower colouring and its wind movement were to stay exactly as they are; the old look selectable beside it; no
+  deploy.
+- **Decision:** a new gear set, `gear/hooded.js` (six items over `wanderer.sword`), worn as the outfit option `hooded`
+  (`gear/looks.js`, no tint). Today's look stays the default. The cloth reuses today's materials (coat / lining / hem)
+  and the cloth springs as they are: the three back sheets and the shoulder drape are `streamers` with today's cloak's
+  lag (0.5) and swing limit (1.45); the robe is six `coat` panels. The long sheets' only local clearance is the two
+  per-sheet fields the cloth system already has (gear/README.md): `inMax` (the back sheets [-0.06, 0.12], the drape
+  [-0.12, 0.1]: a segment may not swing in through his back and hips) and `floor` (the back sheets' ends stay over the
+  grass in a roll). No shared tuning (the springs, the wind, `STREAM_*`, `BREEZE`) changed. The spring segments are
+  as long as today's cloak's (0.84 - 0.86 m: as he rises from a roll his chest is ~0.75 m up and a longer sheet
+  reached the grass); longer torn points carry the visible hem to the calf. The silver is a new look-only material,
+  `silver` (the trim's part 16 and its lines, a brighter fill: the trim's own fill read grey at the game camera), and
+  the belt's inset `jade` (part 16, green): `model.js` `LOOK_ONLY_MATS`, built only for a rig whose items name them in
+  `mats`, so the sword's `trim` / `armor` / `leather` and the default rig (and the seeded tests' uuid stream) are
+  untouched. The sword hand is a plated gauntlet on the `sword` joint closed round today's grip (four fingers of three
+  plates over a dark glove, the back of the hand toward the wrist, the thumb over the top toward the guard); the free
+  hand is the owner's fist shape (ADR-204's `fistHand`) plated in silver, with the same gauntlet on the grip for the
+  two-handed poses and the sword fingers in silver.
+- **Consequences:** `integ looks` builds and runs the look through the route like the other options (cloth in the body
+  2.1 % of frames, today's cloak 30 %; tips over the grass; the free hand clear; under 27k triangles) and checks it
+  keeps today's sword in its own materials. Not matched: the reference's fine surface (the cloth's woven texture, the
+  gloves' engraved plates) is below the letter size; the sword-hand gauntlet's fingers read as plates round the grip up
+  close, coarser than the sheet's. After the owner's pick it becomes `DEFAULT_LOADOUT` (the default-set tests, the
+  cost baseline and the seeded fights then move with it).
