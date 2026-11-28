@@ -4,7 +4,18 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-six pieces of work since 0.4.0:
+One hundred and forty-seven pieces of work since 0.4.0:
+- **Halcyon after the reference pack, to try** (2026-11-28, ADR-289). *Added (options, off by default: the owner
+  picks):* `?halRef=a` rebuilds Halcyon after the owner's character pack (`docs/art/character-packs-v04/halcyon`):
+  a V-tapered man in sculpted navy plates (chest, abdomen, shoulders, forearms, thighs, knees, shins) each edged in
+  gold, a gold strap across the chest, a high collar, square gold clasps, a gold belt and cuffs, bare hands, navy
+  boots with gold toe caps and heels, a square jaw, blond hair swept back, and a crimson mantle with a cape to his
+  heels, red to its edge; his eyes dim until they kindle. `?halRefMove=a` poses him after the sheets: in the hover,
+  his blows and the reactions he takes in the air the right knee drawn up and the left leg hanging (no planted
+  stance at the hover), a kick's other knee tucked, a lean as he brakes and a bank into a turn, Meteor's three-point
+  landing, the car on his right palm and the statue's arm thrown from his right hand. The same
+  timing, zones, damage and travel (`city.mjs . halref` checks every move, phase and branch). The Lab's `halRef` and
+  `halRefMove` rows.
 - **The deathblow is not cut short** (2026-11-28, ADR-280). *Fixed:* pressing guard during a deathblow ended it at
   once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
   boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of

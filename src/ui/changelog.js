@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'Halcyon after the reference pack, to try',
+        notes: [
+          'Halcyon rebuilt after his reference sheets, to try before it becomes his own: a tall build in navy armour plates edged in gold, blond hair, bare hands, gold-capped boots and a crimson cape to his heels.',
+          'And new poses: a knee drawn up as he hovers, strikes and takes blows in the air instead of standing on nothing, leans into his stops and turns, Meteor landed on one knee, the car carried on one palm. His timing and damage are exactly as before.',
+          'Add halRef=a and halRefMove=a to the address to try them.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'Swipe to dodge on touch',
         notes: [
           'Touch: flick your thumb on the right half of the screen and the hero dodges that way at once (SWIPE DODGE in the pause menu turns it off).',
