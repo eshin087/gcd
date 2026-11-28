@@ -94,9 +94,11 @@ export const TUNING = {
     // roams 2.5 / 5 / 9 m, seeds 4242 / 7 / 99 x 60 s a phase): each phase at least rampMean x the one before in
     // the seeds' mean (phase 3 only as busy as phase 2: its beams, swarm and pass join the strings), at least
     // minRate cues a minute per seed, no gap between two cues over maxGap s, the jet step at least `steps` x as
-    // frequent as the phase before (P3, P4). Measured: 47.7 / 53.8 / 53.7 / 63.4 cues a minute (seeds 43.7 -
-    // 53.6, 50.3 - 56.7, 48.5 - 59.4, 61.8 - 66.1), gaps <= 6.4 / 4.5 / 4.9 / 4.6 s, steps 0 / 1.7 / 3.7 / 3.0 a minute
-    meter: { rampMean: [1, 1.04, 0.97, 1.05], minRate: [40, 46, 44, 56], maxGap: [7.0, 5.2, 5.5, 5.2], steps: 0.75 },
+    // frequent as the phase before (P3, P4). Measured: 47.7 / 53.8 / 53.7 / 55.4 - 63.4 cues a minute (seeds
+    // 43.7 - 53.6, 50.3 - 56.7, 48.5 - 59.4, 53.0 - 66.1: phase 4 moved 8 a minute between two builds whose only
+    // difference was Dies Irae's plates: the seeded fights part, so the floors are loose), gaps <= 6.4 / 4.5 / 4.9 /
+    // 5.9 s, steps 0 / 1.7 / 3.7 / 3.0 - 4.3 a minute
+    meter: { rampMean: [1, 1.04, 0.97, 0.98], minRate: [40, 46, 44, 48], maxGap: [7.0, 5.2, 5.5, 6.5], steps: 0.75 },
   },
   punish: { weight: 4 },
   fullDeflect: { minHits: 5, posture: 70 },
