@@ -126,6 +126,11 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'Tian Lei audited: straight limbs, a readable pace, a sun for his ki blasts',
+        notes: ['Tian Lei moves cleaner: his punches land with the arm straight down his centre, his kicks with the leg straight, and his low sweep comes from a drop stance. Every blow has a longer, held windup and the glint comes earlier, so each is easier to read. His ki blasts fly as small golden suns. Add ?ascMotion=a, ?ascPace=0 or ?ascShot=0 for each as before.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'The perfect parry earns its own reward: the deathblow',
         notes: [
           'Parrying the human bosses now builds toward a reward of its own: every parry fills his gold posture bar, and every perfect parry is banked.',

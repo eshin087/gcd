@@ -771,6 +771,11 @@ export class Training {
   /** The glint's lead on its impact for the boss loaded (s). */
   _lead() {
     const d = this.d, T = d?.T;
+    // (a duelist: the cue that just fired, its beat's impact - flash: a readable pace's cue leads further than
+    // T.flashLead, ADR-248 / ADR-251; the same number for a boss without one)
+    const A = d?.brain?.act, b = Array.isArray(A?.beats) ? A.beats.find((x) => x.flashed && !x.done && !x.feint) : null;
+    const l = b ? b.impact - b.flash : NaN;
+    if (Number.isFinite(l) && l > 0 && l < 2) return l;
     if (T && T.flashLead !== undefined) {
       const v = T.flashLead;
       return Array.isArray(v) ? fin(v[Math.min(v.length, Math.max(1, fin(d.phase, 1))) - 1], 0.3) : fin(v, 0.3);

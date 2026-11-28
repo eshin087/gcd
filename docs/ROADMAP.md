@@ -253,7 +253,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
   behind `?ascMotion=a` / `?halMotion=a`
 - [x] The owner's pick of both switches: a, the default (2026-11-26)
-- [ ] Tian Lei: the sweep's knee jolt and sliding feet, the dash thrusts' skating, the cross's sideways line
+- [x] Tian Lei: the sweep's knee jolt and sliding feet, the cross's sideways line (ADR-248, `?ascMotion=b`)
+- [ ] Tian Lei: the dash thrusts' skating (the audit leaves dashes out; not judged on film yet)
+## M1.94 — Tian Lei audited: straight limbs, a readable pace, two ki blasts (2026-11-26, `claude/tian-lei-motion-32bb13`, ADR-248)
+- [x] Measured every move on the rig (asc.mjs AUDIT, the striking limb's joint at contact); before / after films, three forms, game camera and close
+- [x] `?ascMotion=b`: long straight punches down his centre, straight kicks, the sweep from a drop stance on a planted foot (asc LIMBS)
+- [x] `?ascPace=a`: rule 10's floor as held cocks (asc READABLE)
+- [x] `?ascShot=a|b`: the ki blast as a sun or a comet, in the Fox's and Bai Wuji's idiom
+- [x] The owner's picks (2026-11-27): straight limbs, the readable pace, the sun; the defaults
+- [ ] Not done: the transformations' kneel-to-stand jolts (~600 mm/f²), Thousand Hands' last palm (671), the beam and Raining Suns' gather as effect options
 ## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
 - [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s

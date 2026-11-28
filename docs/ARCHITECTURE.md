@@ -5518,7 +5518,8 @@ trampled, lock, broken, executed, death, meditate, intro). (The engine files nam
 and the clip / pose code, now live in `enemies/duelist/`, above; his poses.js holds only his guard.)
 Beat flags: `lock` (a perfect parry crosses
 the blades), `mikiri` (a perilous red thrust: its hitPlayer passes `mikiri: true`, its flash
-`perilous: true`), `close` (m he may step in through the windup; default TUNING.close). Hits are zones
+`perilous: true`), `close` (m he may step in through the windup; default TUNING.close), `closeBy` (opt-in, a number or a
+function read live: the u of the windup the close-in is done by; default the impact; Tian Lei's sweep, ADR-248). Hits are zones
 tested from his position and facing through each beat's active frames (`sector`, `line`, `ring`), one
 result per beat. The brain (brain.js) **leads** the hero: `_sense()` carries his velocity (`vel`,
 capped 9 m/s) and every step-in, windup track and dash aims at where he will be at the impact; a

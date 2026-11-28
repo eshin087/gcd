@@ -1472,12 +1472,17 @@ export class DuelBrain {
     // close-in: through the windup he steps in toward the hero (at most b.close m), arriving at the
     // impact where the zone reaches him: a cut is never thrown at air, and the lunge reads as the tell
     // (not before a SIGN's vanish: he stands for the sign, and closes from where he arrives)
-    if (b.close > 0 && L && u >= 0.15 && t < b.impact && !this.leap && !(D.blink?.sign && !b._blinked)) {
+    // (`closeBy` on a beat, opt-in, a number or a function read live: the u of the windup the close-in is
+    // done by, so he stands still for the rest of it; Tian Lei's sweep under ?ascMotion=b, ADR-248: he
+    // drops onto a planted foot and turns on it. Without it: by the impact, as always)
+    const cb = typeof D.closeBy === 'function' ? D.closeBy() : D.closeBy;
+    const tc = cb > 0 && cb < 1 && b.at ? Math.min(b.impact, b.at(cb)) : b.impact;
+    if (b.close > 0 && L && u >= 0.15 && t < tc && !this.leap && !(D.blink?.sign && !b._blinked)) {
       const gap = L.dist - this._ideal(D.zone);
       // (pressure.pursue: a hero backing away is chased with closeK x the step-in)
       const budget = b.close * (this._chasing(s) ? perPhase(this.P.pursue.closeK ?? 1, d.phase) : 1) - (b.closed ?? 0);
       if (gap > 0.02 && budget > 0) {
-        const step = Math.min(Math.min(gap / left, this.T.close.speed) * dt, budget, gap);
+        const step = Math.min(Math.min(gap / Math.max(tc - t, dt), this.T.close.speed) * dt, budget, gap);
         b.closed = (b.closed ?? 0) + step;
         d.moveBy((L.dx / (L.dist || 1)) * step, (L.dz / (L.dist || 1)) * step);
       }
