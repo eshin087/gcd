@@ -5,6 +5,31 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-26 — Wen Yao's motion audit: straight limbs at the contact, one cue one meaning (ADR-249; `claude/wen-yao-motion-674ba7`)
+
+**Owner:** a motion audit of every boss (one session each; this is the fox's): weird arm angles, kicks bent at the
+strike, unrealistic attacks; every attack readable; his spell effects are the bar for the others.
+
+- **Measured, not eyeballed:** a new opt-in scenario `fox.mjs . anatomy` (every blow's striking limb at its contact
+  in his own frame: kick knee, support knee, elbow, the wrist off the shoulder → hero line; `GCD_ANAT_TRACE` per
+  frame). Straight punches 123 - 139° at the elbow (bosses without `armSoft` cap at ~145°), the roundhouse 107°, the
+  sweep 82° (50 - 90° through its turn), the selves' rising kick 126°; the Kite String's heel landed 0.8 m past the
+  hero (he landed on him).
+- **Changed** (`thousandFox/limbs.js`, `?foxLimbs=0|a`; Tian Lei's builders untouched): contact keys rewritten (Xin
+  Yi's ADR-221 method), his and his selves' animators opened (`armSoft` / `legSoft` / `kickStretch`), the sweep keyed
+  every 30° with the foot skimming 5 cm (on the floor `_feetClip` walked it as a planted foot), `leap.stop` (opt-in
+  in brain.js) for the heel and hammer leaps. `?foxCues=0|a`: Paper Rain's last blow a backfist (the uppercut is blue
+  only). After: straight blows 162 - 167°, kicks 161 - 173°, hooks / uppercuts 111 - 116°.
+- **Kept:** his held blue / red windups (ADR-223), every timing and number, every effect (no options: they are the bar).
+- **Tests:** `fox.mjs motion` asserts the limbs both ways; the whole fox suite green.
+- **Films:** before / after of 15 moves across the three phases, at the game camera (a close crop with the frame as an
+  inset) and from the side, real and half speed.
+
+**Picked** (2026-11-27, from the films): both switches `a`, the default; his windups stay PBZ-fast (0.42 s first
+blows, under the audit brief's 0.7 s floor: the owner kept them).
+**Then fixed** (the owner asked): Hand to Hand's opening jab's lead foot jumped 0.43 m in a frame (on main too): the
+planner was stepping it when the clip lifted it, and the ADR-223 ease only caught a planted foot. `anim.js`
+`liftFromStep` (opt-in, the fox's kit): every move of his now under 0.3 m a frame, asserted in `fox.mjs motion`.
 ## 2026-11-28 — Bai Wuji round 4: the chip, 16000, the barrier's silhouette (branch `wj3/barrier-playtest`; ADR-266)
 
 **Owner:** "right now it takes too much time to chip at [him] so balance it to be bit easier to do damage on him.

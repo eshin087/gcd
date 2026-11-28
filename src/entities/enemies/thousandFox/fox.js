@@ -53,7 +53,8 @@ export const FOX_KIT = Object.freeze({
   loadout: FOX_LOADOUT,
   poses: FOX_POSES,
   // (ADR-223, `?foxMotion=a|b`: a planted foot his clip lifts eases off its spot, not at once)
-  animOpts: Object.freeze({ liftEase: () => (lookOf('foxMotion', '0') === '0' ? 0 : MOTION_FIX.liftEase) }),
+  // (… and a foot the planner is still stepping eases off too: anim.js liftFromStep, ADR-249)
+  animOpts: Object.freeze({ liftEase: () => (lookOf('foxMotion', '0') === '0' ? 0 : MOTION_FIX.liftEase), liftFromStep: true }),
   // (bare-handed: the right fist on the sword joint; fox.js makes the striking limb the engine's blade)
   blade: FOX_FIST,
   dress: (d, dt) => dressFox(d, dt),

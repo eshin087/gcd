@@ -2553,6 +2553,32 @@ The terrace's pieces (COMBAT "The world breaks"): the charm posts are wood and b
 7 s from one ignite to a snapped foot; the stone foxes break to their plinths; the lanterns and the
 floor as the courtyard's; the great fox and the spirit gate only chip, and the gate stops nothing.
 
+### The limbs at the contact and one cue, one meaning (2026-11-26, ADR-249; `?foxLimbs=0|a`, `?foxCues=0|a`; the owner's picks: `a`, the default)
+
+The boss motion audit (the owner: "kicks aren't straight during the attack and still bended", "weird arm
+angles"). Measured on the rig (`fox.mjs . anatomy`: every blow's striking limb at its contact, in his own
+frame), before → after:
+
+| Blow | Before | After |
+|---|---|---|
+| Straight punches and palms (jab, cross, palm, both palms, the Pearl's drive; his selves' cross) | elbow 123 - 139°, the fist 0.25 - 0.36 m off the line from his shoulder to the hero | elbow 162 - 167°, 0.07 - 0.15 m off it |
+| Roundhouse (Changing Places, Paper Rain), the selves' rising kick | knee 107 - 129° | 173° |
+| Sweeping Tail, Burning Tail (the leg round at the ankles) | 82 - 124° at the contact; 50 - 90° through the turn | 161 - 167°; 144 - 162° through the turn |
+| Hook, uppercut (bent blows) | 123 - 139° | 111 - 116° (a hook's bend) |
+| The Kite String's heel, the Burial's and the Moon-Swallowing Pearl's fists | he landed ON the hero, the heel 0.8 m past him | he comes down 0.7 / 0.45 m short: the heel and the fists land on the hero |
+
+- **How** (`thousandFox/limbs.js`; his blows stay Tian Lei's builders, untouched): a straight blow's contact key puts
+  the hand 1.08 x the arm's length from its shoulder toward a point before him at chest height; a kick's puts the
+  foot 1.05 x the leg's length from its hip along its line; his animator and every self's open their reach
+  (`armSoft` [0.95, 0.996], `legSoft` [0.95, 0.998], `kickStretch`: Xin Yi's numbers, ADR-221). The sweep's turn is
+  keyed every 30° (a third of a turn apart, the foot cut the chord) and the sweeping foot skims 5 cm off the floor
+  (on it, the animator took it for a planted foot and walked it after the clip: it stalled and drifted in).
+  Bent blows keep a bend (a hook's hand 0.78, an uppercut's 0.8 x the arm). Leaps that strike ahead of him come
+  down short (`leap.stop`, brain.js).
+- **One cue, one meaning** (`?foxCues=a`): his uppercut was white in Paper Rain and the blue flare in Hand to Hand.
+  Paper Rain now ends on a backfist (white, the same windup and damage); the uppercut is only ever blue.
+- Every timing, tell, window and number is as before; `0` on either switch plays the fox as he was.
+
 ### The numbers measured (`fox.mjs`)
 
 The pace (a steady defender in god mode, the hero roaming 2.5 - 9 m; the packs' blows count; the Howl,
