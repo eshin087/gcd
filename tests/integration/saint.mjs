@@ -735,7 +735,27 @@ const mlHits = (G, name, i0 = 0) => G.hits.slice(i0).filter((h) => h.attack === 
 const mlStanding = (G) => G.game.world.destructibles.list.filter((b) => !b.floor && b.state === 0 && b.hpMax < Infinity).length; // (destructibles.js STATE.INTACT)
 
 async function scenarioMlReach() {
-  out('\n== scenario MLREACH (each melee move: its beats land on a hero who stands still, none on one out of reach; tells as declared) ==');
+  out('\n== scenario MLREACH (each melee move: COMBAT.md\'s floors; its beats land on a hero who stands still, none on one out of reach; tells as declared) ==');
+  // COMBAT.md (the lead's correction of the BRIEF): a melee move's first windup >= 0.7 s in phase 1, a string's
+  // next hit >= 0.45 s after the last in every phase (the realised impacts, bait holds at their shortest)
+  const { MOVE_OWNERS } = await imp('src/entities/enemies/falseSaint/moves.js');
+  const mine = MOVE_NAMES.filter((n) => MOVE_OWNERS[n] === 'melee');
+  let firstLo = Infinity, gapLo = Infinity;
+  for (const name of mine) {
+    for (const f of phasesOf(name)) {
+      const A = realise(name, f, () => 0);
+      const real = A.beats.filter((b) => !b.feint);
+      if (!real.length) continue;
+      if (f === 1) firstLo = Math.min(firstLo, real[0].impact - real[0].tellAt);
+      if (f === 1 && !(real[0].impact - real[0].tellAt >= 0.7 - 1e-6)) assert(false, `${name}: first windup ${(real[0].impact - real[0].tellAt).toFixed(3)} >= 0.7 s in phase 1`);
+      for (let i = 1; i < real.length; i++) {
+        const gp = real[i].impact - real[i - 1].impact;
+        gapLo = Math.min(gapLo, gp);
+        if (!(gp >= 0.45 - 1e-6)) assert(false, `${name} P${f}: hits ${i - 1}->${i} ${gp.toFixed(3)} s apart >= 0.45`);
+      }
+    }
+  }
+  assert(firstLo >= 0.7 - 1e-6 && gapLo >= 0.45 - 1e-6, `the ${mine.length} melee moves: first windups >= 0.7 s in phase 1 (least ${firstLo.toFixed(3)}), hits >= 0.45 s apart in every phase (least ${gapLo.toFixed(3)})`);
   for (const [name, form, dist] of ML_MOVES) {
     const G = mlDuel(form, 4);
     const d = G.game.dragon, def = MOVES[name];

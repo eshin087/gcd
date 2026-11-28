@@ -35,6 +35,7 @@ import { TUNING_MELEE } from '../tuningMelee.js';
 //                    heavy cut staggers him; the straight carries on into the scenery unless parried
 //   fsQuake: 'gavel' the impact's crater (world.impact, fx.crater) before him
 //   fsShove: 1       the double palm's shove through cover: a sweep of the line ahead at the palms' height
+//   fsSlip: m        Rebuke's slip (the pack's B3): the root carried m to his left through the draw
 // Every beat here is `noWorld` (the engine's world blow is at y 1): the handler's own blow (_world) strikes
 // the world at the striking limb's REAL height, with the beat's zone, at TUNING.melee.world power.
 
@@ -131,19 +132,25 @@ export function moves(X) {
 
   return {
     // ================================================================ phase 1 on: THE SAINT'S HANDS
-    /** Benediction: the lead palm, the rear palm, then row 2 of the owner's sheet: the delayed pivot
-     *  (held, a bait delay), the long open-palm lunge that throws the hero through what stands behind
-     *  him (n, n, blue), the heel planted and the hands caught back into the guard (the recovery). */
+    /** Benediction: the lead palm; the advancing right palm with a step (the pack's B1); then the delayed
+     *  quarter turn, HELD (a bait delay: his rhythm, ref-02 row 2, the pack's A11 / B2.1) and the abrupt left
+     *  palm on a long lunge that throws the hero through what stands behind him (B2.2 - B2.3) (n, n, blue);
+     *  the heel planted and the hands caught back into the guard in the recovery (B2.4 / ref-02 04). */
     benediction: {
       label: 'Benediction', phase: 1, weight: [2.2, 1.5, 1.0, 0.8], cooldown: 3.5, band: [0, 5], recovery: 0.8, cat: 'string',
       recoveryKeys: [[0.3, { ...S(fr('mlCatch')), e: 'o' }], [0.85, S({})]],
       beats: [
         palmL(N, BN.windup[0], BN.damage[0], BN.knockback[0]),
-        follows(palmR(N, BN.windup[1], BN.damage[1], BN.knockback[1])),
+        // (the pack's B1: the advancing right palm, one step)
+        follows(blow({
+          tell: N, windup: BN.windup[1], damage: BN.damage[1], knockback: BN.knockback[1], zone: LINE(2.1, 0.9), part: 'fistR', cock: 0.74, travel: lunge(BN.step, 0.74),
+          keys: keysOf({ coil: fr('mlB1Coil'), hit: fr('mlLunge'), fo: { ...fr('mlLunge'), rH: [0.08, 0.0, 0.5] }, cock: 0.74 }),
+        })),
+        // (the pack's B2 / A11, ref-02 row 2: the delayed quarter turn HELD, then the abrupt left palm)
         follows(blow({
           tell: B, flare: true, windup: BN.windup[2], hold: BN.hold, damage: BN.damage[2], knockback: BN.knockback[2], blockPush: BN.blockPush,
-          zone: LINE(2.3, 0.9), part: 'fistR', cock: 0.8, travel: lunge(BN.lunge), fsCrash: BN.crash,
-          keys: keysOf({ coil: fr('mlPivot'), hit: fr('mlLunge'), fo: { ...fr('mlLunge'), rH: [0.08, 0.0, 0.5] }, cock: 0.8, held: true }),
+          zone: LINE(2.3, 0.9), part: 'fistL', cock: 0.8, travel: lunge(BN.lunge), fsCrash: BN.crash,
+          keys: keysOf({ coil: fr('mlB2Turn'), hit: fr('mlB2Palm'), fo: fr('mlB2Follow'), cock: 0.8, held: true }),
         })),
       ],
     },
@@ -194,7 +201,7 @@ export function moves(X) {
     /** Rebuke (his counter out of his guard, phase 1): a slip off the line and a short elbow (blue). */
     rebuke: {
       label: 'Rebuke', phase: 1, weight: [0, 0, 0, 0], counter: true, fsCounter: [1], cooldown: 0, band: [0, 5], recovery: 0.55,
-      beats: [elbowR(B, RB.windup, RB.damage, RB.knockback, { flare: true })],
+      beats: [elbowR(B, RB.windup, RB.damage, RB.knockback, { flare: true, fsSlip: RB.slip })],
     },
     /** Litany (his phase-1 flurry, out of a streak of guards): quick alternating palms (normal). */
     litany: {
@@ -563,6 +570,18 @@ export class FsMelee {
   }
 
   // ---------------------------------------------------------------- the beat hooks
+  /** Rebuke's slip (the pack's B3): the root carried `fsSlip` m to his left through the windup's draw. */
+  beatMotion(b, u, s, dt) {
+    const D = b?.def;
+    if (!(D?.fsSlip > 0) || b.feint) return;
+    const k = clamp((u - 0.08) / 0.55, 0, 1), want = D.fsSlip * k * k * (3 - 2 * k), step = want - fin(b._slip);
+    if (!(Math.abs(step) > 1e-5)) return;
+    b._slip = want;
+    const d = this.d;
+    d.moveBy?.(Math.cos(d.yaw) * step, -Math.sin(d.yaw) * step);
+    void s, dt;
+  }
+
   onImpact(b, s, a) {
     try {
       this._onImpact(b, a);

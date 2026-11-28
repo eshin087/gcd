@@ -5,9 +5,25 @@ import * as BO from './posesBoost.js';
 import * as AR from './posesArsenal.js';
 import * as TR from './posesTerrain.js';
 
-// The False Saint's stance, footwork and reaction clips (the BODY AGENT's file; core's stand-in, wave 0;
-// the body contract: gear.js header). A calm man in a wide, low guard, both open hands raised (GUARD); his
-// ward is the forearms.
+// The False Saint's stance, footwork and reaction clips (the MELEE AGENT's file from wave 1, the lead's
+// call with the owner's v04 pack; core's stand-in in wave 0; the body contract: gear.js header). A calm man
+// in a wide, low guard, both open hands raised (GUARD); his ward is the forearms. The boost agent reads the
+// guard, it does not edit this file.
+//
+// THE OWNER'S v04 PACK, PAGE A (docs/art/character-packs-v04/the-false-saint/turnaround-defaults.png), key
+// by key (the pack is visual only: no timing, tell or gameplay comes from it):
+//   A07 IDLE      IDLE: upright, the feet a shoulder apart, the open hands hanging by the thighs. He stands
+//                 into it from the kneel (the intro) before he drops into the guard.
+//   A08 GUARD     GUARD (the same as ref-02 row 3 and A15 - A18: one stance in every shell state): wide (the
+//                 feet ~0.65 m apart), the knees bent and out, the torso upright and a little turned, both
+//                 open hands raised at chest / chin height, the lead (left) one forward.
+//   A09-10 RUN    the run's arms (createDuelPoses `run`): the right hand open and pumping before the chest
+//                 instead of a blade trailing low; the legs, the lean and the left arm are the hero's gait.
+//                 (From phase 2 the jet dash replaces the run at range: the boost agent's footwork.)
+//   A13 RECOIL    RECOIL: thrown back, the head and chest back, the arms flung out low, the weight on the
+//                 rear foot (the hit reactions' first key: stagger, recoil, reeling, the break's first beat).
+//   A14 RECOVERY  RECOVERY: crouched wide and low, the open hands low before the knees, the head up on the
+//                 hero (the reactions' second key, then the guard).
 //
 // Pose channels (duelist/poses.js header): body space +x his LEFT, +y up, +z forward; hands are offsets
 // from each shoulder; feet model space; `sw` [az, el] turns the right fist (it hangs on the sword joint).
@@ -23,7 +39,8 @@ import * as TR from './posesTerrain.js';
 // the earlier one kept; saint.mjs DATA fails on it. A pose file never imports this one.
 //
 // THE BODY'S FRAGMENTS (FRAGS; the moves files and core's transitions read them):
-//   STAND     standing square, the open hands low before him (every whole pose's base)
+//   STAND     his guard (A08), every whole pose's base
+//   IDLE      A07's idle stand · RECOIL_BIG A13's recoil · RECOVERY A14's recovery crouch
 //   KNEEL     on one knee, the hands together before his chest (the wait; the posture break)
 //   KNEEL_ARM on one knee, the right arm half raised (the death)
 //   LOOK_ARM  the head bowed to his raised right forearm (the P1 -> P2 change)
@@ -33,19 +50,19 @@ import * as TR from './posesTerrain.js';
 const ANK = DIM.ankle;
 const FIST_UP = Object.freeze([0, 1.45]);
 
-/** His guard (the owner's second reference sheet, ref-02; every phase): a wide, low, bent-knee stance, both
- *  hands raised and OPEN at chest / chin height, the lead (left) hand a little forward. (Core's first
- *  approach to it: the melee / body agents refine it.) */
+/** His guard (ref-02 row 3; the v04 pack's A08 and A15 - A18; every phase): a wide, low, bent-knee stance,
+ *  both hands raised and OPEN at chest / chin height, the lead (left) hand a little forward. */
 export const GUARD = Object.freeze({
-  bX: 0, bY: -0.13, bZ: 0.0, pitch: 0.06, yaw: -0.28, roll: 0,
+  bX: 0, bY: -0.19, bZ: 0.0, pitch: 0.05, yaw: -0.28, roll: 0,
   hip: -0.04, hipZ: 0, hipX: 0, spX: 0.02, spY: 0.06, spZ: 0,
-  hdX: 0.02, hdY: 0.22, hdZ: 0, two: 0, flat: 1, rFy: -0.55, lFy: 0.25,
-  rH: [0.06, -0.12, 0.26], rP: [-0.9, -0.4, -0.2], lH: [-0.02, -0.06, 0.38], lP: [0.9, -0.4, -0.1], sw: FIST_UP,
-  swF: [0, 0, 1], rK: [-0.5, 0, 0.85], lK: [0.45, 0, 0.9],
-  rF: [-0.25, ANK, -0.16], lF: [0.22, ANK, 0.18],
+  hdX: 0.02, hdY: 0.22, hdZ: 0, two: 0, flat: 1, rFy: -0.6, lFy: 0.3,
+  rH: [0.06, -0.07, 0.26], rP: [-0.9, -0.45, -0.2], lH: [-0.02, -0.02, 0.38], lP: [0.9, -0.45, -0.1], sw: FIST_UP,
+  swF: [0, 0, 1], rK: [-0.62, 0, 0.78], lK: [0.56, 0, 0.83],
+  rF: [-0.33, ANK, -0.2], lF: [0.3, ANK, 0.2],
 });
 
-const K = createDuelPoses(GUARD, { breath: { k: 0.5, period: 4.6 } });
+// (A09 - A10: at a run the right hand is open and pumps before the chest, no blade trailing low)
+const K = createDuelPoses(GUARD, { breath: { k: 0.5, period: 4.6 }, run: { hand: [0.06, -0.2, 0.1], pole: [-0.8, -0.5, -0.3], blade: [0, 0.3] } });
 export const { duelStance, compileClip, completeBeat, evalClip, duelClip } = K;
 
 /** The pose table HeroAnimator takes for him. */
@@ -60,6 +77,24 @@ function W(p) {
   return out;
 }
 const STAND = W({});
+/** A07: the idle stand (the intro's middle: he stands from the kneel into it, then drops into the guard). */
+const IDLE = W({
+  bX: 0, bY: -0.02, bZ: 0, pitch: 0.0, yaw: -0.06, hip: 0, spX: 0, spY: 0, hdX: 0.04, hdY: 0.05,
+  rH: [-0.03, -0.44, 0.05], rP: [-0.9, -0.5, -0.3], lH: [0.03, -0.44, 0.06], lP: [0.9, -0.5, -0.3], sw: [0.1, -1.3],
+  rF: [-0.13, ANK, -0.02], lF: [0.13, ANK, 0.03], rK: [-0.1, 0, 1], lK: [0.1, 0, 1], rFy: -0.15, lFy: 0.12, flat: 1,
+});
+/** A13: thrown back by a blow. */
+const RECOIL_BIG = W({
+  bY: -0.1, bZ: -0.12, pitch: -0.34, yaw: -0.36, spX: -0.12, hdX: -0.38, hdY: 0.1,
+  rH: [-0.28, -0.1, 0.0], rP: [-0.8, 0.3, -0.5], lH: [0.3, -0.14, 0.02], lP: [0.8, 0.3, -0.5], sw: [-0.6, -0.4],
+  rF: [-0.22, ANK, -0.42], lF: [0.26, ANK, 0.16], rK: [-0.5, 0, 0.85], lK: [0.4, 0, 0.9],
+});
+/** A14: the recovery: crouched wide and low, the open hands low before the knees, the head up on the hero. */
+const RECOVERY = W({
+  bY: -0.38, bZ: 0.02, pitch: 0.2, yaw: -0.2, hdX: -0.14, spX: 0.04,
+  rH: [0.06, -0.32, 0.26], rP: [-0.85, -0.5, -0.1], lH: [-0.04, -0.3, 0.32], lP: [0.85, -0.5, -0.1], sw: [0, 0.6],
+  rF: [-0.36, ANK, -0.24], lF: [0.34, ANK, 0.22], rK: [-0.75, 0, 0.66], lK: [0.72, 0, 0.7],
+});
 const KNEEL = W({
   bX: 0, bY: -0.52, pitch: 0.12, yaw: 0, hip: 0, spX: 0.06, spY: 0, hdX: 0.34, hdY: 0, hdZ: 0,
   rF: [-0.12, ANK, 0.32], lF: [0.17, ANK, -0.42], rK: [0, 0, 1], lK: [0.1, -0.85, 0.5], flat: 0.7, rFy: -0.1, lFy: 0.1,
@@ -70,7 +105,7 @@ const LOOK_ARM = W({ pitch: 0.06, yaw: -0.2, hdX: 0.36, hdY: -0.3, rH: [0.12, 0.
 const OPEN = W({ bY: -0.06, pitch: -0.16, yaw: 0, hdX: -0.26, spX: -0.12, rH: [-0.42, 0.06, 0.12], rP: [-0.9, 0.2, -0.3], lH: [0.42, 0.06, 0.12], lP: [0.9, 0.2, -0.3], rF: [-0.28, ANK, 0], lF: [0.28, ANK, 0], sw: [-1.2, 0.2] });
 const GATHER = W({ bY: -0.36, pitch: 0.2, yaw: 0, hdX: 0.28, spX: 0.1, rH: [0.2, -0.04, 0.24], rP: [-0.8, -0.5, -0.3], lH: [-0.2, -0.02, 0.26], lP: [0.8, -0.5, -0.3], rF: [-0.3, ANK, 0.02], lF: [0.3, ANK, -0.02], rK: [-0.6, 0, 0.8], lK: [0.6, 0, 0.8], sw: [1.0, 0.2] });
 
-const BODY_FRAGS = { STAND, KNEEL, KNEEL_ARM, LOOK_ARM, OPEN, GATHER };
+const BODY_FRAGS = { STAND, IDLE, RECOIL_BIG, RECOVERY, KNEEL, KNEEL_ARM, LOOK_ARM, OPEN, GATHER };
 
 // ---------------------------------------------------------------- the body's clips
 // (keys: [t s, pose]; e: ease of the segment ending at the key: 's' smooth, 'o' ease-out, 'i' in, 'l', 'h')
@@ -95,11 +130,12 @@ const BODY_CLIPS = {
   flinch: { dur: 0.26, keys: [[0.07, { e: 'o', spX: -0.08, hdX: -0.14, bZ: -0.05, yaw: GUARD.yaw - 0.15 }]] },
   backstep: { dur: 0.36, keys: [[0.1, W({ bY: -0.06, pitch: -0.06, rF: [-0.16, 0.06, -0.14], lF: [0.14, 0.04, 0.02], flat: 0.6 })], [0.34, W({ flat: 1 })]] },
   sidestep: { dur: 0.34, keys: [[0.12, W({ bY: -0.06, roll: 0.08, rF: [-0.18, 0.06, -0.08], lF: [0.14, 0.08, 0.08], flat: 0.6 })], [0.3, W({ flat: 1 })]] },
-  stagger: { dur: 0.8, keys: [[0.12, { ...RECOIL, e: 'o' }], [0.55, W({ pitch: -0.06, bY: -0.06 })]] },
-  recoil: { dur: 1.0, keys: [[0.1, { ...RECOIL, e: 'o' }], [0.6, W({ pitch: -0.08, yaw: -0.3 })]] },
+  // (A13 recoil -> A14 recovery -> the guard)
+  stagger: { dur: 0.8, keys: [[0.12, { ...RECOIL, e: 'o' }], [0.45, { ...RECOVERY, bY: -0.3, pitch: 0.12 }], [0.75, STAND]] },
+  recoil: { dur: 1.0, keys: [[0.1, { ...RECOIL_BIG, e: 'o' }], [0.32, { ...RECOIL_BIG, pitch: -0.26, hdX: -0.3 }], [0.62, RECOVERY], [0.95, STAND]] },
   reeling: {
     dur: 1.45,
-    keys: [[0.12, { ...RECOIL, e: 'o', pitch: -0.3, bY: -0.12 }], [0.6, W({ pitch: -0.16, bY: -0.16, yaw: -0.2 })], [1.1, W({ pitch: -0.04, bY: -0.08 })]],
+    keys: [[0.12, { ...RECOIL_BIG, e: 'o', pitch: -0.4, bY: -0.14 }], [0.5, { ...RECOIL_BIG, pitch: -0.3 }], [0.95, RECOVERY], [1.35, STAND]],
   },
   trampled: {
     dur: 1.5,
@@ -116,7 +152,8 @@ const BODY_CLIPS = {
   /** He waits: kneeling at the edge of the pour, his back to the arrival, the hands together. */
   meditate: { dur: 1, hold: true, keys: [[0, KNEEL]] },
   /** The intro: he stands from the kneel and turns his calm face to the hero. */
-  intro: { dur: 2.2, keys: [[0, KNEEL], [0.7, { ...KNEEL, hdX: 0.1 }], [1.5, W({ e: 'o', bY: -0.2, yaw: -0.5, hdY: 0.4 })], [2.2, STAND]] },
+  // (he stands from the kneel into A07's idle stand, turns his calm face to the hero, then drops into A08)
+  intro: { dur: 2.4, keys: [[0, KNEEL], [0.6, { ...KNEEL, hdX: 0.1 }], [1.35, { ...IDLE, e: 'o', yaw: -0.4, hdY: 0.36 }], [1.8, { ...IDLE, yaw: -0.2, hdY: 0.2 }], [2.4, STAND]] },
 };
 
 /** Suggested keys for core's three transitions (moves.js TRANSITION_MOVES): u 0..2, the impact at 1.0

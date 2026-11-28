@@ -57,10 +57,38 @@ const mlLunge = {
   lF: [0.26, ANK, 0.72], lFy: 0.1, rF: [-0.26, ANK, -0.62], rFy: -0.2, rK: [-0.15, -0.4, 0.9], lK: [0.4, 0, 0.9], flat: 0.9,
 };
 const mlCatch = {
-  yaw: -0.12, bY: -0.27, bZ: 0.06, pitch: 0.06, hip: 0.02,
+  yaw: -0.36, bY: -0.27, bZ: 0.06, pitch: 0.06, hip: 0.02,
   rH: [0.04, -0.1, 0.3], rP: [-0.9, -0.4, -0.2], sw: [0, 1.4], lH: [-0.02, -0.06, 0.4], lP: [0.9, -0.4, -0.1],
   lF: [0.26, ANK, 0.62], lFy: 0.15, rF: [-0.26, ANK, -0.6], rFy: -0.35, rK: [-0.4, -0.1, 0.9], lK: [0.45, 0, 0.9], flat: 1,
 };
+
+// ---------------------------------------------------------------- the owner's v04 pack, page B (PACK-V04.md)
+// B1 PALM (an advancing RIGHT open palm, one forward step): Benediction's second beat (and the Long Walk's
+// straight is the same palm out of the walk). B1.1 anticipation = mlB1Coil (the weight back on the rear leg,
+// the right palm drawn to the ribs, the lead hand low before him), B1.2 contact = mlLunge (above: the long
+// low step, the rear leg straight, the arm fully out, the palm flat), B1.3 follow-through = the strike's
+// follow (the hand eased a little back), B1.4 return = the guard.
+const mlB1Coil = {
+  yaw: -0.62, bY: -0.19, bZ: -0.06, pitch: 0.04, hip: -0.12, spY: -0.04, rH: [0.0, -0.14, 0.06], rP: [-0.85, -0.5, -0.4], sw: [0, 1.3], lH: [-0.02, -0.1, 0.34], lP: [0.9, -0.4, -0.1],
+  rF: [-0.32, ANK, -0.24], lF: [0.3, ANK, 0.2], rK: [-0.6, 0, 0.8], lK: [0.5, 0, 0.85],
+};
+// B2 PIVOT (A11 the delayed turn; a DELAYED 90-degree turn, then an abrupt LEFT palm): Benediction's last
+// beat, the held blue read. B2.1 anticipation = mlB2Turn (sunk, the body turned away a quarter turn on the
+// planted feet, the left palm drawn back low by the hip, the right hand across before the chest: HELD through
+// the bait delay), B2.2 contact = mlB2Palm (the left arm straight out at the hero, the left foot stepped long,
+// the right leg straight behind), B2.3 follow-through = mlB2Follow, B2.4 return = mlCatch (the heel planted,
+// the hands caught back up: the recovery's key) and the guard.
+const mlB2Turn = {
+  yaw: 0.9, bY: -0.3, bZ: -0.04, pitch: 0.06, hip: 0.2, spY: 0.08, spX: 0.03,
+  lH: [0.06, -0.26, 0.02], lP: [0.85, -0.5, -0.5], rH: [0.12, -0.06, 0.3], rP: [-0.9, -0.4, -0.2], sw: [0.3, 1.2],
+  rF: [-0.3, ANK, -0.18], lF: [0.3, ANK, 0.16], rFy: 0.35, lFy: 0.95, rK: [-0.6, 0, 0.8], lK: [0.55, 0, 0.8], flat: 1,
+};
+const mlB2Palm = {
+  yaw: -0.72, bY: -0.34, bZ: 0.22, pitch: 0.12, hip: -0.2, spY: -0.08,
+  lH: [-0.1, 0.03, 0.55], lP: [0.85, -0.25, -0.4], rH: [0.08, -0.16, 0.1], rP: [-0.85, -0.5, -0.4], sw: [0, 1.2],
+  lF: [0.3, ANK, 0.76], lFy: 0.15, rF: [-0.28, ANK, -0.6], rFy: -0.3, rK: [-0.15, -0.4, 0.9], lK: [0.45, 0, 0.9], flat: 0.9,
+};
+const mlB2Follow = { ...mlB2Palm, bZ: 0.18, lH: [-0.06, 0.0, 0.47], rH: [0.06, -0.12, 0.16] };
 
 // ---------------------------------------------------------------- Genuflect: the low sweep, the rising knee
 const mlSweepCoil = {
@@ -82,10 +110,14 @@ const mlKnee = {
 };
 
 // ---------------------------------------------------------------- the elbow (Rebuke, Anathema, Requiem)
+// B3 SLIP (a lateral evasive step, a precise reset): Rebuke. B3.1 anticipation = the guard; B3.2 the slip =
+// mlSlip (stepped off the line to his left, low, the lead hand out low, the right elbow folded and chambered;
+// the beat's `fsSlip` carries the root sideways), contact = mlElbow (the short elbow), B3.3 follow-through =
+// its follow, B3.4 return = the guard.
 /** The slip: off the line to his left, low, the right elbow folded and chambered. */
 const mlSlip = {
-  yaw: -0.62, bY: -0.3, bX: 0.08, roll: 0.07, hip: -0.12, rH: [0.06, 0.04, 0.1], rP: [-0.6, 0.1, 0.8], sw: [1.2, 0.3], lH: [-0.04, -0.02, 0.34],
-  rF: [-0.3, ANK, -0.2], lF: [0.3, ANK, 0.12], rK: [-0.7, 0, 0.7], lK: [0.6, 0, 0.8],
+  yaw: -0.62, bY: -0.32, bX: 0.08, roll: 0.09, pitch: 0.08, hip: -0.12, rH: [0.06, 0.04, 0.1], rP: [-0.6, 0.1, 0.8], sw: [1.2, 0.3], lH: [-0.02, -0.16, 0.4], lP: [0.8, -0.6, -0.1],
+  rF: [-0.3, ANK, -0.2], lF: [0.38, ANK, 0.12], rK: [-0.7, 0, 0.7], lK: [0.7, 0, 0.7],
 };
 const mlElbow = {
   yaw: 0.74, bY: -0.25, bZ: 0.14, hip: 0.2, rH: [0.3, 0.1, 0.1], rP: [-0.4, 0.15, 1], sw: [1.3, 0.2], lH: [0.02, -0.06, 0.2],
@@ -181,7 +213,7 @@ const mlUp = {
 };
 
 export const FRAGS = Object.freeze({
-  mlPalmLCoil, mlPalmL, mlPalmRCoil, mlPalmR, mlPivot, mlLunge, mlCatch,
+  mlPalmLCoil, mlPalmL, mlPalmRCoil, mlPalmR, mlPivot, mlLunge, mlCatch, mlB1Coil, mlB2Turn, mlB2Palm, mlB2Follow,
   mlSweepCoil, mlSweep, mlKneeCoil, mlKnee, mlSlip, mlElbow,
   mlWalkA, mlWalkB, mlWalkCoil, mlWalkHit,
   mlReachCoil, mlReach, mlLift, mlThrow,
