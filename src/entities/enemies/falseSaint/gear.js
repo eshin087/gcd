@@ -445,7 +445,10 @@ function buildJacket(ctx) {
     if (z < 0.02) return 0.5;
     const s = Math.min(1, Math.max(0, (ySp(1.5) - y) / 0.4));
     const [a] = CLOSE(s);
-    return 0.5 + 9 * (Math.atan2(x, z) - a);
+    // (a narrow shaded strip under the flap's edge: the crease line and the overlap's shadow, the rest
+    // of the front plain cloth)
+    const dv = Math.atan2(x, z) - a;
+    return dv > 0 && dv < 0.09 ? 0.7 : 0.3;
   });
   const flap = sub(shellStrip(JACKET, CLOSE, 0.016, 0.0035, 30), 1);
   const cloth = merge([shell, flap]);

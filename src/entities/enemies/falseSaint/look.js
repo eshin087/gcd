@@ -214,7 +214,7 @@ function hands(d, D) {
 // ---------------------------------------------------------------- the sensors
 /** The sensors' size at the game camera (× their close size), from `near` to `far` m: each still lights a
  *  letter cell there. */
-export const SENSOR_FAR = Object.freeze({ near: 5, far: 26, k: 6.5 });
+export const SENSOR_FAR = Object.freeze({ near: 5, far: 26, k: 5 });
 /** His death: the sensors go out one by one, at these seconds into his dying (the knee is down by 0.8 s). */
 export const SENSOR_OUT = Object.freeze([1.0, 1.65, 2.3]);
 

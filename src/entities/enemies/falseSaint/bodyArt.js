@@ -287,7 +287,7 @@ export const FS_ART = Object.freeze({
   /** a plate's spec [k, pow] (the white glints on titanium) */
   spec: Object.freeze({ armor: [1.4, 16], spike: [0.9, 22], bevel: [1.2, 14], trim: [1.1, 18], welt: [0.5, 24] }),
   /** glowing parts: [ink rgb, emissive rgb] */
-  glow: Object.freeze({ flask: [[0.6, 1.25, 1.5], [0.4, 1.3, 1.7]], gem: [[1.2, 1.1, 0.9], [1.4, 1.25, 0.95]] }),
+  glow: Object.freeze({ flask: [[0.5, 0.95, 1.1], [0.22, 0.7, 0.9]], gem: [[1.2, 1.1, 0.9], [1.4, 1.25, 0.95]] }),
   /** the part tables his rig shares with every boss rig on the page (written every frame by look.js; the
    *  plates' 12 - 16 are read from the player's own tables under the boss print, so they are not here):
    *  { ink, rim, fill: [fill gain, style, far line, far fill] } (model.js heroPartValues) */
@@ -301,6 +301,6 @@ export const FS_ART = Object.freeze({
     9: { ink: [0.95, 0.93, 0.88, 0.9], rim: [0.95, 0.93, 0.88, 0.9], fill: [1.2, 0, 0.6, 1.0] },
     11: { ink: [0.42, 0.42, 0.46, 0.75], rim: [0.55, 0.56, 0.62, 0.85], fill: [1.0, 8, 0.3, 0.8] },
     18: { ink: [1.2, 1.1, 0.9, 1.3], rim: [1.2, 1.1, 0.9, 1.3], fill: [1, 2, 1, 1.3] },
-    19: { ink: [0.6, 1.2, 1.45, 1.6], rim: [0.6, 1.2, 1.45, 1.6], fill: [1, 2, 1, 1.4] },
+    19: { ink: [0.55, 0.95, 1.1, 1.0], rim: [0.55, 0.95, 1.1, 1.0], fill: [1, 2, 1, 1.1] },
   }),
 });
