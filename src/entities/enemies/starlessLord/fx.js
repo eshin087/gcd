@@ -3,6 +3,7 @@ import { DuelFx, K_FIRE, K_SMOKE, K_VOID, K_STEEL, GROUND_Y, GROUND_GAIN } from 
 import { perPhase } from '../duelist/realise.js';
 import { DUEL_WORLD } from '../duelist/worldTuning.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { refLook } from './refLook.js';
 import { THRONE } from '../../../world/throneHall.js';
 
 /** A thrown stone stopped by cover / a blast on the floor, as blows on the world (ADR-107). */
@@ -260,19 +261,29 @@ export class LordFx extends DuelFx {
     if (!this.fire || !(k > 0.02) || !Number.isFinite(a.x + a.y + a.z + b.x + b.y + b.z)) return;
     const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, len = Math.hypot(dx, dy, dz) * k;
     if (!(len > 0.05)) return;
-    this._ink(a.x, a.y, a.z, a.x + dx * k, a.y + dy * k, a.z + dz * k, 0, 0.62 * hot, 0, 0.95 * hot);
-    const life = this._frame();
-    if (!(life > 0)) return;
+    const split = refLook();
+    if (!split) this._ink(a.x, a.y, a.z, a.x + dx * k, a.y + dy * k, a.z + dz * k, 0, 0.62 * hot, 0, 0.95 * hot);
     const S = this._screen(a.x, a.y, a.z), m = (S.ok ? S.mpp : 0.025) * (S.cw ?? 5) * 1.1, A = this._axes();
     const sx = dx * A.rx + dy * A.ry + dz * A.rz, sy = dx * A.ux + dy * A.uy + dz * A.uz, sl = Math.hypot(sx, sy) || 1;
     // across the blade on screen
     const cx = -sy / sl, cy = sx / sl, ox = (A.rx * cx + A.ux * cy) * m, oy = (A.ry * cx + A.uy * cy) * m, oz = (A.rz * cx + A.uz * cy) * m;
+    if (split) {
+      // (ADR-276, `?lordRef`: the split blade: two rails of steel half a cell to each side, meeting at
+      // the point, and the dark slit between them: no stroke down the middle)
+      const h = 0.62, ex = a.x + dx * k, ey = a.y + dy * k, ez = a.z + dz * k;
+      for (const s of [-1, 1]) this._ink(a.x + s * ox * h, a.y + s * oy * h, a.z + s * oz * h, a.x + dx * k * 0.86 + s * ox * h * 0.8, a.y + dy * k * 0.86 + s * oy * h * 0.8, a.z + dz * k * 0.86 + s * oz * h * 0.8, 0, 0.62 * hot, 0, 0.95 * hot);
+      for (const s of [-1, 1]) this._ink(a.x + dx * k * 0.86 + s * ox * h * 0.8, a.y + dy * k * 0.86 + s * oy * h * 0.8, a.z + dz * k * 0.86 + s * oz * h * 0.8, ex, ey, ez, 0, 0.95 * hot, 0, 0.95 * hot);
+    }
+    const life = this._frame();
+    if (!(life > 0)) return;
     const n = Math.max(3, Math.min(24, Math.round(len / 0.1)));
     for (let i = 0; i <= n; i++) {
       const u = (i / n) * k, h = (0.3 + 0.08 * Math.sin((this.d.time ?? 0) * 17 + i * 1.7)) * hot;
       const x = a.x + dx * u, y = a.y + dy * u, z = a.z + dz * u;
-      this._blob(x + ox, y + oy, z + oz, 0, 0, 0, life, 0.2, 0.2, h, h, K_FIRE);
-      this._blob(x - ox, y - oy, z - oz, 0, 0, 0, life, 0.2, 0.2, h, h, K_FIRE);
+      // (the split blade's sheath stands further out and lower, so the slit between its rails stays dark)
+      const o = split ? 1.6 : 1, hh = split ? h * 0.7 : h;
+      this._blob(x + ox * o, y + oy * o, z + oz * o, 0, 0, 0, life, 0.2, 0.2, hh, hh, K_FIRE);
+      this._blob(x - ox * o, y - oy * o, z - oz * o, 0, 0, 0, life, 0.2, 0.2, hh, hh, K_FIRE);
     }
   }
 
@@ -1061,7 +1072,11 @@ export class LordFx extends DuelFx {
    *  behind them (a wheel of strokes), the Void at its hub, red embers shed. */
   _drawGlaive(s) {
     const c = Math.cos(s.spin), sn = Math.sin(s.spin), R = 0.95;
-    this._ink(s.x - c * R * 0.86, s.y, s.z - sn * R * 0.86, s.x + c * R * 0.86, s.y, s.z + sn * R * 0.86, 0, 0.85);
+    if (refLook()) {
+      // (ADR-276, `?lordRef`: the thrown blade is the split blade too: two rails, the slit dark)
+      const S = this._screen(s.x, s.y, s.z), h = (S.ok ? S.mpp : 0.025) * (S.cw ?? 5) * 0.55;
+      for (const e of [-1, 1]) this._ink(s.x - c * R * 0.86 - sn * h * e, s.y, s.z - sn * R * 0.86 + c * h * e, s.x + c * R * 0.86 - sn * h * e, s.y, s.z + sn * R * 0.86 + c * h * e, 0, 0.85);
+    } else this._ink(s.x - c * R * 0.86, s.y, s.z - sn * R * 0.86, s.x + c * R * 0.86, s.y, s.z + sn * R * 0.86, 0, 0.85);
     this._dot(s.x, s.y, s.z, 0.6, 0.34, K_VOID);
     // what the points leave: from where each was last frame to where it is
     const p0 = Number.isFinite(s.pspin) && Math.abs(s.spin - s.pspin) < 1.2 ? s.pspin : s.spin - 0.4;

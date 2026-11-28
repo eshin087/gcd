@@ -17,6 +17,7 @@ import { LordSpecialFx, boltLook } from './specialFx.js';
 import { LordSpells } from './spells.js';
 import { dressFrame as dressLord } from './look.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { refLook } from './refLook.js';
 import { clashOn, clashRegenK } from '../../../combat/clashDance.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
@@ -148,6 +149,16 @@ export class StarlessLord extends Duelist {
       if (fu.uGlowMask) fu.uGlowMask.value = 1;
     }
     if (M.lining?.uniforms?.uInk) M.lining.uniforms.uInk.value.setRGB(0.7, 0.1, 0.08);
+    // (ADR-276, `?lordRef`: the reference's crimson reads at a glance: the cape's lining, the sash, the
+    // hems printed in a stronger red, the same hue)
+    if (refLook()) {
+      const ink = (m, r, g, b) => m?.uniforms?.uInk?.value.setRGB(r, g, b);
+      ink(M.lining, 1.15, 0.13, 0.1);
+      ink(M.piping, 1.2, 0.16, 0.12);
+      ink(M.hem, 0.95, 0.12, 0.1);
+      fill(M.lining, 0.5, 0.04, 0.035);
+      fill(M.piping, 0.5, 0.06, 0.05);
+    }
   }
 
   _makeFx() {
@@ -165,6 +176,10 @@ export class StarlessLord extends Duelist {
     r.body.add(off.root);
     this.blades.off = off.root;
     this.blades.L = off.blade;
+    // (ADR-276, `?lordRef`: the split blades' dark slits, each kept with its blade by _showForm)
+    const cores = [[this.blades.A, find('lordCoreA')], [this.blades.B, find('lordCoreB')], [this.blades.Q, find('lordCoreQ')], [off.blade, off.core]];
+    this.blades.cores = cores.filter(([b, c]) => b && c);
+    this._split = this.blades.cores.length > 0;
     off.root.visible = false;
     this.lit = 0; // how far the blades are lit 0..1 (they extend from the hilt)
     this.litWant = 0;
@@ -416,6 +431,10 @@ export class StarlessLord extends Duelist {
     B.off.visible = f === 2;
     B.L.visible = f === 2 && k > 0.02;
     B.L.scale.z = (S.tip - S.guard) * k;
+    for (const [b, c] of B.cores ?? []) {
+      c.visible = b.visible;
+      c.scale.z = b.scale.z;
+    }
     // the off hand: closed on the off-hand blade's hilt in form 2 (that joint carries its own fist)
     const H = this.rig.offHand;
     if (H?.open && f === 2) {
@@ -497,7 +516,9 @@ export class StarlessLord extends Duelist {
     const act = this.brain.act, striking = !!act && act.striking && act.t >= act.striking.impact - 0.06 && act.t <= act.striking.end + 0.1;
     const hot = this.phase >= 4 ? 1.5 : 1;
     const glow = (1.2 + (striking ? 0.8 : 0)) * hot * this.lit;
-    u.uGlow.value = dt > 0 ? damp(u.uGlow.value, glow, 14, dt) : glow;
+    // (ADR-276, `?lordRef`: the split blade's rails bloom less, so the dark slit between them reads)
+    const want = this._split ? glow * 0.5 : glow;
+    u.uGlow.value = dt > 0 ? damp(u.uGlow.value, want, 14, dt) : want;
     u.uInkGlow.value = 1.0 + (striking ? 0.6 : 0) + 0.4 * (hot - 1);
   }
 

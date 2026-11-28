@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { boxGeometry, mergeGeometries, sub, tatterStrip, shellGeometry, foldLines, rng, lerp } from '../../player/heroGeo.js';
 import { ellipsoidGeometry } from '../../../render/glyphGeometry.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { refLook } from './refLook.js';
 
 // Look option `b` of Varr Nihil's body (`?lordLook=b`; `c` = the same in the dragon look): his own
 // figure, worn down form by form, so the fight shows on the man himself.
@@ -24,7 +25,9 @@ import { lookOf } from '../duelist/lookSwitch.js';
 /** The option chosen: { art, dress }. */
 export function lordLookNow() {
   const o = lookOf('lordLook', '0', 'b');
-  return { art: o === 'a' || o === 'c', dress: o === 'b' || o === 'c' };
+  // (ADR-276, `?lordRef`: the owner's reference keeps the hood, the helm, the plate and the whole cape in
+  // every form: no dressing, whatever this switch says)
+  return { art: o === 'a' || o === 'c', dress: (o === 'b' || o === 'c') && !refLook() };
 }
 
 /** The form from which each cape sheet hangs in rags (LORD_CAPE order: back, back-left, back-right, left, right). */
