@@ -19,6 +19,49 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'Varr Nihil after the reference pack, to try',
+        notes: [
+          'A new look for Varr Nihil to try before it becomes his own: his hood, helm, armour and whole cape kept in every form, and every blade split into two red-white rails with a dark slit between them.',
+          'And a new way for him to move: lower, wider guards, blows that sink into the cut, bigger reactions and a deeper glide. His timing and damage are exactly as before.',
+          'Add lordRef=a and lordRefMove=a to the address to try them.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'A black blow can darken the whole picture, a red string can cut in red',
+        notes: [
+          'A charged (black) blow now drains the whole picture to dark grey while the boss charges, his weapon lit by a white point, the colour snapping back as he strikes.',
+          'And it always lands like the heaviest blow of the fight, even when it misses you: the ground craters, what stands near breaks, dust tears out across the floor and the screen shakes.',
+          'A red string leaves a thin red crescent on every cut of a sword boss, from the red flash on.',
+        ],
+      },
+      {
+        date: '2026-11-28',
+        title: 'A new fight stance: the middle guard',
+        notes: [
+          'In a fight gcd now holds his sword in a middle guard: both hands on the grip before him, the blade pointed at the boss, the knees bent.',
+          'At the game camera it reads as a sword aimed at your foe, not one raised up and out to the side.',
+        ],
+      },
+      {
+        date: '2026-11-28',
+        title: 'The deathblow is not cut short',
+        notes: [
+          'Pressing guard during a deathblow no longer stops it. The guard comes up once the finisher lands.',
+          'A perfect parry of a blue blow now always earns the deathblow. It no longer turns into a blade lock.',
+        ],
+      },
+      {
+        date: '2026-11-28',
+        title: 'The Cinder Wyrm dies whole, every white spark shows, and its blue and red paws look apart',
+        notes: [
+          "When the Cinder Wyrm falls, its neck now comes down in one natural curve with its head in line, instead of snapping up and bending at odd angles.",
+          'Every ordinary blow of a boss now shows its white spark, even when the claw or wing it comes from is hidden behind the body or past the edge of the screen.',
+          "The Cinder Wyrm's blue and red paw blows no longer look alike: the blue one winds its paw out wide and sweeps it across you (parry it), the red one leaps clear of the ground and crashes down on both paws (roll away).",
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
         notes: [
           'On a phone, one tap on a world, BEGIN HERE or BOSS RUSH now starts it: no more second tap.',

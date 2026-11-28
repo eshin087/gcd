@@ -310,6 +310,7 @@ export class FoxHowl {
         d.emit?.('combat:charge', { source: 'dragon', attack: A.name, dur: Math.max(0.05, bt.flash - t), x: d.position.x, z: d.position.z });
       }
       if (t < bt.flash) {
+        d.game?.blackout?.beat(); // (the blackout, ?black=: the charge keeps the picture dark)
         const W = TELL_STYLE.black.warn, k = sat((t - bt.start) / Math.max(0.05, bt.flash - bt.start));
         d.warnTell = TELL.BLACK;
         d.warn = Math.max(d.warn, W.from + (W.to - W.from) * k * 0.8);

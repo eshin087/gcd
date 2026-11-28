@@ -4,6 +4,7 @@ import { clamp, wrapAngle } from '../../../core/math.js';
 import { markCaster } from '../../../render/pipeline.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { TELL, TELL_STYLE, RESULT, POSTURE, DEFENSE, tellDefaults, dodgeOnly } from '../../../combat/rules.js';
+import { blackBody } from '../../../combat/blackout.js';
 import { buildHero, setHeroGlyphScale, installLean, LEAN, HERO_SCALE, DIM } from '../../player/model.js';
 import { REACH } from '../../player/combat.js';
 import { HeroAnimator } from '../../player/anim.js';
@@ -478,8 +479,10 @@ export class Duelist {
     this.addPosture((POSTURE.parry[tell] ?? POSTURE.parry.normal) * (this.game.player?.deflect?.perfect ? POSTURE.perfect : 1) * this._clashMult());
     if (this.mode !== 'act' || !a) return; // the parry broke his posture (broken) or the move is gone
     if (a) a.parried = (a.parried ?? 0) + 1;
-    // the blade lock: a PERFECT parry of a blow marked `lock` crosses the blades
-    if (b?.def?.lock && this.game.player?.deflect?.perfect && this.brain.startLock()) return;
+    // the blade lock: a PERFECT parry of a blow marked `lock` crosses the blades, unless the deathblow combo that
+    // parry armed takes it (a blue blow, player.deathblowClaims; he recoils below and the combo follows; ADR-280)
+    const P = this.game.player;
+    if (b?.def?.lock && P?.deflect?.perfect && !P.deathblowClaims?.(this) && this.brain.startLock()) return;
     // the full deflect: every real hit of a long string parried → he reels (a cinematic moment)
     const F = this.T.fullDeflect;
     if (last && a.hits >= F.minHits && a.parried >= a.hits) {
@@ -1355,7 +1358,8 @@ export class Duelist {
       const dd = Math.hypot(cam.x - p.x, cam.y - p.y - 1.1, cam.z - p.z);
       if (Number.isFinite(dd)) setHeroGlyphScale(mats, dd);
     }
-    const w = clamp(this.warn, 0, 2);
+    // (the blackout, ?black=: a black blow no longer darkens his body; combat/blackout.js)
+    const w = clamp(this.warn, 0, 2) * (this.warnTell === TELL.BLACK ? blackBody() : 1);
     for (const m of mats) {
       const u = m.uniforms;
       if (!u) continue;

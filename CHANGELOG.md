@@ -4,7 +4,54 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-one pieces of work since 0.4.0:
+One hundred and forty-six pieces of work since 0.4.0:
+- **The deathblow is not cut short** (2026-11-28, ADR-280). *Fixed:* pressing guard during a deathblow ended it at
+  once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
+  boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of
+  the blade lock (`?dbLock=lock` as before; the Lab's `dbLock`). Tian Lei's beam locks are unchanged. The
+  Training's "Blade lock" plays with `?dbLock=lock` so the lock still happens there.
+- **Varr Nihil after the reference pack, to try** (2026-11-28, ADR-277). *Added (options, off by default: the owner
+  picks):* `?lordRef=a` draws Varr Nihil after the owner's reference pack (`docs/art/character-packs-v04/varr-nihil`):
+  his hood, closed helm, plate, war-skirt and the whole crimson-lined cape kept in all four forms (no form-by-form
+  wear), every blade split into two red-white rails with a dark slit between them (the one sword, the twin blades,
+  the staff's two ends, the cross sword and its side blades, the thrown blade too), a short cross-guard, a crimson
+  sash and clasp across his chest, the cape's sides standing off him so its lining frames him, cloth that lags and
+  overshoots further, a stronger crimson. `?lordRefMove=a` poses him after the strips: lower, wider guards (form 4
+  upright with the hands under the guard, form 3's hands wide on the staff), blows that load and sink into the
+  cut, the free fist out behind, Vigil's Fall to the floor, Starfall landing on the upright staff, bigger
+  reactions, a deeper glide; the same timing, zones, damage and travel (`lord.mjs . lordref` checks every move,
+  form and branch). The Lab's `lordRef` and `lordRefMove` rows.
+- **The Cinder Wyrm dies whole, every white spark shows, and its blue and red paws look apart** (2026-11-28, ADR-274). *Fixed:* the wyrm's
+  death no longer breaks its neck: its head swings down on the neck (round the neck's base, always in its reach) and
+  looks along it, so the neck falls as one curve; before, the throe flung the head 1.5 m up into a straight pole with
+  the head bent ~60 - 90° off its end, then the neck buckled into a zig-zag as it landed (`?deathNeck=0` as before).
+  Every white (and blue) timing glint of a boss is now seen: its letters are drawn over the scene (a new blob flag
+  in the fire field, `FIRE_SEEN`) and kept inside the frame like the flares; the wyrm's own paw, foreleg and wings
+  hid 92 - 100 % of its claw glints and a wing blow's glint fell off the screen (`?glintSeen=0` as before).
+  *Changed (the owner's picks from the films, the defaults):* the wyrm's blue and red paw blows no longer share a
+  motion: the blue one is **the scythe** (the paw wound out wide and back, the chest twisted away, then swept across
+  and down on you), the red stomp is **the leap** (it crouches, jumps clear of the ground with a beat of its wings and
+  falls on both paws); `?pawBlue=0` / `?pawRed=0` as before. *Added (options):* `?pawBlue=b` the jab (crouched, the
+  paw tucked under the chest, a straight punch), `c` the uppercut (claws dragged low, swept up); `?pawRed=b` the
+  quake (sunk low, wings flat, a shudder, then the heave and the slam). The Lab's LOOKS rows `pawBlue` / `pawRed`.
+- **A new fight stance: the middle guard** (2026-11-28, ADR-275). *Changed (the owner's pick of four filmed stances):* in a fight gcd
+  now stands in a middle guard: both hands on the grip before his navel, the blade pointed forward at the boss's
+  eyes (~36° up), the knees bent, the right foot ahead. It was the blade raised up and out to his right
+  (`?hold=ref` stands him as before). *Added (turned down, kept behind the switch):* `?hold=b` a high guard (the
+  blade upright beside his head), `?hold=c` the sword fingers (one hand, the blade level at the boss, the free
+  hand raised behind his head), `?hold=d` a low trailing guard (one hand, the blade trailing behind his right
+  leg); the Lab's `hold` row. Attacks, the block, rolls and the fight's small habits start from it as before.
+- **A black blow can darken the whole picture, a red string can cut in red** (2026-11-27, ADR-271). *Changed (the owner's picks, the defaults: blackout b, red trail a):* `?black=a|b|c` replaces the
+  violet look of a charged (black) blow with a blackout, after the owner's reference film: as the boss charges, the
+  whole picture drains to dark grey, the boss stays lit with a white point on his weapon, the black flare is a
+  white-hot streak, and colour snaps back on the strike (a: the dark drops in over the last 0.3 s before the cue,
+  b: it builds through the whole charge, c: as a, darker); every boss with a charged blow has it, and it clears on
+  a stagger, a posture break, a Lab interrupt, a retry or his death. `?redTrail=a|b`: from a red blow's flare on,
+  a blade's cut leaves a thin red crescent just outside its edge, so every cut of a red string reads red (a short,
+  b longer); the sword bosses only. *Added:* every black blow, hit or miss, lands with a devastating impact
+  (`?blackImpact=a`, the default; `0` as before): a crater and what stands near broken, a shock front of dust,
+  a light, a hard shake, a held frame, an explosion's sound. The Lab's `black`, `redTrail` and `blackImpact`;
+  `npm run perf -- --black`.
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s
@@ -1537,6 +1584,12 @@ One hundred and forty-one pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **Agents no longer run the full test set before a PR; `npm test -- --changed`** (2026-11-28, ADR-276):
+  before opening a PR, an agent runs the tasks that cover what its branch changed (`--changed`;
+  `--changed --list` shows the pick and why, `--base <ref>` compares with another ref) and leaves the
+  full set to CI, which still runs every task on every PR before it can merge. The rules are in
+  `tests/changed.mjs`; a file they don't know, or shared code (combat, the hero, the duelist engine,
+  core, render, main.js), runs everything. `changedcheck` fails when a boss or a level has no rule.
 - **Local test runs go easy on the PC** (2026-11-25, ADR-205): off CI, `npm test` runs its workers at
   low priority and every run on the machine shares 8 slots (`ABYSS_JOBS`); `--only <names>` runs a subset.
 - **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's

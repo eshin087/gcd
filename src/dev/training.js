@@ -1,6 +1,7 @@
 import { CONFIG } from '../core/config.js';
 import { DEFENSE } from '../combat/rules.js';
 import { riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
+import { dbLockMode, setDbLock } from '../entities/player/deathblow.js';
 import { ARTS } from '../entities/player/flurry.js';
 import { TUNING as WYRM, SCALE as WYRM_SCALE } from '../entities/dragon/tuning.js';
 
@@ -133,7 +134,7 @@ add('PARRY & RIPOSTE', [
   { id: 'deflect', name: 'Deflect a string', boss: 'any', streak: 0, role: 'string', answer: 'parry', desc: 'Every blow of a string parried in rhythm: each counts in the streak, the last is answered by the riposte.', expect: ['player:parry'] },
   { id: 'deflectLong', name: 'Deflect a long string', boss: 'any', streak: 0, role: 'long', answer: 'parry', desc: 'A long string parried blow for blow: watch the streak climb and the riposte at the end.', expect: ['player:parry'] },
   { id: 'blockString', name: 'Block a string', boss: 'any', role: 'string', answer: 'block', desc: 'The guard held through a string: chip damage, pushback, no riposte.', expect: ['player:block'] },
-  { id: 'lock', name: 'Blade lock', boss: 'duel', role: 'lock', answer: 'perfect', mash: true, desc: 'A perfect parry of his heavy blow locks the blades: mash attack to win the push.', expect: ['player:lock'] },
+  { id: 'lock', name: 'Blade lock', boss: 'duel', role: 'lock', answer: 'perfect', mash: true, dbLock: 'lock', desc: 'A perfect parry of his heavy blow locks the blades: mash attack to win the push. Played with ?dbLock=lock: in a fight the deathblow takes that parry.', expect: ['player:lock'] },
   { id: 'trade', name: 'Trade clash', boss: 'duel', role: 'single', answer: 'trade', dist: 2.2, clear: true, desc: 'Your cut meets his blow in the air: both blades thrown back, nobody hurt. Pressed at the last instant it is the flash counter: the cut goes through him.', expect: ['combat:clash'] },
   { id: 'mikiri', name: 'Mikiri', boss: 'ash', role: 'mikiri', answer: 'mikiri', dist: 3.2, desc: 'A roll INTO his perilous thrust: you step on his blade.', expect: ['player:mikiri'] },
   { id: 'mikiriSheath', name: 'Mikiri', boss: 'sheathed', role: 'mikiri', answer: 'mikiri', dist: 4.0, desc: 'A roll INTO The Walking Staff: you step on the scabbard.', expect: ['player:mikiri'] },
@@ -444,6 +445,7 @@ export class Training {
   stop(changed = true) {
     this._release();
     this._restoreRiposte();
+    this._restoreDbLock();
     this.ph = 'idle';
     if (changed) this._changed();
   }
@@ -514,6 +516,7 @@ export class Training {
       console.error('[training] situation failed', s?.id, err);
       this._release();
       this._restoreRiposte();
+      this._restoreDbLock();
       this.ph = 'done';
       this.lastResult = { id: s?.id, ok: false, missing: ['(error)'], secs: this.t };
       this._changed();
@@ -523,7 +526,17 @@ export class Training {
   _phase(ph) {
     this.ph = ph;
     this.t = 0;
-    if (ph === 'done') this._restoreRiposte();
+    if (ph === 'done') {
+      this._restoreRiposte();
+      this._restoreDbLock();
+    }
+  }
+
+  /** A situation's own `?dbLock=` (`s.dbLock`; ADR-280) ends with it, as its riposte mode does. */
+  _restoreDbLock() {
+    if (this._dbLockSaved == null) return;
+    setDbLock(this._dbLockSaved);
+    this._dbLockSaved = null;
   }
 
   /** A situation's own riposte mode (`s.riposte`) ends with it: the mode before it comes back. */
@@ -567,6 +580,10 @@ export class Training {
       if (this._riposteSaved == null) this._riposteSaved = riposteMode();
       setRiposteMode(s.riposte);
     } else this._restoreRiposte();
+    if (s.dbLock) {
+      if (this._dbLockSaved == null) this._dbLockSaved = dbLockMode();
+      setDbLock(s.dbLock);
+    } else this._restoreDbLock();
     if (p) {
       p.parryRun = 0;
       if (p.db) p.db.phase = '';

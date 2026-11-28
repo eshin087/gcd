@@ -266,13 +266,37 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   on it (a disc of blacked-out cells with a pale corona), motes of pale light pulled in from all
   round, the body darkening (`TELL_STYLE.black.warn`), the screen edge dimming (`combat:charge`).
   The levels are dark, so black is drawn by what rings it. Then the black flare.
+- **The blackout (`?black=a|b|c`, ADR-271; the owner picked b, the default; `?black=0` = the violet look).** The Phantom Blade
+  Zero reference: instead of the violet look, the whole picture drains toward dark grey and dims as a
+  black blow charges, the boss stays lit with a white point on the striking part, the black flare is a
+  white-hot streak, and colour snaps back on the strike. a: the dark drops in over the last 0.3 s
+  before the cue (the film); b: it builds through the whole charge; c: as a, darker. Black blows only:
+  red, blue and normal blows never touch the picture. Driven by `combat:charge`, a `beat()` from
+  whatever draws the charge each frame (`DuelFx.charge`: every duelist and the wyrm; the Fox's Howl),
+  and the black `combat:flash`; it clears on every path the charge clears on (below), a cancelled
+  charge over 0.25 s. STYLE.md "The blackout and the red trail".
+- **The red trail (`?redTrail=a|b`, ADR-271; the owner picked a, the default; `?redTrail=0` = none).** From a red blow's flare on, a blade's
+  cut leaves a thin red crescent just outside its white edge, so every cut of a red string reads red;
+  nothing before the cue, nothing on a white or blue blow. a: thin, ~0.2 s; b: longer, ~0.45 s. Blades
+  only (Shen Hui, the Starless Lord, Lu Wusheng); the bare-handed bosses and the wyrm are left out.
+- **The black impact (`?blackImpact=a`, the default; ADR-271).** The owner: every black blow ends with a
+  devastating impact even if it misses, one of the strongest, most felt blows a boss has. Hit or miss, where its
+  striking part comes down: a blast on the world (a crater and its scorch; every breakable within 3.2 m struck
+  at power 1.8, so what stands there breaks), a ragged shock front of dust out 6.5 m (x 1.8 on the wyrm), the grass
+  and the living world thrown, a pale light, a hard camera shake (0.45 far, 0.85 near) and a punch, a 0.07 s held
+  frame on a miss (a hit has its own), an explosion's sound with the sub under it and the music ducked. It deals
+  no extra damage: the blow's own damage and knock-down are unchanged. A blow cancelled before its impact
+  (stagger, posture break, death, a Lab interrupt) never lands it. `combat/blackImpact.js`, numbers
+  `TELL_STYLE.black.impact`; `?blackImpact=0` lands the blow as before.
 - **Parryable (`normal`, `blue`) — the animation is the tell.** No colour coding during the windup
   (audio: the blue warning for `blue`; nothing for `normal`). On the cue a brief **white cross** pops at
   the striking part (a `blue` one with the blue timing sound): one row of `-` (13 cells) through one column of `|`
   (7 cells), white-hot digits where they meet, written on the letter grid (0.2 s; it opens at full
   size on the cue frame and draws back into its heart). `blue` (heavy, big-posture) gets the same
   cross 1.6x as big (21 x 11 cells) with diagonals, an **eight-point star**, and a thin ring of
-  strokes opening round it (0.28 s) — still white, never blue.
+  strokes opening round it (0.28 s) — still white, never blue. **Always seen (ADR-274):** a glint's letters
+  are drawn over the scene (no depth fade: the wyrm's paw, foreleg and wings hid its claw glints) and its heart
+  is kept inside the frame like the flare's (`?glintSeen=0` as before).
 - **The sounds (2026-11-22; owner: "it should only have the sound played for red/blue attacks").**
   Only a blue and a red / black blow have cues: a warning as the windup starts and a timing sound
   just before it lands: the red ones recorded (`cue-red` / `time-red`), the blue ones the synth sting
@@ -315,7 +339,8 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   (`TELL_BLAZE`). The owner asked for the flare instead of "a red circular area of where the attack
   will land".
 - The glow clears the moment the windup is cancelled: stagger, posture break, parry recoil, the
-  plunge's reaction, death, reset, or a Lab interrupt replacing the attack.
+  plunge's reaction, death, reset, or a Lab interrupt replacing the attack. So does the blackout
+  (checked by duel `blackout` and integ `flare`).
 - After-the-fact feedback (PARRY / DEFLECT / DEFLECT ×N / GHOSTEP / EXECUTION / GUARD BROKEN
   call-outs, white/gold parry sparks, the clang that climbs with a deflect chain) is not a tell and
   stays.
@@ -493,7 +518,11 @@ Against a duelist (`?parryRiposte=deathblow`, the default; `planted` / `old` the
 - A parry that **breaks** his posture, or **any parry of a blue blow**: the **DEATHBLOW**, N = parryRun (1..7) blows
   where the hero stands (0.6 m at most): his own cuts, a new order each time, the finisher a big one. Every contact
   holds for a beat (0.16 - 0.2 s, the finisher 0.38 s; ~3 s for seven) under the cold cast; 22 + 2N a blow, 40 + 15N
-  the finisher, final; he cannot be hurt; after a break he stays broken.
+  the finisher, final; he cannot be hurt; after a break he stays broken. A guard press does not end it (it waits,
+  and the guard comes up in the finisher's tail); attack, heavy and dodge presses are dropped (ADR-280).
+- A **perfect** parry of a blue blow marked `lock` would also cross the blades: the deathblow takes it (he recoils,
+  the combo follows; `?dbLock=lock` gives the blade lock back, ADR-280). Without the deathblow (`old` / `planted`) the
+  lock is as before; Tian Lei's beam and lantern locks are their own and unchanged.
 - Each blow: a straight cut on his body that crosses the last and shatters on the finisher (`?dbfx=b`), blood (a
   spray, a wound, pools on the floor), the Flesh sound (`?dbsfx=a`).
 - A chain of perfect parries grows (`?parryGrow=a`): more sparks a tier, embers, a short heat flash.

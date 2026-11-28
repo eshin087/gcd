@@ -1241,6 +1241,7 @@ async function scenarioFlow() {
 // Every situation of the Training catalogue that applies to this boss, run by the runner itself
 // (src/dev/training.js): each must play out (done, within its time) and show what it promises.
 async function scenarioTraining() {
+  const FLM = await imp('src/entities/player/flurry.js');
   out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
   const G = build(SEED, true); // (the real crater: the TERRAIN situations and his terrain moves need its pieces)
   const { game } = G;
@@ -1253,7 +1254,9 @@ async function scenarioTraining() {
   let si = 0;
   for (const s of L) {
     if (s.cat === 'BOSS MOVES' && !true) continue;
-    Math.random = mulberry32(SEED + 0x7a11 + 977 * si++); // (each situation on a stream of its own: its result does not hang on what the ones before it drew)
+    Math.random = mulberry32(SEED + 0x7a11 + 977 * si); // (each situation on a stream of its own: its result does not hang on what the ones before it drew)
+    // (... and the hero flurry's figures, a stream of their own (player/flurry.js): earlier scenarios' flurries left it anywhere)
+    FLM.setFigureSeed(SEED + 0x7a11 + 977 * si++);
     T.run(s.id);
     let frames = 0;
     while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++;}
@@ -2353,7 +2356,89 @@ const S = {
   fxlooks: scenarioFxlooks,
   swordmotion: scenarioSwordMotion,
   lordform: scenarioLordForm,
+  lordref: scenarioLordRef,
 };
+/**
+ * LORDREF (ADR-277): Varr Nihil after the reference pack (docs/art/character-packs-v04/varr-nihil).
+ * `?lordRefMove=a` changes poses only: every move, form, branch and flurry count realised with it on and off
+ * times every beat the same (start, impact, end, windup, hold, active, follow, close, flash, the move's end
+ * and recovery) under the shipped switches and with them all off; the same seeded fight against the
+ * defender bot lands the same blows at the same times; the sword audit's limits hold (the sword in line
+ * with the forearm, the blade clear of his head and body, the arms opening). `?lordRef=a`: every blade
+ * split (each with its dark slit, shown and scaled with it), no form-by-form dressing, his body whole.
+ */
+async function scenarioLordRef() {
+  out('\n== scenario LORDREF (ADR-277: the reference pack behind ?lordRef / ?lordRefMove: the look and the poses, never the timing) ==');
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  const rnd = (s) => () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const key = (A) => JSON.stringify([A.end, A.recoveryStart, A.hits, A.beats.map((b) => [b.index, b.start, b.impact, b.end, b.W, b.H, b.A, b.S, b.F, b.close, b.flash, b.feint, b.last])]);
+  let n = 0;
+  const diff = [];
+  for (const combo of [{}, { lordMotion: '0', lordForm: '0', lordPace: '0' }]) {
+    for (const [k, v] of Object.entries(combo)) setLook(k, v);
+    for (const name of MOVE_NAMES) {
+      const def = MOVES[name];
+      for (const f of [1, 2, 3, 4]) {
+        if (def.transition && f !== def.phase) continue;
+        for (let s = 1; s <= 5; s++) {
+          const opts = def.streak ? { count: 2 + s } : null;
+          setLook('lordRefMove', '0');
+          const a = realise(name, f, rnd(s * 7919), opts);
+          setLook('lordRefMove', 'a');
+          const b = realise(name, f, rnd(s * 7919), opts);
+          if (!a || !b) continue;
+          n++;
+          if (key(a) !== key(b)) diff.push(`${name} f${f} s${s}`);
+        }
+      }
+    }
+    for (const k of Object.keys(combo)) setLook(k, null);
+  }
+  setLook('lordRefMove', null);
+  assert(!diff.length && n > 1000, `${n} realisations (every move, form, branch, flurry count; shipped switches and all off) time every beat the same with ?lordRefMove on and off (${diff.slice(0, 6).join(', ') || 'none differ'})`);
+  // the same seeded fight, the same blows
+  const fight = (on) => {
+    setLook('lordRefMove', on ? 'a' : '0');
+    const G = build(SEED + 11);
+    duel(G, { dist: 3.5, ai: true, form: 1 });
+    G.defend = makeDefender(G);
+    const h0 = G.hits.length;
+    run(G, 24, () => G.defend.act());
+    setLook('lordRefMove', null);
+    return G.hits.slice(h0).map((h) => `${h.t.toFixed(3)} ${h.attack} ${h.r} ${h.damage}`);
+  };
+  const A = fight(false), B = fight(true);
+  const firstDiff = A.findIndex((h, i) => h !== B[i]);
+  assert(A.length > 4 && A.length === B.length && firstDiff < 0, `a seeded 24 s fight against the defender: ${A.length} blows off, ${B.length} on, the same times, moves and results${firstDiff >= 0 ? ` (first differs: ${A[firstDiff]} / ${B[firstDiff]})` : ''}`);
+  // the sword audit with the reference's poses (the shipped switches on)
+  setLook('lordRefMove', 'a');
+  let last = null;
+  const H = { THREE, build: (...a) => (last = build(...a)), duel, run, DT, MOVES, names: ['litany', 'lunge', 'reap', 'meridian', 'voidBolt', 'tempest', 'cyclone', 'starfall', 'judgment', 'emberRise', 'vigilFall'], formOf: (nm) => Math.min(4, Math.max(1, MOVES[nm].phase ?? 1)), setForm: null };
+  const rows = swordAudit(H);
+  printAudit(rows, out);
+  const ok = rows.filter((r) => !r.fail);
+  assert(ok.length === H.names.length, `${ok.length} of ${H.names.length} moves audited`);
+  const wr = Math.max(...ok.map((r) => r.wrist.max)), gh = Math.min(...ok.map((r) => r.gap.head)), gb = Math.min(...ok.map((r) => r.gap.body));
+  assert(wr <= 62, `the sword in line with the forearm with the reference's poses: the wrist at most ${wr}° (≤ 62)`);
+  assert(gh >= 0.08 && gb >= 0.08, `the blade clear of him with the reference's poses: ${gh.toFixed(2)} m from his head, ${gb.toFixed(2)} m from his body at the closest (≥ 0.08)`);
+  setLook('lordRefMove', null);
+  // the look
+  setLook('lordRef', 'a');
+  setLook('lordRefMove', 'a');
+  const G = build(SEED + 3);
+  duel(G, { dist: 4, ai: true, form: 1 });
+  const d = G.game.dragon;
+  const cores = d.blades.cores ?? [];
+  const dressed = !!d.rig.root.userData.dress;
+  run(G, 4);
+  d.debug.setForm(4);
+  run(G, 4);
+  const synced = cores.every(([b, c]) => c.visible === b.visible && Math.abs(c.scale.z - b.scale.z) < 1e-6);
+  setLook('lordRef', null);
+  setLook('lordRefMove', null);
+  assert(cores.length === 4 && synced && !dressed, `?lordRef=a: ${cores.length} split blades, each slit shown and scaled with its blade (${synced}); no form-by-form dressing (${!dressed}); 8 s of a fight in forms 1 and 4, nothing NaN`);
+  return last;
+}
 /**
  * SWORDMOTION (ADR-226): the sword motion pass behind `?lordMotion=a`. On: his sword held in line with his
  * forearm (the audit's wrist ≤ 62° in every frame of the moves below, the hero's bar 60), the blade

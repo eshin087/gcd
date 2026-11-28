@@ -102,6 +102,9 @@ export const PICKED = Object.freeze({
   foxCues: 'a', // Wen Yao's Paper Rain ends on a backfist: the uppercut is only ever Hand to Hand's blue flare (ADR-249; the owner's pick from the films, 2026-11-27)
   foxLimbs: 'a', // Wen Yao's limbs at the contact: straight punches on one line, kicks straight (ADR-249; the owner's pick from the films, 2026-11-27)
   wyrmQuick: 'a', // Snap swipe
+  // the wyrm's paw blows told apart (ADR-274; the owner's picks, 2026-11-28, from the films: "the leap and the scythe look good")
+  pawBlue: 'a', // the blue paw: the scythe (wound out wide and back, swept across); 0 the overhead as shipped
+  pawRed: 'a', // the red stomp: the leap (off the ground with a wing beat, down on both paws); 0 the rear-up as shipped
   wyrmHead: 'a', // the meteors' roar: the head up and forward, never tipped back past upright (the owner asked, 2026-11-27; ADR-258)
   wyrmStrike: 'a', // the wyrm's bites: the body surges first, the head snaps onto the beat (the owner's pick, 2026-11-27, from the films; ADR-257)
   // drawn in the hero's style (the owner's picks, 2026-11-26, ADR-220; 0 each as he shipped)
@@ -128,7 +131,7 @@ export const PICKED = Object.freeze({
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
+export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script', 'lordRef', 'lordRefMove']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166); Varr Nihil after the reference pack, his look and his motion (ADR-277)
 
 const fromUrl = new Map();
 const forced = new Map();

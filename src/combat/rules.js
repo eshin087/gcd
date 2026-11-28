@@ -66,6 +66,17 @@ export const TELL_STYLE = Object.freeze({
     // is the sign). What lands away from the boss (a meteor, a bolt from the sky, a shell, a falling
     // pillar) is a hazard and keeps its ground mark.
     floor: false,
+    // THE RED TRAIL (ADR-271, ?redTrail=; combat/redTrail.js): from a red blow's flare to `follow` s
+    // past its impact (the cue's lead + follow), a blade's cut leaves a thin red crescent in the fire
+    // field, just outside the white edge of its sweep (`out` m past the tip), so every cut of a red
+    // string reads red. Nothing before the cue (the flare stays the timing cue, ADR-118). Fire at a low
+    // `heat` prints red; `life` s it stays [min, max]. Blades only (duelist/fx.js sweep): a fist's or a
+    // claw's path is short and on the contact, the flare already marks it.
+    trail: {
+      a: { life: [0.16, 0.22], heat: 0.34, out: 0.1 },
+      b: { life: [0.4, 0.52], heat: 0.4, out: 0.14 },
+      follow: 0.14,
+    },
   },
   black: {
     color: [0.5, 0.12, 0.7],
@@ -74,6 +85,41 @@ export const TELL_STYLE = Object.freeze({
     warn: { color: [0.42, 0.07, 0.9], from: 0.2, to: 1.0, spike: 1.4, decay: 0.3 },
     // (`dark`: the cells behind its letters are blacked out: a black bar with a white-hot thread)
     flare: { tint: [0.3, 0.06, 0.52], light: [0.5, 0.2, 0.9], dark: 1 },
+    // THE BLACKOUT (ADR-271, ?black=; combat/blackout.js): the owner's Phantom Blade Zero reference
+    // (2026-11-27): the whole picture drains toward dark grey, the boss stays lit with a white glint on
+    // the striking part, colour snaps back on the strike. `pale` replaces the violet look in it: the
+    // flare undyed (steel: a white-hot streak; `tint: null`), a pale light, no darkened body; the
+    // charge's eclipse becomes a white point (`glint`: size m [start, cue], heat, flicker) with pale
+    // motes drawn in (`motes` x the rate). `out` the grade's variants, one dimension apart from `a`:
+    //   over   s before the cue over which the dark drops in (null: it builds through the whole charge)
+    //   depth  how dark the world gets (its light x 1 - depth)
+    //   grey   how far its colour drains (0..1)
+    // and for all of them: `hold` s the dark holds after the cue (the blow lands ~0.26 - 0.35 s after
+    // it), `snap` s colour takes to come back, `drop` s it takes after a cancelled charge, `hero` how much
+    // of the hero is kept (1: as lit as the boss), `keep` the light above which a letter keeps its
+    // brightness [from, to] (the flare, the glint: what must be read in the dark), `reach` the
+    // actor mask's spread in letter cells (the letters round a body are its own).
+    pale: {
+      flare: { tint: null, light: [0.85, 0.88, 1.0], dark: 0 },
+      glint: { size: [0.16, 0.42], heat: 3.2, flicker: 0.35 },
+      motes: 0.45, // (the share of today's motes drawn)
+    },
+    // THE BLACK IMPACT (ADR-271, ?blackImpact=; combat/blackImpact.js): every black blow, hit or miss,
+    // lands with the heaviest blow a boss has. `lead` s after the cue when no beat can be read; `r` m and
+    // `power` (POWER scale) the blast on the world (a crater from 1.2), `mark` the floor's blast mark;
+    // `shock` m the front of dust, `k` its strength, `gust` the grass; a `light` of `lightK`; the camera's
+    // shake [far, near] (`near` m) and punch m; the frame held `stop` s on a miss; the `sub`'s strength;
+    // `wyrm` x every size on the wyrm.
+    impact: {
+      lead: 0.32, r: 3.2, power: 1.8, mark: 2, shock: 6.5, k: 1.8, gust: 3, light: [1.0, 0.92, 0.8], lightK: 7,
+      near: 10, shake: [0.45, 0.85], punch: 0.6, stop: 0.07, sub: 2.5, wyrm: 1.8,
+    },
+    out: {
+      a: { over: 0.3, depth: 0.78, grey: 0.92 },
+      b: { over: null, depth: 0.78, grey: 0.92 },
+      c: { over: 0.3, depth: 0.93, grey: 1.0 },
+      hold: 0.3, snap: 0.08, drop: 0.25, hero: 0.6, keep: [0.5, 0.85], reach: 0.7,
+    },
   },
 });
 

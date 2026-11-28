@@ -1,9 +1,11 @@
 import { TELL, TELL_STYLE, RESULT, isFlare } from '../../../combat/rules.js';
 import { perPhase } from './realise.js';
 import { CLASH, clashBurst } from '../../../combat/clashFx.js';
-import { FIRE_KIND } from '../../../render/firePalettes.js';
+import { FIRE_KIND, FIRE_SEEN } from '../../../render/firePalettes.js';
 import { DUEL_WORLD } from './worldTuning.js';
 import { lookOf } from './lookSwitch.js';
+import { blackOn, flareStyle } from '../../../combat/blackout.js';
+import { RED_TRAIL } from '../../../combat/redTrail.js';
 
 /** A thrown thing stopped by cover, as a blow on it (world.destructibles.stop). */
 const COVER_BLOW = Object.freeze({ kind: 'cut', by: 'boss', y: 0.9 });
@@ -114,6 +116,22 @@ export const setFlareLook = (k) => {
 export const TELL_CHARGE = Object.freeze({ rate: 70, from: [1.6, 3.4], life: [0.22, 0.38], size: [0.3, 0.16], heat: 1.5, knot: [0.7, 1.9], corona: 1.55, zone: 4.4, sparks: 16 });
 let FLARE_ID = 1;
 const FLARE_MARGIN = [0.06, 0.1]; // of the frame's width / height: a flare's heart is never nearer an edge
+// A white (or blue) glint must be SEEN too (2026-11-27, the owner: "make sure every normal attack shows
+// the white spark"): the fire field fades what lies behind scene geometry, and a glint set 1 m off the
+// striking part toward the camera was hidden by that part itself (the wyrm's paw, foreleg and wings showed
+// 0 - 8 % of its claw glints; a wing's glint fell off the frame). Its letters are now drawn over the scene
+// (FIRE_SEEN), its heart's sparkle GLINT_PUSH m (x k) toward the camera along the ray through the part
+// (the same place on screen, clear of the body), and it is kept inside the frame like the flare. Its
+// light stays at the part. `?glintSeen=0`: as before.
+const GLINT_PUSH = 3.5;
+let GLINT_SEEN = true;
+try {
+  GLINT_SEEN = new URLSearchParams(globalThis.location?.search ?? '').get('glintSeen') !== '0';
+} catch {
+  /* headless */
+}
+export const glintSeen = () => GLINT_SEEN;
+export const setGlintSeen = (on) => (GLINT_SEEN = !!on);
 
 // a fissure's crack behind it (the Starless Lord's rift): a segment this long, this hard
 const RIFT_MARK = Object.freeze({ seg: 1.3, power: 0.7 });
@@ -141,6 +159,7 @@ export class DuelFx {
     // the flares alive (the same: re-drawn on the letter grid every frame, and their tint zone kept)
     this.flares = Array.from({ length: 4 }, () => ({ alive: false, x: 0, y: 0, z: 0, age: 0, k: 1, frame: -1, tell: TELL.RED, id: 0, look: TELL_FLARE.streak }));
     this._chargeAcc = 0;
+    this._redCut = -1; // game time a red cue's cut stops being red (?redTrail=, sweep)
     // Ash Crescent projectiles (pooled)
     this.crescents = Array.from({ length: 6 }, () => ({ alive: false, x: 0, z: 0, dx: 0, dz: 1, age: 0, flashed: -1, done: false, tell: TELL.NORMAL, damage: 0, kb: 0, attack: '' }));
     // (the second pass: shock fronts in flight, short emitters, scratch option records, the body's
@@ -362,7 +381,7 @@ export class DuelFx {
 
   /** A point pulled 1 m toward the camera (past the field's soft depth fade, so the body a cue sits
    *  on does not dim it; along the view ray, so it does not move on screen). Writes this._pt. */
-  _toCamera(x, y, z) {
+  _toCamera(x, y, z, push = 1) {
     const P = this._pt, cam = this.game.camera?.position;
     P.x = x;
     P.y = y;
@@ -370,10 +389,28 @@ export class DuelFx {
     if (cam) {
       const dx = cam.x - x, dy = cam.y - y, dz = cam.z - z, l = Math.hypot(dx, dy, dz);
       if (l > 1.5 && Number.isFinite(l)) {
-        P.x += dx / l;
-        P.y += dy / l;
-        P.z += dz / l;
+        // (at most to 1.5 m short of the camera: a push past it would draw behind the lens)
+        const m = Math.max(Math.min(1, l - 1.5), Math.min(push, l - 1.5)) / l;
+        P.x += dx * m;
+        P.y += dy * m;
+        P.z += dz * m;
       }
+    }
+    return P;
+  }
+
+  /** A cue's heart outside the frame is moved in the screen's plane to the nearest point inside it
+   *  (FLARE_MARGIN of the frame from each edge), in place on P. */
+  _keepOnScreen(P) {
+    const S = this._screen(P.x, P.y, P.z);
+    if (!S.ok) return P;
+    const mx = S.W * FLARE_MARGIN[0], my = S.H * FLARE_MARGIN[1];
+    const cx = Math.min(S.W - mx, Math.max(mx, S.px)), cy = Math.min(S.H - my, Math.max(my, S.py));
+    if (cx !== S.px || cy !== S.py) {
+      const A0 = this._axes(), ox = (cx - S.px) * S.mpp, oy = (cy - S.py) * S.mpp;
+      P.x += A0.rx * ox + A0.ux * oy;
+      P.y += A0.ry * ox + A0.uy * oy;
+      P.z += A0.rz * ox + A0.uz * oy;
     }
     return P;
   }
@@ -400,6 +437,12 @@ export class DuelFx {
    */
   tellFlash(tell, x, y, z, k = 1, flare = false) {
     if (!Number.isFinite(x + y + z)) return;
+    // the red trail (?redTrail=): from a red cue to just past its impact the blade's cut is red; any
+    // other cue ends it (the next blow of a string is its own colour)
+    if (tell === TELL.RED) {
+      const lead = perPhase(this.d?.T?.flashLead, this.d?.phase ?? 1);
+      this._redCut = (this.game.time ?? 0) + (Number.isFinite(lead) ? lead : 0.3) + TELL_STYLE.red.trail.follow;
+    } else this._redCut = -1;
     // a MOMENT (ADR-118): the flare. Red and black always; a blue blow when it is marked `flare`
     if (isFlare(tell, flare) && (FLARE_LOOK !== 'blaze' || tell !== TELL.RED)) this._flare(tell, x, y, z, k);
     else if (tell === TELL.RED) this._redFlash(x, y, z, k);
@@ -421,21 +464,11 @@ export class DuelFx {
    *  colour and small strokes thrown out along the streak. */
   _flare(tell, x0, y0, z0, k = 1) {
     const P = this._toCamera(x0, y0, z0), look = TELL_FLARE[FLARE_LOOK] ?? TELL_FLARE.streak;
-    const st = TELL_STYLE[tell]?.flare ?? TELL_STYLE.red.flare;
+    const st = flareStyle(tell);
     // a cue must be SEEN: a striking part outside the frame (the wyrm's tail behind it, a blade past
     // the screen's edge) has its flare drawn at the nearest point inside it (FLARE_MARGIN of the frame
     // from each edge), moved in the screen's plane
-    const S = this._screen(P.x, P.y, P.z);
-    if (S.ok) {
-      const mx = S.W * FLARE_MARGIN[0], my = S.H * FLARE_MARGIN[1];
-      const cx = Math.min(S.W - mx, Math.max(mx, S.px)), cy = Math.min(S.H - my, Math.max(my, S.py));
-      if (cx !== S.px || cy !== S.py) {
-        const A0 = this._axes(), ox = (cx - S.px) * S.mpp, oy = (cy - S.py) * S.mpp;
-        P.x += A0.rx * ox + A0.ux * oy;
-        P.y += A0.ry * ox + A0.uy * oy;
-        P.z += A0.rz * ox + A0.uz * oy;
-      }
-    }
+    this._keepOnScreen(P);
     let f = this.flares[0];
     for (const q of this.flares) {
       if (!q.alive) {
@@ -511,7 +544,7 @@ export class DuelFx {
     const body = Math.max(2, Math.round(L.body * k));
     // the black flare: a bar of blacked-out cells (rows of low heat: the dye darkens what is behind
     // them) round a white-hot thread (heat past the dye: fireField keeps a heart white)
-    const dark = (TELL_STYLE[f.tell]?.flare?.dark ?? 0) > 0;
+    const dark = (flareStyle(f.tell)?.dark ?? 0) > 0;
     this._cell(A, x, y, z, 0, 0, life, D, L.heart * fade);
     for (let sd = -1; sd <= 1; sd += 2) {
       const N = sd > 0 ? nR : nL;
@@ -559,8 +592,8 @@ export class DuelFx {
       for (let i = -2; i <= 2; i++) this._blob(x + A.rx * (i / 2) * hw * 0.7, y + A.ry * (i / 2) * hw * 0.7, z + A.rz * (i / 2) * hw * 0.7, 0, 0, 0, life, hh * 2.4, hh * 2.4, hH * (1 - 0.25 * Math.abs(i)), hH, K_STEEL);
     }
     // the dye: an ellipse of the frame round the whole flare
-    const st = TELL_STYLE[f.tell]?.flare ?? TELL_STYLE.red.flare, F = this.fire;
-    if (F?.tint && S.ok) {
+    const st = flareStyle(f.tell), F = this.fire;
+    if (F?.tint && S.ok && st.tint) {
       const rx = (Math.max(nR, nL) + 6) * S.cw, ry = (Math.max(sp, dg, L.halo[1] * k) + 5) * S.ch;
       // (a dyed zone fades over the outer 30 % of its radius: it is drawn generously wide)
       F.tint(f.id, S.px, S.py, rx * 1.5, ry * 1.8, st.tint, 1, st.dark ?? 0, 0.08);
@@ -574,6 +607,12 @@ export class DuelFx {
    */
   charge(x0, y0, z0, u, dt, k = 1) {
     if (!Number.isFinite(x0 + y0 + z0 + u) || !(dt > 0)) return;
+    // the blackout (?black=, combat/blackout.js): the charge keeps the picture dark and is drawn pale
+    // (TELL_STYLE.black.pale: no eclipse, no violet, no dye; a white point and pale motes). The fight's
+    // stream (rnd / rand) is drawn the same in both looks, so a look never moves a seeded fight; the
+    // pale look's own choices come from the look stream (lr / lrand).
+    this.game?.blackout?.beat();
+    const pale = blackOn(), G = TELL_STYLE.black.pale;
     const C = TELL_CHARGE, A = this._axes();
     const P = this._toCamera(x0, y0, z0), x = P.x, y = P.y, z = P.z;
     this._chargeAcc += dt * C.rate * (0.3 + 0.7 * u);
@@ -583,13 +622,19 @@ export class DuelFx {
       const a = this.rnd() * TAU, r = this.rand(C.from[0], C.from[1]) * k, lf = this.rand(C.life[0], C.life[1]);
       const ca = Math.cos(a), sa = Math.sin(a);
       const dx = A.rx * ca + A.ux * sa, dy = A.ry * ca + A.uy * sa, dz = A.rz * ca + A.uz * sa;
+      const spark = this.rnd() < C.sparks / C.rate;
+      if (pale) {
+        // (a share of the motes, one pale streak each; no violet sparks)
+        if (this.lr() < G.motes) this._blob(x + dx * r, y + dy * r, z + dz * r, (-dx * r) / lf, (-dy * r) / lf, (-dz * r) / lf, lf, C.size[1] * k, C.size[1] * 0.6 * k, 0.9 + 0.5 * u, 1.2, K_STEEL);
+        continue;
+      }
       // born on a circle round the point (in the screen's plane), it arrives as it dies: two blobs
       // one behind the other, so each mote is a short streak
       for (let j = 0; j < 2; j++) {
         const rr = r * (1 + 0.1 * j);
         this._blob(x + dx * rr, y + dy * rr, z + dz * rr, (-dx * rr) / lf, (-dy * rr) / lf, (-dz * rr) / lf, lf, C.size[0] * k, C.size[1] * k, C.heat * (0.7 + 0.3 * u) * (1 - 0.3 * j), C.heat * 0.6, K_STEEL);
       }
-      if (this.rnd() < C.sparks / C.rate) {
+      if (spark) {
         const o = this._rec(x + dx * r, y + dy * r, z + dz * r, lf, 0.18, 0.06, '|', [1.3, 0.4, 3.0], [0.4, 0.06, 0.9]);
         o.vx = (-dx * r) / lf;
         o.vy = (-dy * r) / lf;
@@ -608,18 +653,23 @@ export class DuelFx {
     const life = this._frame();
     if (life > 0) {
       const S0 = this._screen(x, y, z), D = 12 * S0.mpp, rr = kn * 0.42, n = Math.max(12, Math.round((TAU * rr) / (S0.cw * S0.mpp)));
-      this._blob(x, y, z, 0, 0, 0, life, kn, kn, 0.62, 0.62, K_STEEL);
+      if (!pale) this._blob(x, y, z, 0, 0, 0, life, kn, kn, 0.62, 0.62, K_STEEL);
       for (let i = 0; i < n; i++) {
         const a = (i / n) * TAU, fl = 0.55 + 0.45 * this.rnd();
         // (round on screen: a letter cell is taller than it is wide, the ring is laid in metres)
-        this._cell(A, x, y, z, Math.cos(a) * rr, Math.sin(a) * rr, life, D, C.corona * fl * (0.6 + 0.4 * u));
+        if (!pale) this._cell(A, x, y, z, Math.cos(a) * rr, Math.sin(a) * rr, life, D, C.corona * fl * (0.6 + 0.4 * u));
+      }
+      if (pale) {
+        // the blackout's glint: a white point that grows and flickers harder toward the cue
+        const g = (G.glint.size[0] + (G.glint.size[1] - G.glint.size[0]) * u) * k, fl = 1 - G.glint.flicker * u * this.lr();
+        this._blob(x, y, z, 0, 0, 0, life, g, g, G.glint.heat * fl, G.glint.heat * fl, K_STEEL);
       }
     }
     // the dye: everything steel within `zone` m of the weapon prints as dark (fireField.js tint)
     const F = this.fire, S = this._screen(x, y, z);
     if (F?.tint && S.ok) {
-      const rpx = (C.zone * k) / S.mpp;
-      F.tint((this._chargeId ??= 900000 + ((this.rnd() * 90000) | 0)), S.px, S.py, rpx, rpx, TELL_STYLE.black.flare.tint, 1, 1, 0.1);
+      const rpx = (C.zone * k) / S.mpp, id = (this._chargeId ??= 900000 + ((this.rnd() * 90000) | 0));
+      if (!pale) F.tint(id, S.px, S.py, rpx, rpx, TELL_STYLE.black.flare.tint, 1, 1, 0.1);
     }
   }
 
@@ -656,7 +706,10 @@ export class DuelFx {
 
   /** The white tell: a glint record, drawn now and on every frame of its life (_drawGlint). */
   _glint(x0, y0, z0, style, k = 1) {
-    const P = this._toCamera(x0, y0, z0);
+    const L = this._toCamera(x0, y0, z0); // (its light: 1 m off the part, as it always was)
+    const lx = L.x, ly = L.y, lz = L.z;
+    const P = this._toCamera(x0, y0, z0, GLINT_SEEN ? GLINT_PUSH * k : 1);
+    if (GLINT_SEEN) this._keepOnScreen(P);
     let g = this.glints[0];
     for (const q of this.glints) {
       if (!q.alive) {
@@ -678,7 +731,7 @@ export class DuelFx {
     const c = style.tint ? BLUE_SPARK : TELL_STYLE.normal.color, sp = this._rec(P.x, P.y, P.z, 0.12, 0.26 * (style.diag ? 1.25 : 1) * (style.sparkle ?? 1), 0.1, '*', c, null);
     sp.alphaEnd = 0.3;
     this._spawn(this.add, sp);
-    this._light({ x: P.x, y: Math.max(0.9, P.y), z: P.z, color: lightColor(c), intensity: style.light, radius: (2.2 + 0.1 * style.w) * k, life: 0.2, fade: 0.18 });
+    this._light({ x: lx, y: Math.max(0.9, ly), z: lz, color: lightColor(c), intensity: style.light, radius: (2.2 + 0.1 * style.w) * k, life: 0.2, fade: 0.18 });
     if (style.tint) g.id = (this._glintId = ((this._glintId ?? 0) + 1) % 1000) + 700000; // (its tint zone's id)
   }
 
@@ -715,25 +768,25 @@ export class DuelFx {
       y += A.ry * ox + A.uy * oy;
       z += A.rz * ox + A.uz * oy;
     }
-    const fade = 1 - t * t, keep = 1 - 0.62 * t;
+    const fade = 1 - t * t, keep = 1 - 0.62 * t, kk = GLINT_SEEN ? K_STEEL + FIRE_SEEN : K_STEEL;
     const W = Math.max(2, Math.round(st.w * g.k)), H = Math.max(1, Math.round(st.h * g.k)), Dg = Math.round(st.diag * g.k);
-    this._cell(A, x, y, z, 0, 0, life, D, st.heart * fade);
+    this._cell(A, x, y, z, 0, 0, life, D, st.heart * fade, kk);
     for (let n = 1; n <= W && n <= W * keep + 0.5; n++) {
       const h = (n === 1 ? 1.7 : st.arm + (st.tip - st.arm) * (n / W)) * fade;
-      this._cell(A, x, y, z, n * cw, 0, life, D, h);
-      this._cell(A, x, y, z, -n * cw, 0, life, D, h);
+      this._cell(A, x, y, z, n * cw, 0, life, D, h, kk);
+      this._cell(A, x, y, z, -n * cw, 0, life, D, h, kk);
     }
     for (let n = 1; n <= H && n <= H * keep + 0.5; n++) {
       const h = (n === 1 ? 1.7 : st.arm + (st.tip - st.arm) * (n / H)) * fade;
-      this._cell(A, x, y, z, 0, n * ch, life, D, h);
-      this._cell(A, x, y, z, 0, -n * ch, life, D, h);
+      this._cell(A, x, y, z, 0, n * ch, life, D, h, kk);
+      this._cell(A, x, y, z, 0, -n * ch, life, D, h, kk);
     }
     for (let n = 1; n <= Dg && n <= Dg * keep + 0.5; n++) {
       const h = (st.arm * 0.85 + (st.tip - st.arm) * (n / Dg)) * fade;
-      this._cell(A, x, y, z, n * cw, n * ch, life, D, h);
-      this._cell(A, x, y, z, -n * cw, -n * ch, life, D, h);
-      this._cell(A, x, y, z, n * cw, -n * ch, life, D, h);
-      this._cell(A, x, y, z, -n * cw, n * ch, life, D, h);
+      this._cell(A, x, y, z, n * cw, n * ch, life, D, h, kk);
+      this._cell(A, x, y, z, -n * cw, -n * ch, life, D, h, kk);
+      this._cell(A, x, y, z, n * cw, -n * ch, life, D, h, kk);
+      this._cell(A, x, y, z, -n * cw, n * ch, life, D, h, kk);
     }
     // (?blueTell=a: the cross dyed blue, a tint zone round it, as the flares are)
     const F = this.fire;
@@ -743,14 +796,14 @@ export class DuelFx {
       const r = (4 + 9 * t) * cw * g.k, n = 26, h = 0.62 * (1 - t);
       for (let i = 0; i < n; i++) {
         const a = (i / n) * TAU;
-        this._cell(A, x, y, z, Math.cos(a) * r, Math.sin(a) * r, life, D, h);
+        this._cell(A, x, y, z, Math.cos(a) * r, Math.sin(a) * r, life, D, h, kk);
       }
     }
   }
 
   /** One blob of steel `ox` right and `oy` up of (x, y, z) in the screen's plane. */
-  _cell(A, x, y, z, ox, oy, life, D, h) {
-    this._blob(x + A.rx * ox + A.ux * oy, y + A.ry * ox + A.uy * oy, z + A.rz * ox + A.uz * oy, 0, 0, 0, life, D, D, h, h, K_STEEL);
+  _cell(A, x, y, z, ox, oy, life, D, h, kind = K_STEEL) {
+    this._blob(x + A.rx * ox + A.ux * oy, y + A.ry * ox + A.uy * oy, z + A.rz * ox + A.uz * oy, 0, 0, 0, life, D, D, h, h, kind);
   }
 
   /** The red ground warning of a dodge-only area (call every frame of its windup): the floor heats
@@ -1683,6 +1736,16 @@ export class DuelFx {
     if (tipStep < 0.04 || tipStep > 6) return; // a still blade leaves nothing (a teleport: nothing either)
     const nSub = Math.min(18, Math.max(1, Math.ceil(tipStep / 0.09)));
     const wake = ember === true ? K_FIRE : ember === 'red' ? K_VOID : -1;
+    // the red trail (?redTrail=, TELL_STYLE.red.trail): a red blow's cut, from its flare on, leaves a
+    // thin red crescent just outside the edge (fire at a low heat prints red), one cell wide
+    const RT = TELL_STYLE.red.trail[RED_TRAIL.mode];
+    if (RT && this._redCut > 0 && (this.game.time ?? 0) <= this._redCut) {
+      const la = Math.hypot(pb.x - pa.x, pb.y - pa.y, pb.z - pa.z), lb = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+      if (la > 0.05 && lb > 0.05) {
+        const oa = RT.out / la, ob = RT.out / lb;
+        this._ink(pb.x + (pb.x - pa.x) * oa, pb.y + (pb.y - pa.y) * oa, pb.z + (pb.z - pa.z) * oa, b.x + (b.x - a.x) * ob, b.y + (b.y - a.y) * ob, b.z + (b.z - a.z) * ob, this.lrand(RT.life[0], RT.life[1]), RT.heat, 0, RT.heat, 0, K_FIRE);
+      }
+    }
     // the edge of the cut: the tip's path, written on the grid; a second, dimmer line inside it
     this._ink(pb.x, pb.y, pb.z, b.x, b.y, b.z, this.rand(0.22, 0.27), 1.15, 0, 1.15, 1);
     const f2 = 0.6;

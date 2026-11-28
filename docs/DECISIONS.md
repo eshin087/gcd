@@ -7893,3 +7893,222 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   look options (2) were not offered as variants: the owner asked for the finish itself; `?menu=0` still shows
   the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
   to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
+
+## ADR-271 — The blackout for a black blow, red trails for a red string: options behind switches (2026-11-27)
+
+- **Context:** the owner sent a Phantom Blade Zero boss fight as the reference for combat feel and approved two of
+  its looks. At 0:17 a charged attack: over about 0.3 s the whole picture drains to dark grey, only the boss stays
+  readable with a white glint on her blade, colour snaps back on the strike. At 0:34 and 1:17 a red string: every
+  cut leaves a long thin red crescent. Today a black blow is drawn violet (an eclipse with violet strokes on the
+  striking part, the body darkened violet, the flare dyed violet, the screen's edges dimming), and a red blow's cut
+  is the same white steel as any other. Owner rules: no background colour change on a parry or dodge (the blackout
+  is their explicit exception for BLACK blows only); for red "the flare stays the timing cue, nothing before it"
+  (ADR-118); a look change is shown as films and the owner picks; the default is what the owner approved.
+- **Decision:**
+  1. THE BLACKOUT (`?black=0|a|b|c`, `combat/blackout.js`, default `0` = today). A grade in the final pass
+     (`uBlack`): the world's colour drains and its light drops; the boss is kept whole and the hero partly, found
+     on the scene's ASCII flag (sceneRT alpha), spread by part of a letter cell; a letter above a light keeps its
+     light (the flare, the glint). The HUD is DOM and untouched. The violet goes in it (`TELL_STYLE.black.pale`):
+     the flare undyed (a white-hot streak), the charge a white point with pale motes drawn in, no darkened body,
+     no dark screen edges. Variants, one dimension apart: a the film (dark over the last 0.3 s before the cue), b
+     the dark built through the whole charge, c as a, darker. It holds 0.3 s past the cue (the strike) and comes
+     back in 0.08 s of REAL time (a hit-stop must not hold it).
+  2. DRIVEN BY WHAT EXISTS: `combat:charge` starts it, the black `combat:flash` holds it to the strike, and a
+     `beat()` every frame from what draws the charge keeps it (DuelFx.charge: every duelist and the wyrm; the Fox's
+     Howl in `beam.js`): a charge whose beats stop for 0.15 s is cancelled and lets go in 0.25 s, so every path
+     that stops drawing the charge (stagger, posture break, parry recoil, a Lab interrupt, death) clears it with
+     no list to keep; a retry or a change of state clears it at once (`ui/tells.js`, which owns it as
+     `game.blackout`). No new event. `answer.js` and `audio.js` hear the same events as before.
+  3. THE RED TRAIL (`?redTrail=0|a|b`, `combat/redTrail.js`, default `0` = off). A red cue opens a window to its
+     impact + 0.14 s (`DuelFx.tellFlash`); inside it `DuelFx.sweep` lays one line of fire at a low heat (red
+     strokes) just outside the tip's path. a ~0.2 s, b ~0.45 s and a little hotter. Blades only; the bare-handed
+     bosses and the wyrm are left out: a fist's or a claw's path is short and lies on the contact, where a red
+     wake would hide the blow, and the flare already marks it.
+  4. Numbers in `TELL_STYLE` (`rules.js`): `black.out`, `black.pale`, `red.trail`. Lab: `black`, `redTrail` in the
+     streak grid. `npm run perf -- --black` measures a frame with the blackout pinned on.
+  5. THE OWNER'S PICKS (2026-11-27, from the films): the blackout **b** and the red trail **a**, the defaults.
+  6. THE BLACK IMPACT (`?blackImpact=0|a`, default `a`; the owner: "we need all blackout attacks to end with a
+     devasting impact even if it misses the player ... the dragon blackout attack looks like it does nothing when
+     it misses"). Hit or miss, a black blow lands as the fight's biggest blow: a crater and broken pieces round
+     its point, a shock front of dust, a light, a hard shake and punch, a short held frame on a miss, an
+     explosion's sound. One module for every boss (`combat/blackImpact.js`), armed by the black cue, fired by the
+     beat's own impact clock read off the boss (`brain.act` / `brain.action`), so it lands on the frame the blow
+     does and never after a cancel. No extra damage: the black blows already deal the most of each boss's moves
+     (38 - 44) with a knock-down; the impact is what the player and the world feel.
+- **Consequences:** the black flare in the blackout is white, the colour of a parryable glint; it is a streak, not
+  the cross, and the whole frame is dark around it, but the owner should judge it. The mask is the scene's flag,
+  so what is drawn only in the fire field near the boss (his spell, the Fox's spirit) dims with the world unless
+  it is bright. Open: the phone; a red wake for fists and claws if the owner wants one; on the bare-handed bosses and the Fox's
+  Howl (a beam) the impact lands a stride in front of the body, not along the beam.
+
+## ADR-275 — The hero's fight stance: the middle guard (2026-11-28)
+
+- **Context:** the owner found ADR-207's two-handed hold (the grip before the right of the belly, the blade ~47° up
+  and out to his right, the point above his head) a poor fighting stance and asked for four new ones to pick from,
+  filmed close and far in one clip.
+- **Decision:** four holds were built as data (`refStance.js` `HOLDS`: hands, elbows, blade, free hand and its
+  shape, body, knees, feet, the flat's roll, one or two hands) behind `?hold=`, filmed (a close orbit, the game
+  camera at true size and x2, all four together) and the owner picked **A, the middle guard**, now the default:
+  both hands on the grip before the navel on his centre line, the elbows down and a little in, the blade forward
+  at the foe's face (4° to his right, 36° up), the knees bent (body 7.5 cm down), the chest a touch forward, the
+  right foot 24 cm ahead and the left 22 back (the feet the light chain steps from, as ADR-207's hold), the hips
+  turned 0.12 with the right foot. `setHold` copies the hold into `REF_READY`, so every reader of the hold (the
+  fight's habits through `syncStandArm`) follows it. `?hold=ref` keeps ADR-207's hold; `b` (high guard, the blade
+  upright by the right of his head), `c` (sword fingers, one hand), `d` (low trailing, one hand) are kept,
+  turned down. A one-handed hold plays no fight habit (they keep both hands on the grip) and the stance blend
+  scales `twoHand` by the hold's `two`.
+- **Departure from what was filmed:** the sword elbow's pole is tucked in (0.45, -0.88, -0.15; filmed 0.25, -0.95,
+  -0.15): with the filmed pole `heroref` measured the sword wrist 69-73° off the forearm (bar 60), now ≤ 54°. The
+  toes keep ADR-207's turn (right -0.35, left 0.6; filmed -0.2 / 0.55): from -0.2 the right foot turned 0.07 rad in
+  the draw cut's 0.3 pivot (`heroweight`: at least half). The free elbow points out to his left (0.7, -0.7, -0.15;
+  filmed down and in): across his front the robe look's sleeve wing on that arm stood in his chest on 23 % of the
+  route's frames (`looks`, bar 3 %), now 2.4 % (main 2.5), ADR-207's finding again. The blade rises 36° (filmed
+  30°) and the hands 3 cm higher: standing in the hold 1.5 m from a duelist the filmed point was 5.4 cm inside
+  him, and a deathblow whose last cut lands as he is back in the hold was drawn through him (duel `contact`,
+  bar 8 cm); now -0.1 cm at 1.5 m (9 cm at 1.3 m: a blade aimed at the foe meets him that close), the wrist
+  54°. The body is as filmed.
+- **Consequences:** the block, the parry and every attack are unchanged and start from the new hold (`heroref`'s
+  transition bars hold: every move within ×1.5 + 10 cm of the stance before). From straight behind at the game
+  camera the blade runs up the screen, over his head: the hold reads best side-on or at an angle, as a duel mostly
+  is. Open: the owner's playtest.
+
+## ADR-274 — The wyrm's death neck, the white spark always seen, the paw blows told apart: the scythe and the leap (`?deathNeck`, `?glintSeen`, `?pawBlue`, `?pawRed`) (2026-11-28)
+- **Context:** the owner: "when the dragon dies and flies up, the head and neck looks unnatural with weird angles and
+  motions that are not possible and looks like the neck is broken"; "make sure every normal attack shows the white
+  spark hit to help the player parry"; "the blue and red warning paw attacks from the dragon need to be completely
+  different ... it kinda uses the same animation. think of multiple different animations that stand out".
+- **Measured first:** the death's head goal ran in a straight line from a throe point 8 m off a 6 m neck (the
+  chain pulled straight up, a pole) to the ground, and the limp head was laid level whatever the neck did: the head
+  sat 60 - 62° off the neck's last segment from 0.2 s to 1.3 s (the clamp's limit), the neck kinked 35° at its top,
+  then buckled into a zig-zag as the goal passed inside its reach. The glints: rendered twice at each cue (the scene
+  depth vs nothing in front), the wyrm's claw glints showed 0 - 8 % of their heat (the paw, the foreleg and the
+  wings in front of them), a wing blow's glint fell outside the frame. The fight camera looks down at 58°: a paw
+  raised and brought down is foreshortened, so the blue overhead and the red stomp read as the same growing blob.
+- **Decision:**
+  1. THE DEATH (`ai.js` deathPose, `?deathNeck=0` as before): the head's goal turns round the neck's base (the
+     direction slerped from the throe to the ground, the distance eased and kept inside 0.86 x the neck's length in
+     the throe), the throe's head up and FORWARD (0, 5.4, 3.2) so the neck keeps its arch; it looks along its neck
+     until it lands; dying, the head hangs at most ~31° off the neck (`DEAD_HINGE`, rig/anim.js). Measured: off the
+     neck 62° → 33° (at the landing bounce only), the sharpest bend 36° → 32°, the head up 1.49 → 0.82 m.
+  2. THE GLINT SEEN (`duelist/fx.js`, every boss; `?glintSeen=0` as before): a glint's letters carry
+     `FIRE_SEEN` (firePalettes.js, added to a blob's kind; the blob shader skips the soft depth fade for them); its
+     sparkle is set 3.5 m (x k) toward the camera along the ray through the part (the same place on screen); its
+     heart is kept inside the frame like the flare's (`_keepOnScreen`); its light stays at the part. Measured on
+     every wyrm melee move: claw glints 0 - 8 % → 90 - 100 % seen, wing glints off-screen → 100 %.
+  3. THE PAW BLOWS (`pawTells.js`, data `WYRM_PAW` in tuningMotion.js; look switches; the owner's picks from the
+     films, "the leap and the scythe look good": `pawBlue=a`, `pawRed=a`, the defaults, '0' as before): blue (only a BLUE overhead; a white one keeps today's) `a` the scythe, `b` the jab,
+     `c` the uppercut; red (every stomp) `a` the leap (the body leaves the ground: `stompAim` keeps the altitude and
+     the slam brings it down on the impact), `b` the quake. The split: blue is one paw with the body twisted or
+     coiled to one side; red is the whole body. A variant draws its colour itself (the held tell's colour pose,
+     ADR-223, is skipped for it). Every option lands on its cue (integ `pawtells`: 0.00 - 0.03 s off).
+- **Consequences:** a cue's letters now show over the hero too where they cross him (a cue must be seen). The paw
+  options b / c (the jab, the uppercut, the quake) stay behind their switches. (The films' first half second showed
+  the wyrm's sleep curl on a standing body: the film rig's `debug.reset()` put it to sleep beside the hero, a state
+  the game never shows; re-filmed from its combat stance.)
+
+## ADR-276 — Agents check what their branch changed before a PR (`npm test -- --changed`); CI runs the full set (2026-11-28)
+
+- **Context:** ADR-205 asked every agent to run the full `npm test` once before opening its PR. A full run
+  is about 40 tasks and ~75 minutes of work. Locally it gets 8 shared slots, so it takes at least ~10
+  minutes, and the slowest task alone takes ~5. With several agents near a PR at once they queued for
+  the same 8 slots, and the owner saw the later chats take much longer to open their PRs. CI already runs
+  every task on every PR (four shares, ADR-153), and auto-merge (ADR-185) merges only when that is green,
+  so the local full run was a second copy of the gate, paid for on the owner's PC.
+- **Decision:** before a PR, an agent runs `npm test -- --changed`: `tests/run.mjs` reads the files the
+  branch changed since it left `origin/main` (committed, staged, unstaged and new; `--base <ref>` for
+  another) and runs the tasks `tests/changed.mjs` maps them to. The first matching rule decides a file:
+  a boss's folder, level and set run his suite (and `world` for the level and set); the wyrm and
+  Cinderwood run `integ`; the living world runs `life`; the dragon print runs its four suites and
+  `world`; a suite file runs its own tasks, and a test helper the suites that import it. Docs and repo
+  housekeeping run only `changelogcheck`. Any source file adds `cost` and `glyphcheck`. Anything else
+  under `src/` runs everything: core, combat, the hero, the duelist engine, render, ui, audio, game,
+  main.js and the level registry. So do the runner and the packages. `--changed --list` prints the pick
+  and the files behind each task. When the pick is everything, the agent runs the suites its change is
+  about with `--only` and lets CI run the rest. The `changedcheck` task fails when a boss folder or a
+  level has no rule of its own, a rule names a task that is gone, or a file `BOSSES` names is gone.
+- **Why this way:** it moves the full run to CI's machines, where it already ran, instead of the owner's
+  PC. Nothing broken can merge, because the required check is unchanged. Unknown files run everything,
+  so a gap in the rules costs time, never coverage. Hand-written rules were chosen over an import graph:
+  every suite loads the whole game through `shim.mjs`, so every graph reaches everything.
+- **Consequences:** a failure the local full run used to catch now shows up in CI after the PR is open,
+  and the agent fixes it on the branch. Replayed over the last 60 merged PRs, the rules narrow 9 of them
+  (the docs, the wyrm, the bench). The other 51 touch shared code: `duelist/lookSwitch.js` (the look
+  switch table), `combat/`, `player/` or `main.js`. So most of the time saved comes from not running the
+  full set locally, not from the narrower pick. A new boss or level needs a line in `BOSSES`.
+
+## ADR-277 — Varr Nihil after the reference pack: his look and his poses behind two switches (`?lordRef`, `?lordRefMove`) (2026-11-28)
+
+- **Context:** the owner generated a reference pack for Varr Nihil (`docs/art/character-packs-v04/varr-nihil`:
+  fifteen sheets, a handoff, a coverage table of 70 moves / 256 beat variants / 19 reaction clips; pages 13 - 15
+  correct the earlier sheets) and asked for his look and his animation to follow it: the hood, the closed helm, the
+  armour, the war-skirt and the whole crimson-lined cape kept in all four forms (this overrides the form-by-form
+  wear of `?lordLook=b`, the owner's earlier pick), every blade split into two red-white rails with a dark slit, the
+  silhouette readable at the game camera, and every move, reaction, step, transition and spell posed after the
+  strips, with no change to balance (damage, reach, hitboxes, active windows, tells, travel, cooldowns, AI weights,
+  phase eligibility, cue scheduling). Final art approval stays with the owner.
+- **Decision:**
+  1. TWO SWITCHES, '0' (as shipped) until the owner picks (CLAUDE.md: a change to how something looks is shown as
+     options first; both are in `lookSwitch.js` PENDING and the Lab's LOOKS rows marked awaiting).
+     `?lordRef=a` (read when his rig is built) is the look; `?lordRefMove=a` (live, from his next move) the poses.
+     `starlessLord/refLook.js` holds both readers and the look's pieces.
+  2. THE LOOK. No dressing while `lordRef` is on, whatever `lordLook` says (`look.js lordLookNow`). Every blade (the
+     main, the staff's back blade, the off-hand blade, the cross-hilt's side blades) is built as two rails of the
+     blade's light meeting at the point, with a dark slit (`armor`) between them, a short dark cross-guard on the
+     hilt; the slits are kept shown and scaled with their blades (`blades.cores`, `_showForm`), so a thrown blade
+     leaves an empty hand and its slit with it. The blade is drawn in the field as two rails of steel half a cell
+     to each side and no stroke down the middle, its sheath of heat pushed out and lower; the rails' bloom halved
+     (a blade is thinner than a letter cell: at 720p it is the field that shows the split). The thrown blade is
+     two rails too. The crimson sash and its clasp across the chest (00 / 01 / 03), in `piping` (the `lining`
+     material draws only the inside of a sheet). The cape's two side sheets turned out and standing off him so the
+     lining frames him from the front; every sheet lags and overshoots further (lag 0.55 -> 0.72, swing 1.4 -> 1.6
+     rad). The crimson inks stronger (the same hue).
+  3. THE POSES, never the timing. A pose layer over whatever keys the shipped switches pick (ADR-226's held tells,
+     ADR-251's form, ADR-251's pace): the same key times and eases, so the realiser (which times a beat from its
+     windup, hold, active and the key times, never from a pose) lands every impact, flash, end and recovery where
+     it did; no root-motion field is touched. Each form's guard lower on wider feet (`GUARDS_REF`); form 1's free
+     hand a fist at his side; form 3's hands wide on the staff (the off hand down the joined hilt, `offAt`); form 4
+     upright with the hands under the guard and the point over his head (13 H1). The load before a blow sinks a
+     little, the strike and its follow-through sink and lean into the cut, feet on the floor a little wider (not in
+     a flight or a leap); the free fist out behind in opposition through a one-handed cut. Two corrections that name
+     a move: Vigil's Fall ends low over its point (13 H2 replaces 08 M3; the body drops, the blade keeps its path: a
+     steeper one bent his wrist past the sword audit's 62°), Starfall lands with the staff pointed down ahead of his
+     feet (13 H3 replaces 07 A6; straight down, the animator swings a blade out of his legs, so it reads only a little
+     steeper than today's landing). The reactions read bigger (recoils further back,
+     the stagger lower) and the carried backstep / sidestep lean further; the glide leans further in with the legs
+     trailing further (02 L2 - L5).
+  4. KEPT AS THEY ARE: the owner's earlier motion picks that the strips draw differently stay (the two-handed chops
+     on a diagonal, ADR-251: 05 C6 draws one straight down the middle, which reads as one upright bar at the game
+     camera); the spells' looks (the owner's picks, ADR-122 / ADR-251) and every origin, lifetime and trajectory.
+  5. CHECKED: `lord.mjs . lordref`: every move / form / branch / flurry count realised on and off times every beat
+     the same; the same seeded fight against the defender lands the same blows at the same times; the sword audit's
+     limits hold with the new poses; the split blades and no dressing under `?lordRef`.
+- **Consequences:** the default game is unchanged until the owner picks. The pose layer is broad (every beat at
+  once), not a hand-keyed redo of 256 variants: it moves the whole set toward the strips' bearing, and the few
+  strips that differ from today's paths in kind (13 H2, 13 H3) are keyed by name; a per-move pass is open if the
+  owner wants one. At 720p the blade is about two pixels wide: the split reads in close views, at 1440p and up,
+  and as two rails of letters in the field.
+
+## ADR-280 — The deathblow is not cut short: a guard press waits, and it takes a perfect blue parry from the blade lock (`?dbLock=combo|lock`) (2026-11-28)
+
+- **Context:** the owner: "if i spam an attack during deathblow, the deathblow gets cancelled?". A sim parried into a
+  combo while mashing each button. Attack, heavy and dodge presses were already dropped (`tickDeathblow` clears the
+  buffer). Two holes remained. (1) A guard press (the middle click) raised the guard out of the combo's swing:
+  `tickDeathblow` saw the attack state left and ended the combo at once, its event saying N strikes and 0 damage.
+  (2) A PERFECT parry of a blue blow marked `lock` (Falling Ash, Vanishing Step, the Lord's flips ...) armed the
+  combo and crossed the blades in the same call; the lock won, the hero mashed attack to push it, and no deathblow came,
+  although a plain parry of the same blow gave one. The owner said their case was the guard press and asked for the
+  deathblow to win over the lock.
+- **Decision:** (1) `player.update` raises no guard while `db.phase === 'combo'`; the press waits while the button is
+  held and the guard comes up in the finisher's tail, as after any swing. (2) `duelist.onParried` asks
+  `player.deathblowClaims(this)` before `brain.startLock()`: true when the parry armed the combo on a blue blow from
+  this duelist (`deathblow.js` `deathblowClaims`). He then recoils as from any blue parry and the combo follows.
+  `?dbLock=lock` (the Lab's `dbLock`) gives the lock back. Tian Lei's beam and lantern locks call `startLock` directly
+  and are unchanged.
+- **Consequences:** with the deathblow on (the default), a duelist's melee blade lock is reached only with
+  `?dbLock=lock`, or `?parryRiposte=old|planted`, or `debug.noRiposte` (every `lock` blow is blue). The suites whose
+  checks are about the lock pin `?dbLock=lock` (duel `moments` and `clash`'s lock, asc `bare`); the Training's
+  "Blade lock" situation sets `dbLock: 'lock'` for itself (a Training situation's own `dbLock`, put back when it
+  ends; the old riposte there fed the dodge streak and shifted the situations after it). Lord `training` also
+  reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
+  guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
+  change is a combo where a lock was.
