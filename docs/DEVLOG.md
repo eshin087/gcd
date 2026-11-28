@@ -5,6 +5,37 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — The wyrm's death neck, every white spark seen, the scythe and the leap (ADR-274; branch `dragon/death-neck-tells`)
+
+**Owner:** "when the dragon dies and flies up, the head and neck looks unnatural ... like the neck is broken";
+"make sure every normal attack shows the white spark hit"; "the blue and red warning paw attacks ... need to be
+completely different ... think of multiple different animations that stand out".
+
+**Measured first** (headless Edge, `__tick`, the neck's joints per frame and stick figures of the chain; each cue
+rendered twice, with the scene's depth and with nothing in front):
+- The death: the throe's head goal lay 8 m off a 6 m neck (the neck pulled straight up, a pole), the limp head was
+  laid level whatever the neck did (60 - 62° off the neck's end from 0.2 to 1.3 s), the goal's straight line to the
+  ground buckled the neck into a zig-zag as it landed.
+- The glints: the wyrm's own paw, foreleg and wings hid 92 - 100 % of its claw glints; a wing blow's glint fell
+  off the screen. The fight camera looks down at 58°, so a paw raised and brought down (the blue overhead, the red
+  stomp) is foreshortened into the same growing blob.
+
+**Changed:** the death's head swings round the neck's base inside its reach, the throe's head up and forward,
+it looks along its neck, the dying head hangs at most ~31° off it (`?deathNeck=0` before). A glint's letters
+are drawn over the scene (`FIRE_SEEN`, a blob flag in the fire field) and kept inside the frame, every boss
+(`?glintSeen=0` before). The paw blows: `?pawBlue=a|b|c` (scythe, jab, uppercut) and `?pawRed=a|b` (leap, quake),
+`pawTells.js` + `WYRM_PAW`, the Lab's LOOKS rows; the owner picked from the films ("the leap and the scythe look
+good"): the scythe and the leap are the defaults. The owner also saw the head and neck "all weird" at the films'
+start: the film rig's `debug.reset()` left the wyrm in its sleep curl standing beside the hero (a state the game
+never shows: it wakes as you come near); re-filmed from its combat stance.
+
+**Verification:** integ `pawtells` (the glint's seen flag and shader; every paw option lands on its cue,
+0.00 - 0.03 s off; the death: off the neck 62° → 33°, the sharpest bend 36° → 32°, the head's fling 1.49 → 0.82 m);
+the glint audit over every wyrm melee move (claws 90 - 100 % seen); films at the fight camera (sent to the owner).
+Full `npm test` before the PR.
+
+**Open / next:** the owner's playtest of the scythe and the leap in the fight (and on the iPhone); the leap's
+height and hang may want tuning by feel.
 ## 2026-11-28 — A new fight stance: the middle guard (ADR-275; `player/stance-four`)
 
 **Owner:** "lets change gcds combat default pose. the way he holds the sword and the angle of the sword doesn't

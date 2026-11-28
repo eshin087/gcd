@@ -7971,3 +7971,38 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   transition bars hold: every move within ×1.5 + 10 cm of the stance before). From straight behind at the game
   camera the blade runs up the screen, over his head: the hold reads best side-on or at an angle, as a duel mostly
   is. Open: the owner's playtest.
+
+## ADR-274 — The wyrm's death neck, the white spark always seen, the paw blows told apart: the scythe and the leap (`?deathNeck`, `?glintSeen`, `?pawBlue`, `?pawRed`) (2026-11-28)
+- **Context:** the owner: "when the dragon dies and flies up, the head and neck looks unnatural with weird angles and
+  motions that are not possible and looks like the neck is broken"; "make sure every normal attack shows the white
+  spark hit to help the player parry"; "the blue and red warning paw attacks from the dragon need to be completely
+  different ... it kinda uses the same animation. think of multiple different animations that stand out".
+- **Measured first:** the death's head goal ran in a straight line from a throe point 8 m off a 6 m neck (the
+  chain pulled straight up, a pole) to the ground, and the limp head was laid level whatever the neck did: the head
+  sat 60 - 62° off the neck's last segment from 0.2 s to 1.3 s (the clamp's limit), the neck kinked 35° at its top,
+  then buckled into a zig-zag as the goal passed inside its reach. The glints: rendered twice at each cue (the scene
+  depth vs nothing in front), the wyrm's claw glints showed 0 - 8 % of their heat (the paw, the foreleg and the
+  wings in front of them), a wing blow's glint fell outside the frame. The fight camera looks down at 58°: a paw
+  raised and brought down is foreshortened, so the blue overhead and the red stomp read as the same growing blob.
+- **Decision:**
+  1. THE DEATH (`ai.js` deathPose, `?deathNeck=0` as before): the head's goal turns round the neck's base (the
+     direction slerped from the throe to the ground, the distance eased and kept inside 0.86 x the neck's length in
+     the throe), the throe's head up and FORWARD (0, 5.4, 3.2) so the neck keeps its arch; it looks along its neck
+     until it lands; dying, the head hangs at most ~31° off the neck (`DEAD_HINGE`, rig/anim.js). Measured: off the
+     neck 62° → 33° (at the landing bounce only), the sharpest bend 36° → 32°, the head up 1.49 → 0.82 m.
+  2. THE GLINT SEEN (`duelist/fx.js`, every boss; `?glintSeen=0` as before): a glint's letters carry
+     `FIRE_SEEN` (firePalettes.js, added to a blob's kind; the blob shader skips the soft depth fade for them); its
+     sparkle is set 3.5 m (x k) toward the camera along the ray through the part (the same place on screen); its
+     heart is kept inside the frame like the flare's (`_keepOnScreen`); its light stays at the part. Measured on
+     every wyrm melee move: claw glints 0 - 8 % → 90 - 100 % seen, wing glints off-screen → 100 %.
+  3. THE PAW BLOWS (`pawTells.js`, data `WYRM_PAW` in tuningMotion.js; look switches; the owner's picks from the
+     films, "the leap and the scythe look good": `pawBlue=a`, `pawRed=a`, the defaults, '0' as before): blue (only a BLUE overhead; a white one keeps today's) `a` the scythe, `b` the jab,
+     `c` the uppercut; red (every stomp) `a` the leap (the body leaves the ground: `stompAim` keeps the altitude and
+     the slam brings it down on the impact), `b` the quake. The split: blue is one paw with the body twisted or
+     coiled to one side; red is the whole body. A variant draws its colour itself (the held tell's colour pose,
+     ADR-223, is skipped for it). Every option lands on its cue (integ `pawtells`: 0.00 - 0.03 s off).
+- **Consequences:** a cue's letters now show over the hero too where they cross him (a cue must be seen). The paw
+  options b / c (the jab, the uppercut, the quake) stay behind their switches. (The films' first half second showed
+  the wyrm's sleep curl on a standing body: the film rig's `debug.reset()` put it to sleep beside the hero, a state
+  the game never shows; re-filmed from its combat stance.)
+
