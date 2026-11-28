@@ -19,6 +19,18 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: 'A tenth level: the Last Foundry and the False Saint',
+        notes: [
+          'A new level, the Last Foundry: a steel mill at the end of a war with the machines, at night, still running with no one left to feed it. Pick it on the title screen.',
+          'Its boss is Anselm, the False Saint: a calm man in a charcoal jacket, kneeling at the edge of the molten pour as if in prayer. His skin is a shell over a machine. Your cuts chip it away where they land, and each phase bares more of the frame under it.',
+          'He is the fastest and hardest-hitting boss in the game, and every blow is still told: open-hand strings, a grab that throws you through the scenery, booster punches that cross the floor in a blink, lasers, cannons, missiles and an artillery barrage with safe lanes between its rows.',
+          'Everything in the mill breaks, and he uses it: he kicks gas tanks at you, shoots a ladle down so molten steel pours where you stand, throws girders and slams the forging press into a shock across the whole floor.',
+          'Molten steel burns him too: bring a ladle down on him.',
+          'At 74 % his skin breaks, at 46 % his weapons come free, at 20 % he shows his true frame. Below 8 % he tries one last embrace: dodge it and he stands wide open.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'Varr Nihil after the reference pack, to try',
         notes: [
           'A new look for Varr Nihil to try before it becomes his own: his hood, helm, armour and whole cape kept in every form, and every blade split into two red-white rails with a dark slit between them.',
