@@ -617,7 +617,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, { self = false } = {}) {
   // each equipped item hangs its meshes on the skeleton (gear/README.md: the item contract) and
   // may hand back the handles the animator needs
   const skeleton = { root, body, pelvis, spine, chest, head, arms, legs, pauldron, sword };
-  const handles = { coat: [], streamers: [], keep: [], gem: null, flask: null, offHand: null };
+  const handles = { coat: [], streamers: [], keep: [], cloth: [], gem: null, flask: null, offHand: null };
   const equipped = {};
   for (const { slot, item } of worn) {
     equipped[slot] = item ? item.id : null;
@@ -626,6 +626,7 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, { self = false } = {}) {
     if (h?.coat) handles.coat.push(...h.coat);
     if (h?.streamers) handles.streamers.push(...h.streamers);
     if (h?.keep) handles.keep.push(...h.keep);
+    if (h?.cloth) handles.cloth.push(...h.cloth);
     if (h?.gem) handles.gem = h.gem;
     if (h?.flask) handles.flask = h.flask;
     if (h?.offHand) handles.offHand = h.offHand;
@@ -652,6 +653,8 @@ export function buildHero(U, loadout = DEFAULT_LOADOUT, { self = false } = {}) {
   const mats = Object.values(M);
   return {
     root, body, pelvis, spine, chest, head, hair, arms, legs, coat, streamers, sword, gem, pauldron, flask,
+    // cloth rebuilt every frame after its springs (gear: the one-piece coat, coatOne.js): { update() }
+    cloth: handles.cloth,
     // { open, grip, fingers? } | null: the free hand open, the same hand closed on the grip below the
     // sword hand, and (optional) the sword fingers; open and fingers hang on arms.L.wrist. The
     // animator shows one of them (`twoHand` and the grip gap, `hs`; gear/README.md)

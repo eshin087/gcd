@@ -6,6 +6,7 @@ import { atEase, fencerGuard } from './stances.js';
 import { idlesOld, idlesRef, idlesMode, easeArms, guardArms, newRests, tickRests, pickEase, actStart, lowRest, toLowRest, trailing, easeRests, fightRests, stowHidden, EASE_HABITS, EASE_TRICKS, FIGHT_ACTS, FIGHT_ACTS_REF, EASE_REF_EXTRA, IDLES } from './idles.js';
 import { refStand, refReady, refGuard, guardMode, REF_GUARD } from './refStance.js';
 import { offHandLook } from './offHand.js';
+import { RANDOM_PAD, padRandom, coatKickRandom } from './gear/coatOne.js';
 import { feelLook, warpPhase } from './feel.js';
 
 // Procedural animation for the Wanderer, keyed to the owner's concept sheets ("Movement" / "Combat
@@ -2870,6 +2871,7 @@ const COAT_FLOOR = 0.04; // panel ends stay this far above the ground
 const COAT_JUMP = 0.2; // rad per frame: the most a lying-down floor fix may swing a panel at once
 const COAT_A = [[-1.5, 0.3], [-1.0, 0.6]]; // outward (−) / inward (+) swing limits per segment
 const COAT_B = [0.7, 0.55]; // sideways swing limit per segment
+const COAT_COUPLE = 14; // /s: a one-piece coat's chain pulled toward its neighbours' swing (coatOne.js `nbr`)
 const LEG_R = BODY.thigh[0] + 0.004; // thigh / knee radius used to push the panels out
 // the blade vs the coat (round 3): the cloth never passes through the steel (it used to come out
 // through the tails behind a run). Every frame the grip and points along the drawn blade (BLADE_PTS,
@@ -3351,6 +3353,7 @@ export class HeroAnimator {
     // snapped every cape sheet and torn strip to its target in one frame: 58 cm on a heavy blow)
     this.clothSnap = true;
     this._coat(0);
+    for (const C of this.rig.cloth ?? []) C.update();
     this._hair(0);
     this._streamers(0);
     this.clothSnap = false;
@@ -3379,14 +3382,22 @@ export class HeroAnimator {
    *  noise) defaults to Math.random; new kicks pass this.noise so they leave the game's RNG alone. */
   kickCoat(power = 1, rnd = Math.random) {
     const k = clamp(fin(power), 0, 3);
+    // (the one-piece coat, gear/coatOne.js: its chains draw on a stream of their own, and from Math.random only what
+    // the six panels drew, RANDOM_PAD.kick: a kick drew per chain and per strip, and twelve chains moved every seeded
+    // roll of the fight after a guard break. Not the animator's `noise`: it picks the flurry's arts)
+    let cr = rnd;
+    if (this.rig.cloth?.length && rnd === Math.random) {
+      padRandom(RANDOM_PAD.kick);
+      cr = this._kickRnd ?? (this._kickRnd = coatKickRandom());
+    }
     for (let i = 0; i < this.coatState.length; i++) {
       const st = this.coatState[i];
-      st[0].vx -= k * (3 + 1.5 * rnd());
-      st[1].vx -= k * (4 + 2 * rnd());
-      st[1].vz += k * (rnd() - 0.5) * 3;
+      st[0].vx -= k * (3 + 1.5 * cr());
+      st[1].vx -= k * (4 + 2 * cr());
+      st[1].vz += k * (cr() - 0.5) * 3;
       for (const c of this.stripState[i]) {
-        c.vx -= k * (3 + 3 * rnd());
-        c.vz += k * (rnd() - 0.5) * 4;
+        c.vx -= k * (3 + 3 * cr());
+        c.vz += k * (cr() - 0.5) * 4;
       }
     }
     for (const st of this.streamState) {
@@ -3550,6 +3561,7 @@ export class HeroAnimator {
     gripNudge(this.cur, this.player?.guardNudge); // (CONTACT: a guard nudged onto the blow it meets)
     this.apply(this.cur);
     this._coat(dt);
+    for (const C of this.rig.cloth ?? []) C.update();
     this._hair(dt);
     this._streamers(dt);
     this.rig.root.updateMatrixWorld(true);
@@ -4952,6 +4964,20 @@ export class HeroAnimator {
     // (not while he lies down or tumbles: there the hem's floor contact rules the cloth)
     const nb = Math.abs(wrapAngle(this.cur[P.pitch])) < 1.0 ? this._bladePts() : 0;
 
+    // (one cloth, coatOne.js: a chain with neighbours (`nbr`) is pulled toward their swing as it was last
+    // frame, COAT_COUPLE /s, so the sheet between them moves as one piece, never a panel swinging on its own)
+    const NCH = r.coat.length;
+    if (!this.coatSnap || this.coatSnap.length !== NCH * 4) this.coatSnap = new Float32Array(NCH * 4);
+    const SN = this.coatSnap;
+    for (let i = 0; i < NCH; i++) {
+      const st = this.coatState[i];
+      SN[i * 4] = st[0].x;
+      SN[i * 4 + 1] = st[0].z;
+      SN[i * 4 + 2] = st[1].x;
+      SN[i * 4 + 3] = st[1].z;
+    }
+    // (upright only: lying or tumbling, the floor rules the cloth, and the pull fought it: a hem 36 cm under the grass)
+    const couple = dt > 0 && Math.abs(wrapAngle(this.cur[P.pitch])) < 1.0 ? 1 - Math.exp(-COAT_COUPLE * dt) : 0;
     for (let i = 0; i < r.coat.length; i++) {
       const C = r.coat[i], D = C.def, st = this.coatState[i], LEN = C.len;
       _pa.setFromMatrixPosition(C.anchor.matrixWorld); // anchors are rigid on the pelvis: current since apply()
@@ -5005,6 +5031,19 @@ export class HeroAnimator {
       let parentA = 0, parentB = 0;
       for (let s = 0; s < 2; s++) {
         const c = st[s];
+        if (D.nbr && couple > 0) {
+          let ax = 0, az = 0, nn = 0;
+          for (const j of D.nbr) {
+            if (j < 0) continue;
+            ax += SN[j * 4 + s * 2];
+            az += SN[j * 4 + s * 2 + 1];
+            nn++;
+          }
+          if (nn) {
+            c.x += (ax / nn - c.x) * couple;
+            c.z += (az / nn - c.z) * couple;
+          }
+        }
         const lag = COAT_LAG[s] * (1 + COAT_LAG_V * vs);
         const fl = (D.flap ? 0.05 : D.flare ?? COAT_FLARE) + (breeze + (D.idleFlare ?? IDLE_FLARE[i] ?? 0) * (s ? 0.7 : 1)) * still + Math.sin(this.time * 9 + i * 1.7 + s * 1.3) * 0.07 * flut + UPDRAFT_COAT * this.updraft * (s ? 1.3 : 1);
         let hx = _g.x + nx * fl - _v.x * lag;
@@ -5096,12 +5135,22 @@ export class HeroAnimator {
       // nearest pair that keeps the hem above (or the highest available) and kill the velocity
       _qA.copy(_qPelvis).multiply(C.anchor.quaternion);
       const s0 = st[0], s1 = st[1];
-      if (this._hemY(LEN, s0.x, s0.z, s1.x, s1.z) < COAT_FLOOR) {
+      const FLOOR = COAT_FLOOR;
+      // (the one-piece coat's chains, gear/coatOne.js `one`: their lengths as drawn, × the anchor's world scale; the
+      // panels' rule measures model lengths against drawn heights, and a lying hem sank 12 cm into the grass)
+      let LENd = LEN;
+      if (D.one) {
+        const e = C.anchor.matrixWorld.elements, ws = Math.hypot(e[4], e[5], e[6]) || 1;
+        LENd = this._lenD ?? (this._lenD = [0, 0]);
+        LENd[0] = LEN[0] * ws;
+        LENd[1] = LEN[1] * ws;
+      }
+      if (this._hemY(LENd, s0.x, s0.z, s1.x, s1.z) < FLOOR) {
         const [b0, b1] = COAT_A[1];
         let best1 = s1.x, bestD = Infinity;
         for (let k = 0; k <= 16; k++) {
           const a1 = b0 + ((b1 - b0) * k) / 16;
-          if (this._hemY(LEN, s0.x, s0.z, a1, s1.z) >= COAT_FLOOR && Math.abs(a1 - s1.x) < bestD) {
+          if (this._hemY(LENd, s0.x, s0.z, a1, s1.z) >= FLOOR && Math.abs(a1 - s1.x) < bestD) {
             bestD = Math.abs(a1 - s1.x);
             best1 = a1;
           }
@@ -5112,7 +5161,7 @@ export class HeroAnimator {
           let lo = best1, hi = s1.x;
           for (let it = 0; it < 7; it++) {
             const mid = (lo + hi) * 0.5;
-            if (this._hemY(LEN, s0.x, s0.z, mid, s1.z) >= COAT_FLOOR) lo = mid;
+            if (this._hemY(LENd, s0.x, s0.z, mid, s1.z) >= FLOOR) lo = mid;
             else hi = mid;
           }
           // a small fix lands at once (the hem rests on the grass); a flip to the other side of
@@ -5129,9 +5178,9 @@ export class HeroAnimator {
               const a0 = aMin + ((aMax - aMin) * k) / 12;
               for (let m = 0; m <= 4; m++) {
                 const a1 = b0 + ((b1 - b0) * m) / 4;
-                const y = this._hemY(LEN, a0, s0.z * zk, a1, s1.z * zk);
+                const y = this._hemY(LENd, a0, s0.z * zk, a1, s1.z * zk);
                 const dd = Math.abs(a0 - s0.x) + 0.5 * Math.abs(a1 - s1.x) + (1 - zk) * 0.6;
-                if (y >= COAT_FLOOR && dd < bestD) {
+                if (y >= FLOOR && dd < bestD) {
                   bestD = dd;
                   pa = a0;
                   pb = a1;

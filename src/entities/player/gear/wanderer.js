@@ -6,6 +6,7 @@ import {
   mergeGeometries, sub, partGeometry, foldLines, ribbonCrease, spike, bandGeometry, place, sheetOffset, lerp, orient, ring, limb, wedge,
   gripFist, looseHand,
 } from '../heroGeo.js';
+import { coatMode, buildCoatOne } from './coatOne.js';
 
 // The Wanderer's outfit, "Shadow Swordsman": the default gear set (gear/index.js DEFAULT_LOADOUT),
 // one item per slot, the look described at the top of model.js. Each item's build(ctx) hangs its
@@ -408,6 +409,8 @@ function buildLegs({ pelvis, legs, M, DIM, BODY, REST, mesh }) {
 /** The coat skirt, COAT_PANELS hung on the pelvis. Returns `coat`: the panels the animator springs
  *  (anim.js _coat reads each one's anchor, segs, def, strips, len and r0). */
 function buildSkirt({ pelvis, M, DIM, mesh, joint }) {
+  // (the one-piece coat, coatOne.js, unless `?coat=panels`)
+  if (coatMode() === 'one') return buildCoatOne({ pelvis, M, DIM, mesh, joint });
   // 6 tapering panels × (upper + lower solid segment, each a lagging spring) → torn strips, each on
   // its own spring (anim.js); indigo lining on the inside; grey-violet piping down the open front
   // edges and the back vent's edges (COAT_PANELS `edge`). The panel tops tuck under the belt stack,

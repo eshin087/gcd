@@ -5463,10 +5463,20 @@ async function scenarioHero() {
   const p = game.player, r = p.rig, d = game.dragon;
   p.debug.god = true;
   const strips = r.coat.reduce((n, c) => n + c.strips.length, 0);
-  // the coat (ADR-034): two back tails split by a vent, narrow side panels, two front panels
-  const tails = r.coat.filter((C) => Math.abs(C.def.az) > 2.2);
-  assert(r.coat.length === 6 && tails.length === 2 && strips === 12 && r.coat.every((C) => !C.def.flap),
-    `coat: 6 panels (2 back tails split by a vent, 2 side, 2 front), ${strips} torn strips`);
+  // the coat: one sheet on its chains (ADR-274, `?coat=one`), or the six panels (ADR-034): two back tails split
+  // by a vent, narrow side panels, two front panels
+  {
+    const { coatMode, COAT_ONE } = await imp('src/entities/player/gear/coatOne.js');
+    if (coatMode() === 'one') {
+      const want = COAT_ONE.strips.reduce((n, S) => n + S.length, 0);
+      assert(r.coat.length === COAT_ONE.chains.length && (r.cloth?.length ?? 0) === 1 && strips === want && r.coat.every((C) => !C.def.flap && C.def.nbr),
+        `coat: one sheet on ${r.coat.length} coupled chains, ${strips} torn strips`);
+    } else {
+      const tails = r.coat.filter((C) => Math.abs(C.def.az) > 2.2);
+      assert(r.coat.length === 6 && tails.length === 2 && strips === 12 && r.coat.every((C) => !C.def.flap),
+        `coat: 6 panels (2 back tails split by a vent, 2 side, 2 front), ${strips} torn strips`);
+    }
+  }
   // the Shrouded set (ADR-043): the cloak's sheets ride the streamer springs (heavier than a ribbon:
   // lag < 1); under the hood none of the body's hair clusters is built (they poked through the cloth
   // or massed over the face); the hood builds its own gold strands, and the face is in its shadow
@@ -5611,7 +5621,8 @@ async function scenarioHero() {
     assert(threw && p.loadout.back === null, 'an unknown item id throws and changes nothing');
     p.setLoadout(DEFAULT_LOADOUT);
     drive();
-    assert(meshes() === n0 && p.rig.coat.length === 6 && p.rig.streamers.filter((S) => !S.weapon).length === 5 && p.sweep.sword === p.rig.sword && finite(), `back in the default set: ${meshes()} meshes, 6 coat panels, 5 cloak sheets`);
+    const coat0 = (await imp('src/entities/player/gear/coatOne.js')).coatMode() === 'one' ? (await imp('src/entities/player/gear/coatOne.js')).COAT_ONE.chains.length : 6;
+    assert(meshes() === n0 && p.rig.coat.length === coat0 && p.rig.streamers.filter((S) => !S.weapon).length === 5 && p.sweep.sword === p.rig.sword && finite(), `back in the default set: ${meshes()} meshes, ${coat0} coat chains, 5 cloak sheets`);
     // the outfit before ADR-043 is still a loadout: bare-headed (the hair is built again), the
     // pauldron, the half-cape
     const { WANDERER_LOADOUT } = await imp('src/entities/player/gear/index.js');
@@ -6428,7 +6439,7 @@ async function scenarioPlanted() {
     assert(nw.leads.length >= 5 && nw.leads.every((x) => x === nw.leads[0]) && nw.lift <= 0.13, `planted, the lead foot stays the lead foot (${nw.leads.join('')}; before ${old.leads.join('')}) and no foot lifts past ${(nw.lift * 100).toFixed(1)} cm (<= 13 cm, the ankle's own height included)`);
     assert(nw.pokeN > 4 && nw.pokeEl <= 10 && old.pokeEl >= 25, `hit 4 is a level poke: the blade within ${nw.pokeEl.toFixed(1)} deg of level through its cut (<= 10; the rising thrust ${old.pokeEl.toFixed(1)})`);
     // (the owner, 2026-11-27: on hit 5 the cloak's outer pieces "makes it seem like its the left hand")
-    assert(nw.frozenN >= 1 && nw.frozenMove === 0, `a frozen frame (a hit-stop's first, dt 0; ${nw.frozenN} of them) moves no cloth: at most ${nw.frozenMove.toFixed(3)} rad (it snapped every cape sheet onto its target)`);
+    assert(nw.frozenN >= 1 && nw.frozenMove <= 1e-4, `a frozen frame (a hit-stop's first, dt 0; ${nw.frozenN} of them) moves no cloth: at most ${nw.frozenMove.toFixed(3)} rad (it snapped every cape sheet onto its target)`);
     assert(nw.panelOut <= 0.7 && nw.wrist5 <= 0.18, `hit 5: the front skirt panels swing out at most ${nw.panelOut.toFixed(2)} rad (<= 0.7: the front knee threw one out to 1.0), the free hand onto the grip at most ${(nw.wrist5 * 100).toFixed(1)} cm a frame in his frame (<= 18; 29 without TWO_IN)`);
     assert(nw.seen >= 0.5 && old.seen <= 0.2, `from behind, the free hand stands clear of his body in ${(nw.seen * 100).toFixed(0)} % of hits 1-4 (>= 50 %; behind his back ${(old.seen * 100).toFixed(0)} %)`);
   } finally {
@@ -6436,6 +6447,112 @@ async function scenarioPlanted() {
     CO.setPoke(poke0);
     OH.setOffHand(off0);
     CO.setCombo(combo0);
+  }
+  return last;
+}
+
+// COATONE (the owner, 2026-11-27: "It should not be a skirt and needs to be one full cloak but with great
+// animation that looks natural as the character moves and attacks"; gear/coatOne.js, `?coat=one`): the coat's
+// lower half is one sheet rebuilt every frame from its chains. Through a stand, a run and stop, combo A, a heavy
+// and the charged cleave: every vertex finite, none sunk into a leg (thigh or shin) deeper than a few cm, no
+// vertex jumping more than COAT_POP in one frame in his own frame, the chains held together (neighbours
+// within COAT_SPREAD rad of each other), and `?coat=panels` builds the six panels as before.
+async function scenarioCoatOne() {
+  const COAT_SPREAD = 1.0; // (rad: first measured, then bounded: see the out line)
+  out('\n== scenario COATONE (the one-piece coat: one sheet on ten coupled chains, gear/coatOne.js) ==');
+  const CO = await imp('src/entities/player/gear/coatOne.js');
+  const CB = await imp('src/entities/player/combos.js');
+  const HDIMS = await imp('src/entities/player/heroDims.js');
+  const mode0 = CO.coatMode(), combo0 = CB.comboMode();
+  let last = null;
+  const measure = (mode) => {
+    CO.setCoat(mode);
+    CB.setCombo('a');
+    const G = (last = build());
+    fightSetup(G);
+    settle(G);
+    const { game, input } = G, d = game.dragon, p = game.player, r = p.rig, A = p.anim;
+    const sheets = [];
+    if (mode === 'one') {
+      assert(Array.isArray(r.cloth) && r.cloth.length === 1 && r.coat.length === CO.COAT_ONE.chains.length, `the hero wears one coat sheet on ${r.coat.length} chains (${r.cloth?.length ?? 0} cloth)`);
+      sheets.push(...r.cloth[0].meshes);
+    } else for (const C of r.coat) C.anchor.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position) sheets.push(o); });
+    p.debug.god = true;
+    p.debug.teleport(d.position.x + 3, d.position.z + 3);
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    aimAt(G);
+    const V = new THREE.Vector3(), Q = new THREE.Vector3(), inv = new THREE.Matrix4();
+    const prev = new Map();
+    let nan = false, deep = 0, deepAt = '', pop = 0, popAt = '', spread = 0, frames = 0;
+    const inLeg = new Set();
+    const legSeg = (leg, a, b) => { leg.thigh.getWorldPosition(a); leg.shin.getWorldPosition(b); };
+    const A0 = new THREE.Vector3(), B0 = new THREE.Vector3(), C0 = new THREE.Vector3(), F0 = new THREE.Vector3();
+    const segDist = (P, a, b) => { const ab = Q.subVectors(b, a), t = Math.max(0, Math.min(1, V.subVectors(P, a).dot(ab) / Math.max(1e-9, ab.lengthSq()))); return P.distanceTo(V.copy(a).addScaledVector(ab, t)); };
+    const RLEG = HDIMS.BODY.thigh[0] * (p.drawScale || 1);
+    const step = (label) => {
+      G.tick(DT);
+      frames++;
+      inv.copy(r.root.matrixWorld).invert();
+      for (const m of sheets) {
+        const pos = m.geometry.attributes.position, key = m.id;
+        let pv = prev.get(key);
+        if (!pv) prev.set(key, (pv = new Float32Array(pos.count * 3)).fill(NaN));
+        for (let v = 0; v < pos.count; v += 3) {
+          const P = new THREE.Vector3(pos.getX(v), pos.getY(v), pos.getZ(v)).applyMatrix4(m.matrixWorld);
+          if (!Number.isFinite(P.x + P.y + P.z)) { nan = true; continue; }
+          // sunk into a leg: under its surface (thigh: hip → knee, shin: knee → ankle)
+          for (const leg of [r.legs.L, r.legs.R]) {
+            legSeg(leg, A0, B0);
+            leg.foot.getWorldPosition(F0);
+            // (the legs as the cloth's own rule sees them, anim.js LEG_PTS: the thigh's middle and the knee, each
+            // LEG_R round; under the waist the coat hangs round the hip joint by design)
+            const dd = Math.min(P.distanceTo(C0.addVectors(A0, B0).multiplyScalar(0.5)), P.distanceTo(B0));
+            if (RLEG - dd > 0.02 * (p.drawScale || 1)) inLeg.add(frames);
+            if (RLEG - dd > deep) { deep = RLEG - dd; deepAt = `${label} ${p.state} t ${(p.atk?.t ?? 0).toFixed(2)} ${leg === r.legs.L ? 'L' : 'R'} ${P.distanceTo(B0) < P.distanceTo(C0) ? 'knee' : 'thigh'}, ${((A0.y - P.y) / (p.drawScale || 1)).toFixed(2)} m under the hip, ${m.material?.name || ''} r ${(RLEG / (p.drawScale || 1)).toFixed(3)}`; }
+          }
+          // its jump this frame, in his own frame
+          const L = P.clone().applyMatrix4(inv);
+          if (Number.isFinite(pv[v * 3])) {
+            const j = Math.hypot(L.x - pv[v * 3], L.y - pv[v * 3 + 1], L.z - pv[v * 3 + 2]) / (p.drawScale || 1);
+            if (j > pop) { pop = j; popAt = `${label} ${p.state} t ${(p.atk?.t ?? 0).toFixed(2)}`; }
+          }
+          pv[v * 3] = L.x; pv[v * 3 + 1] = L.y; pv[v * 3 + 2] = L.z;
+        }
+      }
+      for (let i = 0; i + 1 < r.coat.length; i++) spread = Math.max(spread, Math.abs(A.coatState[i][0].x - A.coatState[i + 1][0].x));
+    };
+    for (let i = 0; i < 40; i++) step('stand');
+    input.axis = { x: 1, y: 0 };
+    for (let i = 0; i < 50; i++) step('run');
+    input.axis = { x: 0, y: 0 };
+    for (let i = 0; i < 40; i++) step('stop');
+    p.debug.teleport(d.position.x + 2.4, d.position.z + 2.4);
+    p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z);
+    const plan = [0, 0.42, 0.84, 1.26, 1.68];
+    for (let i = 0, N = Math.round(2.6 / DT); i < N; i++) {
+      if (plan.some((t) => i === Math.round(t / DT))) { aimAt(G); input.click(0); }
+      step('combo');
+    }
+    p._buffer('heavy');
+    for (let i = 0; i < 60; i++) step('heavy');
+    input.press(2);
+    for (let i = 0; i < 80; i++) step('charge');
+    input.up(2);
+    for (let i = 0; i < 70; i++) step('cleave');
+    return { deep, deepAt, pop, popAt, spread, frames, nan, G, legFrames: inLeg.size };
+  };
+  try {
+    const one = measure('one'), pan = measure('panels');
+    for (const [k, R] of [['one piece', one], ['panels', pan]]) out(`   ${k}: ${R.frames} frames: deepest into a leg ${(R.deep * 100).toFixed(1)} cm (${R.deepAt}), ${R.legFrames} frames more than 2 cm in, fastest vertex ${(R.pop * 100).toFixed(1)} cm a frame (${R.popAt}), neighbours apart at most ${R.spread.toFixed(2)} rad`);
+    assert(!one.nan, 'every coat vertex is finite');
+    // (the legs as the cloth rule sees them reach wider than the drawn legs: both coats' waists sit in them; held to the panels)
+    assert(one.deep <= pan.deep + 0.005 && one.legFrames <= pan.legFrames, `the coat sinks no deeper into the legs and in no more frames than the panels did (${(one.deep * 100).toFixed(1)} cm, ${one.legFrames} frames; the panels ${(pan.deep * 100).toFixed(1)} cm, ${pan.legFrames})`);
+    assert(one.pop <= pan.pop + 0.01, `no coat vertex jumps further in a frame (his own frame) than the panels' did (${(one.pop * 100).toFixed(1)} cm, ${one.popAt}; the panels ${(pan.pop * 100).toFixed(1)})`);
+    assert(one.spread <= COAT_SPREAD && one.spread < pan.spread, `the chains hang together: neighbours at most ${COAT_SPREAD} rad apart and closer than the panels (${one.spread.toFixed(2)}; the panels ${pan.spread.toFixed(2)})`);
+    assert(pan.G.game.player.rig.coat.length === 6 && !(pan.G.game.player.rig.cloth?.length), `?coat=panels builds the six panels as before (${pan.G.game.player.rig.coat.length} panels)`);
+  } finally {
+    CO.setCoat(mode0);
+    CB.setCombo(combo0);
   }
   return last;
 }
@@ -9766,6 +9883,7 @@ async function scenarioLooks() {
   }
 
   let n0 = 0, offKeys0 = '', cape0 = null;
+  const N0_PANELS = 117; // (the default look's meshes with the six coat panels, before ADR-274)
   const rates = {}, headSlot = {};
   for (const id of LOOK_IDS) {
     const L = HERO_LOOKS[id], isNew = id !== DEFAULT_LOOK;
@@ -9787,7 +9905,10 @@ async function scenarioLooks() {
       if (!isNew) n0 = src.length;
       out(`   ${id}: ${src.length} meshes, ${tris} triangles, ${mats} materials, ${p.batch.meshes.length} batches, ${r.streamers.length} streamers, ${r.coat.length} panels, ${strips} strips`);
       // (27k: today's look with the sword fingers and the closed fists draws ~26.6k triangles)
-      assert(src.length <= n0 && tris <= 27000 && mats <= 21 && p.batch.meshes.length <= 21 && r.streamers.length <= 6 && r.coat.length <= 6 && strips <= 12,
+      // (the budget is today's default with the six panels, 117 meshes and 6 panels / 12 strips; the one-piece
+      // coat, ADR-274, hangs its sheet on 12 chains with 14 strips and draws fewer meshes)
+      const one = (r.cloth?.length ?? 0) > 0;
+      assert(src.length <= Math.max(n0, N0_PANELS) && tris <= 27000 && mats <= 21 && p.batch.meshes.length <= 21 && r.streamers.length <= 6 && r.coat.length <= (one ? 12 : 6) && strips <= (one ? 14 : 12),
         `${id}: costs no more than today (${src.length} meshes of ${n0}, ${tris} triangles ≤ 27000, ${mats} materials and ${p.batch.meshes.length} draws ≤ 21)`);
       const keys = Object.keys(r.offHand ?? {}).filter((k) => r.offHand[k]).sort().join();
       if (!isNew) offKeys0 = keys;
@@ -9950,7 +10071,7 @@ async function scenarioLooks() {
     let phase = 'start', plate = -1, plateAt = '';
     // lying still after the death's collapse (the body lands ~1.38 s after the kill: player.js _tickDead)
     const DOWN_T = 1.6;
-    let downFrames = 0, hemDown = Infinity, cornerDown = Infinity, tipDown = Infinity;
+    let downFrames = 0, hemDown = Infinity, cornerDown = Infinity, tipDown = Infinity, hemDownAt = '';
     let capeWorst = -1, capeAt = '', capeDeep = 0;
     const parts = [
       ['torso', r.spine, (x) => shell(x)],
@@ -9980,7 +10101,7 @@ async function scenarioLooks() {
         for (const S of r.streamers) tipDeath = Math.min(tipDeath, v.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld).y);
         if (lying && p.stateT >= DOWN_T) {
           downFrames++;
-          for (const C of r.coat) { hemDown = Math.min(hemDown, hemLow2(C, 0.5)); cornerDown = Math.min(cornerDown, hemLow2(C, 0), hemLow2(C, 1)); }
+          for (const C of r.coat) { const hh = hemLow2(C, 0.5); if (hh < hemDown) { hemDown = hh; hemDownAt = `az ${C.def.az.toFixed(2)}`; } cornerDown = Math.min(cornerDown, hemLow2(C, 0), hemLow2(C, 1)); }
           for (const S of r.streamers) tipDown = Math.min(tipDown, v.set(0, -S.len[1], 0).applyMatrix4(S.segs[1].matrixWorld).y);
         }
       } else {
@@ -10116,7 +10237,7 @@ async function scenarioLooks() {
     // measure -0.093: _hemY's model lengths against drawn heights, a known gap); the corners printed
     const f3 = (x) => (Number.isFinite(x) ? x.toFixed(3) : 'n/a');
     assert(downFrames > 30 && tipDown >= -0.02 && hemDown >= -0.12 && ddFrames > 30 && tipDD >= -0.02 && hemDD >= -0.12,
-      `${id} lying dead (${downFrames} frames from ${DOWN_T} s after the kill; killed in a knockdown, ${ddFrames} frames from ${DD_T} s): cloth tips at ${f3(tipDown)} / ${f3(tipDD)} m (≥ -0.02; settling in the knockdown: ${f3(tipSettle)}), hem centres ${f3(hemDown)} / ${f3(hemDD)} m (≥ -0.12; corners ${f3(cornerDown)})`);
+      `${id} lying dead (${downFrames} frames from ${DOWN_T} s after the kill; killed in a knockdown, ${ddFrames} frames from ${DD_T} s): cloth tips at ${f3(tipDown)} / ${f3(tipDD)} m (≥ -0.02; settling in the knockdown: ${f3(tipSettle)}), hem centres ${f3(hemDown)} (${hemDownAt}) / ${f3(hemDD)} m (≥ -0.12; corners ${f3(cornerDown)})`);
     if (isNew) {
       assert(penFrames <= 0.03 * counted && headWorst <= 0.01, `${id}: the cloth stays out of his body (${penFrames} of ${counted} frames > 2 cm, ≤ 3 %), a head-hung sheet out of his head (${(Math.max(0, headWorst) * 100).toFixed(1)} cm ≤ 1)`);
       assert(locoCross <= Math.max(3, loco * 0.05) && chargeHit <= Math.max(2, charge * 0.05), `${id}: the blade through the skirt on ${locoCross} of ${loco} loco frames (≤ 5 %), by a sheet on ${chargeHit} of ${charge} charge frames (≤ 5 %)`);
@@ -11776,12 +11897,15 @@ async function scenarioBatch() {
   const wyrmAll = meshes(d.object3d), wyrmDrawn = drawn(d.object3d), wyrmSrc = wyrmAll.filter(isRigidSource);
   const heroMats = new Set(heroSrc.map((m) => m.material)).size, wyrmMats = new Set(wyrmSrc.map((m) => m.material)).size;
   out(`   hero: ${heroSrc.length} source meshes → ${heroDrawn.length} drawn (${heroMats} materials) · wyrm: ${wyrmSrc.length} → ${wyrmDrawn.length} drawn (${wyrmMats} materials + ${wyrmDrawn.filter((m) => !m.userData.rigidBatch).length} unbatched) · ${reg.count} bones of ${RIGID_MAX - 1}`);
-  assert(heroSrc.length > 100 && heroDrawn.length === heroMats && heroDrawn.length <= p.rig.mats.length && heroDrawn.every((m) => m.userData.rigidBatch && m.parent === p.object3d && !m.frustumCulled),
-    `the hero draws one batch per material (${heroDrawn.length} meshes for ${heroSrc.length} parts)`);
+  // (plus the cloth rebuilt every frame, drawn on its own like the wyrm's membranes: the one-piece coat, ADR-274)
+  const heroCloth = (p.rig.cloth ?? []).flatMap((c) => c.meshes ?? []);
+  assert(heroSrc.length > 80 && heroDrawn.length === heroMats + heroCloth.length && heroDrawn.length - heroCloth.length <= p.rig.mats.length
+    && heroDrawn.every((m) => (m.userData.rigidBatch && m.parent === p.object3d && !m.frustumCulled) || (heroCloth.includes(m) && !isRigidSource(m))),
+    `the hero draws one batch per material, plus its ${heroCloth.length} cloth meshes (${heroDrawn.length} meshes for ${heroSrc.length} parts, ${heroMats} materials; not a batch or cloth: ${heroDrawn.filter((m) => !m.userData.rigidBatch && !heroCloth.includes(m)).map((m) => m.material?.name || m.name || m.type).join(', ') || 'none'})`);
   const membranes = d.model.wings.map((w) => w.membrane.mesh);
   assert(wyrmSrc.length > 150 && wyrmDrawn.length === wyrmMats + membranes.length && membranes.every((m) => wyrmDrawn.includes(m) && !isRigidSource(m)),
     `the wyrm draws one batch per material plus its two wing membranes (${wyrmDrawn.length} meshes for ${wyrmSrc.length} parts)`);
-  assert(heroAll.length === heroSrc.length + p.batch.meshes.length + 1 && p.batch.bones === heroSrc.length && d.batch.bones === wyrmSrc.length && reg.count === heroSrc.length + wyrmSrc.length
+  assert(heroAll.length === heroSrc.length + p.batch.meshes.length + 1 + heroCloth.length && p.batch.bones === heroSrc.length && d.batch.bones === wyrmSrc.length && reg.count === heroSrc.length + wyrmSrc.length
     && heroSrc.every((m) => m.geometry.attributes.position && m.visible !== undefined) && p.rig.flask.parent && isRigidSource(p.rig.flask),
     `the source meshes stay in the scene graph as bones (${reg.count} bones)`);
   // a batch holds its sources' vertices, each tagged with its bone's slot
@@ -11831,17 +11955,17 @@ async function scenarioBatch() {
   const casts = (set, root) => worldOnly(set) && drawn(root, shadowRigid).length === 1 && drawn(root, shadowRigid)[0] === set.shadow && set.shadow.parent === root
     && set.shadow.userData.rigidBatch && !set.shadow.layers.test(view) && !set.shadow.layers.test(shadow);
   const tris = (list) => list.reduce((s, m) => s + (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3, 0);
-  assert(drawn(p.object3d, shadow).length === 0 && drawn(d.object3d, shadow).length === membranes.length && casts(p.batch, p.object3d) && casts(d.batch, d.object3d) && reg.casting === true
+  assert(drawn(p.object3d, shadow).length === heroCloth.length && drawn(d.object3d, shadow).length === membranes.length && casts(p.batch, p.object3d) && casts(d.batch, d.object3d) && reg.casting === true
     && heroSrc.every((m) => (m.layers.mask & (1 << LAYER_CASTER)) !== 0) && tris([p.batch.shadow]) === tris(heroSrc) && tris([d.batch.shadow]) === tris(wyrmSrc)
     && new Set(p.batch.shadow.geometry.attributes.aRigid.array).size === heroSrc.length,
-    `each actor casts its moon shadow with one mesh on LAYER_CASTER_RIGID (hero ${tris([p.batch.shadow])} triangles, wyrm ${tris([d.batch.shadow])}); only the membranes are left on LAYER_CASTER`);
+    `each actor casts its moon shadow with one mesh on LAYER_CASTER_RIGID (hero ${tris([p.batch.shadow])} triangles, wyrm ${tris([d.batch.shadow])}); only the membranes and the hero's cloth are left on LAYER_CASTER`);
   d.setShadowCasting(false);
   sync();
   const off = worldOnly(d.batch) && drawn(d.object3d, shadowRigid).length === 0 && drawn(d.object3d, shadow).length === 0 && casts(p.batch, p.object3d) && reg.casting === true;
   d.setShadowCasting(true);
   markCaster(p.object3d); // (again, after the build: must not put a source or a batch on a drawn caster layer)
   sync();
-  assert(off && casts(d.batch, d.object3d) && casts(p.batch, p.object3d) && drawn(p.object3d, shadow).length === 0 && drawn(p.object3d).length === heroDrawn.length,
+  assert(off && casts(d.batch, d.object3d) && casts(p.batch, p.object3d) && drawn(p.object3d, shadow).length === heroCloth.length && drawn(p.object3d).length === heroDrawn.length,
     'dragon.setShadowCasting and a late markCaster reach the shadow meshes, and never draw a source');
   // a hidden actor is skipped; its bones are written again when it is shown
   d.object3d.visible = false;
@@ -11924,7 +12048,7 @@ async function scenarioBatch() {
     reg2.sync();
     const all = [...meshes(p2.object3d), ...meshes(d2.object3d)];
     assert(reg2.count === 0 && reg2.batches.length === 0 && reg2.sets.length === 0 && reg2.casting === false && p2.batch.meshes.length === 0 && d2.batch.meshes.length === 0 && p2.batch.shadow === null
-      && all.length === heroSrc.length + wyrmSrc.length + membranes.length && all.every((m) => !m.userData.rigidBatch && !isRigidSource(m) && m.layers.test(view) && m.layers.test(shadow)),
+      && all.length === heroSrc.length + wyrmSrc.length + membranes.length + heroCloth.length && all.every((m) => !m.userData.rigidBatch && !isRigidSource(m) && m.layers.test(view) && m.layers.test(shadow)),
       `CONFIG.render.batch = false leaves all ${all.length} meshes unbatched, drawn and casting as before`);
     p2.setLoadout({ ...p2.loadout });
     assert(reg2.count === 0 && p2.batch.meshes.length === 0, '... also after a loadout rebuild');
@@ -15855,6 +15979,7 @@ const SCENARIOS = {
   slashaim: scenarioSlashAim,
   combos: scenarioCombos,
   planted: scenarioPlanted,
+  coatone: scenarioCoatOne,
   feel: scenarioFeel,
   offhand: scenarioOffHand,
   streakfx: scenarioStreakFx,

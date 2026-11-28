@@ -19,6 +19,14 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: "The hero's coat is one piece",
+        notes: [
+          'The lower half of your coat is one piece now instead of six hanging panels: one torn hem all the way round, open at the front.',
+          'It moves as one cloth when you run, stop and fight, and never lets a single piece flick out on its own.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'The light combo stays planted, hit 4 is a real thrust, the slashes follow the blade',
         notes: [
           'The light combo no longer carries you forward: each hit is a small step, and your stance holds through the whole combo. You still step in when the foe is out of reach.',

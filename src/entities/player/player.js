@@ -3,6 +3,7 @@ import { CONFIG } from '../../core/config.js';
 import { clamp, damp, dampAngle, turnToward, wrapAngle, smoothstep, lerp } from '../../core/math.js';
 import { markCaster } from '../../render/pipeline.js';
 import { batchRigid } from '../../render/rigidBatch.js';
+import { RANDOM_PAD, padRandom } from './gear/coatOne.js';
 import { TELL, RESULT, DEFENSE, GUARD, tellDefaults, facingDelta, dodgeOnly, tellOf } from '../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean, tintHero, LEAN, PLAYER_SCALE, BLADE_BASE, HERO_INK, DIM } from './model.js';
 import { HERO_LOOKS, DEFAULT_LOOK, LOOK_IDS, getLook } from './gear/looks.js';
@@ -377,6 +378,7 @@ export class Player {
     markCaster(this.object3d);
     // one draw call per material instead of one per mesh (render/rigidBatch.js)
     this.batch = batchRigid(game.U, this.object3d);
+    if (this.rig.cloth?.length) padRandom(RANDOM_PAD.batch); // (gear/coatOne.js: the stream the panels' batch left)
     game.scene.add(this.object3d);
     const s = CONFIG.world.playerSpawn;
     this.respawn(s.x, s.z);
@@ -838,6 +840,7 @@ export class Player {
     this.sweep.valid = false;
     markCaster(root);
     this.batch = batchRigid(this.game.U, root);
+    if (this.rig.cloth?.length) padRandom(RANDOM_PAD.batch); // (gear/coatOne.js: the stream the panels' batch left)
     this._updateMaterials(0);
     root.updateMatrixWorld(true);
     return rig.loadout;
