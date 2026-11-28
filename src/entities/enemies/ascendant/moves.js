@@ -5,6 +5,7 @@ import { FORM_POSES, FIST_UP, FIST_FLAT } from './poses.js';
 import { TUNING } from './tuning.js';
 import { meleeMoves, signKeys } from './moves/melee.js';
 import { makeMotion } from './motion.js';
+import { buildPace, paceOn, paceCue } from './pace.js';
 import { kiMoves } from './moves/ki.js';
 import { terrainMoves } from './moves/terrain.js';
 
@@ -585,7 +586,16 @@ export const CLIP = CLIPS_BY_FORM[0];
 // (ADR-225: `?ascMotion=a` plays his reworked motion, MOTION.keysOf: the blue and red blows' held
 // windups, the snap blows' stance-read coil; null = the beat's own keys)
 export const MOTION = makeMotion({ X, PUNCH, KICK, ELBOW, SHOULDER, stepMid, signKeys });
-const REALISERS = FORM_POSES.map((P) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat, keysOf: MOTION.ascKeys }));
+// (ADR-248, `?ascPace=a`: the readable pace, pace.js: each form's extra hold per beat, and the cue's lead)
+export const PACE = buildPace(MOVES, TUNING);
+/** A beat's keys this time (the motion switch), with the pace's hold when it is on (form index `f`). */
+const keysOfForm = (f) => (b) => {
+  const k = MOTION.ascKeys(b);
+  if (!paceOn()) return k;
+  const hold = PACE[f].get(b) ?? 0;
+  return hold > 0 ? { keys: k ?? b.keys, hold } : k;
+};
+const REALISERS = FORM_POSES.map((P, i) => makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat, keysOf: keysOfForm(i) }));
 /**
  * A move as it will play this time (duelist/realise.js), compiled round the stance of the form it is
  * used in; a transformation is compiled round the NEW form's stance, so it ends in that guard.
@@ -594,5 +604,7 @@ export function realise(name, phase = 1, rnd = Math.random, opts = null) {
   const def = MOVES[name];
   if (!def) return null;
   const form = def.transition ? def.phase : phase;
-  return REALISERS[Math.min(REALISERS.length, Math.max(1, form)) - 1](name, phase, rnd, opts);
+  const A = REALISERS[Math.min(REALISERS.length, Math.max(1, form)) - 1](name, phase, rnd, opts);
+  if (A && paceOn()) paceCue(A, TUNING);
+  return A;
 }

@@ -127,6 +127,11 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'Tian Lei audited: straight limbs, a readable pace, a sun for his ki blasts',
+        notes: ['Tian Lei moves cleaner: his punches land with the arm straight down his centre, his kicks with the leg straight, and his low sweep comes from a drop stance. Every blow has a longer, held windup and the glint comes earlier, so each is easier to read. His ki blasts fly as small golden suns. Add ?ascMotion=a, ?ascPace=0 or ?ascShot=0 for each as before.'],
+      },
+      {
+        date: '2026-11-26',
         title: 'The perfect parry earns its own reward: the deathblow',
         notes: [
           'Parrying the human bosses now builds toward a reward of its own: every parry fills his gold posture bar, and every perfect parry is banked.',
@@ -142,6 +147,11 @@ export const RELEASES = [
           'On the run he grips his sword the way a hand does: its point hangs down beside his right leg, a little ahead, and rides with his arm as it swings, clear of his coat. His fist sits on the handle the way a hand grips one, and his free arm swings naturally with his stride. ?runSword=hip and ?runArm=d give the run before.',
           'Out of a run with the blade trailing behind him, blocking no longer flips the sword round in one frame.',
         ],
+      },
+      {
+        date: '2026-11-26',
+        title: 'Wen Yao punches and kicks with straight limbs',
+        notes: ['The Thousand-Body Fox now throws his punches and palms with a straight arm along one line to you, and lands his kicks and ankle sweeps with a straight leg. His heel and fists come down on you when he leaps. Paper Rain ends on a backfist, so his uppercut always means blue. Add ?foxLimbs=0 or ?foxCues=0 to see him as before.'],
       },
       {
         date: '2026-11-26',

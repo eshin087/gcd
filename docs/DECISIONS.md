@@ -6961,6 +6961,95 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Consequences:** a single flash counter under the chain pays less at once than today (no reel, no crit window)
   and more over the chain (255 damage and 170 posture for three, usually a posture break). `player:counter` gains
   `link`, `links`, `last`.
+## ADR-248 — Tian Lei audited: straight limbs, a readable pace, a sun for his ki blasts (2026-11-26)
+- **Context:** the owner's motion audit of every boss (2026-11-26: "weird looking arm angles ... kicks aren't
+  straight during the attack and still bended ... make sure all their attacks have clear tells ... make all the
+  special moves and effects very cool"), one session per fighter, by hand from `docs/ANIMATION.md` (no footage:
+  ADR-236). Tian Lei measured on the rig (asc.mjs AUDIT, the striking limb's joint at contact added): every
+  straight punch landed with the elbow at 141 - 155° and its fist 0.17 - 0.24 m ACROSS his centre line (the
+  cross's "sideways line"); the back-fist 0.6 m off to his right, short of the hero; every roundhouse with the knee
+  at ~100°, the front and side kicks at ~150°; the sweep's tuck folded the leg so tight (the foot ~15 cm from the
+  hip) that its knee flipped twice (709 mm/f²), its planted foot stood 0.16 m off his pivot and circled a metre of
+  floor as he spun, and the close-in slid the root 0.5 m under him through the drop (the planted knee flipped
+  again, 869). His pace sat under COMBAT rule 10: a move's first blow 0.4 - 0.5 s, string blows 0.37 - 0.46 s
+  apart, the cue 0.26 s before the impact.
+- **Decision (three switches; the owner picks from the films):**
+  1. `?ascMotion=b` (on top of ADR-225's `a`; `ascendant/motion.js` straightLimbs, his realiser's `keysOf`): a
+     straight blow's contact key aims the hand on the line from its shoulder to his centre line, `armReach` x the
+     arm out; a kick's puts the foot `legReach` x the leg from its hip; the animator opens the arms and legs
+     further and carries a kick's foot out (Xin Yi's ADR-221 kit: `armSoft`, `legSoft`, `kickStretch`, set live
+     in ascendant.js). The sweep's windup is a DROP STANCE (sunk on the planted leg, the sweeping leg slid out
+     long, wound back), the planted foot at his pivot, the sweeping knee's pole up, and the close-in done by u 0.4
+     (`closeBy`, a new opt-in beat field of the duelist brain: a number or a function read live; no other boss
+     sets it, so nothing else moves). Hooks, uppercuts, hammers, elbows, knees and the shoulder keep their bend.
+     Timings identical to `a`. Measured: punches 170 - 172°, kicks 172 - 173°, the fists within 0.1 m of his
+     centre line, Eight Gates' worst jolt 455.
+  2. `?ascPace=a` (`ascendant/pace.js`): rule 10's floor, the time added as a held cock (the realiser's `hold`
+     hook): a move's first blow >= 0.7 s x the form's windupScale, later blows >= 0.45 s apart (feints count),
+     the cue 0.35 s before each impact; a hold never under 0.08 s. Exempt: the snap blows (ADR-225), his
+     counters and flurries (the flash chain's answers), hazards, floor pieces, the transformations; a ki beat
+     keeps its windup and cue; a blow he dashes in for keeps its windup (a hold inside the run slowed the dash:
+     a sprinting hero got away), its cue paced. (The exemptions as the Starless Lord's ADR-251 refined them.)
+  3. `?ascShot=a|b` (`ascendant/fxShot.js`): his ki blast (every blast he throws, not Heaven's Lantern) redrawn in
+     the Fox's and Bai Wuji's idiom: a THE SUN (a white heart, gold turning round it, a spinning torn ring, the
+     air drawn in on spirals, a pool on the floor under it, a two-strand wake; a burst that folds in and breaks
+     with a ball front, a floor ring, dust and letters); b THE COMET (a white-hot head on a teardrop, a tail of
+     tiny letters left hanging on the wind, a lit streak on the floor, grit kicked up; a splash forward that
+     scores the floor). The world's share of a burst (scorch, impact) as today's.
+- **Why these and not more:** the owner's words were limbs, tells and effects; the stance, the guard, the
+  transformations and his look are theirs from earlier picks and were left. The pace is a gameplay change, so it
+  is its own switch, not folded into the motion. Effects: the blast is what he throws most (Spirit Shot, the
+  scatter, Blast Dance, Golden Rain, Sky Volley, Raining Suns); the beam and the orb already went through option
+  sheets (ADR-150, ADR-155), and the orb's pick is still open.
+- **The owner's picks (2026-11-27, from the films):** the straight limbs (`ascMotion` b), the readable pace
+  (`ascPace` a) and the sun (`ascShot` a), now the defaults (PICKED); `a` / `0` / `0` play each as before, `b` the
+  comet that was not picked.
+- **After the picks (the suite on the new defaults):** the sweep's turn re-keyed every 60° (keys 120° apart let the
+  spline cut the corners and fold the leg mid-turn), its foot skimming 8 cm up (a foot keyed on the floor is a
+  planted one to the feet's planner) and reaching 1.2 x the leg; the straight punches' lunge 0.12 m shorter (the
+  long arm put the fist 0.37 m into the hero). The suite's bots read each cue's own lead (`cueLead`); PACE's
+  cue-rate floors re-pinned to the paced fight (F1 64, F2 71 a minute); MOTION's slide counts feet on the floor
+  only (the old 0.16 m line counted the planner's lifted steps). The blast's cost (asc `shotcost`, opt-in): the
+  sun peaks at 867 live fire blobs in Raining Suns (537 today; the field holds 6000), glyphs as today; the comet
+  would have cost ~8x the glyphs. `npm run perf` stages a still fight with no blast: not run for this. The
+  Lab's Training timed its answers off `T.flashLead`, so on a paced boss (his, the Starless Lord's) it answered
+  0.09 s early (the trade landed on him instead of meeting his blow): `Training._lead()` reads the fired cue's own
+  lead (its beat's impact - flash), the same number for a boss without a pace.
+- **Consequences / open:** tests asc LIMBS and READABLE hold each switch's promise. Some strings' worst jolt rose a little with the
+  longer roundhouse leg (Thousand Shadows 275 → 424 mm/f², under the 450 the suite allows). Not done: the
+  transformations' kneel-to-stand (jolts ~600), Thousand Hands' last palm (671, as before), the dash thrusts'
+  feet (the audit leaves dashes out).
+
+## ADR-249 — Wen Yao's limbs at the contact: straight punches on one line, straight kicks, one cue one meaning (2026-11-26)
+- **Context:** the boss motion audit (the owner: weird arm angles, "kicks aren't straight during the attack and
+  still bended"; every attack readable; effects at the fox's own bar). Measured on the rig with a new opt-in scenario
+  (`fox.mjs . anatomy`: the striking limb at every blow's contact, his paper selves' blows too): his straight punches
+  and palms landed with the elbow at 123 - 139° (a boss without `armSoft` opens at most ~145°, `ARM_SOFT`), the fist
+  0.25 - 0.36 m off the shoulder → hero line; the roundhouse 107 - 111°, the selves' rising kick 126°, the sweep 82°
+  at the contact and 50 - 90° through its turn; the Kite String's heel straight but he landed on the hero, the heel
+  0.8 m past. His uppercut was both white (Paper Rain) and the blue flare (Hand to Hand).
+- **Decision:** a pass in his own folder (`thousandFox/limbs.js`), behind `?foxLimbs=0|a`; his blows stay Tian Lei's
+  builders (`ascendant/moves.js X`, untouched: that session owns them). It rewrites the CONTACT key of his realised
+  beats (Xin Yi's ADR-221 method: a straight blow's hand 1.08 x the arm toward a chest-high point before him, a kick's
+  foot 1.05 x the leg along its line; bent blows keep a bend) and opens his and his selves' animators (`armSoft`,
+  `legSoft`, `kickStretch`: Xin Yi's numbers). The sweep's turn is keyed every 30° with the foot 5 cm off the floor
+  (keys a third of a turn apart cut the chord; a foot on the floor was taken by `_feetClip` for a planted one and
+  walked after the clip). One shared-engine field, opt-in: a beat's `leap.stop` (brain.js `_leap`; 0 / unset = as
+  always) lands a leap short of the hero; his axe heel 0.7 m, his hammer fists 0.45 m. `?foxCues=0|a`: Paper Rain
+  ends on a backfist, so the uppercut always means blue. The owner picked `a` for both from the before / after films
+  (2026-11-27): they are the default (`PICKED`); `0` plays him as before.
+- **Not changed:** every timing, tell, window, number and effect. His windups stay PBZ-fast (first blows from 0.42 s,
+  COMBAT.md "The Thousand-Body Fox"), under the audit brief's 0.7 s floor: the owner's earlier call, asked again with
+  the films: they kept it fast (2026-11-27). His effects (the Pearl, the foxfire, the Howl) are the bar the other bosses are measured
+  against: no options offered.
+- **Fixed after the picks (the owner asked, 2026-11-27):** Hand to Hand's opening jab lifted a lead foot the root
+  had left behind, and it jumped 0.43 m in a frame (on `main` too). The foot planner was STEPPING it (mode 1) when
+  the clip lifted it, and ADR-223's release ease only caught a planted foot. `HeroAnimator` `opts.liftFromStep`
+  (opt-in; the fox's kit only, with his `liftEase`): a foot lifted mid-step eases from where it was drawn, its height
+  too. The hero and every other boss are unchanged. Every move of his now stays under 0.3 m a frame (Hand to Hand
+  0.43 → 0.24, Burning Tail 0.35 → 0.28; `fox.mjs motion` asserts it over all 21).
+- **Consequences:** `fox.mjs motion` asserts the limbs (straight blows >= 155°, kicks >= 155°, hooks and uppercuts
+  95 - 130°, `0` as before); the pace, win, timing and data scenarios are unchanged.
 
 ## ADR-250 — Shen Hui's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps that turn on the feet, the step that lands with the blow; looks for Ember Whirl and Heaven-Splitting Fall (2026-11-26)
 

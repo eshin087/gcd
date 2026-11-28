@@ -1,6 +1,7 @@
 import { TELL } from '../../../combat/rules.js';
 import { DIM } from '../../player/model.js';
 import { lookOf } from '../duelist/lookSwitch.js';
+import { TUNING } from './tuning.js';
 
 // The reworked motion of the bare-handed blows (ADR-225), played through the realiser's `keysOf`
 // (duelist/realise.js) behind a live look switch, so a beat's gameplay (tell, windup, zone, damage,
@@ -122,11 +123,204 @@ export function makeMotion({ X, PUNCH, KICK, ELBOW, SHOULDER, stepMid, signKeys 
     return keys;
   }
 
+  const cacheB = new WeakMap();
+  /** The straight-limb pass's keys of a beat (null: the beat's own): `a`'s keys, the limbs then made straight. */
+  function limbKeysFor(beat) {
+    if (!beat?.mo) return null;
+    if (cacheB.has(beat)) return cacheB.get(beat);
+    const base = keysFor(beat) ?? beat.keys;
+    const keys = Array.isArray(base) ? straightLimbs(beat, base) : null;
+    cacheB.set(beat, keys);
+    return keys;
+  }
+
   return {
     keysFor,
-    /** Tian Lei's realiser hook: his reworked keys under `?ascMotion=a`. */
-    ascKeys: (beat) => (lookOf('ascMotion', '0') === '0' ? null : keysFor(beat)),
+    limbKeysFor,
+    /** Tian Lei's realiser hook: his reworked keys under `?ascMotion=a`, and the straight limbs on top under `b`. */
+    ascKeys: (beat) => {
+      const m = lookOf('ascMotion', '0');
+      return m === '0' ? null : m === 'b' ? limbKeysFor(beat) : keysFor(beat);
+    },
   };
+}
+
+// ---------------------------------------------------------------- the straight limbs (ADR-248, `?ascMotion=b`)
+// What the audit measured on `a` (asc.mjs AUDIT): every straight punch landed with the elbow at 141 - 155 deg
+// and its fist a fifth of a metre ACROSS his centre line (the jab at x -0.24, the cross at +0.17 in his own
+// frame: the cross's sideways line), every roundhouse with the knee at ~100 deg, a front or side kick at
+// ~150 deg, the sweep's leg folded at ~96 deg. Under `b`, at each blow's contact key (and the keys after it, by
+// the same amount, so the follow-through keeps its draw-back):
+//   - a STRAIGHT blow (jab, cross, palm, double, the back-fist (it landed 0.6 m off to his right), the bolt): the striking hand's target put on the line from
+//     its shoulder to a point on his centre line `aim.z` m ahead (the double palms `aim.half` either side),
+//     `armReach` x the arm's length out along it, so the soft reach (TUNING.limbs.armSoft, ascendant.js)
+//     lands the arm long and in one line; its own height kept;
+//   - a KICK (front, side, round, flying, the sweep along the floor; the axe's leg held up at the top): the
+//     striking foot `legReach` x the leg from its hip along the key's own line (never under the ankle), and
+//     the animator's kickStretch / legSoft land the leg straight.
+// Hooks, uppercuts, hammers, elbows, knees, the shoulder: their bend is the blow; untouched.
+const L_ARM = DIM.upperArm + DIM.foreArm, L_LEG = DIM.thigh + DIM.shin;
+const STRAIGHT = new Set(['jab', 'cross', 'palm', 'double', 'backfist']);
+const KICKS = new Set(['front', 'side', 'round', 'flying', 'sweep', 'axe']);
+/** A point of pose p round his waist pivot (strikes.js toModel's turn: roll, pitch, then the turn `ya`). */
+function bodyPoint(p, x0, y0, ya) {
+  const pi = p.pitch ?? 0, ro = p.roll ?? 0;
+  const x = x0 * Math.cos(ro) - y0 * Math.sin(ro), y = x0 * Math.sin(ro) + y0 * Math.cos(ro), z = 0;
+  const y1 = y * Math.cos(pi) - z * Math.sin(pi), z1 = y * Math.sin(pi) + z * Math.cos(pi);
+  return [x * Math.cos(ya) + z1 * Math.sin(ya) + (p.bX ?? 0), y1 + DIM.pivot + (p.bY ?? 0), -x * Math.sin(ya) + z1 * Math.cos(ya) + (p.bZ ?? 0)];
+}
+/** The hip joint (s +1 his left), and the shoulder (the chest's turn: the hips' yaw and the spine's). */
+export const hipOf = (p, s) => bodyPoint(p, s * DIM.hip[0], DIM.pelvis[1] + DIM.hip[1], p.yaw ?? 0);
+const shoulderOf = (p, s) => bodyPoint(p, s * DIM.shoulder[0], DIM.spine[1] + DIM.chest[1] + DIM.shoulder[1], (p.yaw ?? 0) + (p.spY ?? 0));
+/** A hand offset `o` (the chest's frame) re-aimed: through the shoulder at the point (tx, tz) of his own
+ *  frame, `len` m long, its height kept. */
+function aimHand(p, s, o, tx, tz, len) {
+  const S = shoulderOf(p, s), th = (p.yaw ?? 0) + (p.spY ?? 0), c = Math.cos(th), n = Math.sin(th);
+  let dx = tx - S[0], dz = tz - S[2];
+  const dl = Math.hypot(dx, dz) || 1;
+  dx /= dl;
+  dz /= dl;
+  const h = Math.hypot(o[0], o[2]), y = o[1], k = len / (Math.hypot(h, y) || 1);
+  const xr = dx * h * k, zr = dz * h * k;
+  // (his frame to the chest's: the inverse of x' = x cos + z sin, z' = -x sin + z cos)
+  return [xr * c - zr * n, y * k, xr * n + zr * c];
+}
+/** A foot `f` of pose p carried out to `want` m from its hip along the same line (along the floor when the
+ *  line would go under it). A foot near the hip (a tuck) is left. */
+function longFoot(p, f, want) {
+  const v = p[f];
+  if (!Array.isArray(v) || v.length !== 3) return v;
+  const h = hipOf(p, f === 'lF' ? 1 : -1), d = [v[0] - h[0], v[1] - h[1], v[2] - h[2]], l = Math.hypot(...d);
+  if (!(l > 0.45 * L_LEG) || l >= want) return v;
+  const k = want / l;
+  let y = h[1] + d[1] * k, hz = k;
+  if (y < ANK) {
+    y = ANK;
+    const dy = y - h[1], hd = Math.hypot(d[0], d[2]);
+    hz = hd > 1e-3 ? Math.sqrt(Math.max(0, want * want - dy * dy)) / hd : k;
+  }
+  return [h[0] + d[0] * hz, y, h[2] + d[2] * hz];
+}
+const sub = (a, b) => a.map((x, i) => x - b[i]);
+const add = (a, b) => a.map((x, i) => x + b[i]);
+/** The blows the pass makes straight (tests: asc LIMBS). */
+export const LIMBS = Object.freeze({ STRAIGHT, KICKS, L_ARM, L_LEG });
+/**
+ * A beat's keys with straight limbs (see above). `keys`: [u, pose][] as realised (mirrored already: the
+ * striking limb is `beat.part`). The contact key is the one at u 1; the keys after it move with it.
+ */
+export function straightLimbs(beat, keys) {
+  const T = TUNING.limbs, mo = beat.mo ?? {};
+  const part = beat.part ?? 'fistR';
+  const straight = (mo.fam === 'punch' && STRAIGHT.has(mo.kind)) || mo.fam === 'bolt';
+  const kick = mo.fam === 'kick' && KICKS.has(mo.kind);
+  if (!straight && !kick) return keys;
+  const hit = keys.find(([u]) => Math.abs(u - 1) < 1e-6)?.[1];
+  if (!hit) return keys;
+  const out = keys.map(([u, p]) => [u, p]);
+  if (straight) {
+    const dbl = part === 'palms' && mo.kind === 'double';
+    const sides = dbl ? [['rH', -1], ['lH', 1]] : part === 'fistL' ? [['lH', 1]] : [['rH', -1]];
+    for (const [h, s] of sides) {
+      const o = hit[h];
+      if (!Array.isArray(o)) continue;
+      const n = aimHand(hit, s, o, dbl ? s * T.aim.half : 0, T.aim.z, T.armReach * L_ARM), d = sub(n, o);
+      // (the contact key and every key after it: the follow-through keeps its own draw-back)
+      for (const k of out) if (k[0] >= 1 - 1e-6 && Array.isArray(k[1][h])) k[1] = { ...k[1], [h]: add(k[1][h], d) };
+    }
+    // the longer arm reaches further: the body's lunge into the blow is `lungeCut` m shorter, so the fist stops
+    // at the hero's body (the long arm put it 0.37 m into his 0.45 m circle)
+    for (const k of out) if (k[0] >= 1 - 1e-6 && Number.isFinite(k[1].bZ)) k[1] = { ...k[1], bZ: k[1].bZ - T.lungeCut };
+  }
+  if (kick) {
+    const f = part === 'footL' ? 'lF' : 'rF', want = (mo.kind === 'sweep' ? T.sweepReach : T.legReach) * L_LEG;
+    const sweep = mo.kind === 'sweep', cock = beat.cock ?? 0.62;
+    if (sweep) {
+      dropStance(out, hit, cock, f);
+      sweepTurn(out, hit);
+    }
+    for (const k of out) {
+      const [u, p] = k;
+      const v = p[f];
+      if (!Array.isArray(v) || v.length !== 3) continue;
+      // (the contact; the sweep's leg from the drop through its turn along the floor; the axe's leg held up
+      // over his head)
+      const at = sweep ? u >= cock - 1e-6 && u <= 2.01 : mo.kind === 'axe' ? u < 1 && v[1] > hipOf(p, 1)[1] + 0.2 : Math.abs(u - 1) < 1e-6;
+      if (!at) continue;
+      const q = longFoot(p, f, want);
+      // (the sweep skims the floor `sweepSkim` m up: a foot keyed ON the floor is a planted one to the feet's
+      // planner, held in the world against his turn and stepped, the leg folding at the contact)
+      k[1] = { ...p, [f]: sweep && Array.isArray(q) ? [q[0], Math.max(q[1], ANK + T.sweepSkim), q[2]] : q };
+    }
+    // the sweep: he turns ON his planted foot (it stood 0.16 m off his pivot, so it went round a metre of
+    // floor with him: sliding feet); it sits `sweepPivot` m from his root, its own side kept
+    if (sweep) {
+      const g = f === 'rF' ? 'lF' : 'rF', kn = f === 'rF' ? 'rK' : 'lK', s = f === 'rF' ? -1 : 1;
+      for (const k of out) {
+        // (the sweeping knee points up and out through the drop and the turn: the leg is long the whole way)
+        if (k[0] >= cock * 0.5 - 1e-6) k[1] = { ...k[1], [kn]: [s * T.sweepKnee[0], T.sweepKnee[1], T.sweepKnee[2]] };
+        const v = k[1][g];
+        if (!Array.isArray(v)) continue;
+        const z = v.length === 3 ? v[2] : v[1], r = Math.hypot(v[0], z) || 1, q = Math.min(1, T.sweepPivot / r);
+        k[1] = { ...k[1], [g]: v.length === 3 ? [v[0] * q, v[1], z * q] : [v[0] * q, z * q] };
+      }
+    }
+  }
+  return out;
+}
+
+/** The sweep's close-in, done by this u of its windup under `b` (brain.js `closeBy`, read live): he stands
+ *  for the drop and turns on a planted foot (the root still sliding in under him dragged the foot 0.5 m and
+ *  flipped its knee mid-turn). */
+export const sweepCloseBy = () => (lookOf('ascMotion', '0') === 'b' ? TUNING.limbs.sweepClose : null);
+/**
+ * The sweep's turn re-keyed every 60 deg (keys 120 deg apart let the spline cut the corners: the sweeping foot
+ * came 0.4 m in toward him between keys and the leg folded mid-turn, the knee jolting): from the contact key
+ * (`hit`) round one full turn, the body and the feet turned together, linear between keys; the reset key
+ * after u 2 is kept.
+ */
+function sweepTurn(out, hit) {
+  const sg = Math.sign(hit.yaw ?? 1) || 1, n = 6;
+  const keep = out.filter(([u]) => u < 1 + 1e-6 || u > 2 + 1e-6);
+  const turn = [];
+  for (let j = 1; j <= n; j++) {
+    const a = (-sg * Math.PI * 2 * j) / n, o = { ...hit, yaw: (hit.yaw ?? 0) + a, e: 'l' };
+    for (const g of ['rF', 'lF']) {
+      const v = hit[g];
+      if (!Array.isArray(v)) continue;
+      const z = v.length === 3 ? v[2] : v[1], q = rotXZ(v[0], z, a);
+      o[g] = [q[0], v.length === 3 ? v[1] : ANK, q[1]];
+    }
+    turn.push([1 + j / n, o]);
+  }
+  out.length = 0;
+  out.push(...[...keep, ...turn].sort((x, y) => x[0] - y[0]));
+}
+const rotXZ = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
+/**
+ * The sweep's windup as a DROP STANCE (in place of the tuck: the sweeping foot drawn in under his hip
+ * folded the leg so tight its knee had no side, and it flipped twice, 0.4 - 0.8 m in a frame): he sinks
+ * onto the planted leg, the sweeping leg slid out long along the floor, wound `sweepWind` rad back the way
+ * it will go, the hands down before him. The keys at or before the cock become it, built from the contact
+ * key (`hit`, already mirrored for a left sweep) by turning its body and its feet back.
+ */
+function dropStance(out, hit, cock, f) {
+  const T = TUNING.limbs, sg = Math.sign(hit.yaw ?? 1) || 1, a = sg * T.sweepWind;
+  const turned = (p, k, sink, pitch) => {
+    const o = { ...p, yaw: (p.yaw ?? 0) + a * k, bY: sink, pitch };
+    for (const g of ['rF', 'lF']) {
+      const v = p[g];
+      if (!Array.isArray(v)) continue;
+      const z = v.length === 3 ? v[2] : v[1], q = rotXZ(v[0], z, a * k);
+      o[g] = g === f ? [q[0] * (0.55 + 0.45 * k), ANK, q[1] * (0.55 + 0.45 * k)] : [q[0], ANK, q[1]];
+    }
+    return o;
+  };
+  const drop = { ...turned(hit, 1, T.sweepDrop[0], T.sweepDrop[1]), e: 'o' };
+  const pre = turned(hit, 0.6, T.sweepDrop[0] * 0.6, T.sweepDrop[1] * 0.5);
+  const keep = out.filter(([u]) => u > cock + 1e-6);
+  out.length = 0;
+  out.push([cock * 0.5, pre], [cock, drop], ...keep);
 }
 
 // ---------------------------------------------------------------- the snap blows (ADR-225)
@@ -166,6 +360,6 @@ export const SNAP_KEYS = Object.freeze({
 });
 
 /** The switch's options (the Lab's LOOKS row). */
-export const MOTION_OPTS = Object.freeze(['0', 'a']);
+export const MOTION_OPTS = Object.freeze(['0', 'a', 'b']);
 /** (ANK for the flier's legs: halcyon/motion.js) */
 export { ANK };

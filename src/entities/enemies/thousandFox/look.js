@@ -1,6 +1,7 @@
 import { lookOf } from '../duelist/lookSwitch.js';
 import { isDragonLook, setFill } from '../ashDisciple/bodyArt.js';
 import { FOX_INK, FOX_INK_RIM } from './bodyArt.js';
+import { applyLimbs } from './limbs.js';
 
 // Wen Yao's look options (duelist/lookSwitch.js; never in PICKED: the owner picks from the sheets):
 //   ?foxLook=h1|h2|h3|a|b|c|d   his body. In the hero's INK-LINE art (bodyArt.js FOX_INK), drawn as dense
@@ -83,5 +84,7 @@ export function tintFox(M, { pale = false } = {}) {
 }
 
 /** The body's dressing each frame (duelist kit.dress). His figure does not change by phase (the
- *  mantle of phase 3 is fire in fx.js): nothing to do. */
-export function dressFox() {}
+ *  mantle of phase 3 is fire in fx.js); his animator takes the limbs pass's reach (limbs.js, ADR-249). */
+export function dressFox(d) {
+  applyLimbs(d?.anim);
+}

@@ -2,6 +2,7 @@ import { wrapAngle, turnToward } from '../../../core/math.js';
 import { TELL, RESULT, dodgeOnly } from '../../../combat/rules.js';
 import { buildHero, setHeroGlyphScale, installLean } from '../../player/model.js';
 import { HeroAnimator } from '../../player/anim.js';
+import { applyLimbs, limbsOn } from './limbs.js';
 import { batchRigid } from '../../../render/rigidBatch.js';
 import { perPhase } from '../duelist/realise.js';
 
@@ -954,6 +955,7 @@ export class FoxClones {
   pose(dt) {
     const d = this.d, H = d.hurtSpheres, L = d.lean, cam = this.game.camera?.position, CL = d.kit.CLIP;
     this._frameN = (this._frameN + 1) | 0;
+    const limbs = limbsOn(); // (ADR-249: a self's limbs as his)
     for (const c of this.list) {
       if (c.state === SEATED) {
         this._poseSeated(c, dt, L, cam);
@@ -1000,6 +1002,7 @@ export class FoxClones {
       c.acc += dt;
       const a = c.hs[0], b = c.hs[1];
       if (full) {
+        applyLimbs(c.anim, limbs);
         c.lean.k = L.k;
         c.lean.dx = L.dx;
         c.lean.dz = L.dz;
