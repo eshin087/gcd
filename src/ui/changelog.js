@@ -21,8 +21,9 @@ export const RELEASES = [
         date: '2026-11-27',
         title: 'The parry and the deathblow, readable',
         notes: [
-          'Three ways to see what happens between your parry and the deathblow it starts, to try before one becomes the default: ?dbread=a, the boss is thrown open and you hold a beat before you step in; ?dbread=b, you strike from further and every blow drives him back; ?dbread=c, the flash at each cut no longer covers the wound; ?dbread=all, the three.',
-          'The blows and their damage are the same in every one.',
+          'The parry that starts a deathblow now throws the boss open, arms wide and stumbling back, and you hold a beat before you step in and cut him while he reels.',
+          'You strike from further away and every blow drives him back, so the two of you never merge into one shape, and the flash at each cut no longer covers the wound. The blows and their damage are unchanged; ?dbread=0 plays it as before.',
+          'To try: ?strikeGap=a or b keeps a sword boss from crowding you, so the blades meet in the open when you parry.',
         ],
       },
       {

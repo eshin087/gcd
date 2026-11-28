@@ -42,7 +42,7 @@ const q = (name) => {
   }
 };
 const READ_OPTS = ['0', 'a', 'b', 'c', 'all'];
-export const DBREAD_DEFAULT = '0'; // (today's deathblow until the owner picks from the films)
+export const DBREAD_DEFAULT = 'all'; // (the owner's pick from the films, 2026-11-27; '0' as before)
 /** The read switch (`?dbread=`): read when a parry arms the watch (the Lab cycles it). */
 export const DB_READ = { opts: READ_OPTS, mode: READ_OPTS.includes(q('dbread')) ? q('dbread') : DBREAD_DEFAULT };
 export const dbReadMode = () => DB_READ.mode;
@@ -223,20 +223,25 @@ export function tickDeathblow(P, dt) {
       clear(P);
       return false;
     }
-    // the read's break: he is thrown open on the parry's own frame, the hero holds (unhurt) until the beat is over
-    if (S.rb && !S.thrown) {
-      S.thrown = true;
-      throwOpen(att);
-    }
-    if (S.rb) {
-      P.iframeT = Math.max(fin(P.iframeT), beat - S.t + 0.15);
-      P.buf.action = null;
-    }
     if (fin(g.hitstopTimer) > 0) return true;
-    if (S.t < beat) return true;
     if (!FROM.has(P.state)) {
       clear(P);
       return false;
+    }
+    // the read's break: once the combo is sure to come (not a blade lock, in reach), he is thrown open and the hero
+    // holds (unhurt) until the beat is over
+    if (S.rb) {
+      if (!S.thrown) {
+        if (!canCombo(P, att) || att.brain?.react?.kind === 'lock') {
+          clear(P);
+          return false;
+        }
+        S.thrown = true;
+        throwOpen(att);
+      }
+      P.iframeT = Math.max(fin(P.iframeT), beat - S.t + 0.15);
+      P.buf.action = null;
+      if (S.t < beat) return true;
     }
     return startCombo(P, att);
   }
@@ -374,11 +379,16 @@ function aim(P, att, S) {
   return dist;
 }
 
+/** The combo can start on `att` from here (a ground foe in the riposte's reach). */
+function canCombo(P, att) {
+  const p = P.position, tp = att?.position;
+  return P.flurry.reach(att, true) === 'ground' && !!tp && Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange.ground;
+}
+
 function startCombo(P, att) {
   const S = P.db, D = DEFENSE.deathblow, g = P.game, p = P.position;
-  const kind = P.flurry.reach(att, true);
   const tp = att?.position;
-  if (kind !== 'ground' || !tp || !(Math.hypot(tp.x - p.x, tp.z - p.z) <= DEFENSE.flurry.riposteRange.ground)) {
+  if (!canCombo(P, att)) {
     clear(P);
     return false;
   }

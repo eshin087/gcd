@@ -4409,6 +4409,8 @@ async function scenarioDeathblow() {
   const { game, input } = G;
   const d = game.dragon, p = game.player, DB = DEFENSE.deathblow;
   const { deathblowMoves } = await imp('src/entities/player/deathblow.js');
+  const DR0 = await imp('src/entities/player/deathblow.js');
+  DR0.setDbRead('0'); // (a) - (e) measure ADR-211's combo as built: the read (ADR-264, the default 'all') is part (f)
   const MOVES = deathblowMoves();
   assert(MOVES.length >= 8, `the move library has at least 8 moves (${MOVES.length})`);
   run(G, 0.4);
@@ -4428,11 +4430,11 @@ async function scenarioDeathblow() {
     p.streakT = 0;
     p.parryRun = o.run ?? 0;
     const move = o.move ?? 'plumThrust';
-    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, brokenAny: false, streaks: [], cine: null, run1: -1, streakAfter: -1, runAfter: -1, clips: [], winds: [], hitT: [], hitR: [], reeled: false, minGap: 99, ghost: 0, tFlurry: -1, tCut: -1, tParryR: -1, reacts: new Set(), hitGap: [], flashMax: 0, steps: [] };
+    const t = { parry: null, ev: null, hits: [], end: null, flurry: false, ox: 0, oz: 0, far: 0, hurt: 0, hp0: d.hp, states: new Set(), tEnd: -1, quick: false, atk: null, brokenAtEnd: null, brokenAny: false, streaks: [], cine: null, run1: -1, streakAfter: -1, runAfter: -1, clips: [], winds: [], hitT: [], hitR: [], reeled: false, minGap: 99, ghost: 0, tFlurry: -1, tCut: -1, tParryR: -1, reacts: new Set(), hitGap: [], flashMax: 0, steps: [], parryGap: -1 };
     let flashT = null, pressed = false, pressedAtk = false, lastAtk = null;
     G.watch = (nm, e) => {
       if (nm === 'combat:flash' && e?.attack === move && flashT === null) flashT = game.time;
-      if (nm === 'player:parry' && !t.parry) { t.parry = { ...e }; t.ox = p.position.x; t.oz = p.position.z; t.run1 = p.parryRun; t.tParryR = game.realTime; }
+      if (nm === 'player:parry' && !t.parry) { t.parry = { ...e }; t.ox = p.position.x; t.oz = p.position.z; t.run1 = p.parryRun; t.tParryR = game.realTime; t.parryGap = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z); }
       if (nm === 'player:flurry') { t.ev = { ...e }; t.tFlurry = game.realTime; }
       if (nm === 'player:flurryHit') { t.hits.push({ ...e }); t.hitT.push(game.time); t.hitR.push(game.realTime); t.hitGap.push(Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z)); t.steps.push(p.db.step ?? 0); }
       if (nm === 'player:flurryEnd') { t.end = { ...e }; t.tCut = game.realTime; }
@@ -4566,7 +4568,7 @@ async function scenarioDeathblow() {
     const DR = await imp('src/entities/player/deathblow.js');
     const FX = await imp('src/combat/deathblowFx.js');
     const RD = DB.read;
-    assert(DR.DBREAD_DEFAULT === '0' && DR.dbReadMode() === '0', `(f) the read is off by default until the owner picks (${DR.dbReadMode()})`);
+    assert(DR.DBREAD_DEFAULT === 'all', `(f) the read's default is the owner's pick, all (${DR.DBREAD_DEFAULT})`);
     for (const mode of ['0', 'a', 'b', 'c', 'all']) {
       DR.setDbRead(mode);
       const R = DR.dbRead();
@@ -4595,6 +4597,22 @@ async function scenarioDeathblow() {
       }
     }
     DR.setDbRead(DR.DBREAD_DEFAULT);
+  }
+  // (g) THE STRIKE GAP (?strikeGap=, ADR-264): his blade blows stop at the floor (never past their reach), every
+  // blow still met and parried; '0' as before
+  {
+    const SG = await imp('src/entities/enemies/duelist/strikeGap.js');
+    assert(SG.STRIKE_GAP_DEFAULT === '0', `(g) the strike gap is off by default until the owner picks (${SG.STRIKE_GAP_DEFAULT})`);
+    const gaps = {};
+    for (const mode of ['0', 'a', 'b']) {
+      SG.setStrikeGap(mode);
+      const t = take('deathblow', { move: 'fallingAsh', run: 0, perfect: false, secs: 6, posture: 0 });
+      gaps[mode] = t.parryGap;
+      out(`   (g) strikeGap ${mode}: parried ${!!t.parry} (${t.parry?.tell}) at ${t.parryGap.toFixed(2)} m · combo ${!!t.ev} · hurt ${t.hurt}`);
+      assert(t.parry && t.parry.tell === 'blue' && t.ev?.art === 'deathblow' && t.hurt === 0, `(g) ${mode}: the blue blow still reaches and is parried, the deathblow follows`);
+    }
+    assert(gaps.a >= gaps['0'] - 0.02 && gaps.b >= gaps.a - 0.02 && gaps.b >= 1.4, `(g) the floor holds him off: ${gaps['0'].toFixed(2)} → a ${gaps.a.toFixed(2)} → b ${gaps.b.toFixed(2)} m`);
+    SG.setStrikeGap(SG.STRIKE_GAP_DEFAULT);
   }
   RC.setRiposteMode(RC.RIPOSTE_DEFAULT);
   assert(RC.RIPOSTE_CUT.opts.includes('old') && RC.RIPOSTE_CUT.opts.includes('planted') && RC.RIPOSTE_DEFAULT === 'deathblow', 'deathblow is the default; old and planted stay options');
