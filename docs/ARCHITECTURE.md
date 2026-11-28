@@ -307,7 +307,17 @@ Render helpers for creature modules:
     `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`. `HeroAnimator.kickStretch` (ADR-221; null by
     default): `[from, to, add, lift0, lift1]`: a foot off the ground (lift0 .. lift1 m) asked for past `from` of
     the leg's length is carried out along its line by up to `add` of it at `to`, so a kick lands with the leg
-    straight; Xin Yi sets it, `legSoft` and `armSoft` every frame from his `?oneMoves=` switch.
+    straight; Xin Yi sets it, `legSoft` and `armSoft` every frame from his `?oneMoves=` switch. Wen Yao sets all
+    three (Xin Yi's numbers, `thousandFox/limbs.js` `LIMBS`) on his animator in his kit's `dress` and on every paper
+    self's in `FoxClones.pose`, while `?foxLimbs=` is on (ADR-249).
+  - **A foot lifted mid-step** (ADR-249): `HeroAnimator` `opts.liftFromStep` (bool; off = as before), read with
+    `opts.liftEase` in `_feetClip`: a foot the clip lifts while the foot planner is still stepping it (mode 1)
+    eases from where it was drawn last frame (`F.ox / oy / oz / oyaw`, model space), not only a planted one. Wen
+    Yao's kit sets it (his paper selves share his kit's options).
+  - **A leap that comes down short** (ADR-249): a duelist beat's `leap: { from, lock, apex, stop }`: `stop` (m,
+    optional; 0 / unset = on the hero, as always) brings the landing spot that much short of the hero along his
+    line (`brain.js` `_leap`), so a heel or fists that strike ahead of him land on the hero. Wen Yao's limbs pass
+    sets it on his axe-heel and hammer-fist leaps; no other boss uses it.
   - **A sword boss's grip** (ADR-226): `HeroAnimator.gripMax` (rad; 0 / unset = off, the hero and every other boss):
     after the sword arm's solve, a forearm more than gripMax off the blade turns toward it round the elbow
     (`_gripAlign`; the hand and `rig.sword.position` move, the blade's direction never). A duelist kit's optional
@@ -5514,7 +5524,8 @@ trampled, lock, broken, executed, death, meditate, intro). (The engine files nam
 and the clip / pose code, now live in `enemies/duelist/`, above; his poses.js holds only his guard.)
 Beat flags: `lock` (a perfect parry crosses
 the blades), `mikiri` (a perilous red thrust: its hitPlayer passes `mikiri: true`, its flash
-`perilous: true`), `close` (m he may step in through the windup; default TUNING.close). Hits are zones
+`perilous: true`), `close` (m he may step in through the windup; default TUNING.close), `closeBy` (opt-in, a number or a
+function read live: the u of the windup the close-in is done by; default the impact; Tian Lei's sweep, ADR-248). Hits are zones
 tested from his position and facing through each beat's active frames (`sector`, `line`, `ring`), one
 result per beat. The brain (brain.js) **leads** the hero: `_sense()` carries his velocity (`vel`,
 capped 9 m/s) and every step-in, windup track and dash aims at where he will be at the impact; a
@@ -6276,6 +6287,10 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
   `weigh(name, def, w, dist) → w`, `onActStart(A) → false` (refused); every handler `frame(dt)`,
   `afterPose(dt, a)`, `stop()` (a reaction, a break, his death), `reset()`. A new move goes in its file, never in
   `moves.js`.
+- **THE STRIKE ON THE SHELL** (`fxStrike.js`, ADR-266; `?wjStrike=0|a|b|c`, PENDING): `WjFx.barrierStop` calls
+  `strikeStart(fx, fx._strikes, d, point, heavy)` (true: a look took the stop, no ripple) and `_wjUpdate` calls
+  `strikeUpdate`; b / c read his figure through `DuelFx._bodyPts` at the stop. `barrier._chip(o)` takes
+  `wjBarrier.chip` x a stopped cut off his bar through the engine's `_applyDamage` (never his last HP).
 - **THE MOTION TAKES** (`motion.js`, ADR-250; `?wjMotion=0|a|b|c`, PICKED b): `moves/melee.js` makes every melee
   move's `beats` / `recovery` live getters over `liveTakes(name, def)`; the take's beats carry `wjHands` ('R' /
   'L' / 'RL': the hands the blow uses) and `wjBlink.near` (a later beat blinks only when the hero is further). `WjMelee`
@@ -6556,7 +6571,8 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   ran out, or a thrown car landed; by = who broke it) and cues each fuse as a falling piece is cued
   (`combat:tell` / `combat:flash`, source world, attack carBomb, hazard: true).
 - Bai Wuji, the Veiled Crossing's boss, added these names: `dragon:barrier {state, why, cracks, dur}` (his
-  barrier, untouched/barrier.js: state stop = the hero's blade stopped on it, crack = an ordinary parry cracked
+  barrier, untouched/barrier.js: state stop = the hero's blade stopped on it (with damage, x, y, z when the stop
+  chipped him, ADR-266: the HUD prints the number there), crack = an ordinary parry cracked
   it, open = it opened (why parry / dodge / cracks / break / counter / domain / debug; dur its seconds), close
   = it stands again) and `dragon:domain {state, x, z}` (the phase-3 transition, untouched/domain.js: state sign
   = the hand sign, escape = the hero dodged through the closing wall, caught = he is held, void = the scene is

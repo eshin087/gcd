@@ -141,6 +141,10 @@ export class Hud {
     on('player:parry', (d) => this.calls.call(d.light && d.perfect ? 'ret' : d.tell === 'blue' ? 'deflect' : 'parry'));
     // a returned bullet landing on the wyrm: its damage at the head, like a heavy hit's number
     on('dragon:returned', (d) => this.calls.number(d.damage, d, { heavy: true }));
+    // (Bai Wuji: a cut stopped on his barrier that still chipped him, where the blade stopped)
+    on('dragon:barrier', (d) => {
+      if (d?.state === 'stop' && d.damage > 0 && Number.isFinite(d.x + d.y + d.z)) this.calls.number(d.damage, d, {});
+    });
     on('player:block', () => this.calls.call('block'));
     on('player:guardBreak', () => this.calls.call('gbreak'));
     on('player:guardOpen', () => {

@@ -201,6 +201,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.99 — Bai Wuji's barrier shows itself when your blade hits it, and he goes down quicker (2026-11-28, `enemies/untouched`, ADR-266)
+- [x] A cut on the barrier chips a quarter of its damage (never his last HP), its number where the blade stopped
+- [x] His health 16000 (20000); the bench: the good bot in about 2.3 min
+- [x] The barrier's silhouette on a stop, three looks behind `?wjStrike=a|b|c` (`fxStrike.js`; sheet `docs/looks/veil/wjStrike-options.jpg`)
+- [ ] The owner's pick of `?wjStrike` (then PICKED and the default)
+
 ## M1.98 — Bai Wuji glides: quicker, one-handed, and his barrier opens easier (2026-11-27, `enemies/untouched`, ADR-250)
 - [x] Three motion takes behind `?wjMotion=0|a|b|c` (`untouched/motion.js`; the hand layer keeps his hands in his pockets); the owner picked b, the glide
 - [x] The barrier opens easier: two cracks, longer openings, cuts x2.5 through it; hp 20000; patience after 20 s
@@ -247,7 +253,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Audited (asc.mjs / city.mjs AUDIT); held blue / red windups, the snap blows, Halcyon's flier's legs, aim and dip,
   behind `?ascMotion=a` / `?halMotion=a`
 - [x] The owner's pick of both switches: a, the default (2026-11-26)
-- [ ] Tian Lei: the sweep's knee jolt and sliding feet, the dash thrusts' skating, the cross's sideways line
+- [x] Tian Lei: the sweep's knee jolt and sliding feet, the cross's sideways line (ADR-248, `?ascMotion=b`)
+- [ ] Tian Lei: the dash thrusts' skating (the audit leaves dashes out; not judged on film yet)
+## M1.94 — Tian Lei audited: straight limbs, a readable pace, two ki blasts (2026-11-26, `claude/tian-lei-motion-32bb13`, ADR-248)
+- [x] Measured every move on the rig (asc.mjs AUDIT, the striking limb's joint at contact); before / after films, three forms, game camera and close
+- [x] `?ascMotion=b`: long straight punches down his centre, straight kicks, the sweep from a drop stance on a planted foot (asc LIMBS)
+- [x] `?ascPace=a`: rule 10's floor as held cocks (asc READABLE)
+- [x] `?ascShot=a|b`: the ki blast as a sun or a comet, in the Fox's and Bai Wuji's idiom
+- [x] The owner's picks (2026-11-27): straight limbs, the readable pace, the sun; the defaults
+- [ ] Not done: the transformations' kneel-to-stand jolts (~600 mm/f²), Thousand Hands' last palm (671), the beam and Raining Suns' gather as effect options
 ## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged
 - [x] Every perfect reward (posture, counter cut, blade lock, returned bullets, clashes) follows the one number; tests timed for a plain parry moved to 0.21 s
@@ -1240,6 +1254,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
+- [x] Wen Yao (ADR-249): the anatomy audit (`fox.mjs . anatomy`), straight punches on one line and straight kicks
+      at the contact (his paper selves too), the sweep straight through its turn, leaps that land the heel / fists
+      on the hero, one cue one meaning (Paper Rain's backfist), behind `?foxLimbs` / `?foxCues`; films sent
+  - [x] The owner's pick from the films: both, as the default; his pace kept fast (2026-11-27)
+  - [x] Hand to Hand's opening jab: a lead foot the root left behind jumped 0.43 m in a frame; fixed (anim.js `liftFromStep`, the fox only; every move under 0.3 m)
 - [x] Shen Hui's form (ADR-250, `?ashForm`): thrusts on the arm's line in a real lunge, diagonal overheads, sweeps
       on the feet, a quiet free hand, the step landing with the blow; measured (`GCD_AUDIT_IMPACT`) and filmed
   - [x] The owner's pick from the films: the form, Ember Whirl b (the cyclone), Heaven-Splitting Fall b (the split)

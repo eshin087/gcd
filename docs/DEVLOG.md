@@ -46,6 +46,52 @@ filmed beside today (`newparry-vs-today`), off until picked.
 
 ---
 
+## 2026-11-26 — Wen Yao's motion audit: straight limbs at the contact, one cue one meaning (ADR-249; `claude/wen-yao-motion-674ba7`)
+
+**Owner:** a motion audit of every boss (one session each; this is the fox's): weird arm angles, kicks bent at the
+strike, unrealistic attacks; every attack readable; his spell effects are the bar for the others.
+
+- **Measured, not eyeballed:** a new opt-in scenario `fox.mjs . anatomy` (every blow's striking limb at its contact
+  in his own frame: kick knee, support knee, elbow, the wrist off the shoulder → hero line; `GCD_ANAT_TRACE` per
+  frame). Straight punches 123 - 139° at the elbow (bosses without `armSoft` cap at ~145°), the roundhouse 107°, the
+  sweep 82° (50 - 90° through its turn), the selves' rising kick 126°; the Kite String's heel landed 0.8 m past the
+  hero (he landed on him).
+- **Changed** (`thousandFox/limbs.js`, `?foxLimbs=0|a`; Tian Lei's builders untouched): contact keys rewritten (Xin
+  Yi's ADR-221 method), his and his selves' animators opened (`armSoft` / `legSoft` / `kickStretch`), the sweep keyed
+  every 30° with the foot skimming 5 cm (on the floor `_feetClip` walked it as a planted foot), `leap.stop` (opt-in
+  in brain.js) for the heel and hammer leaps. `?foxCues=0|a`: Paper Rain's last blow a backfist (the uppercut is blue
+  only). After: straight blows 162 - 167°, kicks 161 - 173°, hooks / uppercuts 111 - 116°.
+- **Kept:** his held blue / red windups (ADR-223), every timing and number, every effect (no options: they are the bar).
+- **Tests:** `fox.mjs motion` asserts the limbs both ways; the whole fox suite green.
+- **Films:** before / after of 15 moves across the three phases, at the game camera (a close crop with the frame as an
+  inset) and from the side, real and half speed.
+
+**Picked** (2026-11-27, from the films): both switches `a`, the default; his windups stay PBZ-fast (0.42 s first
+blows, under the audit brief's 0.7 s floor: the owner kept them).
+**Then fixed** (the owner asked): Hand to Hand's opening jab's lead foot jumped 0.43 m in a frame (on main too): the
+planner was stepping it when the clip lifted it, and the ADR-223 ease only caught a planted foot. `anim.js`
+`liftFromStep` (opt-in, the fox's kit): every move of his now under 0.3 m a frame, asserted in `fox.mjs motion`.
+## 2026-11-28 — Bai Wuji round 4: the chip, 16000, the barrier's silhouette (branch `wj3/barrier-playtest`; ADR-266)
+
+**Owner:** "right now it takes too much time to chip at [him] so balance it to be bit easier to do damage on him.
+when the player hits him and the sword is hitting the [barrier], show a cool ascii effect of the sword hitting the
+barrier and it showing its silhouette briefly."
+
+**What changed.** A cut stopped on the shell chips x0.25 of its damage (`wjBarrier.chip`, `barrier._chip`; never
+his last HP; the number rides `dragon:barrier` stop to the HUD). hp 20000 -> 16000. `untouched/fxStrike.js`: the
+shell's silhouette on a stop behind `?wjStrike=a|b|c` (a the oval, b his outline from his mesh points by marching
+squares, c three outlines rippling out); '0' (the default until the owner picks) keeps the ripple. Lab LOOKS row,
+PENDING.
+
+**Verification.** Bench (6 seeds): today's main, the good bot 4/6 in 163 - 211 s; the chip alone 4/6 in 160 - 187 s;
+16000 + chip 4/6 in 120 - 150 s (deaths with 5 % of his bar left), fencing 5/6; blocker and pace still die.
+`veil.mjs . strike` (the chip, its event, every look draws and is gone in a second); filmed on headless Edge
+(`docs/looks/veil/wjStrike-options.jpg`); full `npm test` before the PR.
+
+**Next.** The owner's pick of `?wjStrike`; a sound for the chip if they want one.
+
+---
+
 ## 2026-11-27 — The clash dance is the default (ADR-247; branch `claude/combat-clash-dance-default`)
 
 **Owner:** watched the three films of PR 175 (today against the dance: Shen Hui, the Starless Lord, Xin Yi) and said
@@ -59,6 +105,36 @@ ADR-247 (an update) say so.
 
 **Open:** the ring by ear on the owner's devices (the films had no sound).
 
+## 2026-11-26 — Tian Lei audited: straight limbs, a readable pace, two ki blasts (ADR-248; branch `claude/tian-lei-motion-32bb13`)
+
+**Owner (the boss motion audit, one session a fighter):** weird arm angles, unrealistic attacks, kicks that stay bent
+at the strike; every attack with a clear tell; the special effects as cool as the Fox's and Bai Wuji's, 2-3 options.
+
+**Measured** (asc.mjs AUDIT, now with the striking elbow / knee and the standing knee at contact, and the fist in his
+own frame): punches at 141 - 155° crossing his centre line by 0.17 - 0.24 m, the back-fist 0.6 m off to his right;
+roundhouses at ~100°, front / side kicks ~150°; the sweep's tuck flipping its knee (709 mm/f²), its planted foot
+circling a metre of floor, the close-in sliding the root under the drop (the planted knee flipped, 869); his pace
+under rule 10 (first blows 0.4 - 0.5 s, string blows 0.37 - 0.46 s apart, the cue 0.26 s).
+
+**What.** `?ascMotion=b` (`motion.js` straightLimbs / dropStance; `ascendant.js` sets the animator's armSoft /
+legSoft / kickStretch live; `brain.js` gains the opt-in beat field `closeBy`, set only by his sweep); `?ascPace=a`
+(`pace.js`: the extra held cock through the realiser's `hold`, the cue in his realise wrapper); `?ascShot=a|b`
+(`fxShot.js`, hooked from fx.js `_drawBlast` / `_blastBurst`; `_blastWorld` split out). Lab LOOKS rows (pace and
+shot `awaiting`). Tests: asc LIMBS, READABLE.
+
+**Result** (b): punches 170 - 172°, fists within 0.1 m of his centre line; kicks 172 - 173°; Eight Gates' worst jolt
+455, its slide 2.19 → 1.23 m (the rest is the sweeping foot on the floor, by design). Films: before / after per
+form, game camera and close side, half speed; the blast and pace options.
+
+**Picks (2026-11-27).** The owner took all three: the straight limbs, the readable pace, the sun (PICKED; the PR marked
+ready). On the new defaults the suite found: the sweep's spin keyed 120° apart folded the leg (now every 60°, the foot
+skimming 8 cm, reach 1.2), the long punches went 0.37 m into the hero (the lunge 0.12 m shorter), the pace's hold
+inside a dash run (dash blows keep their windup) and its moved cue on ki beats (the Lord's ADR-251 exemptions
+adopted); the bots read each cue's lead (`cueLead`); PACE floors re-pinned (F1 64, F2 71); MOTION's slide line
+counted lifted steps (0.16 → 0.11 m); the Lab's Training answered paced bosses early (`_lead()` reads the fired
+cue). Blast cost: asc `shotcost` (opt-in). Open: the
+dash thrusts' feet, the transformations' kneel-to-stand, Thousand Hands' last palm; the beam and the orb as effect
+options if the owner wants them.
 ## 2026-11-27 — Blows land on what they strike (ADR-259; branch `claude/contact-motion-246eeb`)
 
 **Goal:** the owner's contact pass: every hit, deflect, guard, parry and deadly blow should look like it strikes the

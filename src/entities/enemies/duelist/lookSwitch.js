@@ -46,7 +46,9 @@ export const PICKED = Object.freeze({
   ascBeam: 'a', // his beam: the column (the owner's pick)
   ascLift: 'b', // his print: the hero's quieter one (the owner's pick, 2026-11-23, ADR-155; was a, lifted: a lighter fill, a stronger edge of light)
   ascOrb: 'a', // Heaven's Lantern, the great orb: a sun (b a lantern, c the pale gathered sphere; the owner has not chosen yet, 2026-11-22)
-  ascMotion: 'a', // his motion: held blue / red windups, the snap blows (the owner's pick, 2026-11-26, of two; ADR-225; 0 as before)
+  ascMotion: 'b', // his motion: the held windups and snap blows (a, ADR-225) and straight limbs: long punches down his centre, straight kicks, the sweep from a drop stance (the owner's pick, 2026-11-27, ADR-248; a without the limbs, 0 as before)
+  ascPace: 'a', // his pace at rule 10's floor: first blows 0.7 s, blows 0.45 s apart, the cue 0.35 s, a held cock (the owner's pick, 2026-11-27, ADR-248; 0 as he shipped)
+  ascShot: 'a', // his ki blast: the sun (the owner's pick, 2026-11-27, of three, ADR-248; b the comet, 0 as he shipped)
   ascBeamPose: '0', // his beams: the palm thrust (cup: both hands cupped at the hip; the owner has not chosen yet, 2026-11-22)
   // the Windless Grove and Lu Wusheng, the Sheathed (the owner, 2026-11-22: "keep the recommended")
   grove: 'a', // the grove's light: a moonlit mist (the owner's pick)
@@ -97,6 +99,8 @@ export const PICKED = Object.freeze({
   sheathPace: '0', // his fast pace kept (a: COMBAT rule 10's floor as held cocks)
   drawFx: '0', // the draw's one white line kept (a the drawn breath, b hanging leaves, c the late sound)
   foxQuick: 'a', // Fox Snap, Fox Knee
+  foxCues: 'a', // Wen Yao's Paper Rain ends on a backfist: the uppercut is only ever Hand to Hand's blue flare (ADR-249; the owner's pick from the films, 2026-11-27)
+  foxLimbs: 'a', // Wen Yao's limbs at the contact: straight punches on one line, kicks straight (ADR-249; the owner's pick from the films, 2026-11-27)
   wyrmQuick: 'a', // Snap swipe
   wyrmHead: 'a', // the meteors' roar: the head up and forward, never tipped back past upright (the owner asked, 2026-11-27; ADR-258)
   wyrmStrike: 'a', // the wyrm's bites: the body surges first, the head snaps onto the beat (the owner's pick, 2026-11-27, from the films; ADR-257)
@@ -123,7 +127,7 @@ export const PICKED = Object.freeze({
 /** Switches the owner has not picked yet (their rendered options wait for the owner): in the Lab's LOOKS
  *  rows, deliberately NOT in PICKED; each draws its call site's default until picked. When the
  *  owner picks, the switch moves from here into PICKED. */
-export const PENDING = Object.freeze(['foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
+export const PENDING = Object.freeze(['wjStrike', 'foxLook', 'foxfire', 'clones', 'foxLetters', 'foxFire3', 'foxSpirit', 'oneLook', 'hall', 'script']); // Wen Yao (ADR-147, ADR-154); Xin Yi and his hall (ADR-156, ADR-157; his figure and moves rebuilt and picked, ADR-221); Halcyon and his city: all picked (ADR-161, ADR-164, ADR-166)
 
 const fromUrl = new Map();
 const forced = new Map();

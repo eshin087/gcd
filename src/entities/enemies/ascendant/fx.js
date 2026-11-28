@@ -6,6 +6,7 @@ import { DUEL_WORLD } from '../duelist/worldTuning.js';
 import { lookOf } from '../duelist/lookSwitch.js';
 import { FIRE_PALETTES } from '../../../render/firePalettes.js';
 import { drawBeam, drawBeamCharge, drawBeamSplash, drawBeamClash, drawSplit } from './fxBeam.js';
+import { drawShot, burstShot } from './fxShot.js';
 
 // Tian Lei's effects: the aura of his forms, his blasts, the beam, the vanish, the transformation.
 // All of it is heat in the fire field (STYLE.md "The fire field") and glyph particles of one letter
@@ -1291,6 +1292,8 @@ export class AscFx extends LordFx {
    *  Charging (`hang`): it swells, motes drawn in. ~25 - 45 blobs a frame. */
   _drawBlast(s, hang) {
     if (s.lantern) return this.lanternDraw(s);
+    // (ADR-248, `?ascShot=a|b`: the redrawn blast, fxShot.js; '0' today's, below)
+    if (drawShot(this, s, hang)) return;
     const life = this._frame(), k = s.size ?? 1, A = this._axes(), ret = s.returned;
     const grow = hang ? Math.min(1, s.age / Math.max(0.15, s.delay)) : 1, R = 0.56 * k * (0.5 + 0.5 * grow);
     const P = this._toCamera(s.x, s.y, s.z), px = P.x, py = P.y, pz = P.z;
@@ -1336,6 +1339,12 @@ export class AscFx extends LordFx {
   _blastBurst(s, floor, onHim) {
     if (s.lantern) return this.lanternBurst(s, onHim ? 'him' : floor ? 'floor' : 'cover');
     s.alive = false;
+    // (ADR-248, `?ascShot=a|b`: the redrawn burst, fxShot.js; the world's share as today's)
+    if (burstShot(this, s, floor, onHim)) {
+      if (floor) this._blastWorld(s);
+      if (onHim) this.game.shake?.(0.25);
+      return;
+    }
     const k = s.size ?? 1, x = s.x, y = Math.max(0.35, s.y), z = s.z, A = this._axes();
     const P = this._toCamera(x, y, z);
     this._blob(P.x, P.y, P.z, 0, 0, 0, 0.12, 0.5 * k, 1.1 * k, 1.6, 0, K_STEEL);
@@ -1362,12 +1371,17 @@ export class AscFx extends LordFx {
     if (floor) {
       this._shock(x, 0.8, z, 1.6 * k, 18, 0.24, 0.45, 0.8, 0.45, K_VOID, 0.3, 3);
       for (let i = 0; i < 3; i++) this._blob(x + this.lrand(-0.3, 0.3), 0.8, z + this.lrand(-0.3, 0.3), this.lrand(-0.6, 0.6), this.lrand(0.4, 1), this.lrand(-0.6, 0.6), this.lrand(0.7, 1.1), 0.6, 1.4, 0.5, 0, K_SMOKE, 1.5, 0.4);
-      this.game.world?.scorch?.burnCircle?.(x, z, 0.8 * k, 0.22, 0.15);
-      const W = this.game.world;
-      W?.impact?.(x, z, 1.1 * k, k > 1.2 ? this.d?.T?.world?.bigBlast ?? ASC_WORLD.bigBlast : this.d?.T?.world?.blast ?? ASC_WORLD.blast, BLAST_BLOW);
+      this._blastWorld(s);
     }
     super._light({ x, y: y + 0.3, z, color: L_GOLD, intensity: (onHim ? 6 : 3.5) * k, radius: 6 * k, life: 0.22, fade: 0.2 });
     if (onHim) this.game.shake?.(0.25);
+  }
+
+  /** A blast's burst on the floor, in the world: a scorch and an impact (ADR-107). */
+  _blastWorld(s) {
+    const k = s.size ?? 1, x = s.x, z = s.z, W = this.game.world;
+    W?.scorch?.burnCircle?.(x, z, 0.8 * k, 0.22, 0.15);
+    W?.impact?.(x, z, 1.1 * k, k > 1.2 ? this.d?.T?.world?.bigBlast ?? ASC_WORLD.bigBlast : this.d?.T?.world?.blast ?? ASC_WORLD.blast, BLAST_BLOW);
   }
 
   /** A blast that could only be cued too late goes out on touch: a puff of gold and a few sparks. */
