@@ -3344,7 +3344,21 @@ default; `?pad=split|classic` and `?hold=1|0` set them for one page load):
   ring's glyphs; upright `lift` 4 px) and has a padlock of its own (`.tc-guardlock`, over its top-right corner,
   shown in `split` only). The two padlocks are one lock (`editing`): open, a drag on GUARD moves it
   (`guardOff`, px at fit 1, + right / + up, kept on the left half, saved as `goff`) and raises no guard;
-  RESET (`resetPadOffset()`) puts GUARD back too.
+  RESET (`resetPadOffset()`) puts GUARD back too. Also in `split` (ADR-274, the owner): a second guard, the
+  BLOCK tile (`@block`, the guard gauge too), stands right under ATTACK in the cluster (`split.tiles.block`;
+  ATTACK, HEAVY, DODGE and the flask moved up by its height), so either thumb can guard and a slide from ATTACK
+  raises it. The left GUARD is drawn like the tiles (their corner brackets, a fainter frame, resting opacity
+  0.4) and the padlocks are bare icons at 0.34 (0.9 open), with no disc or frame: nothing of the layer should
+  pull the eye in play.
+  **The guard switches** (ADR-274, the owner: "options in settings to remove either left or right guard button ...
+  change the button layout"): three pause-menu entries, kept in `gcd.touchPad`. PAD LAYOUT (`layout`) is only the
+  right cluster's arrangement now: `classic` BLOCK beside ATTACK and DODGE under it, `split` DODGE beside and BLOCK
+  under (`pad.tiles` / `pad.split.tiles`, both with a `block`). LEFT GUARD (`leftGuard`, `lg`, off by default)
+  draws the GUARD beside the stick (`.tc-root.lguard`); RIGHT GUARD (`rightGuard`, `rg`, on) keeps the BLOCK
+  tile in the cluster (off: it is left out of `padGeo.tiles` and hidden). One guard always stays: turning the
+  last one off turns the other on. `cyclePad('layout' | 'lguard' | 'rguard')`; `?pad=split|classic` sets the
+  arrangement (split also shows the left GUARD, as before), `?lguard=1|0` and `?rguard=1|0` the guards. A pad
+  saved before these (`layout: 'split'`, no `lg`) reads as the left GUARD on.
 - SWIPE DODGE (ADR-274; `swipeDodge`, `cyclePad('swipe')`, `?swipe=1|0`; `CONFIG.touch.swipe`): a finger that
   touches the bare screen right of `swipe.from` (half the width) during play and travels `dist` px (30, × the
   fit) within `time` s (0.2) dodges the way it went (`input.dodgeToward`), once per touch, at that moment (not

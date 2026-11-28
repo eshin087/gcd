@@ -22,6 +22,12 @@ left hand as an option and swipe to dodge" to test first.
 - **The owner tried it:** liked the swipe → ON by default. GUARD moved against the stick's ring and given its own
   padlock (one lock with the pad's: open, GUARD drags too; kept as `goff`, RESET puts it back). Touch suite: new
   checks (GUARD against the ring, its padlock, the drag, kept, RESET); browser at 852 x 393 and 393 x 852.
+- **Then:** a second guard (the BLOCK tile) under ATTACK in the left-guard layout; the left GUARD drawn like the
+  tiles and quieter (0.4 opacity, fainter frame); the padlocks bare icons at 0.34. Touch suite green with new
+  checks (the second guard under ATTACK, the slide from ATTACK raises it); browser at 852 x 393.
+- **And:** the owner asked for the guards to be removable and the layout changeable: PAD LAYOUT = BLOCK BESIDE /
+  BLOCK UNDER, plus LEFT GUARD and RIGHT GUARD switches (one always stays; old saved `split` = left GUARD on).
+  Touch suite green with new checks; the pause menu toggles and saves (browser).
 - **Open:** the distance / time numbers on the phone; whether GUARD should be the default layout; a touch timing
   allowance if parries are still late.
 

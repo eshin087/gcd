@@ -57,6 +57,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Owner's pick on the phone: which of the two becomes the default, where GUARD stands
   - [x] SWIPE DODGE: a flick on the right half dodges that way (ADR-274)
   - [x] Owner's verdict on SWIPE DODGE: liked, on by default; GUARD against the stick with its own padlock (ADR-274)
+  - [x] A second guard under ATTACK, quieter GUARD and padlocks, LEFT / RIGHT GUARD switches, PAD LAYOUT picks BLOCK's place (ADR-274)
   - [ ] The swipe's numbers on the phone; a touch timing allowance if parries are still late
   - [ ] Phone ideas not built yet (ADR-131 lists them): the game drawn under the notch (viewport-fit=cover), a
         drag-to-place layout editor, a left-handed mirror, an "add to home screen" hint for full screen on iOS
