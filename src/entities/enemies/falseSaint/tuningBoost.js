@@ -45,11 +45,12 @@ export const TUNING_BOOST = {
   // `side` m beside the hero (`chip` power).
   // (the tuning pass: `guardCost` / `lastGuardCost`, what a blocked piston / the blocked last blow costs the
   // hero's guard meter (100; GUARD.cost would be 16 a piston, 52 the last): a guard held through the whole
-  // flurry holds it now, as a held guard holds every duelist's flurry (training foeBlock). Measured before: the
+  // flurry holds it now, as a held guard holds every duelist's flurry (training foeBlock). `close` 1.0 -> 0.6: a piston chasing a
+  // roller stepped in 1.6 m (x pressure.pursue.closeK) and caught him out of a 4.2 m roll. Measured before: the
   // guarding bot took 630 of its P2 damage from Rosary, its guard broken at the 7th piston)
   rosary: {
     first: 0.72, beat: [0.41, 0.41, 0.55], last: 0.56, active: 0.05, damage: 10, knockback: 0.9, lastDamage: 22, lastKnockback: 5.5, guardCost: 6, lastGuardCost: 34,
-    middle: 8, chance: [3, 5, 7], p: 0.5, reach: 1.95, side: 1.35, chip: 0.7, close: 1.0, recovery: 0.85,
+    middle: 8, chance: [3, 5, 7], p: 0.5, reach: 1.95, side: 1.35, chip: 0.7, close: 0.6, recovery: 0.85,
   },
 
   // ---- DESCENT, the dive knee (P3+, red): up `h` m on the back thrusters by `rise` of the windup, the
