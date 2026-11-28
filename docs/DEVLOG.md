@@ -267,6 +267,7 @@ the cut starting in the air, and a landing 1.6 m short of the hero (leap `short`
 
 **Open.** His pace unchanged (the owner chose it fast). Feet still slide 0.15 - 0.5 m over a long string where the
 close-in carries his root under a planted foot.
+
 ---
 
 ## 2026-11-26 — The clash dance, behind `?clash=dance` (ADR-247; branch `claude/combat-clash-dance-470971`)
