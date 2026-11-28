@@ -96,6 +96,14 @@ export class FsBoost {
   /** Every frame of a routed beat (after the engine's own motion: a dash has moved him already). */
   beatMotion(b, u, s, dt) {
     const D = b.def;
+    // (v04, the pack's hand details: the CLENCH only behind the booster punch (the votive blink, the overclock's
+    // passes behind the fist), from its coil to the follow-through's end; a piston's heel of the palm and the
+    // embrace's palms REACH from the strike; the dive's hand opens on the plates; else the guard's half-curl)
+    const hd = this.d, hp = D.part, hc = fin(D.cock, 0.8), hs = u >= (hc + 1) * 0.5 && u < 2;
+    const fist = (D.fsDash && !D.fsDash.rite && u >= hc * 0.5 && u < 2) || (D.fsBlitz?.pass !== undefined && !D.fsBlitz.last && u >= 0.6 && u < 2);
+    hd.fsHandR = fist ? 'clench' : (D.fsDive || D.fsBlitz?.last) && u >= 0.93 ? 'open' : hs && (hp === 'fistR' || hp === 'palms') ? 'reach' : 'guard';
+    hd.fsHandL = hs && hp === 'palms' ? 'reach' : 'guard';
+    this._handLive = this._handOwn = true;
     const J = D.fsJet;
     if (J && !J.pulse && u >= fin(J.from, 0) && u < 1) {
       const c = fin(D.cock, 0.8), k = 0.35 + 0.65 * clamp((u - J.from) / Math.max(0.05, c - J.from), 0, 1);
@@ -121,6 +129,8 @@ export class FsBoost {
       this.jets.calfL = 1;
     }
     if (D.fsDive) this._diveLand(b);
+    // (v04: the dive's knee and the overclock's last pass come down on a planted foot: its scuff)
+    if (D.fsDive || (D.fsBlitz?.last && D.fsBlitz.pass !== undefined)) d.fx.footPlant?.(d.position.x, d.position.z, Math.sin(d.yaw), Math.cos(d.yaw), 0.4, 1);
     if (D.fsBlitz?.last && D.fsBlitz.pass !== undefined) this._crater(d.position.x, d.position.z, this.T.vespers.lastR, this.T.vespers.lastPower, 1.3);
   }
 
@@ -206,6 +216,12 @@ export class FsBoost {
       this._want[k] = 0;
     }
     if (d.mode !== 'act' || !a || a.name !== 'lastRite') d.fsCoreK = Math.max(0, d.fsCoreK - dt * 3);
+    // (v04: no beat of his drove the hands this frame: back to the guard's half-curl, the default)
+    if (this._handOwn && !this._handLive) {
+      this._handOwn = false;
+      d.fsHandR = d.fsHandL = undefined;
+    }
+    this._handLive = false;
     const pl = d.pilot;
     if (pl) {
       const brake = this.step && this.step.brake >= 0 ? 1 : 0, dash = this.step && this.step.t >= this.step.pre && !brake ? 1 : 0;
@@ -406,7 +422,8 @@ export class FsBoost {
     w?.groundBlow?.(x - ux * len, z - uz * len, g);
     g.len = NaN;
     g.hot = true;
-    d.fx.dust?.(x + ux * 0.3, z + uz * 0.3, B.dust * k);
+    // (v04: the pack's C2 foot plant: the scuff line, grit and dust kicked ahead of the sole, sparks off a metal shin)
+    d.fx.footPlant?.(x + ux * 0.3, z + uz * 0.3, ux, uz, len, B.dust * k);
     this.stats.plants++;
   }
 

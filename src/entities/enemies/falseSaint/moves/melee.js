@@ -335,6 +335,12 @@ export class FsMelee {
     }
     if (this.grip) this._gripFrame(dt);
     if (this.flung) this._flungFrame(dt);
+    // (v04: no beat of his drove the hands this frame: they go back to the guard's half-curl, the default)
+    if (this._handOwn && !this._handLive) {
+      this._handOwn = false;
+      d.fsHandR = d.fsHandL = undefined;
+    }
+    this._handLive = false;
   }
 
   // ---------------------------------------------------------------- Laying On of Hands
@@ -573,8 +579,20 @@ export class FsMelee {
   /** Rebuke's slip (the pack's B3): the root carried `fsSlip` m to his left through the windup's draw. */
   beatMotion(b, u, s, dt) {
     const D = b?.def;
+    // (v04, the pack's hand details: the striking palm REACHES (drawn open, flat) from the strike's middle to
+    // the follow-through's end, both hands reach for the head through the knee's held coil and stay with
+    // the lift's hold; every other frame of his blows the hands are in the guard's half-curl)
+    const hd = this.d, hp = D?.part, hs = u >= (fin(D?.cock, 0.8) + 1) * 0.5 && u < 2, hk = hp === 'kneeR' && u >= 0.36 && u < 1.6;
+    hd.fsHandR = D?.fsLift || hk || (hs && (hp === 'fistR' || hp === 'palms')) ? 'reach' : 'guard';
+    hd.fsHandL = hk || (hs && (hp === 'fistL' || hp === 'palms')) ? 'reach' : 'guard';
+    this._handLive = this._handOwn = true;
     if (!(D?.fsSlip > 0) || b.feint) return;
     const k = clamp((u - 0.08) / 0.55, 0, 1), want = D.fsSlip * k * k * (3 - 2 * k), step = want - fin(b._slip);
+    // (v04, the pack's B3 / C2: the slip lands on the outside sole: its scuff and dust)
+    if (k >= 1 && !b._fsPlant) {
+      b._fsPlant = true;
+      hd.fx?.footPlant?.(hd.position.x, hd.position.z, Math.cos(hd.yaw), -Math.sin(hd.yaw), 0.45, 0.8);
+    }
     if (!(Math.abs(step) > 1e-5)) return;
     b._slip = want;
     const d = this.d;
@@ -601,6 +619,9 @@ export class FsMelee {
       d.tellPoint?.(D.part, this._v);
       this.carry = { b, a, yaw: d.yaw, x: d.position.x, z: d.position.z, y: clamp(fin(this._v.y, 1.2), 0.4, 2) };
     }
+    // (v04, the pack's B1.2 / B2.4 / C2: a blow that steps in (a lunge's travel, the walk's last step) lands with
+    // the front heel planted: its scuff)
+    if (D.travel || D.fsWalk) d.fx?.footPlant?.(d.position.x + Math.sin(d.yaw) * 0.45, d.position.z + Math.cos(d.yaw) * 0.45, Math.sin(d.yaw), Math.cos(d.yaw), 0.35, 0.7);
   }
 
   /** Before his blow reaches the hero: the grab's catch is no throw; a crash blow goes through the world. */
@@ -639,8 +660,16 @@ export class FsMelee {
       this.carry = null;
       if (r !== RESULT.PARRIED && r !== RESULT.CLASHED) this._carryOn(C);
     }
-    // (the plated arm, phase 2 on: steel sparks where a heavy blow met the hero or his guard)
     const d = this.d, p = this.game.player?.position;
+    // (v04, the pack's C1: a palm that met the hero or his guard: a small white glint at the hand, contact sparks,
+    // fading chips; physical, never cyan)
+    const pp = D.part;
+    if (p && (r === RESULT.HIT || r === RESULT.BLOCKED) && (pp === 'fistR' || pp === 'fistL' || pp === 'palms') && !D.fsLay) {
+      d.handPoint?.(pp === 'fistL' ? 'L' : 'R', this._v);
+      const hx = fin(this._v.x, d.position.x), hz = fin(this._v.z, d.position.z), nx = p.x - d.position.x, nz = p.z - d.position.z;
+      d.fx?.palmHit?.(hx, clamp(fin(this._v.y, 1.2), 0.3, 2.2), hz, nx, nz, D.fsBlow === 'heavy' ? 1.2 : 0.8);
+    }
+    // (the plated arm, phase 2 on: steel sparks where a heavy blow met the hero or his guard)
     if (p && d.dressPhase >= 2 && D.fsBlow === 'heavy' && (r === RESULT.HIT || r === RESULT.BLOCKED)) {
       const nx = p.x - d.position.x, nz = p.z - d.position.z, l = Math.hypot(nx, nz) || 1;
       d.fx?.sparks?.(p.x - (nx / l) * 0.3, 1.2, p.z - (nz / l) * 0.3, nx / l, nz / l, r === RESULT.BLOCKED ? 10 : 6, 1);
