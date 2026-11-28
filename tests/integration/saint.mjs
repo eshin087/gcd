@@ -3060,6 +3060,310 @@ async function scenarioArFair() {
   assert(bad === 0, `none lands inside a blue / normal blow's window (${bad})`);
 }
 
+// ================================================================== TUNING (the tuning agent's: the whole fight, the pace)
+// tuneFight (opt-in): whole fights from the wake to his death against four mortal bots (160 HP, 5 flasks,
+// they drink below 60 HP in his openings): `guard` holds the guard on every normal / blue cue and rolls out
+// of a red one; `parry` parries normal / blue and rolls red; `roll` rolls out of everything; `strike`
+// parries and rolls, answers fewer cues and swings at him whenever he is in reach. Each cuts him in his
+// openings and gives the deathblow to a broken boss. Per phase: time, cues a minute, the longest gap, the
+// moves (picks), links / chains, damage taken by move; the outcome, softlocks, NaNs, throws. Reported.
+//   env: GCD_TBOTS=guard,parry,roll,strike  GCD_TSEEDS=4242,7,...  GCD_TSECS (cap, 480)  GCD_TSKILL (0.95)
+//        GCD_TGOD=1 (god mode: the fight's length, no death)  GCD_TOUT=<file.json> (the rows)  GCD_TMOVES
+//        (a JSON of move fields laid over MOVES before the runs: '{"votiveFist":{"cooldown":[9,4,3.5,3]}}')
+// tunePace: the pace meter per phase (city.mjs's PACE: a god-mode guarding defender that roams 2.5 / 5 / 9 m;
+//   GCD_TPSEEDS, GCD_TPSECS); asserts TUNING.pressure.meter.
+// tuneStep: the jet step gets more frequent with each phase (a hero who keeps his distance).
+const tuneOverlay = () => {
+  if (!process.env.GCD_TMOVES) return () => {};
+  const o = JSON.parse(process.env.GCD_TMOVES), was = {};
+  for (const [k, v] of Object.entries(o)) { if (!MOVES[k]) continue; was[k] = {}; for (const f of Object.keys(v)) was[k][f] = MOVES[k][f]; Object.assign(MOVES[k], v); }
+  return () => { for (const [k, v] of Object.entries(was)) Object.assign(MOVES[k], v); };
+};
+const TUNE_BOTS = ['guard', 'parry', 'roll', 'strike'];
+/** A mortal bot's defence: answers `skill` of his cues (its own stream), as `style`. */
+function tuneDefender(G, { style = 'parry', skill = 0.95, rng = Math.random } = {}) {
+  const pend = [];
+  let guardUntil = -1;
+  const stats = { flashes: 0, skipped: [], answered: [] };
+  return {
+    stats,
+    onEvent(n, e) {
+      if (n !== 'combat:flash' || (e?.source !== 'dragon' && e?.source !== 'world')) return;
+      stats.flashes++;
+      if (rng() > skill) { stats.skipped.push([G.game.time, e.attack]); return; }
+      stats.answered.push([G.game.time, e.attack]);
+      pend.push({ tell: e.tell, at: G.game.time + (e.source === 'world' ? 0.3 : TUNING.flashLead), x: e.x, z: e.z, hazard: !!e.hazard && !e.bullet, done: false });
+    },
+    act() {
+      const g = G.game, input = G.input, t = g.time;
+      for (let i = pend.length - 1; i >= 0; i--) if (pend[i].done || pend[i].at < t - 0.5) pend.splice(i, 1);
+      let busy = false;
+      for (const e of pend) {
+        if (e.done) continue;
+        const left = e.at - t - DT;
+        const red = e.tell === TELL.RED || e.tell === TELL.BLACK;
+        if (red || style === 'roll') {
+          if (left <= 0.1) {
+            e.done = true;
+            input.up(1);
+            guardUntil = -1;
+            const c = e.hazard ? { x: e.x, z: e.z } : g.dragon.position, p = g.player.position;
+            const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+            input.axis = e.hazard ? { x: dx / l, y: -dz / l } : { x: -dz / l, y: -dx / l };
+            input.tap('Space');
+          }
+        } else if (style === 'guard') {
+          if (left <= 0.3) { e.done = true; guardUntil = Math.max(guardUntil, e.at + 0.2); }
+        } else if (left <= 0.12) {
+          e.done = true;
+          input.up(1);
+          input.click(1);
+        }
+        if (!e.done && left < 0.7) busy = true;
+      }
+      if (guardUntil > t) { input.press(1); busy = true; } else if (guardUntil > 0) { guardUntil = -1; input.up(1); }
+      return busy;
+    },
+    dueWithin(s) { const t = G.game.time; return pend.some((e) => !e.done && e.at - t < s); },
+  };
+}
+const _tgt = new THREE.Vector3();
+/** The bot's body: closes in, drinks in his openings, cuts him (in his openings; `strike`: whenever near). */
+function tuneBody(G, bot, god) {
+  const { game, input } = G;
+  const p = game.player, d = game.dragon;
+  input.axis = { x: 0, y: 0 };
+  if (!p.alive || game.state !== 'boss') return;
+  if (god) p.hp = p.maxHp;
+  d.lockPoint(_tgt);
+  game.mouseGround.set(_tgt.x, 0, _tgt.z);
+  const dx = _tgt.x - p.position.x, dz = _tgt.z - p.position.z, dist = Math.hypot(dx, dz);
+  const tick = (game.realTime * 60) | 0;
+  if (p.state === 'lock') { if (tick % 5 === 0) input.click(0); return; }
+  const busy = G.defend.act();
+  const opening = d.broken || d.mode === 'react';
+  if (!god && p.hp < 60 && p.flasks > 0 && (opening || dist > 6) && !G.defend.dueWithin(0.7) && ['idle', 'run', 'block'].includes(p.state) && tick % 6 === 0) { input.up(1); input.tap('KeyF'); return; }
+  if (dist > 2.6 && !busy) input.axis = { x: dx / dist, y: -dz / dist };
+  const a = d.brain.act;
+  const open = d.broken || (d.mode === 'react' && ['recoil', 'stagger', 'flinch', 'reeling', 'trampled'].includes(d.brain.react?.kind)) || (a && a.t > a.recoveryStart) || p.critTimer > 0;
+  if (!busy && dist < 3.2 && (open ? tick % 20 === 0 : tick % (bot === 'strike' ? 24 : 70) === 0)) input.click(0);
+}
+
+/** One whole fight: what it measured. */
+function tuneRun(seed, bot, { secs = 480, skill = 0.95, god = false } = {}) {
+  const G = build(seed, true);
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  duel(G, { dist: 3, ai: false });
+  G.defend = tuneDefender(G, { style: bot === 'strike' ? 'parry' : bot, skill: bot === 'strike' ? Math.min(skill, 0.85) : skill, rng: mulberry32(seed * 977 + TUNE_BOTS.indexOf(bot)) });
+  d.debug.setAI(true);
+  const P = () => ({ T: 0, cues: [], picks: {}, dmg: {}, hits: 0, links: 0, chains: 0, rests: 0, steps: 0, breaks: 0, poolBreaks: 0, modeT: {}, tanks: -1 });
+  const tanksIdle = () => game.world.forest.foundry?.tanks?.filter((f) => f.state === 'idle').length ?? -1;
+  const per = { 1: P(), 2: P(), 3: P(), 4: P() };
+  let curAtk = null;
+  const th = p.takeHit.bind(p);
+  p.takeHit = (h) => { curAtk = h?.attack ?? null; const r = th(h); curAtk = null; return r; };
+  const n = { heals: 0, parries: 0, perfect: 0, dodges: 0, blows: 0 };
+  const lastHits = [];
+  let t0 = game.time;
+  G.watch = (ev, e) => {
+    const ph = per[d.phase];
+    if (ev === 'player:hurt' && e?.damage > 0) { const k = curAtk ?? (e.kind === 'burn' ? 'molten' : e.kind === 'crash' ? `crash(${d.brain.act?.name ?? d.mode})` : d.brain.act?.name ?? e.kind ?? d.mode); ph.dmg[k] = (ph.dmg[k] ?? 0) + e.damage; ph.hits++; lastHits.push(`${(game.time - t0).toFixed(1)} ${k} ${Math.round(e.damage)}>${Math.round(p.hp)}`); if (lastHits.length > 6) lastHits.shift(); }
+    if (ev === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) ph.cues.push(game.time);
+    if (ev === 'dragon:windup' && e?.name) ph.picks[e.name] = (ph.picks[e.name] ?? 0) + 1;
+    if (ev === 'dragon:postureBreak') { ph.breaks++; if (game.world.forest.foundry?.molten?.at?.(d.position.x, d.position.z)) ph.poolBreaks++; }
+    if (ev === 'player:parry') { n.parries++; if (e?.perfect) n.perfect++; }
+    if (ev === 'player:perfectDodge') n.dodges++;
+    if (ev === 'player:heal') n.heals++;
+    if (ev === 'dragon:plunged') n.blows++;
+  };
+  const st = d.brain.stats, B = d.parts.boost;
+  per[1].tanks = tanksIdle();
+  let snap = { links: st.links, chains: st.chains, rests: st.rests, steps: B.stats.steps }, cur = d.phase;
+  const flush = (ph) => { const q = per[ph]; q.links += st.links - snap.links; q.chains += st.chains - snap.chains; q.rests += st.rests - snap.rests; q.steps += B.stats.steps - snap.steps; snap = { links: st.links, chains: st.chains, rests: st.rests, steps: B.stats.steps }; };
+  t0 = game.time;
+  let outcome = 'time', thrown = null, lastCue = game.time, soft = [], sameMode = 0, prevKey = '';
+  const errs0 = errors.length;
+  for (let i = 0, N = Math.round(secs / DT); i < N; i++) {
+    try {
+      tuneBody(G, bot, god);
+      G.tick(DT);
+    } catch (err) { thrown = String(err?.stack ?? err).split('\n').slice(0, 2).join(' | '); outcome = 'THROW'; break; }
+    if (d.phase !== cur) { flush(cur); cur = d.phase; per[cur].tanks = tanksIdle(); }
+    per[d.phase].T += game.dt;
+    { const mk = d.mode === 'react' ? `react:${d.brain.react?.kind}` : d.mode === 'act' ? (d.brain.act && d.brain.act.t >= d.brain.act.recoveryStart ? 'act:recovery' : 'act') : d.mode === 'foot' ? (B.step ? 'foot:step' : 'foot') : d.mode; const mt = per[d.phase].modeT; mt[mk] = (mt[mk] ?? 0) + game.dt; }
+    const pc = per[d.phase].cues;
+    if (pc.length && pc[pc.length - 1] > lastCue) lastCue = pc[pc.length - 1];
+    const key = `${d.mode} ${d.brain.act?.name ?? d.brain.react?.kind ?? ''}`;
+    sameMode = key === prevKey ? sameMode + game.dt : 0;
+    prevKey = key;
+    if (game.state === 'boss' && p.alive && d.mode !== 'dead' && d.mode !== 'dying' && (game.time - lastCue > 10 || sameMode > 12)) { soft.push(`${(game.time - t0).toFixed(0)}s ${key}`); lastCue = game.time; sameMode = 0; }
+    if (d.mode === 'dead' || d.mode === 'dying') { outcome = 'won'; break; }
+    if (!p.alive) { outcome = 'died'; break; }
+  }
+  flush(cur);
+  G.watch = null;
+  G.defend = null;
+  const T = game.time - t0;
+  const rows = {};
+  for (const ph of [1, 2, 3, 4]) {
+    const q = per[ph];
+    if (!(q.T > 0.5)) continue;
+    const gaps = q.cues.slice(1).map((t, i) => t - q.cues[i]);
+    rows[ph] = { tanks: q.tanks, modeT: q.modeT, T: q.T, perMin: (q.cues.length * 60) / q.T, gapMax: gaps.length ? Math.max(...gaps) : q.T, picks: q.picks, dmg: q.dmg, hits: q.hits, links: q.links, chains: q.chains, rests: q.rests, steps: q.steps, breaks: q.breaks, poolBreaks: q.poolBreaks };
+  }
+  return { seed, bot, outcome, T, phase: d.phase, bar: d.hp / d.maxHp, hp: p.hp, flasks: p.maxFlasks - p.flasks, rows, soft, thrown, lastHits, nan: [...G.payload], errs: errors.length - errs0, ...n };
+}
+
+async function scenarioTuneFight() {
+  const bots = (process.env.GCD_TBOTS ?? TUNE_BOTS.join(',')).split(',').filter((b) => TUNE_BOTS.includes(b));
+  const seeds = (process.env.GCD_TSEEDS ?? '4242,7,99,1337,2024,11,23,555,808,31337').split(',').map(Number).filter(Number.isFinite);
+  const secs = Number(process.env.GCD_TSECS ?? 480), skill = Number(process.env.GCD_TSKILL ?? 0.95), god = !!process.env.GCD_TGOD;
+  out(`\n== scenario TUNEFIGHT (whole fights, wake to death: bots ${bots.join(', ')}; seeds ${seeds.join(', ')}; skill ${skill}${god ? '; GOD MODE' : ''}; cap ${secs} s) ==`);
+  const undo = tuneOverlay();
+  const all = [];
+  try {
+    for (const bot of bots) {
+      for (const seed of seeds) {
+        const r = tuneRun(seed, bot, { secs, skill, god });
+        all.push(r);
+        const ph = Object.entries(r.rows).map(([k, x]) => `P${k} ${x.T.toFixed(0)}s ${x.perMin.toFixed(0)}c/m gap ${x.gapMax.toFixed(1)} L${x.links}/C${x.chains} st${x.steps} br${x.breaks}${x.poolBreaks ? `(pool ${x.poolBreaks})` : ''} tk${x.tanks} dmg ${Object.values(x.dmg).reduce((a, v) => a + v, 0).toFixed(0)}`).join(' | ');
+        out(`   ${bot.padEnd(6)} ${String(seed).padEnd(5)} ${r.outcome.padEnd(5)} ${r.T.toFixed(0).padStart(4)} s · P${r.phase} bar ${(r.bar * 100).toFixed(0)}% · hp ${Math.round(r.hp)} flasks ${r.flasks} · parries ${r.parries} (perf ${r.perfect}) dodges ${r.dodges} blows ${r.blows}${r.soft.length ? ` · SOFT ${r.soft.join('; ')}` : ''}${r.thrown ? ` · THROW ${r.thrown}` : ''}${r.nan.length ? ` · NaN ${r.nan.join(',')}` : ''}${r.errs ? ` · ${r.errs} console errors` : ''}${r.outcome === 'died' ? ` · last hits ${r.lastHits.join(', ')}` : ''}`);
+        out(`          ${ph}`);
+      }
+    }
+  } finally { undo(); }
+  // the summary per bot and phase
+  out('   SUMMARY  bot · won/died/time · mean fight s · per phase: mean s · cues/min · gap max · links+chains a min · steps a min · breaks');
+  for (const bot of bots) {
+    const rs = all.filter((r) => r.bot === bot);
+    const k = (o) => rs.filter((r) => r.outcome === o).length;
+    const parts = [1, 2, 3, 4].map((ph) => {
+      const xs = rs.map((r) => r.rows[ph]).filter(Boolean);
+      if (!xs.length) return `P${ph} -`;
+      const m = (f) => xs.reduce((a, x) => a + f(x), 0) / xs.length;
+      return `P${ph} ${m((x) => x.T).toFixed(0)}s ${m((x) => x.perMin).toFixed(0)}c/m gap ${Math.max(...xs.map((x) => x.gapMax)).toFixed(1)} lk ${m((x) => ((x.links + x.chains) * 60) / x.T).toFixed(1)} st ${m((x) => (x.steps * 60) / x.T).toFixed(1)} br ${m((x) => x.breaks).toFixed(1)}`;
+    });
+    out(`   ${bot.padEnd(6)} ${k('won')}/${k('died')}/${k('time') + k('THROW')} · ${(rs.reduce((a, r) => a + r.T, 0) / (rs.length || 1)).toFixed(0)} s · ${parts.join(' | ')}`);
+    for (const ph of [1, 2, 3, 4]) {
+      const picks = {}, dmg = {};
+      for (const r of rs) { const x = r.rows[ph]; if (!x) continue; for (const [m, v] of Object.entries(x.picks)) picks[m] = (picks[m] ?? 0) + v; for (const [m, v] of Object.entries(x.dmg)) dmg[m] = (dmg[m] ?? 0) + v; }
+      if (!Object.keys(picks).length) continue;
+      out(`      P${ph} picks: ${Object.entries(picks).sort((a, b) => b[1] - a[1]).map(([m, v]) => `${m} ${v}`).join(', ')}`);
+      const mt = {};
+      for (const r of rs) { const x = r.rows[ph]; if (!x) continue; for (const [m, v] of Object.entries(x.modeT)) mt[m] = (mt[m] ?? 0) + v; }
+      const mtT = Object.values(mt).reduce((a, v) => a + v, 0) || 1;
+      out(`      P${ph} time: ${Object.entries(mt).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([m, v]) => `${m} ${((v * 100) / mtT).toFixed(0)}%`).join(' · ')}`);
+      if (Object.keys(dmg).length) out(`      P${ph} damage: ${Object.entries(dmg).sort((a, b) => b[1] - a[1]).map(([m, v]) => `${m} ${v.toFixed(0)}`).join(', ')}`);
+    }
+  }
+  if (process.env.GCD_TOUT) fs.writeFileSync(process.env.GCD_TOUT, JSON.stringify(all, null, 1));
+  assert(all.every((r) => !r.thrown && !r.nan.length), `no throw, no NaN in ${all.length} fights`);
+}
+
+/** PACE: a god-mode defender (bPaceDefender: it guards every normal / blue cue, rolls a red one, never
+ *  swings) roams 2.5 / 5 / 9 m from him; per phase over GCD_TPSECS s (default 40) and GCD_TPSEEDS (default
+ *  4242,7,99): cues a minute, the longest gap between two cues, the moves, links, jet steps, two cues of
+ *  different answers under 0.3 s apart (conflicts). Asserts TUNING.pressure.meter (tuning.js). */
+async function scenarioTunePace() {
+  const SECS = Number(process.env.GCD_TPSECS ?? 40);
+  const SEEDS = (process.env.GCD_TPSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  out(`\n== scenario TUNEPACE (the pace meter: a god-mode guarding bot that roams 2.5 / 5 / 9 m, ${SECS} s a phase, seeds ${SEEDS.join(', ')}) ==`);
+  const undo = tuneOverlay();
+  const rows = [];
+  try {
+    for (const seed of SEEDS) {
+      for (let ph = 1; ph <= 4; ph++) {
+        const G = build(seed, true);
+        const { game } = G;
+        const d = game.dragon, p = game.player, B = bo(G);
+        duel(G, { dist: 3, ai: true, form: ph });
+        p.debug.god = true;
+        p.debug.noRiposte = true;
+        G.defend = bPaceDefender(G);
+        Math.random = mulberry32(seed * 7 + ph);
+        const flashes = [], picks = {};
+        G.watch = (n, e) => {
+          if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) flashes.push([game.time, e.tell === TELL.RED || e.tell === TELL.BLACK ? 'D' : 'G', e.attack]);
+          if (n === 'dragon:windup' && e?.name) picks[e.name] = (picks[e.name] ?? 0) + 1;
+        };
+        const roam = mulberry32(seed * 31 + ph), goal = { r: 2.5, a: 0, until: -1 };
+        const t0 = game.time, s0 = { ...d.brain.stats }, st0 = B.stats.steps;
+        for (let i = 0; i < Math.round(SECS / DT); i++) {
+          const rolled = G.defend.act();
+          if (game.time > goal.until) {
+            goal.r = [2.5, 5, 9][Math.floor(roam() * 3)];
+            goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+            goal.until = game.time + 4;
+          }
+          if (!rolled && p.state !== 'roll') {
+            const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+            const k = Math.hypot(gx, gz) > 12 ? 12 / Math.hypot(gx, gz) : 1;
+            const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+            G.input.axis = l > 0.5 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+          }
+          game.mouseGround.set(d.position.x, 0, d.position.z);
+          G.tick(DT);
+          if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+        }
+        G.defend = null;
+        G.watch = null;
+        const T = game.time - t0;
+        const ts = [t0, ...flashes.map((f) => f[0]), t0 + T];
+        let gapMax = 0;
+        for (let i = 1; i < ts.length; i++) gapMax = Math.max(gapMax, ts[i] - ts[i - 1]);
+        let conflicts = 0;
+        for (let i = 0; i < flashes.length; i++) for (let j = i + 1; j < flashes.length && flashes[j][0] - flashes[i][0] < 0.3; j++) if (flashes[i][1] !== flashes[j][1] && flashes[i][2] !== flashes[j][2]) conflicts++;
+        const st = d.brain.stats;
+        rows.push({ seed, ph, T, perMin: (flashes.length * 60) / T, gapMax, conflicts, links: st.links - s0.links, chains: st.chains - s0.chains, steps: B.stats.steps - st0, picks: Object.values(picks).reduce((a, v) => a + v, 0), top: Object.entries(picks).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} ${v}`).join(', '), nan: G.payload.size });
+      }
+    }
+  } finally { undo(); }
+  out('   seed ph cue/min gapMax picks links chains steps clash  top moves');
+  for (const r of rows) out(`   ${String(r.seed).padStart(5)} ${r.ph} ${r.perMin.toFixed(1).padStart(7)} ${r.gapMax.toFixed(2).padStart(6)} ${String(r.picks).padStart(5)} ${String(r.links).padStart(5)} ${String(r.chains).padStart(6)} ${String(r.steps).padStart(5)} ${String(r.conflicts).padStart(5)}  ${r.top}`);
+  const mean = (ph, k) => { const rs = rows.filter((r) => r.ph === ph); return rs.reduce((a, r) => a + r[k], 0) / (rs.length || 1); };
+  for (let ph = 1; ph <= 4; ph++) out(`   mean P${ph}: ${mean(ph, 'perMin').toFixed(1)} cues/min · longest gap ${Math.max(...rows.filter((r) => r.ph === ph).map((r) => r.gapMax)).toFixed(2)} s · links ${(mean(ph, 'links') * 60 / SECS).toFixed(1)} / chains ${(mean(ph, 'chains') * 60 / SECS).toFixed(1)} a minute · jet steps ${(mean(ph, 'steps') * 60 / SECS).toFixed(1)} a minute`);
+  assert(rows.every((r) => !r.nan), 'no NaN in any event');
+  const A = TUNING.pressure.meter;
+  if (!A) { out('   (no TUNING.pressure.meter: measured only)'); return; }
+  const pp = (v, ph) => (Array.isArray(v) ? v[Math.min(v.length, Math.max(1, ph)) - 1] : v);
+  for (let ph = 2; ph <= 4; ph++) assert(mean(ph, 'perMin') >= mean(ph - 1, 'perMin') * pp(A.rampMean, ph), `the seeds' mean: P${ph} at least x${pp(A.rampMean, ph)} P${ph - 1}'s cues a minute (${mean(ph - 1, 'perMin').toFixed(1)} → ${mean(ph, 'perMin').toFixed(1)})`);
+  for (const r of rows) {
+    assert(r.perMin >= pp(A.minRate, r.ph), `seed ${r.seed} P${r.ph}: ${r.perMin.toFixed(1)} cues a minute >= ${pp(A.minRate, r.ph)}`);
+    assert(r.gapMax <= pp(A.maxGap, r.ph), `seed ${r.seed} P${r.ph}: longest gap ${r.gapMax.toFixed(2)} s <= ${pp(A.maxGap, r.ph)} s`);
+    assert(r.conflicts === 0, `seed ${r.seed} P${r.ph}: no two cues of different moves needing different answers within 0.3 s (${r.conflicts})`);
+  }
+  if (A.steps) for (let ph = 3; ph <= 4; ph++) assert(mean(ph, 'steps') >= mean(ph - 1, 'steps') * A.steps, `the jet step more frequent with each phase: P${ph} ${mean(ph, 'steps').toFixed(1)} >= P${ph - 1} ${mean(ph - 1, 'steps').toFixed(1)} x ${A.steps}`);
+}
+
+/** TRAINING: every situation of the Lab's Training catalogue that applies to him plays out and shows what
+ *  it promises (city.mjs's TRAINING; GCD_TONLY=id,id runs those only). */
+async function scenarioTuneTraining() {
+  out('\n== scenario TUNETRAINING (every Training situation for him plays out and shows what it promises; his roles: training.js ROLES.foundry) ==');
+  const G = build(SEED, true);
+  const { game } = G;
+  duel(G, { dist: 4 });
+  const T = game.lab.training;
+  const { bossKinds } = await imp('src/dev/training.js');
+  const kinds = bossKinds(game);
+  assert(kinds.has('saint') && kinds.has('duel'), `his own boss kind (${[...kinds].join(', ')})`);
+  const only = process.env.GCD_TONLY?.split(',');
+  const L = only ? only.map((id) => T.find(id)).filter(Boolean) : T.list();
+  const bad = [];
+  for (const s of L) {
+    T.run(s.id);
+    let frames = 0;
+    while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++; }
+    const r = T.lastResult;
+    const ok = T.ph === 'done' && r?.id === s.id && r.ok;
+    if (!ok || process.env.GCD_TRACE) out(`   ${ok ? 'ok ' : 'BAD'} ${s.cat} · ${s.name}: ${T.ph} in ${(frames * DT).toFixed(1)} s · missing ${JSON.stringify(r?.missing ?? '?')} · hero ${game.player.state} · boss ${game.dragon.state}`);
+    if (!ok) bad.push(s.id);
+  }
+  T.stop();
+  out(`     ${L.length} situations: ${L.map((s) => s.id).join(', ')}`);
+  assert((only || L.length >= 20) && !bad.length, `every situation plays out and shows what it promises (${L.length - bad.length} of ${L.length}${bad.length ? `; not: ${bad.join(', ')}` : ''})`);
+}
+
 // ================================================================== THE SCENARIOS (one entry per line, each agent in its block)
 const S = {
   // --- core
@@ -3123,9 +3427,12 @@ const S = {
   trChange: scenarioTrChange,
   trUse: scenarioTrUse,
   // --- tuning
+  tuneFight: scenarioTuneFight,
+  tunePace: scenarioTunePace,
+  tuneTraining: scenarioTuneTraining,
 };
 // (opt-in scenarios: listed here, run only by name; tests/run.mjs may run one as a process of its own)
-const OPT_IN = new Set([]);
+const OPT_IN = new Set(['tuneFight']);
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k) && !SKIP.has(k)) : SCEN.split(',');
 for (const k of list) {
