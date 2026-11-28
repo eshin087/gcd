@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { boxGeometry, kiteGeometry, mergeGeometries, sub, lerp } from '../../player/heroGeo.js';
 import { lookOf } from '../duelist/lookSwitch.js';
 
-// Varr Nihil drawn after the reference pack (docs/art/character-packs-v04/varr-nihil, ADR-276).
+// Varr Nihil drawn after the reference pack (docs/art/character-packs-v04/varr-nihil, ADR-277).
 // Two switches, each '0' (the figure and the motion as they ship) until the owner picks:
 //   ?lordRef=a      his look: the hood, the closed helm, the armour, the war-skirt and the whole
 //                   crimson-lined cape kept in every form (the owner's instruction: no form-by-form

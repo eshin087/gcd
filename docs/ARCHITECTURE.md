@@ -5631,7 +5631,7 @@ lives: { total: 4, left }      // the forms still to beat (this one included); h
 lit: 0..1                      // how far the blades are lit (they extend from the hilt)
 blades: { A, B, hiltB, Q, off, L, cores }   // main blade, the staff's second blade + joined hilt, the cross-hilt's
                                // side blades, the off-hand saber's joint and its blade (gear.js names them);
-                               // cores: [[blade, slit]] the split blades' dark slits (`?lordRef=a`, ADR-276;
+                               // cores: [[blade, slit]] the split blades' dark slits (`?lordRef=a`, ADR-277;
                                // empty otherwise), kept shown and scaled with their blades by _showForm
 _onHpZero()                    // an empty bar BREAKS him (no death): on one knee for posture.breakTime
 onExecute({ damage })          // the DEATHBLOW: the form ends ('dragon:plunged {execution, deathblow, form}');

@@ -268,7 +268,7 @@ export class LordFx extends DuelFx {
     // across the blade on screen
     const cx = -sy / sl, cy = sx / sl, ox = (A.rx * cx + A.ux * cy) * m, oy = (A.ry * cx + A.uy * cy) * m, oz = (A.rz * cx + A.uz * cy) * m;
     if (split) {
-      // (ADR-276, `?lordRef`: the split blade: two rails of steel half a cell to each side, meeting at
+      // (ADR-277, `?lordRef`: the split blade: two rails of steel half a cell to each side, meeting at
       // the point, and the dark slit between them: no stroke down the middle)
       const h = 0.62, ex = a.x + dx * k, ey = a.y + dy * k, ez = a.z + dz * k;
       // (each rail dimmer than the single stroke it replaces, and the two meeting at the point at the same
@@ -1075,7 +1075,7 @@ export class LordFx extends DuelFx {
   _drawGlaive(s) {
     const c = Math.cos(s.spin), sn = Math.sin(s.spin), R = 0.95;
     if (refLook()) {
-      // (ADR-276, `?lordRef`: the thrown blade is the split blade too: two rails, the slit dark)
+      // (ADR-277, `?lordRef`: the thrown blade is the split blade too: two rails, the slit dark)
       const S = this._screen(s.x, s.y, s.z), h = (S.ok ? S.mpp : 0.025) * (S.cw ?? 5) * 0.55;
       for (const e of [-1, 1]) this._ink(s.x - c * R * 0.86 - sn * h * e, s.y, s.z - sn * R * 0.86 + c * h * e, s.x + c * R * 0.86 - sn * h * e, s.y, s.z + sn * R * 0.86 + c * h * e, 0, 0.85);
     } else this._ink(s.x - c * R * 0.86, s.y, s.z - sn * R * 0.86, s.x + c * R * 0.86, s.y, s.z + sn * R * 0.86, 0, 0.85);

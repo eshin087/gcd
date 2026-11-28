@@ -792,7 +792,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] A joint-by-joint audit of the new poses (done for the sword: ADR-226, `audit`); a palm strike for Shen Hui's free hand
   - [ ] On the iPhone: frame rate in the Lord's fourth form with the weather and Starless Night
   - [ ] Remove the looks that were turned down and their switches, once the picks have been played
-  - [x] Varr Nihil after the reference pack (ADR-276): his body whole in every form, split blades, the sash, the cape;
+  - [x] Varr Nihil after the reference pack (ADR-277): his body whole in every form, split blades, the sash, the cape;
         the poses after the strips over the same timing (`?lordRef=a`, `?lordRefMove=a`)
   - [ ] The owner picks `?lordRef` / `?lordRefMove` from the films; a per-move pass on what they name
 

@@ -8,7 +8,7 @@
 //   npm run perf -- --levels ash,city one or more (ids or aliases)
 //   npm run perf -- --4k              also 3840 x 2160
 //   npm run perf -- --black           with a black blow's blackout pinned full on (?black=a, ADR-271): its cost
-//   npm run perf -- --query lordRef=a  extra URL parameters for every level (a look switch's cost, ADR-276)
+//   npm run perf -- --query lordRef=a  extra URL parameters for every level (a look switch's cost, ADR-277)
 //   npm run perf -- --save            keep this run as this machine's baseline (.perf/baseline.json, not committed)
 //   npm run perf -- --check           exit 1 when a level draws over 10 % more calls or triangles than the baseline
 //

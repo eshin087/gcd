@@ -71,7 +71,7 @@ export function saberParts() {
   ]);
   const q = (s) => limbGeometry({ length: S.quillon, r0: S.r * 0.9, r1: S.r * 0.55, radial: 5, rings: 3 }).rotateY((s * Math.PI) / 2).translate(s * 0.02, 0, S.guard + 0.012);
   if (refLook()) {
-    // (ADR-276, `?lordRef`: every blade two red-white rails with a dark slit between them (`core*`, drawn
+    // (ADR-277, `?lordRef`: every blade two red-white rails with a dark slit between them (`core*`, drawn
     // dark), a short cross-guard of dark metal on the hilt)
     const A = splitBlade(1), Bk = splitBlade(-1), Q = splitQuillons(S.quillon, S.guard + 0.012);
     return {
@@ -223,7 +223,7 @@ function buildPlate({ spine, chest, M, BODY, REST, mesh }) {
     mesh(spine, ring(0.031, 0.031, 0.005, 14).rotateX(Math.PI / 2).translate(0, y, z), M.flask);
     mesh(spine, sub(ring(0.02, 0.02, 0.007, 12).rotateX(Math.PI / 2).translate(0, y, z + 0.002), 1), M.armor);
   }
-  // (ADR-276, `?lordRef`: the crimson sash from his left shoulder to the clasp on his right breast)
+  // (ADR-277, `?lordRef`: the crimson sash from his left shoulder to the clasp on his right breast)
   if (refLook()) {
     const S = sashGeometry(CU, ySp);
     mesh(spine, S.band, M.piping); // (front faces: `lining` draws only the inside of a sheet)

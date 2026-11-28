@@ -1446,7 +1446,7 @@ const compileClips = (K, edit = null) => {
 };
 export const CLIPS_BY_FORM = FORM_POSES.map((K) => compileClips(K));
 
-// ---------------------------------------------------------------- after the reference pack (ADR-276)
+// ---------------------------------------------------------------- after the reference pack (ADR-277)
 // `?lordRefMove=a` (refLook.js; '0' = as shipped): the reference pack's poses over whatever keys the
 // shipped switches pick (ADR-226's held tells, ADR-251's form, the pace's holds): the same key times, the
 // same eases, so every windup, impact, active window, zone, flash and cue lands where it did (the
@@ -1563,7 +1563,7 @@ const makeRealisers = (SETS, ref) => SETS.map((K, i) => makeRealise({
   TUNING, MOVES, compileClip: (keys, dur) => K.compileClip(keys, dur), completeBeat: K.completeBeat,
   keysOf: (b) => {
     let k = keysNow(b);
-    // (ADR-276: the reference's poses over the keys the shipped switches chose; the same key times)
+    // (ADR-277: the reference's poses over the keys the shipped switches chose; the same key times)
     if (ref) k = refKeysOf(b, k ?? b.keys);
     if (!paceOn()) return k;
     const hold = PACE[i].get(b) ?? 0;

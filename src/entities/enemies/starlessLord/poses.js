@@ -69,7 +69,7 @@ const poseSet = (G, i) =>
   });
 export const FORM_POSES = GUARDS.map(poseSet);
 
-// ---------------------------------------------------------------- after the reference pack (ADR-276)
+// ---------------------------------------------------------------- after the reference pack (ADR-277)
 // `?lordRefMove=a` (refLook.js): the reference's grounded bearing: every guard lower on wider feet (the
 // knees bent, the weight down: its "slow grounded" stance), form 1's free hand a fist at his side
 // (01 T07 / G1), form 3's hands wide on the staff (lord.js: the off hand down the joined hilt), form 4
@@ -112,7 +112,7 @@ export function glidePose(p, A) {
   K.duelStance(p, A);
   const mx = clamp(A.mx ?? 0, -1, 1), mz = clamp(A.mz ?? 1, -1, 1);
   const t = A.time ?? 0, bob = Math.sin(t * 2.4), sway = Math.sin(t * 1.3 + 0.8);
-  // (ADR-276, `?lordRefMove`: 02 L2 / L3: inclined further into the glide, the legs trailing further)
+  // (ADR-277, `?lordRefMove`: 02 L2 / L3: inclined further into the glide, the legs trailing further)
   const R = refMove() ? GLIDE_REF : GLIDE_0;
   p[P.bodyY] = -0.03 + 0.018 * bob;
   p[P.bodyZ] = R.bz * mz;

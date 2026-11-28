@@ -39,7 +39,7 @@ import { clashOn, clashRegenK } from '../../../combat/clashDance.js';
 //   - the throne: he sits until the hero comes through the door, rises, and leaps down to the seal.
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
-// (ADR-276, `?lordRefMove`: the staff held wide: in form 3 the off hand sits down the joined hilt, not
+// (ADR-277, `?lordRefMove`: the staff held wide: in form 3 the off hand sits down the joined hilt, not
 // beside the sword hand (03 / 06 F6, 15 B3); `offAt` m up the blade from the grip, negative = toward the
 // back blade)
 const REF_STAFF_HAND = -0.14;
@@ -112,7 +112,7 @@ export const LORD_KIT = Object.freeze({
 /** His mind: the duelist's, with each form's own reaction clips. */
 class LordBrain extends DuelBrain {
   get C() {
-    return clipsOf(clamp(this.d.phase | 0, 1, CLIPS_BY_FORM.length)); // (ADR-276: the reference's while ?lordRefMove is on)
+    return clipsOf(clamp(this.d.phase | 0, 1, CLIPS_BY_FORM.length)); // (ADR-277: the reference's while ?lordRefMove is on)
   }
   set C(v) {} // (the base constructor assigns the kit's set: his is per form)
 
@@ -168,7 +168,7 @@ export class StarlessLord extends Duelist {
       if (fu.uGlowMask) fu.uGlowMask.value = 1;
     }
     if (M.lining?.uniforms?.uInk) M.lining.uniforms.uInk.value.setRGB(0.7, 0.1, 0.08);
-    // (ADR-276, `?lordRef`: the reference's crimson reads at a glance: the cape's lining, the sash, the
+    // (ADR-277, `?lordRef`: the reference's crimson reads at a glance: the cape's lining, the sash, the
     // hems printed in a stronger red, the same hue)
     if (refLook()) {
       const ink = (m, r, g, b) => m?.uniforms?.uInk?.value.setRGB(r, g, b);
@@ -195,7 +195,7 @@ export class StarlessLord extends Duelist {
     r.body.add(off.root);
     this.blades.off = off.root;
     this.blades.L = off.blade;
-    // (ADR-276, `?lordRef`: the split blades' dark slits, each kept with its blade by _showForm)
+    // (ADR-277, `?lordRef`: the split blades' dark slits, each kept with its blade by _showForm)
     const cores = [[this.blades.A, find('lordCoreA')], [this.blades.B, find('lordCoreB')], [this.blades.Q, find('lordCoreQ')], [off.blade, off.core]];
     this.blades.cores = cores.filter(([b, c]) => b && c);
     this._split = this.blades.cores.length > 0;
@@ -535,7 +535,7 @@ export class StarlessLord extends Duelist {
     const act = this.brain.act, striking = !!act && act.striking && act.t >= act.striking.impact - 0.06 && act.t <= act.striking.end + 0.1;
     const hot = this.phase >= 4 ? 1.5 : 1;
     const glow = (1.2 + (striking ? 0.8 : 0)) * hot * this.lit;
-    // (ADR-276, `?lordRef`: the split blade's rails bloom a little less, so the dark slit between them reads; the
+    // (ADR-277, `?lordRef`: the split blade's rails bloom a little less, so the dark slit between them reads; the
     // bloom is most of the blade's red at 720p: halved, the blades printed white)
     const want = this._split ? glow * 0.8 : glow;
     u.uGlow.value = dt > 0 ? damp(u.uGlow.value, want, 14, dt) : want;

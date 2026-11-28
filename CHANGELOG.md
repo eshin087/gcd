@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and forty-five pieces of work since 0.4.0:
-- **Varr Nihil after the reference pack, to try** (2026-11-28, ADR-276). *Added (options, off by default: the owner
+- **Varr Nihil after the reference pack, to try** (2026-11-28, ADR-277). *Added (options, off by default: the owner
   picks):* `?lordRef=a` draws Varr Nihil after the owner's reference pack (`docs/art/character-packs-v04/varr-nihil`):
   his hood, closed helm, plate, war-skirt and the whole crimson-lined cape kept in all four forms (no form-by-form
   wear), every blade split into two red-white rails with a dark slit between them (the one sword, the twin blades,
@@ -1579,6 +1579,12 @@ One hundred and forty-five pieces of work since 0.4.0:
   thuds onto its side, the head slaps down last and the wings crumple).
 
 ### Changed
+- **Agents no longer run the full test set before a PR; `npm test -- --changed`** (2026-11-28, ADR-276):
+  before opening a PR, an agent runs the tasks that cover what its branch changed (`--changed`;
+  `--changed --list` shows the pick and why, `--base <ref>` compares with another ref) and leaves the
+  full set to CI, which still runs every task on every PR before it can merge. The rules are in
+  `tests/changed.mjs`; a file they don't know, or shared code (combat, the hero, the duelist engine,
+  core, render, main.js), runs everything. `changedcheck` fails when a boss or a level has no rule.
 - **Local test runs go easy on the PC** (2026-11-25, ADR-205): off CI, `npm test` runs its workers at
   low priority and every run on the machine shares 8 slots (`ABYSS_JOBS`); `--only <names>` runs a subset.
 - **CI's long checks split; every PR auto-merges when green** (2026-11-24, ADR-185): the Starless Lord's

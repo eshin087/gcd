@@ -25,7 +25,7 @@ import { refLook } from './refLook.js';
 /** The option chosen: { art, dress }. */
 export function lordLookNow() {
   const o = lookOf('lordLook', '0', 'b');
-  // (ADR-276, `?lordRef`: the owner's reference keeps the hood, the helm, the plate and the whole cape in
+  // (ADR-277, `?lordRef`: the owner's reference keeps the hood, the helm, the plate and the whole cape in
   // every form: no dressing, whatever this switch says)
   return { art: o === 'a' || o === 'c', dress: (o === 'b' || o === 'c') && !refLook() };
 }

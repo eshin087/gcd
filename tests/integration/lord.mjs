@@ -2356,7 +2356,7 @@ const S = {
   lordref: scenarioLordRef,
 };
 /**
- * LORDREF (ADR-276): Varr Nihil after the reference pack (docs/art/character-packs-v04/varr-nihil).
+ * LORDREF (ADR-277): Varr Nihil after the reference pack (docs/art/character-packs-v04/varr-nihil).
  * `?lordRefMove=a` changes poses only: every move, form, branch and flurry count realised with it on and off
  * times every beat the same (start, impact, end, windup, hold, active, follow, close, flash, the move's end
  * and recovery) under the shipped switches and with them all off; the same seeded fight against the
@@ -2365,7 +2365,7 @@ const S = {
  * split (each with its dark slit, shown and scaled with it), no form-by-form dressing, his body whole.
  */
 async function scenarioLordRef() {
-  out('\n== scenario LORDREF (ADR-276: the reference pack behind ?lordRef / ?lordRefMove: the look and the poses, never the timing) ==');
+  out('\n== scenario LORDREF (ADR-277: the reference pack behind ?lordRef / ?lordRefMove: the look and the poses, never the timing) ==');
   const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
   const rnd = (s) => () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
   const key = (A) => JSON.stringify([A.end, A.recoveryStart, A.hits, A.beats.map((b) => [b.index, b.start, b.impact, b.end, b.W, b.H, b.A, b.S, b.F, b.close, b.flash, b.feint, b.last])]);
