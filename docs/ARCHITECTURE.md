@@ -533,6 +533,8 @@ Render helpers for creature modules:
     (overlaps ADD UP: ~0.4 a cool rim, ~1 the body, 2+ the white heart; default `heatEnd` 0.35 x
     `heat`; the last sixth of its life it fades out); `kind` `'fire'` (default) | `'void'` |
     `'steel'` | `'smoke'` or a `FIRE_KIND` number; `gravity` > 0 rises. NaN positions are dropped.
+    A number kind plus `FIRE_SEEN` (4) is drawn SEEN: past the soft depth test, over the scene (a
+    timing cue only: DuelFx's white / blue glint, ADR-274).
     `clear()`, `update(dt)` (main.js, with `fxDt`), `count`, `max` (6000), `active`.
   - Pipeline side: `init(type, depthTexture)`, `setSize(W, H, cell, art, minCell = cell)`,
     `setCell(cell, art)`, `render(renderer, camera,

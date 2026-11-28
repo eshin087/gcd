@@ -34,6 +34,17 @@ const DEATH = {
   head1: 1.22, // the head hits the ground
   breath: [1.75, 2.9], // the last heave of the chest
 };
+// the head swings round the neck's base as it falls (`?deathNeck=0`: the straight line before, 2026-11-27)
+const DEATH_ARC = (() => {
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').get('deathNeck') !== '0';
+  } catch {
+    return true;
+  }
+})();
+const DEATH_REACH = [0.86, 1.05]; // the head's distance from the neck's base at most, x the neck's length: in the throe, on the ground
+const _qI = new THREE.Quaternion();
+const _lookG = new THREE.Vector3();
 function deathPose(d, a, T) {
   const pose = d.pose;
   const u = clamp((T - DEATH.fall0) / (DEATH.fall1 - DEATH.fall0), 0, 1);
@@ -51,20 +62,53 @@ function deathPose(d, a, T) {
   pose.restep = 0;
   pose.swell = T > DEATH.breath[0] && T < DEATH.breath[1] ? 0.85 * Math.sin((Math.PI * (T - DEATH.breath[0])) / (DEATH.breath[1] - DEATH.breath[0])) : 0;
   // head: flung up and back in the throe, then it falls (accelerating) to the ground ahead and to the
-  // right of the chest, a small bounce on landing; the neck follows it down
+  // right of the chest, a small bounce on landing; the neck follows it down. It SWINGS on the neck: its
+  // goal turns round the neck's base (the direction slerped, the distance eased), so the neck falls as
+  // one curve; a straight line from the throe to the ground pulled the neck up into a pole with the
+  // head hinged ~60° off its end ("looks like the neck is broken", 2026-11-27; DEATH_ARC)
+  const nb = d.rig.pt.neckBase;
   if (!a.head0Set) {
     a.head0Set = true;
-    d.rootPt(a.head0, 0, 6.1, 2.1);
+    // (the throe's head: up and a little back over the shoulders, so the neck arches into the roar;
+    // straight above its base (0, 6.1, 2.1, the head flung 1.7 m up) it stood as a pole)
+    if (DEATH_ARC) d.rootPt(a.head0, 0, 5.4, 3.2);
+    else d.rootPt(a.head0, 0, 6.1, 2.1);
     d.rootPt(a.head1, -2.4, 0.72, 4.3);
+    a.dir0 = new THREE.Vector3().subVectors(a.head0, nb);
+    a.r0 = a.dir0.length();
+    a.dir0.multiplyScalar(1 / Math.max(1e-6, a.r0));
+    a.arcQ = new THREE.Quaternion();
+    a.arcD = new THREE.Vector3();
   }
   const v = clamp((T - DEATH.head0) / (DEATH.head1 - DEATH.head0), 0, 1);
   const th = T - DEATH.head1;
   const hb = th > 0 && th < 0.24 ? Math.sin((Math.PI * th) / 0.24) : 0;
-  pose.head = pose.headTarget.lerpVectors(a.head0, a.head1, Math.pow(v, 1.3));
+  const e = Math.pow(v, 1.3);
+  if (DEATH_ARC) {
+    const to = a.arcD.subVectors(a.head1, nb);
+    const r1 = to.length();
+    if (r1 > 1e-6 && Number.isFinite(r1 + a.r0)) {
+      to.multiplyScalar(1 / r1);
+      a.arcQ.setFromUnitVectors(a.dir0, to);
+      a.arcQ.slerp(_qI, 1 - e); // (identity at e = 0: the throe; the whole turn at e = 1: the ground)
+      // always within the neck's reach: the throe's goal lay 8 m off a 6 m neck, which pulled it
+      // straight up like a pole; inside it the chain bends as one curve instead of buckling
+      const L = d.rig.neck.len * d.rig.neck.n;
+      const r = lerp(Math.min(a.r0, DEATH_REACH[0] * L), Math.min(r1, DEATH_REACH[1] * L), e);
+      pose.head = pose.headTarget.copy(a.dir0).applyQuaternion(a.arcQ).multiplyScalar(r).add(nb);
+    } else pose.head = pose.headTarget.lerpVectors(a.head0, a.head1, e);
+  } else pose.head = pose.headTarget.lerpVectors(a.head0, a.head1, e);
   pose.head.y += 0.32 * S * hb;
   pose.headRate = T < DEATH.head0 ? 6.5 : 24;
   pose.lookDown = 1.0;
-  d.rootPt(pose.look, -5.5, 0, 9.5); // (far ahead: a target the falling head passes over flipped its aim)
+  if (DEATH_ARC) {
+    // it looks along its neck (up at the sky in the throe, down the way it falls), and only as it
+    // lands at the ground ahead; the old far-ahead target held the snout level on a neck pointing up
+    const along = a.arcD.subVectors(pose.head, nb).normalize();
+    d.rootPt(_lookG, -5.5, 0, 9.5);
+    pose.look.copy(pose.head).addScaledVector(along, 10 * S).lerp(_lookG, smoothstep(0.55, 1, v));
+    pose.lookRate = 14;
+  } else d.rootPt(pose.look, -5.5, 0, 9.5); // (far ahead: a target the falling head passes over flipped its aim)
   pose.jaw = T < 0.5 ? 1 : lerp(0.8, 0.42, smoothstep(0.5, 1.8, T));
   pose.jawRate = 14;
   pose.eyes = T < 0.35 ? 1 : Math.max(0, 1 - (T - 0.35) / 1.3);

@@ -92,6 +92,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] The wyrm's neck and head reviewed move by move: level head, no flips, no detached head (ADR-203)
 - [x] Every wyrm fire travels from it; roar-cast spells and a brood of fire; a walk-out forest (ADR-197)
 - [x] The owner's picks for ADR-197's looks (incant, drakeling, serpent, vortex, forestEnd, meteorSource, wallSource): the defaults kept (2026-11-25)
+- [x] The wyrm's death: the neck falls as one curve, the head in line (ADR-274)
+- [x] Every white / blue timing glint seen through the body and inside the frame (ADR-274)
+- [x] The wyrm's blue and red paw blows told apart: the scythe and the leap, the owner's picks (ADR-274)
 - [ ] The wyrm presses in when the hero stands out among the trees (it fights at range there)
 - [x] Hero motion: world-planted feet, blade paths, portrait idle, new windups, two-step dash,
       sliding kneel, crescent trails (ADR-023)
