@@ -7664,3 +7664,38 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   from the knuckles' side. `fistBlade()` now rolls the fist so the forearm comes in opposite the thumb, turned
   `twist` 30° toward −X: (−0.32, −0.60, 0.74), between the two approved poses; the flat shows to the game camera
   (|n·cam| ≥ 0.63; edge-on under ~0.3 vanishes). `g2`'s wrist cap is 26° (the point 8-35° below level).
+
+## ADR-264 — The parry → deathblow exchange read by a watcher: a break beat, space, a clean contact (`?dbread=0|a|b|c|all`) (2026-11-27)
+
+- **Context:** the owner watched a bot parry Shen Hui's Riposte (a diagonal cut, then a blue thrust) into a deathblow
+  and could not tell what happened between the parry and the deathblow: "i never want the game to have certain
+  animation/actions that is not understandable to the player watching the action". They like the deathblow itself
+  (ADR-211: Shatter Web, Flesh). Measured in that exchange: the combo starts 0.11 s after the parry, and his parried
+  recoil (the readable "he is open" pose) is replaced by a flinch 0.15 s later, so no beat or pose says he is broken;
+  the centres stay ~1.0 m apart through the whole combo (he dashed in for the thrust, the deathblow never steps nearer
+  than 1.0 m, nothing pushes him back), so at the game camera the two bodies stack into one shape; each contact's
+  heat flash runs on the hit-pause's slowed clock (0.08 s of life lasts ~0.5 s real), his white hurt flash (0.8)
+  lights his whole body, and on the finisher the hero's own thrust streak and impact burst bloom into a white blot
+  (hiding each scene object in turn and counting the bright pixels: his body and the shared glyph particles, then
+  the particles' spawns by caller), so the contact is covered. (The white star at the blades before the thrust is his blue tell
+  glint, a gameplay cue: kept.) The effect switches barely changed it: the look is built in.
+- **Decision:** three ideas, one each, behind `?dbread=` (the Lab's `dbread`; `DEFENSE.deathblow.read`,
+  `DBFX_TUNE.clean`), read at the parry, damage never changed:
+  - **a, the break:** on the parry that starts the combo he is thrown into his `reeling` (jian flung wide, arms out,
+    stumbling back; recoil / stagger for a kit without it; a posture-broken foe stays on his knee) and the hero holds,
+    unhurt, `beat` 0.35 s after the parry; the first blow's wind-up is at least 0.2 s and steps in up to 1.0 m. The
+    blows land on him while he reels (duelist `takeHit` `keepOpen`: no flinch while 75 % of the reel is still to run).
+  - **b, space:** every blow steps in after him to 1.3 m centre to centre (at most 0.55 m; nearer, a non-final blow
+    steps back up to 0.3 m for room, as against a foe broken on one knee, who is never shoved), and every non-final
+    blow drives him back 0.3 m (`takeHit` `shove`: his flinch's travel).
+  - **c, a clean contact:** each contact's heat flash 0.45 x as wide, moved 0.7 m out of his far side along the blow
+    and aged on the real clock (gone in the hit-pause's first frames instead of held through it); the exit burst's
+    spray 0.4 x, its tip streak 0.6 x as long and held half as long; his hurt flash 0.3 instead of 0.8; the finisher's
+    thrust draws no white `thrustStreak` (measured: the brightest thing on screen at the finisher, by far) and every
+    blow's impact burst (`PlayerFx.contact`) is the low quality's lighter one (`lite`). Shatter Web's cut line, the
+    blood and the parry's own sparks at the blades stay.
+  - `all`: the three. `0` (the default until the owner picks from the films): as before.
+- **Consequences:** a adds 0.35 s between the parry and the combo and 0.08 s to the first blow (the combo's own
+  tempo after that is unchanged); b and a let the hero leave ADR-211's 0.6 m disc round where he parried. The duel
+  suite's `deathblow` (f) plays every mode on a posture break and a blue parry: the same blows and damage, the beat,
+  the reel kept, the spacing, the dim flash. The owner's pick becomes the default (`?dbread=0` keeps today's).

@@ -420,6 +420,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] Played and seen on the iPhone
 - [x] The perfect parry's own reward from the owner's reference: posture break -> deathblow, the chain's sparks grow (ADR-211)
 - [ ] The deathblow played on the iPhone; the wyrm's parry answer (it keeps the flurry riposte)
+- [x] The parry → deathblow exchange readable to a watcher: a break beat, space, a clean contact, filmed (`?dbread=`, ADR-264)
+- [ ] The owner's pick of `?dbread=` made the default
 - [ ] A next round on the perfect dodge, if any: from a concrete reference and one narrow prototype; never the background
 
 ## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)

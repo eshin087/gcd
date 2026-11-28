@@ -5,6 +5,34 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The parry → deathblow exchange, readable (ADR-264; branch `claude/sweet-morse-33ddad`)
+
+**Goal:** the owner could not follow the moment between a parry and the deathblow it starts (a bot parrying Shen
+Hui's Riposte): no beat saying he is broken, the two bodies stacked, flashes over the contact. Their rule: nothing a
+watcher can't follow. Prototype 2-3 options behind a switch, film them at the game camera, ship none as the default.
+
+**Measured** (the exchange replayed in headless Edge, frame by frame): the combo starts 0.11 s after the parry and
+his recoil is replaced by a flinch 0.15 s later; the centres stay ~1.0 m apart for the whole combo; each contact's
+heat flash is aged on the hit-pause's slowed clock (~0.5 s real), his hurt flash lights his whole body, and the
+brightest thing at the finisher is the hero's own white thrust streak (scene objects hidden in turn, bright pixels
+counted; then `fx.add`'s spawns by caller). The white star before the thrust is his blue tell glint: kept.
+
+**Changed** (`?dbread=0|a|b|c|all`, default `0`; the Lab's `dbread`; `DEFENSE.deathblow.read`, `DBFX_TUNE.clean`):
+a) the break: he is thrown into his reeling, the hero holds 0.35 s, then steps in (the blows land while he reels:
+duelist `takeHit` `keepOpen`); b) space: the hero strikes from 1.3 m (follows, or a short step back) and every blow
+drives him back 0.3 m (`takeHit` `shove`); c) a clean contact: the heat flash smaller, on his far side, on the real
+clock; a thinner exit burst; no thrust streak on a deathblow; the lighter impact burst (`PlayerFx.contact` `lite`);
+his hurt flash 0.3.
+
+**Verified:** duel `deathblow` (f): every mode, a posture break and a blue parry: the same 3 blows and 141 damage, the
+beat 0.35 s, he reels and stays open (a broken foe stays on his knee), b's gaps 1.3 - 1.6 m, the dim flash. Films
+(today beside each option, real and half speed, Shen Hui's Riposte, 3 blows): the shared notes folder's
+`dbread-films/`; gaps today 1.08 m, a 1.6 m, b 1.3 - 1.75 m, all 1.4 m.
+
+**Next:** the owner picks from the films; their pick becomes the default (`?dbread=0` keeps today's).
+
+---
+
 ## 2026-11-27 — The clash dance is the default (ADR-247; branch `claude/combat-clash-dance-default`)
 
 **Owner:** watched the three films of PR 175 (today against the dance: Shen Hui, the Starless Lord, Xin Yi) and said
