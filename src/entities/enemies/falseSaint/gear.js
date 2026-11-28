@@ -613,7 +613,7 @@ function buildArms(ctx) {
       ? { n: 5, O: [0, -0.24, 0.03], R: 0.3, amp: 0.4, freq: 2.2, depth: 0.012, tAt: [[0, 0.05], [1, 0.9]] }
       : { n: 5, O: [0, -0.24, 0.03], R: 0.3, amp: 0.4, freq: 2.2, depth: 0.012, tAt: [[0, 0.42], [1, 0.97]] }, keep);
     // ---- the hands: skin, and the metal hand under it (look.js shows one; the animator picks which hand)
-    const skinT = side === 'R' ? { palm: 0.8, wrist: 0.83 } : { palm: 0.48, wrist: 0.5 };
+    const skinT = side === 'R' ? { palm: 0.84, wrist: 0.86 } : { palm: 0.48, wrist: 0.5 };
     // the wrist (skin) under the cuff, the frame's wrist under it
     const wrist = ellipsoidGeometry(0.03 * HK, 0.042 * HK, 0.032 * HK, { widthSegs: 12, heightSegs: 7 });
     const ws = ctx.mesh(fore, wrist.clone(), M.skin, 0, -DIM.foreArm + 0.035, 0.004);

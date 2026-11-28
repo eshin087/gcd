@@ -54,14 +54,14 @@ export function tintSaint(M) {
   }
 }
 
+const INK = Object.freeze(Object.entries(FS_ART.ink).map(([p, t]) => [Number(p), t]));
 /** His part inks into the tables every boss rig shares (rewritten every frame: a rig built later writes
  *  the hero's into them). */
 function writeInk(U) {
   const I = U?.uHeroPartInk?.value, R = U?.uHeroPartRim?.value, F = U?.uHeroPartFill?.value;
   if (!I || !R || !F) return;
-  const T = FS_ART.ink;
-  for (const p in T) {
-    const t = T[p];
+  for (let i = 0; i < INK.length; i++) {
+    const p = INK[i][0], t = INK[i][1];
     I[p]?.set(t.ink[0], t.ink[1], t.ink[2], t.ink[3]);
     R[p]?.set(t.rim[0], t.rim[1], t.rim[2], t.rim[3]);
     F[p]?.set(t.fill[0], t.fill[1], t.fill[2], t.fill[3]);
@@ -118,7 +118,8 @@ function nozzle(W, k) {
 function weapons(d, D, force) {
   const wk = D.wk;
   let moved = force;
-  for (const key of FS_WEAPON_KEYS) {
+  for (let i = 0; i < FS_WEAPON_KEYS.length; i++) {
+    const key = FS_WEAPON_KEYS[i];
     const v = k01(fin(d[key]));
     if (v !== wk[key]) {
       wk[key] = v;
@@ -178,7 +179,8 @@ const shapeOf = (v, def = 'guard') => (v === 'reach' ? 'open' : v === 'open' || 
  *  inside them is ours. Every frame, but it only writes when the shape or the layer changed. */
 function hands(d, D) {
   const sR = D.wk.fsFistR > 0.5 ? 'clench' : shapeOf(d.fsHandR), sL = shapeOf(d.fsHandL);
-  for (const h of D.hands) {
+  for (let i = 0; i < D.hands.length; i++) {
+    const h = D.hands[i];
     if (h.wrist) {
       if (!D.handsDirty) continue;
       for (const m of h.skin) m.visible = !h.bare;
@@ -234,22 +236,25 @@ function sensors(d, D) {
     D.out = out;
     if (dying && fresh) for (let i = 0; i < 3; i++) if (fresh & (1 << i) && i < lit) d.fx?.sensorOut?.(i);
   }
-  for (const s of S) {
+  for (let i = 0; i < S.length; i++) {
+    const s = S[i];
     let on = s.i < lit && !(out & (1 << s.i));
-    for (const e of s.cover) if (e && !e.gone) on = false;
+    for (let j = 0; j < s.cover.length; j++) if (s.cover[j] && !s.cover[j].gone) on = false;
     if (s.mesh.visible !== on) s.mesh.visible = on;
   }
-  // their light: d.eyesK flares it (a sight line, a charge); a slow breath
+  // their light: d.eyesK flares it (a sight line, a charge); written only when it moves
   const fu = d.rig.materials?.flask?.uniforms;
-  if (fu) {
-    const k = 0.35 + 0.8 * k01(fin(d.eyesK)) + 0.04 * Math.sin(fin(d.time) * 2.6);
+  const k = 0.35 + 0.8 * k01(fin(d.eyesK));
+  if (fu && k !== D.glowK) {
+    D.glowK = k;
     if (fu.uGlow) fu.uGlow.value = k;
     if (fu.uInkGlow) fu.uInkGlow.value = k;
   }
-  // they grow with the camera's distance
+  // they grow with the camera's distance (no Math.hypot: it allocates)
   const cam = d.game?.camera?.position, hp = d.position;
   if (cam && hp) {
-    const dist = Math.hypot(cam.x - hp.x, cam.y - hp.y - 1.8, cam.z - hp.z);
+    const dx = cam.x - hp.x, dy = cam.y - hp.y - 1.8, dz = cam.z - hp.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
     const f = Math.min(1, Math.max(0, (fin(dist, 30) - SENSOR_FAR.near) / (SENSOR_FAR.far - SENSOR_FAR.near)));
     if (Math.abs(f - (D.sensK ?? -1)) > 0.01) {
       D.sensK = f;
@@ -299,7 +304,12 @@ export function dressSaint(d) {
     D.out = 0;
     for (const k of FS_WEAPON_KEYS) if (d[k] === undefined) d[k] = 0;
   }
-  writeInk(d.game?.U);
+  // (his inks: on his first frame, then twice a second, against a rig built later writing the hero's
+  // into the shared tables; a write stores fresh numbers, so not every frame)
+  if (!(D.inkN-- > 0)) {
+    D.inkN = 30;
+    writeInk(d.game?.U);
+  }
   const sh = d.shell;
   const v = sh ? sh.version : 0;
   const all = D.ver === -1;

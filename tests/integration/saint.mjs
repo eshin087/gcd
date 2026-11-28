@@ -718,6 +718,152 @@ async function scenarioEvents() {
   assert(CATALOGUE.size > 20, `the catalogue is read (${CATALOGUE.size} names)`);
 }
 
+// ================================================================== body: the reveal, the milestones, the weapons, the sensors
+/** The body's dress record and a few counts. */
+function bodyState(d) {
+  const D = d.rig.root.userData.fsDress;
+  const shown = D.shards.filter((e) => !e.gone).length;
+  const frameOn = D.frame.filter((f) => f.on).length;
+  const sensors = D.sensors.filter((s) => s.mesh.visible).length;
+  return { D, shown, frameOn, sensors };
+}
+async function scenarioBodyReveal() {
+  out('\n== scenario BODYREVEAL (every shell part has pieces; the reveal only grows with the exposure; a reset restores him; idle costs nothing) ==');
+  const { PART_NAMES } = await imp('src/entities/enemies/falseSaint/shell.js');
+  const G = build();
+  const d = G.game.dragon;
+  duel(G, { dist: 4 });
+  run(G, 0.1);
+  const { D } = bodyState(d);
+  const per = Object.fromEntries(PART_NAMES.map((n) => [n, D.shards.filter((e) => e.part === n).length]));
+  const missing = PART_NAMES.filter((n) => !(per[n] || D.hands.some((h) => h.part === n)) || !(D.frame.some((f) => f.parts.includes(n)) || D.hands.some((h) => h.part === n)));
+  const meshes = D.shards.reduce((s, e) => s + e.meshes.length, 0);
+  out(`     ${D.shards.length} shards (${meshes} meshes), ${D.frame.length} frame pieces, ${D.hands.length} hands, ${Object.keys(D.weapons).length} weapons; per part ${JSON.stringify(per)}`);
+  assert(missing.length === 0, `every shell part maps to shards of the disguise and to frame pieces (missing: ${missing.join(', ') || 'none'})`);
+  assert(D.shards.every((e) => e.meshes.length > 0 && Number.isFinite(e.t)), 'every shard draws something and has a threshold');
+  let s0 = bodyState(d);
+  assert(s0.shown === D.shards.length && s0.frameOn === 0 && s0.sensors === 0, `whole at the start: every shard shown, no frame, no sensor (${s0.shown}/${D.shards.length}, ${s0.frameOn}, ${s0.sensors})`);
+  // the exposure in steps: the shards shown never come back, the frame never goes
+  let prev = Infinity, prevF = -1, mono = true;
+  const steps = [];
+  for (let k = 0; k <= 10; k++) {
+    d.shell.force(k / 10);
+    run(G, 1 / 60);
+    const s = bodyState(d);
+    if (s.shown > prev || s.frameOn < prevF) mono = false;
+    prev = s.shown;
+    prevF = s.frameOn;
+    steps.push(s.shown);
+  }
+  assert(mono && prev === D.shards.filter((e) => e.t > 1).length, `the reveal only grows (${steps.join(' ')} shards shown at exposure 0 .. 1 by tenths)`);
+  // a reset restores him whole
+  d.reset();
+  run(G, 0.1);
+  s0 = bodyState(d);
+  assert(s0.shown === D.shards.length && s0.frameOn === 0, `a reset restores him whole (${s0.shown} shards, ${s0.frameOn} frame pieces)`);
+  // idle: the dress does no work and allocates nothing
+  const { dressSaint } = await imp('src/entities/enemies/falseSaint/look.js');
+  // (exact with `node --expose-gc`: the heap after a collection; without it a loose bound on the garbage)
+  // (warmed up first: until the optimiser has it, a read of a float boxes it)
+  for (let i = 0; i < 30000; i++) dressSaint(d, DT);
+  globalThis.gc?.();
+  const h0 = process.memoryUsage().heapUsed;
+  // (no gc between: what the calls allocate is still on the heap)
+  for (let i = 0; i < 20000; i++) dressSaint(d, DT);
+  const dh = process.memoryUsage().heapUsed - h0;
+  if (process.env.GCD_BODYHEAP) { globalThis.gc?.(); out(`     retained after a collection: ${((process.memoryUsage().heapUsed - h0) / 1024).toFixed(0)} kB`); }
+  const lim = globalThis.gc ? 400e3 : 16e6;
+  assert(dh < lim, `20 000 idle dresses allocate next to nothing (${(dh / 1024).toFixed(0)} kB of heap, ${globalThis.gc ? 'exact' : 'loose: run with --expose-gc for the exact count'})`);
+}
+
+async function scenarioBodyMilestones() {
+  out('\n== scenario BODYMILESTONES (the shell\'s phase floors draw the reference\'s four milestones) ==');
+  const G = build();
+  const d = G.game.dragon;
+  duel(G, { dist: 4 });
+  const { D } = bodyState(d);
+  const gone = (part) => { const L = D.shards.filter((e) => e.part === part && !e.patch); return L.filter((e) => e.gone).length / Math.max(1, L.length); };
+  const at = (n) => { d.shell.reset(); d.shell.setPhase(n); d.dressPhase = n; run(G, 2 / 60); return bodyState(d); };
+  const p1 = at(1);
+  assert(p1.shown === D.shards.length && p1.sensors === 0, '01 HUMAN: whole, no sensor lit');
+  const p2 = at(2);
+  out(`     02: headR ${gone('headR').toFixed(2)}, foreR ${gone('foreR').toFixed(2)}, chestL ${gone('chestL').toFixed(2)}, chestR ${gone('chestR').toFixed(2)}, handR bare ${D.handR.bare}`);
+  assert(gone('headR') > 0.05 && gone('headR') < 0.6 && gone('headL') === 0 && gone('foreR') === 1 && gone('chestL') > 0 && gone('chestL') < 0.4 && gone('chestR') === 0 && !D.handR.bare && p2.sensors === 1,
+    `02 FRACTURE: the right cheek and temple chipped (headR ${gone('headR').toFixed(2)}), the right forearm bare, a crack at the left collarbone, the right chest whole, the hand still skin, one sensor lit (${p2.sensors})`);
+  const p3 = at(3);
+  const fl = D.shards.find((e) => e.part === 'hip' && e.t > 0.99);
+  out(`     03: headL ${gone('headL').toFixed(2)}, chestL ${gone('chestL').toFixed(2)}, legR ${gone('legR').toFixed(2)}, legL ${gone('legL').toFixed(2)}, shinR ${gone('shinR').toFixed(2)}, armL ${gone('armL').toFixed(2)}`);
+  assert(gone('headR') === 1 && gone('headL') > 0 && gone('headL') < 0.75 && gone('chestR') === 1 && gone('armR') === 1 && gone('chestL') < 0.6 && gone('armL') === 0 && gone('shinR') === 1 && gone('legR') > 0.8 && gone('legL') > 0.2 && p3.sensors === 2 && fl && !fl.gone,
+    `03 EXPOSURE: the right head, chest and arm bare, a skin island on the left cheek, the jacket on the left, both legs mostly plated, two sensors (${p3.sensors})`);
+  const p4 = at(4);
+  const flake = D.shards.find((e) => e.part === 'armL' && e.patch);
+  out(`     04: ${p4.shown} shards left (${D.shards.filter((e) => !e.gone).map((e) => e.part).join(', ')})`);
+  assert(gone('headL') === 1 && gone('chestL') === 1 && fl && !fl.gone && flake && !flake.gone && p4.sensors === 3 && p4.shown <= 4,
+    `04 TRUE FRAME: the face all frame, a scrap of jacket at the left hip and skin flakes at the left shoulder left, three sensors (${p4.shown} pieces left)`);
+  d.reset();
+}
+
+async function scenarioBodyWeapons() {
+  out('\n== scenario BODYWEAPONS (the frame\'s weapons open by their values on d, only where the shell is gone; their points) ==');
+  const G = build();
+  const d = G.game.dragon;
+  duel(G, { dist: 4 });
+  const { D } = bodyState(d);
+  const W = D.weapons;
+  const v = new THREE.Vector3(), w = new THREE.Vector3();
+  // covered in phase 1: nothing shows even when driven
+  d.fsJetK = 1; d.fsPetalK = 1; d.fsThrustK = 1; d.fsCoreK = 1; d.fsTubeK = 1; d.fsGunK = 1; d.fsPalmK = 1;
+  run(G, 2 / 60);
+  const anyShown = Object.values(W).some((x) => x.meshes?.some((m) => m.visible));
+  assert(!anyShown, 'in phase 1 every weapon stays under the shell, driven or not');
+  for (const k of ['fsJetK', 'fsPetalK', 'fsThrustK', 'fsCoreK', 'fsTubeK', 'fsGunK', 'fsPalmK']) d[k] = 0;
+  d.shell.setPhase(4); d.dressPhase = 4;
+  run(G, 2 / 60);
+  d.partPoint('elbowR', v);
+  const s0 = W.elbowR.pivot.scale.y;
+  d.fsJetK = 1;
+  run(G, 2 / 60);
+  d.partPoint('elbowR', w);
+  assert(W.elbowR.meshes[0].visible && W.elbowR.pivot.scale.y > s0 && v.distanceTo(w) > 0.005, `phase 4: the elbow booster shows and opens with d.fsJetK (scale ${s0.toFixed(2)} -> ${W.elbowR.pivot.scale.y.toFixed(2)}; its point moves ${(v.distanceTo(w) * 100).toFixed(1)} cm)`);
+  const q0 = W.mortar.pivot.quaternion.clone();
+  d.fsTubeK = 1; d.fsPetalK = 1;
+  run(G, 2 / 60);
+  assert(W.mortar.meshes[0].visible && W.mortar.pivot.quaternion.angleTo(q0) > 2 && W.petalsR.cells.visible, 'the mortar tubes rise with d.fsTubeK, the petals open on their cells with d.fsPetalK');
+  const names = ['palmR', 'palmL', 'elbowR', 'elbowL', 'shoulderR', 'shoulderL', 'back', 'backR', 'backL', 'calfR', 'calfL', 'core', 'mortar', 'gunR', 'eye', 'head', 'chest'];
+  const pts = names.map((n) => d.partPoint(n, new THREE.Vector3()));
+  const bad = names.filter((n, i) => !Number.isFinite(pts[i].x + pts[i].y + pts[i].z) || pts[i].distanceTo(d.position) > 2.6);
+  const p = Object.fromEntries(names.map((n, i) => [n, pts[i]]));
+  assert(bad.length === 0 && p.head.y > p.chest.y && p.chest.y > p.calfR.y && p.elbowR.distanceTo(p.elbowL) > 0.2, `his ${names.length} points are on his drawn body (bad: ${bad.join(', ') || 'none'}; head ${p.head.y.toFixed(2)}, chest ${p.chest.y.toFixed(2)}, calf ${p.calfR.y.toFixed(2)} m)`);
+  // the hand shapes
+  d.fsHandR = 'clench';
+  run(G, 1 / 60);
+  const H = D.handR;
+  assert(H.shapes.clench.metal.visible && !H.shapes.guard.metal.visible && !W.iris.ring.visible, 'd.fsHandR = clench: the metal fist, the iris hidden');
+  d.fsHandR = 'reach';
+  run(G, 1 / 60);
+  assert(H.shapes.open.metal.visible && W.iris.ring.visible, 'd.fsHandR = reach: the open hand, the iris on its palm');
+  d.reset();
+}
+
+async function scenarioBodyDeath() {
+  out('\n== scenario BODYDEATH (his sensors go out one by one as he dies) ==');
+  const G = build();
+  const d = G.game.dragon;
+  duel(G, { dist: 4 });
+  G.game.player.debug.god = true;
+  d.shell.setPhase(4); d.dressPhase = 4;
+  run(G, 2 / 60);
+  const outs = [];
+  const so = d.fx.sensorOut?.bind(d.fx);
+  d.fx.sensorOut = (i) => { outs.push([i, +d.brain.modeT.toFixed(2)]); return so?.(i); };
+  const lit = [];
+  d.debug.kill();
+  for (let i = 0; i < 300 && d.mode !== 'dead'; i++) { run(G, 1 / 60); if (i % 15 === 0) lit.push(bodyState(d).sensors); }
+  out(`     sensors lit every 0.25 s: ${lit.join(' ')}; out at ${JSON.stringify(outs)}`);
+  const mono = lit.every((x, i) => i === 0 || x <= lit[i - 1]);
+  assert(outs.length === 3 && mono && lit[0] === 3 && bodyState(d).sensors === 0, 'three sensors, out one by one (fx.sensorOut 0, 1, 2), none back');
+}
+
 // ================================================================== THE SCENARIOS (one entry per line, each agent in its block)
 const S = {
   // --- core
@@ -731,6 +877,10 @@ const S = {
   events: scenarioEvents,
   // --- world
   // --- body
+  bodyReveal: scenarioBodyReveal,
+  bodyMilestones: scenarioBodyMilestones,
+  bodyWeapons: scenarioBodyWeapons,
+  bodyDeath: scenarioBodyDeath,
   // --- fx
   // --- melee
   // --- boost
