@@ -56,7 +56,7 @@ npm run hero-parts  # regenerate src/entities/player/heroParts.js (needs Blender
 Levels: `?level=ash` loads the Ashfall Courtyard, `?level=starless` the Obsidian Throne, `?level=ring` the Skybreak Ring, `?level=fox` the Foxfire Terrace, `?level=grove` the Windless Grove (`?tech=draw`: One Breath without the kill), `?level=code` the Hall of Falling Script (`?tech=lean`: the Long Second without the kill), `?level=city` Halcyon Plaza, `?level=veil` the Veiled Crossing (default:
 Cinderwood); the title screen and the Lab pick one too. The hero's idles and guard after the owner's reference footage (ADR-207): `?idles=new|old`
 (ADR-186's rests, habits and tricks / the hand on the belt; default `ref`: the one-handed stand, the two-handed fight hold, the put-away
-and draw) and `?guard=ward` (the cross ward; default `ref`: the braced guard, the blade across his face) (Lab: `idles`, `guard`, `idle ▸`).
+and draw) and `?guard=ward` (the cross ward; default `ref`: the braced guard, the blade across his face); the fight stance `?hold=ref|b|c|d` (ADR-275; default `a`, the owner's pick: the middle guard, the blade at the foe; `ref` ADR-207's hold, b-d turned down) (Lab: `idles`, `guard`, `hold`, `idle ▸`).
 Kept for later use (ADR-089; today's look is the default): `?heroLook=robe|swallow|warden`
 (`-shade`: the face in shadow) and `?sword=sheet|ribbon|crescent` dress the hero (Lab: OUTFIT, sword);
 `?wyrmTop=0|a|b` the drake head from above before the owner's pick `c` (ADR-189); `?wyrmFace=old` gives the wyrm the face it had before the drake (ADR-124), `skull|loong|demon` (ADR-120)

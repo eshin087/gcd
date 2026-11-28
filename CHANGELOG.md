@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-two pieces of work since 0.4.0:
+One hundred and forty-three pieces of work since 0.4.0:
+- **A new fight stance: the middle guard** (2026-11-28, ADR-275). *Changed (the owner's pick of four filmed stances):* in a fight gcd
+  now stands in a middle guard: both hands on the grip before his navel, the blade pointed forward at the boss's
+  eyes (~36° up), the knees bent, the right foot ahead. It was the blade raised up and out to his right
+  (`?hold=ref` stands him as before). *Added (turned down, kept behind the switch):* `?hold=b` a high guard (the
+  blade upright beside his head), `?hold=c` the sword fingers (one hand, the blade level at the boss, the free
+  hand raised behind his head), `?hold=d` a low trailing guard (one hand, the blade trailing behind his right
+  leg); the Lab's `hold` row. Attacks, the block, rolls and the fight's small habits start from it as before.
 - **A black blow can darken the whole picture, a red string can cut in red** (2026-11-27, ADR-271). *Changed (the owner's picks, the defaults: blackout b, red trail a):* `?black=a|b|c` replaces the
   violet look of a charged (black) blow with a blackout, after the owner's reference film: as the boss charges, the
   whole picture drains to dark grey, the boss stays lit with a white point on his weapon, the black flare is a

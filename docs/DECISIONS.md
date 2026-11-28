@@ -7940,3 +7940,34 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   so what is drawn only in the fire field near the boss (his spell, the Fox's spirit) dims with the world unless
   it is bright. Open: the phone; a red wake for fists and claws if the owner wants one; on the bare-handed bosses and the Fox's
   Howl (a beam) the impact lands a stride in front of the body, not along the beam.
+
+## ADR-275 — The hero's fight stance: the middle guard (2026-11-28)
+
+- **Context:** the owner found ADR-207's two-handed hold (the grip before the right of the belly, the blade ~47° up
+  and out to his right, the point above his head) a poor fighting stance and asked for four new ones to pick from,
+  filmed close and far in one clip.
+- **Decision:** four holds were built as data (`refStance.js` `HOLDS`: hands, elbows, blade, free hand and its
+  shape, body, knees, feet, the flat's roll, one or two hands) behind `?hold=`, filmed (a close orbit, the game
+  camera at true size and x2, all four together) and the owner picked **A, the middle guard**, now the default:
+  both hands on the grip before the navel on his centre line, the elbows down and a little in, the blade forward
+  at the foe's face (4° to his right, 36° up), the knees bent (body 7.5 cm down), the chest a touch forward, the
+  right foot 24 cm ahead and the left 22 back (the feet the light chain steps from, as ADR-207's hold), the hips
+  turned 0.12 with the right foot. `setHold` copies the hold into `REF_READY`, so every reader of the hold (the
+  fight's habits through `syncStandArm`) follows it. `?hold=ref` keeps ADR-207's hold; `b` (high guard, the blade
+  upright by the right of his head), `c` (sword fingers, one hand), `d` (low trailing, one hand) are kept,
+  turned down. A one-handed hold plays no fight habit (they keep both hands on the grip) and the stance blend
+  scales `twoHand` by the hold's `two`.
+- **Departure from what was filmed:** the sword elbow's pole is tucked in (0.45, -0.88, -0.15; filmed 0.25, -0.95,
+  -0.15): with the filmed pole `heroref` measured the sword wrist 69-73° off the forearm (bar 60), now ≤ 54°. The
+  toes keep ADR-207's turn (right -0.35, left 0.6; filmed -0.2 / 0.55): from -0.2 the right foot turned 0.07 rad in
+  the draw cut's 0.3 pivot (`heroweight`: at least half). The free elbow points out to his left (0.7, -0.7, -0.15;
+  filmed down and in): across his front the robe look's sleeve wing on that arm stood in his chest on 23 % of the
+  route's frames (`looks`, bar 3 %), now 2.4 % (main 2.5), ADR-207's finding again. The blade rises 36° (filmed
+  30°) and the hands 3 cm higher: standing in the hold 1.5 m from a duelist the filmed point was 5.4 cm inside
+  him, and a deathblow whose last cut lands as he is back in the hold was drawn through him (duel `contact`,
+  bar 8 cm); now -0.1 cm at 1.5 m (9 cm at 1.3 m: a blade aimed at the foe meets him that close), the wrist
+  54°. The body is as filmed.
+- **Consequences:** the block, the parry and every attack are unchanged and start from the new hold (`heroref`'s
+  transition bars hold: every move within ×1.5 + 10 cm of the stance before). From straight behind at the game
+  camera the blade runs up the screen, over his head: the hold reads best side-on or at an angle, as a duel mostly
+  is. Open: the owner's playtest.
