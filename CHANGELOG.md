@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-one pieces of work since 0.4.0:
+One hundred and forty-two pieces of work since 0.4.0:
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s
@@ -20,6 +20,10 @@ One hundred and forty-one pieces of work since 0.4.0:
   blade instead of the big white star and ring (the Lab's `blueTell`). *Changed (the owner's pick, the defaults):*
   the perfect parry is `c`, a pinpoint where the blades cross and its sparks, no gold burst; the blue cue is `a`
   (`?parryClash=0` / `?blueTell=0` as before).
+- **Swipe to dodge on touch** (2026-11-28, ADR-274). *Added (a pause-menu switch, off by default; `?swipe=1`):*
+  SWIPE DODGE: a quick flick on the bare right half of the screen dodges the way it flicked, the moment it moves
+  (no need to find the DODGE tile, which stays). Try it with PAD LAYOUT → GUARD ON LEFT (`?pad=split`) to parry
+  with the left thumb.
 - **One tap to begin, menus with a finish, and touch controls that fit and move** (2026-11-28, ADR-270). *Fixed:* on
   a phone, a tap on a world, BEGIN HERE or BOSS RUSH on the title acts at once (iOS took the first tap as a hover).
   *Changed:* the title's and the pause menu's buttons and panels in a finished look (cut corners, the world and its

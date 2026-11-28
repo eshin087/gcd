@@ -5,6 +5,22 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — Swipe to dodge on touch, the guard on the left to try (ADR-274; `ui/touch-swipe-dodge`)
+
+**Owner:** too slow to parry or dodge on the phone compared with mouse / keyboard / controller; picked "guard on the
+left hand as an option and swipe to dodge" to test first.
+
+- **Why it is slow:** not the rules (every input cancels and buffers the same) but one right thumb doing ATTACK,
+  BLOCK and DODGE on flat tiles.
+- **SWIPE DODGE** (pause menu, `?swipe=1`): a quick flick on the bare right half dodges that way, fired mid-flick
+  (30 px x fit within 0.2 s). `input.dodgeToward` → `player.rollAim` → `_startRoll` rolls along the swipe.
+- **Guard on the left** was already a pause switch (PAD LAYOUT → GUARD ON LEFT, `?pad=split`, ADR-131); checked it
+  still fits beside ADR-270's pad.
+- **Checked:** `integ.mjs . touch` green with new checks (off by default, a flick left / down rolls that way, the
+  left half, a pinch); the browser at 852 x 393 with `?swipe=1&pad=split` (a flick rolls the hero the way it went,
+  the streak shows).
+- **Open:** the owner on the iPhone; the distance / time numbers; default on? a touch timing allowance next.
+
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
 
 **Owner:** one tap on the path or BEGIN HERE must start; BOSS RUSH and BEGIN HERE looked bad, the menus should look

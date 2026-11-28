@@ -7893,3 +7893,21 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   look options (2) were not offered as variants: the owner asked for the finish itself; `?menu=0` still shows
   the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
   to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
+
+## ADR-274 — Swipe to dodge on touch (2026-11-28)
+- **Context:** the owner, on a phone: "i cant seem to be able to react fast enough for parry or dodge with the
+  mobile controls vs mouse keyboard or controller". The rules are the same on every input (a swing cancels into a
+  guard or a dodge at once, presses buffer 0.3 s); the difference is the hand: on the phone one right thumb leaves
+  ATTACK and has to find a flat tile it cannot feel. The owner picked two things to try first: the guard on the
+  left hand (PAD LAYOUT "guard on left", already built in ADR-131) and a swipe to dodge.
+- **Decision:** SWIPE DODGE, a pause-menu switch beside HOLD ATTACK (`touch.swipeDodge`, kept in `gcd.touchPad`,
+  `?swipe=1|0`). A finger on the bare right half of the screen in play that travels 30 px (x the screen's fit)
+  within 0.2 s of touching down dodges the way it went, at that moment (no wait for the lift), once per touch.
+  The direction rides with the press: `input.dodgeToward(x, y)` pulses `@dodge` and leaves `dodgeAim` for that
+  frame; the player keeps it with the buffered roll (`rollAim`) and rolls that way over the stick (so a swipe can
+  dodge sideways while the stick runs forward). A slow drag and a two-finger pinch never dodge; the DODGE tile
+  stays. Its mark is a short ASCII streak of chevrons that fades in 0.3 s.
+- **Consequences:** off by default until the owner tries it on the phone (then it may become the default). The
+  pad itself is not a swipe surface (a flick that starts on ATTACK still slides between tiles); open: a flick
+  off the pad, a touch timing allowance (the wider parry / perfect-dodge windows on touch the owner was offered).
+
