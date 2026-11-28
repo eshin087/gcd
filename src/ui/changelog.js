@@ -18,6 +18,23 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'A black blow can darken the whole picture, a red string can cut in red',
+        notes: [
+          'A charged (black) blow now drains the whole picture to dark grey while the boss charges, his weapon lit by a white point, the colour snapping back as he strikes.',
+          'And it always lands like the heaviest blow of the fight, even when it misses you: the ground craters, what stands near breaks, dust tears out across the floor and the screen shakes.',
+          'A red string leaves a thin red crescent on every cut of a sword boss, from the red flash on.',
+        ],
+      },
+      {
+        date: '2026-11-28',
+        title: 'A new fight stance: the middle guard',
+        notes: [
+          'In a fight gcd now holds his sword in a middle guard: both hands on the grip before him, the blade pointed at the boss, the knees bent.',
+          'At the game camera it reads as a sword aimed at your foe, not one raised up and out to the side.',
+        ],
+      },
+      {
         date: '2026-11-28',
         title: 'The deathblow is not cut short',
         notes: [

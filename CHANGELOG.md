@@ -4,12 +4,30 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-two pieces of work since 0.4.0:
+One hundred and forty-four pieces of work since 0.4.0:
 - **The deathblow is not cut short** (2026-11-28, ADR-274). *Fixed:* pressing guard during a deathblow ended it at
   once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
   boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of
   the blade lock (`?dbLock=lock` as before; the Lab's `dbLock`). Tian Lei's beam locks are unchanged. The
   Training's "Blade lock" plays with the old riposte so the lock still happens there.
+- **A new fight stance: the middle guard** (2026-11-28, ADR-275). *Changed (the owner's pick of four filmed stances):* in a fight gcd
+  now stands in a middle guard: both hands on the grip before his navel, the blade pointed forward at the boss's
+  eyes (~36° up), the knees bent, the right foot ahead. It was the blade raised up and out to his right
+  (`?hold=ref` stands him as before). *Added (turned down, kept behind the switch):* `?hold=b` a high guard (the
+  blade upright beside his head), `?hold=c` the sword fingers (one hand, the blade level at the boss, the free
+  hand raised behind his head), `?hold=d` a low trailing guard (one hand, the blade trailing behind his right
+  leg); the Lab's `hold` row. Attacks, the block, rolls and the fight's small habits start from it as before.
+- **A black blow can darken the whole picture, a red string can cut in red** (2026-11-27, ADR-271). *Changed (the owner's picks, the defaults: blackout b, red trail a):* `?black=a|b|c` replaces the
+  violet look of a charged (black) blow with a blackout, after the owner's reference film: as the boss charges, the
+  whole picture drains to dark grey, the boss stays lit with a white point on his weapon, the black flare is a
+  white-hot streak, and colour snaps back on the strike (a: the dark drops in over the last 0.3 s before the cue,
+  b: it builds through the whole charge, c: as a, darker); every boss with a charged blow has it, and it clears on
+  a stagger, a posture break, a Lab interrupt, a retry or his death. `?redTrail=a|b`: from a red blow's flare on,
+  a blade's cut leaves a thin red crescent just outside its edge, so every cut of a red string reads red (a short,
+  b longer); the sword bosses only. *Added:* every black blow, hit or miss, lands with a devastating impact
+  (`?blackImpact=a`, the default; `0` as before): a crater and what stands near broken, a shock front of dust,
+  a light, a hard shake, a held frame, an explosion's sound. The Lab's `black`, `redTrail` and `blackImpact`;
+  `npm run perf -- --black`.
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s

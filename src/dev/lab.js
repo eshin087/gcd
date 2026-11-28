@@ -21,6 +21,9 @@ import { STRIKE_GAP, strikeGapMode, setStrikeGap } from '../entities/enemies/due
 import { PARRY_CLASH, parryClashMode, setParryClash } from '../combat/perfectFx.js';
 import { BLUE_TELL_LOOK, blueTellMode, setBlueTell } from '../entities/enemies/duelist/fx.js';
 import { DB_MATRIX, getDbMatrix, setDbMatrix } from '../combat/deathblowMatrix.js';
+import { BLACK, getBlack, setBlack } from '../combat/blackout.js';
+import { RED_TRAIL, getRedTrail, setRedTrail } from '../combat/redTrail.js';
+import { BLACK_IMPACT, getBlackImpact, setBlackImpact } from '../combat/blackImpact.js';
 import { DB_SFX, getDbSfx, setDbSfx } from '../audio/deathblowSfx.js';
 import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
 import { RIPOSTE_CUT, riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
@@ -37,8 +40,8 @@ import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combo
 import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.js';
 import { CONTACT_IDS, contactMode, setContactMode } from '../combat/contact.js';
 import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../entities/player/slashFx.js';
-import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
-import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
+import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS, syncStandArm } from '../entities/player/idles.js';
+import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard, HOLD_IDS, HOLD_NAMES, holdMode, setHold } from '../entities/player/refStance.js';
 import { CLASH_IDS, clashMode, setClashMode } from '../combat/clashDance.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
 import { RUN_SWORD_IDS, RUN_SWORD_NAMES, runSwordMode, setRunSword } from '../entities/player/runSword.js';
@@ -831,6 +834,7 @@ export class Lab {
   _syncIdleBtns() {
     for (const { m, el: b } of this.ui.idleBtns ?? []) setClass(b, 'on', idlesMode() === m);
     for (const { m, el: b } of this.ui.guardBtns ?? []) setClass(b, 'on', guardMode() === m);
+    for (const { m, el: b } of this.ui.holdBtns ?? []) setClass(b, 'on', holdMode() === m);
   }
 
   _syncStanceBtns() {
@@ -1211,6 +1215,21 @@ export class Lab {
       b.title = `?idles=${m}: ${IDLES_NAMES[m]}`;
       return { m, el: b };
     });
+    // the hero's fight hold (player/refStance.js, ADR-275; ?hold=): the middle guard (the owner's pick), the
+    // two-handed hold before, and the three turned down
+    const hdr = el('div', 'lab-row', null, body);
+    el('span', 'lab-lbl', 'hold', hdr).title = "the hero's fight stance: the middle guard (a, the default), the hold before (ref, ?hold=ref) or the three turned down (b high, c sword fingers, d low trailing)";
+    const hdg = el('div', 'lab-grid', null, hdr);
+    hdg.style.flex = '1';
+    this.ui.holdBtns = HOLD_IDS.map((m) => {
+      const b = button(hdg, m, () => {
+        setHold(m);
+        syncStandArm();
+        this._syncIdleBtns();
+      });
+      b.title = `?hold=${m}: ${HOLD_NAMES[m]}`;
+      return { m, el: b };
+    });
     // the hero's guard (player/refStance.js, ADR-207; ?guard=ward): the reference's braced guard, the blade
     // upright, or the cross ward before it
     const gdr = el('div', 'lab-row', null, body);
@@ -1383,6 +1402,25 @@ export class Lab {
       this._syncCutBtns();
     });
     this.ui.blueTellBtn.title = "a duelist's blue (parry) tell (?blueTell=; ADR-264): a = a small cross on his blade dyed blue (no rays, no ring), 0 = the big white star with its ring";
+    this.ui.blackBtn = button(stkGrid, `black ${getBlack()}`, () => {
+      const M = BLACK.opts;
+      setBlack(M[(M.indexOf(getBlack()) + 1) % M.length]);
+      this.game.blackout?.clear();
+      this._syncCutBtns();
+    });
+    this.ui.blackBtn.title = "a black (charged) blow's look (?black=; ADR-271): 0 = the violet eclipse, body and flare as before; a = the blackout: the picture drains to dark grey over the last 0.3 s before the cue, the boss stays lit with a white point on the striking part, colour snaps back on the strike; b = as a, the dark builds through the whole charge; c = as a, darker. Default b (the owner's pick)";
+    this.ui.blackImpactBtn = button(stkGrid, `blackImpact ${getBlackImpact()}`, () => {
+      const M = BLACK_IMPACT.opts;
+      setBlackImpact(M[(M.indexOf(getBlackImpact()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.blackImpactBtn.title = "a black blow's landing (?blackImpact=; ADR-271): a (the default) = hit or miss, it lands with a blast: a crater, what stands near breaks, a shock front of dust, a hard shake, a held frame, an explosion's sound; 0 = only what its move did before";
+    this.ui.redTrailBtn = button(stkGrid, `redTrail ${getRedTrail()}`, () => {
+      const M = RED_TRAIL.opts;
+      setRedTrail(M[(M.indexOf(getRedTrail()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.redTrailBtn.title = "a red blow's blade trail (?redTrail=; ADR-271): 0 = none (as before); a (the default, the owner's pick) = from the red flare on, every cut leaves a thin red crescent just outside its edge (~0.2 s); b = the same, longer (~0.45 s). Blades only";
     this.ui.dbmatrixBtn = button(stkGrid, `dbmatrix ${getDbMatrix()}`, () => {
       const M = DB_MATRIX.opts;
       setDbMatrix(M[(M.indexOf(getDbMatrix()) + 1) % M.length]);
@@ -1668,6 +1706,9 @@ export class Lab {
     if (this.ui.strikeGapBtn) this.ui.strikeGapBtn.textContent = `strikeGap ${strikeGapMode()}`;
     if (this.ui.parryClashBtn) this.ui.parryClashBtn.textContent = `parryClash ${parryClashMode()}`;
     if (this.ui.blueTellBtn) this.ui.blueTellBtn.textContent = `blueTell ${blueTellMode()}`;
+    if (this.ui.blackBtn) this.ui.blackBtn.textContent = `black ${getBlack()}`;
+    if (this.ui.redTrailBtn) this.ui.redTrailBtn.textContent = `redTrail ${getRedTrail()}`;
+    if (this.ui.blackImpactBtn) this.ui.blackImpactBtn.textContent = `blackImpact ${getBlackImpact()}`;
     if (this.ui.dbmatrixBtn) this.ui.dbmatrixBtn.textContent = `dbmatrix ${getDbMatrix()}`;
     if (this.ui.dbsfxBtn) this.ui.dbsfxBtn.textContent = `dbsfx ${getDbSfx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;

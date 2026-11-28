@@ -7,6 +7,7 @@
 //   npm run perf -- --all             every level
 //   npm run perf -- --levels ash,city one or more (ids or aliases)
 //   npm run perf -- --4k              also 3840 x 2160
+//   npm run perf -- --black           with a black blow's blackout pinned full on (?black=a, ADR-271): its cost
 //   npm run perf -- --save            keep this run as this machine's baseline (.perf/baseline.json, not committed)
 //   npm run perf -- --check           exit 1 when a level draws over 10 % more calls or triangles than the baseline
 //
@@ -108,7 +109,7 @@ for (const lv of wanted) {
   if (!ready) { console.log(' the game did not start'); continue; }
   await sleep(2500);
   try {
-    results[lv] = await evalIn(`(${probe})(${JSON.stringify({ sizes: SIZES, frames: 300 })})`);
+    results[lv] = await evalIn(`(${probe})(${JSON.stringify({ sizes: SIZES, frames: 300, black: flag('--black') })})`);
     console.log(' done');
   } catch (e) {
     console.log(` failed: ${String(e.message).split('\n')[0]}`);

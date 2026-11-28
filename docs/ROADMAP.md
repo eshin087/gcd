@@ -192,6 +192,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [ ] Arm and leg armour, belts and buckles as sculpted parts
   - [ ] The reference's density of small bright detail
 
+## M1.100 — The blackout and the red trail (2026-11-27, `claude/combat-blackout-red-trails-892472`, ADR-271)
+- [x] `?black=a|b|c`: a black blow drains the picture to dark grey, the boss lit, the violet gone; clears on every cancel
+- [x] `?redTrail=a|b`: a red string's blade cuts leave a red crescent from the flare on
+- [x] Films of today and every variant at the game camera (Shen Hui, the wyrm, the Lord); `npm run perf -- --black`
+- [x] The owner's picks made the defaults: blackout b, red trail a
+- [x] Every black blow lands a devastating impact, hit or miss (`?blackImpact=`), filmed on Shen Hui and the wyrm
+- [ ] A red wake for fists and claws if wanted; the impact along the Fox's Howl beam
 ## M1.93 — Boss motion: Lu Wusheng, Wen Yao, the wyrm (2026-11-26, `claude/enemies-grove-fox-wyrm-motion-59bc46`, ADR-223)
 - [x] The audit tool (`tests/integration/motionAudit.mjs`): hands, pops, sliding feet, facing, the held windup per tell
 - [x] Held blue / red windups, coloured (blue tall, red low), behind `?sheathMotion=` `?foxMotion=` `?wyrmMotion=`
@@ -204,6 +211,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.102 — A new fight stance: the middle guard (2026-11-28, `player/stance-four`, ADR-275)
+- [x] Four fight holds as data behind `?hold=` (middle, high, sword fingers, low trailing), filmed close and far in one clip
+- [x] The owner's pick, A the middle guard, the default; ADR-207's hold `?hold=ref`; the Lab's `hold` row
+- [ ] The owner's playtest on the preview
 ## M1.99 — Bai Wuji's barrier shows where your blade hits it, and he goes down quicker (2026-11-28, `enemies/untouched`, ADR-266)
 - [x] A cut on the barrier chips a quarter of its damage (never his last HP), its number where the blade stopped
 - [x] His health 16000 (20000); the bench: the good bot in about 2.3 min

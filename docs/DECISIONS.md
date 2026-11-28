@@ -7894,6 +7894,84 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
   to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
 
+## ADR-271 — The blackout for a black blow, red trails for a red string: options behind switches (2026-11-27)
+
+- **Context:** the owner sent a Phantom Blade Zero boss fight as the reference for combat feel and approved two of
+  its looks. At 0:17 a charged attack: over about 0.3 s the whole picture drains to dark grey, only the boss stays
+  readable with a white glint on her blade, colour snaps back on the strike. At 0:34 and 1:17 a red string: every
+  cut leaves a long thin red crescent. Today a black blow is drawn violet (an eclipse with violet strokes on the
+  striking part, the body darkened violet, the flare dyed violet, the screen's edges dimming), and a red blow's cut
+  is the same white steel as any other. Owner rules: no background colour change on a parry or dodge (the blackout
+  is their explicit exception for BLACK blows only); for red "the flare stays the timing cue, nothing before it"
+  (ADR-118); a look change is shown as films and the owner picks; the default is what the owner approved.
+- **Decision:**
+  1. THE BLACKOUT (`?black=0|a|b|c`, `combat/blackout.js`, default `0` = today). A grade in the final pass
+     (`uBlack`): the world's colour drains and its light drops; the boss is kept whole and the hero partly, found
+     on the scene's ASCII flag (sceneRT alpha), spread by part of a letter cell; a letter above a light keeps its
+     light (the flare, the glint). The HUD is DOM and untouched. The violet goes in it (`TELL_STYLE.black.pale`):
+     the flare undyed (a white-hot streak), the charge a white point with pale motes drawn in, no darkened body,
+     no dark screen edges. Variants, one dimension apart: a the film (dark over the last 0.3 s before the cue), b
+     the dark built through the whole charge, c as a, darker. It holds 0.3 s past the cue (the strike) and comes
+     back in 0.08 s of REAL time (a hit-stop must not hold it).
+  2. DRIVEN BY WHAT EXISTS: `combat:charge` starts it, the black `combat:flash` holds it to the strike, and a
+     `beat()` every frame from what draws the charge keeps it (DuelFx.charge: every duelist and the wyrm; the Fox's
+     Howl in `beam.js`): a charge whose beats stop for 0.15 s is cancelled and lets go in 0.25 s, so every path
+     that stops drawing the charge (stagger, posture break, parry recoil, a Lab interrupt, death) clears it with
+     no list to keep; a retry or a change of state clears it at once (`ui/tells.js`, which owns it as
+     `game.blackout`). No new event. `answer.js` and `audio.js` hear the same events as before.
+  3. THE RED TRAIL (`?redTrail=0|a|b`, `combat/redTrail.js`, default `0` = off). A red cue opens a window to its
+     impact + 0.14 s (`DuelFx.tellFlash`); inside it `DuelFx.sweep` lays one line of fire at a low heat (red
+     strokes) just outside the tip's path. a ~0.2 s, b ~0.45 s and a little hotter. Blades only; the bare-handed
+     bosses and the wyrm are left out: a fist's or a claw's path is short and lies on the contact, where a red
+     wake would hide the blow, and the flare already marks it.
+  4. Numbers in `TELL_STYLE` (`rules.js`): `black.out`, `black.pale`, `red.trail`. Lab: `black`, `redTrail` in the
+     streak grid. `npm run perf -- --black` measures a frame with the blackout pinned on.
+  5. THE OWNER'S PICKS (2026-11-27, from the films): the blackout **b** and the red trail **a**, the defaults.
+  6. THE BLACK IMPACT (`?blackImpact=0|a`, default `a`; the owner: "we need all blackout attacks to end with a
+     devasting impact even if it misses the player ... the dragon blackout attack looks like it does nothing when
+     it misses"). Hit or miss, a black blow lands as the fight's biggest blow: a crater and broken pieces round
+     its point, a shock front of dust, a light, a hard shake and punch, a short held frame on a miss, an
+     explosion's sound. One module for every boss (`combat/blackImpact.js`), armed by the black cue, fired by the
+     beat's own impact clock read off the boss (`brain.act` / `brain.action`), so it lands on the frame the blow
+     does and never after a cancel. No extra damage: the black blows already deal the most of each boss's moves
+     (38 - 44) with a knock-down; the impact is what the player and the world feel.
+- **Consequences:** the black flare in the blackout is white, the colour of a parryable glint; it is a streak, not
+  the cross, and the whole frame is dark around it, but the owner should judge it. The mask is the scene's flag,
+  so what is drawn only in the fire field near the boss (his spell, the Fox's spirit) dims with the world unless
+  it is bright. Open: the phone; a red wake for fists and claws if the owner wants one; on the bare-handed bosses and the Fox's
+  Howl (a beam) the impact lands a stride in front of the body, not along the beam.
+
+## ADR-275 — The hero's fight stance: the middle guard (2026-11-28)
+
+- **Context:** the owner found ADR-207's two-handed hold (the grip before the right of the belly, the blade ~47° up
+  and out to his right, the point above his head) a poor fighting stance and asked for four new ones to pick from,
+  filmed close and far in one clip.
+- **Decision:** four holds were built as data (`refStance.js` `HOLDS`: hands, elbows, blade, free hand and its
+  shape, body, knees, feet, the flat's roll, one or two hands) behind `?hold=`, filmed (a close orbit, the game
+  camera at true size and x2, all four together) and the owner picked **A, the middle guard**, now the default:
+  both hands on the grip before the navel on his centre line, the elbows down and a little in, the blade forward
+  at the foe's face (4° to his right, 36° up), the knees bent (body 7.5 cm down), the chest a touch forward, the
+  right foot 24 cm ahead and the left 22 back (the feet the light chain steps from, as ADR-207's hold), the hips
+  turned 0.12 with the right foot. `setHold` copies the hold into `REF_READY`, so every reader of the hold (the
+  fight's habits through `syncStandArm`) follows it. `?hold=ref` keeps ADR-207's hold; `b` (high guard, the blade
+  upright by the right of his head), `c` (sword fingers, one hand), `d` (low trailing, one hand) are kept,
+  turned down. A one-handed hold plays no fight habit (they keep both hands on the grip) and the stance blend
+  scales `twoHand` by the hold's `two`.
+- **Departure from what was filmed:** the sword elbow's pole is tucked in (0.45, -0.88, -0.15; filmed 0.25, -0.95,
+  -0.15): with the filmed pole `heroref` measured the sword wrist 69-73° off the forearm (bar 60), now ≤ 54°. The
+  toes keep ADR-207's turn (right -0.35, left 0.6; filmed -0.2 / 0.55): from -0.2 the right foot turned 0.07 rad in
+  the draw cut's 0.3 pivot (`heroweight`: at least half). The free elbow points out to his left (0.7, -0.7, -0.15;
+  filmed down and in): across his front the robe look's sleeve wing on that arm stood in his chest on 23 % of the
+  route's frames (`looks`, bar 3 %), now 2.4 % (main 2.5), ADR-207's finding again. The blade rises 36° (filmed
+  30°) and the hands 3 cm higher: standing in the hold 1.5 m from a duelist the filmed point was 5.4 cm inside
+  him, and a deathblow whose last cut lands as he is back in the hold was drawn through him (duel `contact`,
+  bar 8 cm); now -0.1 cm at 1.5 m (9 cm at 1.3 m: a blade aimed at the foe meets him that close), the wrist
+  54°. The body is as filmed.
+- **Consequences:** the block, the parry and every attack are unchanged and start from the new hold (`heroref`'s
+  transition bars hold: every move within ×1.5 + 10 cm of the stance before). From straight behind at the game
+  camera the blade runs up the screen, over his head: the hold reads best side-on or at an angle, as a duel mostly
+  is. Open: the owner's playtest.
+
 ## ADR-274 — The deathblow is not cut short: a guard press waits, and it takes a perfect blue parry from the blade lock (`?dbLock=combo|lock`) (2026-11-28)
 
 - **Context:** the owner: "if i spam an attack during deathblow, the deathblow gets cancelled?". A sim parried into a
