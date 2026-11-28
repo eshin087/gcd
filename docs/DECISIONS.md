@@ -8128,5 +8128,9 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   The scenarios that press a plain parry on purpose (a perfect one would lock the blades, break him or send a shot
   back) run with `two`: duel `clash`, `parryfx`, `streak`, `impact`, `moments`, `perfect`, `deathblow`, `flare`; asc
   `flare`, `shots`, `lantern`, `clash`; fox `clones`; integ `timestep`, `bullets`; lord `spells` (also where `fxlooks` replays it), `flare`. New duel
-  `oneparry` checks both modes. How the one parry LOOKS (the spark spit is small next to the boss's guard) is still
+  `oneparry` checks both modes. Two bosses read a perfect parry, and the owner kept both outcomes (asked after CI
+  showed them): Bai Wuji's barrier opens for 6 s on every parry (its cracks, two plain parries, are `two`'s only;
+  veil `barrier` checks both), and every parried shot of Xin Yi's flies back (phase 2: he Bends under it). Woke
+  `pace` counts the Bend as busy time and leaves it out of his cues a minute: it is the hero's answer, not his pace.
+  How the one parry LOOKS (the spark spit is small next to the boss's guard) is still
   the owner's call: options to come.
