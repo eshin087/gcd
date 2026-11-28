@@ -4,9 +4,8 @@ import { registerItem } from '../../player/gear/index.js';
 import { panelSkirt } from '../../player/gear/sheet.js';
 import { shapedHand, fistHand } from '../../player/gear/handShape.js';
 import {
-  gridGeometry, shellGeometry, bandGeometry, sub, foldLines, lerp, limb, gripFist, orient, partGeometry, arcPlate, boxGeometry, ring,
+  gridGeometry, shellGeometry, bandGeometry, sub, foldLines, lerp, limb, gripFist, orient, arcPlate, boxGeometry, ring,
 } from '../../player/heroGeo.js';
-import { HAIR_CLUSTERS } from '../../player/model.js';
 import { shatter, walls, cells, nearestCell, facet, merge, jag } from './bodyArt.js';
 import { fsLookNow } from './look.js';
 
@@ -226,9 +225,108 @@ const yCh = (h) => h - 1.225; // → chest space (REST.chest)
 // Head space (before BODY.headScale 1.08): the skull centre (0, 0.14, 0.005); the face looks down +Z;
 // his left is +X. The body's own face (model.js) is taken off and rebuilt here in pieces that can chip.
 const SKULL = [0, 0.14, 0.005];
-/** The hair (the hero's sculpted mop, heroParts.js, black and a little shorter): side-parted, the fringe
- *  falling forward over the brow. Scale per cluster (x, y, z). */
-const HAIR_SCALE = { fringe: [1.0, 0.88, 1.0], nape: [1.0, 0.78, 0.98], left: [1.0, 0.82, 1.0], right: [1.0, 0.82, 1.0], crown: [0.98, 0.86, 1.0] };
+
+// ---- the v04 pass (the owner's anchor.png: the face and the hair; ADR-0FS)
+/** The hair (anchor.png): short, black, SIDE-PARTED on his left and swept over to his right, a lock falling
+ *  over his right brow, cut close above the ears and at the nape. One shell over the skull (and over the
+ *  frame's cranium under it), its strands drawn as lines running with the sweep; no spikes. */
+const HAIR = {
+  c: [0, 0.15, -0.008], r: [0.092, 0.106, 0.1], // the shell's base ellipsoid (head space)
+  // the hairline: [azimuth (0 his front, + his left), elevation on the base ellipsoid]
+  line: [[-Math.PI, -0.79], [-2.0, -0.3], [-1.5, 0.12], [-1.05, 0.2], [-0.72, 0.13], [-0.36, 0.06], [-0.08, 0.36], [0.12, 0.52], [0.45, 0.5], [1.0, 0.25], [1.5, 0.12], [2.0, -0.3], [Math.PI, -0.79]],
+  part: 0.032, // the part's x (his left of the middle)
+};
+/** piecewise-linear [[a, v], ...] at a */
+function tabAt(T, a) {
+  if (a <= T[0][0]) return T[0][1];
+  for (let i = 1; i < T.length; i++) if (a <= T[i][0]) return lerp(T[i - 1][1], T[i][1], (a - T[i - 1][0]) / (T[i][0] - T[i - 1][0]));
+  return T[T.length - 1][1];
+}
+function hairGeo() {
+  const { c, r, line, part } = HAIR;
+  const g = gridGeometry(56, 16, (u, t, o) => {
+    const a = -Math.PI + u * Math.PI * 2;
+    // (the ends: the hairline breaks into short pointed locks, longer over the brow and at the nape)
+    const tooth = Math.pow(0.5 + 0.5 * Math.sin(a * 11 + 1.3 + 0.6 * Math.sin(a * 3)), 3);
+    const eh = tabAt(line, a) + 0.03 * jag(Math.cos(a) * 0.4, Math.sin(a) * 0.4, 0.2) - 0.1 * tooth;
+    const e = lerp(1.52, eh, Math.pow(t, 0.85));
+    const ce = Math.cos(e), dx = Math.sin(a) * ce, dy = Math.sin(e), dz = Math.cos(a) * ce;
+    let x = c[0] + dx * r[0], y = c[1] + dy * r[1], z = c[2] + dz * r[2];
+    // (toward the hairline the shell comes down onto the skin: the ends lie on the head, not a cap's brim)
+    const w = 0.75 * Math.pow(t, 3);
+    x = lerp(x, SKULL[0] + dx * 0.079, w);
+    y = lerp(y, SKULL[1] + dy * 0.101, w);
+    z = lerp(z, SKULL[2] + dz * 0.091, w);
+    // the volume: thin at the ends, full on top and on the swept (right) side, lifted off the part; a groove
+    // at the part
+    let v = lerp(0.03, 0.004, Math.pow(t, 1.3));
+    if (x < part) v += 0.012 * Math.max(0, dy) * Math.min(1, (part - x) / 0.05);
+    if (dz > -0.3 && dy > 0.3) v -= 0.014 * Math.exp(-(((x - part) / 0.008) ** 2));
+    // the lock over his right brow: carried forward and down at the front hairline
+    const lock = Math.exp(-(((a + 0.42) / 0.3) ** 2)) * Math.pow(t, 2.5);
+    v += 0.008 * lock;
+    x += dx * v;
+    y += dy * v - 0.01 * lock;
+    z += dz * v + 0.01 * lock;
+    o[0] = x;
+    o[1] = y;
+    o[2] = z;
+    o[3] = a * 0.1;
+    o[4] = y;
+  });
+  // (the strands: lines that run with the sweep, from the part over to his right and back, and down the sides)
+  foldLines(g, (x, y, z) => {
+    const s = (x - HAIR.part) * 0.55 + z * 0.9 - y * 0.25;
+    return 0.5 + 0.62 * Math.sin(s * 150 + 0.4 * Math.sin(x * 90));
+  });
+  // (outward: the winding is checked once, at build)
+  const p = g.attributes.position, n = g.attributes.normal;
+  const k = 40, ox = p.getX(k) - c[0], oy = p.getY(k) - c[1], oz = p.getZ(k) - c[2];
+  if (ox * n.getX(k) + oy * n.getY(k) + oz * n.getZ(k) < 0) {
+    const ix = g.index.array;
+    for (let i = 0; i < ix.length; i += 3) {
+      const tmp = ix[i + 1];
+      ix[i + 1] = ix[i + 2];
+      ix[i + 2] = tmp;
+    }
+    g.computeVertexNormals();
+  }
+  return g;
+}
+
+/** The face's planes (anchor.png): narrow, the cheekbones high and defined, the cheeks hollow under them, a
+ *  brow ridge over the eyes. Moves the skull's vertices (head space) in or out from the skull's axis. */
+function sculptFace(g) {
+  const P = g.attributes.position;
+  for (let i = 0; i < P.count; i++) {
+    const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+    if (z < 0.01) continue;
+    const ax = Math.abs(x), front = Math.min(1, (z - 0.01) / 0.05);
+    const cheek = Math.exp(-(((y - 0.118) / 0.011) ** 2)) * Math.exp(-(((ax - 0.054) / 0.016) ** 2));
+    const hollow = Math.exp(-(((y - 0.088) / 0.013) ** 2)) * Math.exp(-(((ax - 0.05) / 0.017) ** 2));
+    const brow = Math.exp(-(((y - 0.15) / 0.008) ** 2)) * Math.exp(-(((ax - 0.03) / 0.022) ** 2));
+    const k = (0.0045 * cheek - 0.006 * hollow + 0.003 * brow) * front;
+    const l = Math.hypot(x, z - SKULL[2]) || 1;
+    P.setXYZ(i, x * (1 - 0.03 * front) + (x / l) * k, y, z + ((z - SKULL[2]) / l) * k);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+/** A brow (anchor.png: straight, dark, a little lifted toward the outer end) over the eye at x0 .. x1, lying
+ *  on the skin a hair proud of it. */
+function browGeo(sd) {
+  return gridGeometry(8, 1, (u, t, o) => {
+    const ax = lerp(0.014, 0.05, u), x = sd * ax;
+    const y = 0.1495 + 0.004 * u - 0.0015 * (1 - u) + (t - 0.5) * lerp(0.0062, 0.0042, u);
+    const zz = 0.005 + 0.09 * Math.sqrt(Math.max(0.02, 1 - (ax / 0.076) ** 2 - ((y - 0.14) / 0.1) ** 2));
+    o[0] = x;
+    o[1] = y;
+    o[2] = zz + 0.0055 - 0.004 * u;
+    o[3] = x;
+    o[4] = y;
+  }, sd < 0);
+}
 
 /** The V-jaw (model.js's recipe, finer). */
 function jawGeo(k = 1, segs = [16, 10]) {
@@ -270,11 +368,13 @@ function buildHead(ctx) {
     }
   }
   // ---- the disguise: skin (the face, the jaw, the ears, the neck), split down the middle
-  const skull = orient.up(ellipsoidGeometry(0.078, 0.09, 0.1, { widthSegs: 32, heightSegs: 24 })).translate(...SKULL);
+  const skull = sculptFace(orient.up(ellipsoidGeometry(0.078, 0.09, 0.1, { widthSegs: 32, heightSegs: 24 })).translate(...SKULL));
   const jaw = jawGeo(1, [20, 12]).translate(SKULL[0], SKULL[1] - 0.066, SKULL[2] + 0.016);
   const neck = limb({ length: 0.12, r0: BODY.neck[0], r1: BODY.neck[1], radial: 18, rings: 6, capSegs: 1 }).translate(0, 0.1, 0);
   const ears = [-1, 1].map((s) => ellipsoidGeometry(0.012, 0.024, 0.018, { widthSegs: 8, heightSegs: 6 }).translate(s * 0.08, SKULL[1] - 0.014, SKULL[2] - 0.008));
-  const face = merge([skull, jaw, neck, ...ears]);
+  // (v04: a straight narrow nose, its ridge outlined, between the eyes and down to the tip)
+  const nose = sub(ellipsoidGeometry(0.0085, 0.024, 0.012, { widthSegs: 8, heightSegs: 6 }).rotateX(-0.18).translate(0, 0.112, 0.091), 1);
+  const face = merge([skull, jaw, neck, ...ears, nose]);
   const sides = {
     R: shatter(face, (x) => (x < 0 ? 0 : null)).get(0),
     L: shatter(face, (x) => (x >= 0 ? 0 : null)).get(0),
@@ -291,32 +391,28 @@ function buildHead(ctx) {
       tAt: [[0, 0.1], [0.42, 0.33], [0.43, 0.5], [1, 0.84]],
     }, keep),
   };
-  // the eyes (brown, half-lidded: model.js's) go with the skin round them
-  for (const ex of [0.032, -0.032]) {
-    const p = [SKULL[0] + ex, SKULL[1] - 0.012, SKULL[2] + 0.09];
-    const e = ctx.mesh(head, ellipsoidGeometry(0.014, 0.0065, 0.005, { widthSegs: 8, heightSegs: 4 }), M.eye, ...p);
-    const side = ex < 0 ? 'R' : 'L';
-    cut[side].ents[cut[side].key(...p)].meshes.push(e);
-    R.eyes.push(e);
-    keep.push(e);
+  // the eyes (v04, anchor.png: almond, a pale white round a dark iris, under a straight dark brow; model.js's
+  // were dark holes) go with the skin round them; the brows too
+  for (const ex of [0.031, -0.031]) {
+    const p = [SKULL[0] + ex, SKULL[1] - 0.011, SKULL[2] + 0.0885];
+    const side = ex < 0 ? 'R' : 'L', sd = Math.sign(ex);
+    const ent = cut[side].ents[cut[side].key(...p)];
+    const white = ctx.mesh(head, ellipsoidGeometry(0.0128, 0.0052, 0.0042, { widthSegs: 10, heightSegs: 4 }).rotateZ(sd * 0.08), M.piping, ...p);
+    const iris = ctx.mesh(head, ellipsoidGeometry(0.0058, 0.0054, 0.0036, { widthSegs: 8, heightSegs: 4 }), M.eye, p[0] - sd * 0.0012, p[1] + 0.0004, p[2] + 0.0016);
+    const brow = ctx.mesh(head, sub(browGeo(sd), 1), M.hair);
+    ent.meshes.push(white, iris);
+    cut[side].ents[cut[side].key(sd * 0.032, 0.151, 0.088)].meshes.push(brow);
+    R.eyes.push(iris);
+    keep.push(white, iris, brow);
   }
-  // ---- the hair: the cap and the mop's clusters, black; split down the middle, three pieces a side
-  const mass = [partGeometry('hair.cap')], tips = [];
-  for (const c of HAIR_CLUSTERS) {
-    const L = HAIR_SCALE[c.name] ?? [1, 1, 1];
-    for (const [k, list] of [['mass', mass], ['tip', tips]]) {
-      const g = partGeometry(`hair.${c.name}.${k}`);
-      g.scale(L[0], L[1], L[2]).translate(...c.pivot);
-      list.push(g);
-    }
-  }
-  const hm = merge(mass), ht = merge(tips);
+  // ---- the hair (v04: hairGeo, the anchor's side part; was the hero's mop): black, split down the middle,
+  // three pieces a side
+  const hm = hairGeo();
   const hairSide = (side, g) => shatter(g, (x) => ((x < 0) === (side === 'R') ? 0 : null)).get(0);
   for (const side of ['R', 'L']) {
-    const gm = hairSide(side, hm), gt = hairSide(side, ht);
+    const gm = hairSide(side, hm);
     if (!gm) continue;
     const layers = [{ g: gm, mat: M.hair }];
-    if (gt) layers.push({ g: gt, mat: M.hairTip });
     shardPart(R, ctx, head, side === 'R' ? 'headR' : 'headL', layers, side === 'R'
       ? { n: 3, O: [-0.09, 0.15, 0.05], R: 0.2, amp: 0.2, tAt: [[0, 0.82], [1, 0.97]], depth: 0 }
       : { n: 3, O: [0.09, 0.2, 0.0], R: 0.2, amp: 0.2, tAt: [[0, 0.52], [1, 0.84]], depth: 0 }, keep);
