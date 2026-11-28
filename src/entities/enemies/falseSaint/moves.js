@@ -28,7 +28,7 @@ import * as TERRAIN from './moves/terrain.js';
 //
 // HIS RULES ON THE DATA (tests/integration/saint.mjs DATA checks them):
 //   - every new beat or move field is prefixed `fs` (the engine's own names: the suite's ENGINE list);
-//   - every real blow has a tell and a windup inside TUNING.minFirstWindup (0.42) / minHitGap;
+//   - every real blow has a tell and a windup inside TUNING.minFirstWindup (0.7 x windupScale, COMBAT.md) / minHitGap;
 //   - weights are four-phase arrays [P1, P2, P3, P4].
 // MOVE FIELDS THE ROUTER READS (so no agent edits this file to give him a flurry or a counter):
 //   fsFlurry: [phases]   this move is his flurry (the kit's streakMove) in those phases (a later file's

@@ -40,7 +40,7 @@ import { TUNING_TERRAIN } from './tuningTerrain.js';
 //     shock's FRONT (one record): it runs out from the press at `diesIrae.speed` m/s; every piece and plate
 //     it passes is struck once; it reaches the hero once (cued on the front: the ledger at the slam, the
 //     flash flashLead s before; held by the fairness guard up to maxDelay, or quiet).
-//   THE TRANSITIONS' WORLD (frame: a transition's impact, after core's push ring): 2 a small shock, the
+//   THE TRANSITIONS' WORLD (onMoment, from saint.js _moment: it REPLACES core's push ring): 2 a small shock, the
 //     plates under him cracked; 3 the lift's blast ring (floor plates torn up and thrown out); 4 the nova
 //     (plates thrown, every standing piece within reach struck, the furnace's flare). He cannot be hurt
 //     through the change until its ring is out: saint.js _inChange (the boost agent's).

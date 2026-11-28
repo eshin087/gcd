@@ -75,7 +75,7 @@ export const TUNING_TERRAIN = {
   // slams, and a SHOCK runs out across the whole floor from it at `speed` m/s (from `r0` m, out to `r1`),
   // `band` m deep. Each piece it passes is struck (`power` at the press, falling off to `farK` of it at r1;
   // a plate `plate` x that); it reaches the hero once: `damage`, `knockback` m out along it (red,
-  // unblockable: a roll through the front). The slam bites the press (`slam` power at its ram: four or five
+  // unblockable: a roll through the front). The slam bites the press (`slam` power at its ram: about six
   // slams bring its head down; then the move is gone). Cued on the front: the tell at the slam, the flash
   // flashLead s before it reaches the hero (his own way toward or away from it counted in).
   // (the tuning pass: `plate` 0.45 -> 0.25: from phase 4's start (28 % of the plates already broken by then) three slams
