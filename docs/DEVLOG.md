@@ -5,6 +5,38 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — Shen Hui after the reference pack, behind `?ashRef` / `?ashRefMove` (branch `enemies/shen-hui-ref-anim`, ADR-289)
+
+**Owner:** implement Shen Hui's new look and animations from `docs/art/character-packs-v04/shen-hui` (anchor + A01,
+D01 - D12, F01 - F04, P01 - P02, R01 - R02, V01; not the superseded drafts) on the existing rig, balance untouched.
+
+**Reconciled first:** the pack's 26 source hashes matched its commit (51e972fb) but 12 files had changed on `main`
+since (ADR-250, his form). Its beat map still holds: the pack's own check run against `main` finds the same 47 moves,
+138 beats, 19 clips and the same authored keys (ADR-250 is a layer, `formKeys`). The sheets draw the beats he already
+plays; what differs is bearing (lower, committed, the free arm out) and the outfit (bronze bracer, red fold, layered
+ragged robe). So, as for Varr Nihil (ADR-277): two switches, off until the owner picks.
+
+**What changed:**
+- `?ashRef=a` (`gear.js`, `refLook.js`): the bracer of old bronze; a brick-red fold down the robe's front and back
+  (on its own springs, proud of the panels: inside them the wrap hid it); the robe layered and ragged in every phase
+  (an over-robe edge torn at mid-thigh, the hem run out into torn ends: slices of each panel's own sheet). His rig
+  57.5k -> 64.0k triangles (+11 %; the first try with tatter strips was +31 % and was redrawn). Phase dressing kept.
+- `?ashRefMove=a` (`poses.js` K_REF / `posesNow`, `moves.js` refKeysOf / CLIP_REF, `disciple.js` AshBrain): the
+  guard 7 cm lower on a long stride; load sinks, contact and follow sink and lean in, feet wider on the ground; the
+  free hand out in opposition on one-handed blows; reactions bigger. Same key times, so timing cannot move.
+
+**Verified:** `duel.mjs . ashref` (new): 2760 realisations time every beat the same on and off; seeded fights in
+phases 1 and 3 land the same blows at the same times; the sword audit holds (wrist ≤ 40°, blade ≥ 0.18 m from head
+and hat, elbow ≥ 156°, thrusts on the arm's line). Also green: duel data, timing, terrain, motion, swordmotion,
+ashform, guard, react. Films (gameplay camera, same seed / place / scale, current vs proposed): guard at four
+headings in phases 1 and 3, portraits in phases 1 - 3, tellAt / flash / impact / active-end frames for six moves,
+full-speed loops (P1 thrusts, cuts and sweeps; P2 burns and the leap; P3 flits, ghost dash and the qi storm): flashes
+fall on the same frames on both sides. `npm run perf -- --levels ash`: 76 draw calls either way, 234k -> 236k triangles on screen; GPU and script ms within run-to-run noise (the GPU is shared).
+
+**Open:** the owner picks (`?ashRef`, `?ashRefMove`); the red fold and the bronze read in close views more than at
+the game camera; the layer is broad, not a per-beat re-key (a per-move pass on what the owner names); not checked on
+the iPhone.
+
 ## 2026-11-28 — Swipe to dodge on touch, the guard on the left to try (ADR-278; `ui/touch-swipe-dodge`)
 
 **Owner:** too slow to parry or dodge on the phone compared with mouse / keyboard / controller; picked "guard on the
