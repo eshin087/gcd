@@ -271,8 +271,10 @@ export class LordFx extends DuelFx {
       // (ADR-276, `?lordRef`: the split blade: two rails of steel half a cell to each side, meeting at
       // the point, and the dark slit between them: no stroke down the middle)
       const h = 0.62, ex = a.x + dx * k, ey = a.y + dy * k, ez = a.z + dz * k;
-      for (const s of [-1, 1]) this._ink(a.x + s * ox * h, a.y + s * oy * h, a.z + s * oz * h, a.x + dx * k * 0.86 + s * ox * h * 0.8, a.y + dy * k * 0.86 + s * oy * h * 0.8, a.z + dz * k * 0.86 + s * oz * h * 0.8, 0, 0.62 * hot, 0, 0.95 * hot);
-      for (const s of [-1, 1]) this._ink(a.x + dx * k * 0.86 + s * ox * h * 0.8, a.y + dy * k * 0.86 + s * oy * h * 0.8, a.z + dz * k * 0.86 + s * oz * h * 0.8, ex, ey, ez, 0, 0.95 * hot, 0, 0.95 * hot);
+      // (each rail dimmer than the single stroke it replaces, and the two meeting at the point at the same
+      // heat: at 720p two full-heat rails printed white and the blade lost its red; the point bloomed)
+      for (const s of [-1, 1]) this._ink(a.x + s * ox * h, a.y + s * oy * h, a.z + s * oz * h, a.x + dx * k * 0.86 + s * ox * h * 0.8, a.y + dy * k * 0.86 + s * oy * h * 0.8, a.z + dz * k * 0.86 + s * oz * h * 0.8, 0, 0.4 * hot, 0, 0.55 * hot);
+      for (const s of [-1, 1]) this._ink(a.x + dx * k * 0.86 + s * ox * h * 0.8, a.y + dy * k * 0.86 + s * oy * h * 0.8, a.z + dz * k * 0.86 + s * oz * h * 0.8, ex, ey, ez, 0, 0.55 * hot, 0, 0.4 * hot);
     }
     const life = this._frame();
     if (!(life > 0)) return;
@@ -280,8 +282,8 @@ export class LordFx extends DuelFx {
     for (let i = 0; i <= n; i++) {
       const u = (i / n) * k, h = (0.3 + 0.08 * Math.sin((this.d.time ?? 0) * 17 + i * 1.7)) * hot;
       const x = a.x + dx * u, y = a.y + dy * u, z = a.z + dz * u;
-      // (the split blade's sheath stands further out and lower, so the slit between its rails stays dark)
-      const o = split ? 1.6 : 1, hh = split ? h * 0.7 : h;
+      // (the split blade's sheath of red stands just outside its rails, so the slit between them stays dark)
+      const o = split ? 1.45 : 1, hh = split ? h * 1.05 : h;
       this._blob(x + ox * o, y + oy * o, z + oz * o, 0, 0, 0, life, 0.2, 0.2, hh, hh, K_FIRE);
       this._blob(x - ox * o, y - oy * o, z - oz * o, 0, 0, 0, life, 0.2, 0.2, hh, hh, K_FIRE);
     }

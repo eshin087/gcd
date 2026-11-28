@@ -535,8 +535,9 @@ export class StarlessLord extends Duelist {
     const act = this.brain.act, striking = !!act && act.striking && act.t >= act.striking.impact - 0.06 && act.t <= act.striking.end + 0.1;
     const hot = this.phase >= 4 ? 1.5 : 1;
     const glow = (1.2 + (striking ? 0.8 : 0)) * hot * this.lit;
-    // (ADR-276, `?lordRef`: the split blade's rails bloom less, so the dark slit between them reads)
-    const want = this._split ? glow * 0.5 : glow;
+    // (ADR-276, `?lordRef`: the split blade's rails bloom a little less, so the dark slit between them reads; the
+    // bloom is most of the blade's red at 720p: halved, the blades printed white)
+    const want = this._split ? glow * 0.8 : glow;
     u.uGlow.value = dt > 0 ? damp(u.uGlow.value, want, 14, dt) : want;
     u.uInkGlow.value = 1.0 + (striking ? 0.6 : 0) + 0.4 * (hot - 1);
   }
