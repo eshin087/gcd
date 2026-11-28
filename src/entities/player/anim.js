@@ -5185,7 +5185,9 @@ export class HeroAnimator {
       const ol = Math.hypot(ox, oz) || 1;
       ox /= ol;
       oz /= ol;
-      const ph = this.time * (3 + 5 * Math.min(1, sp / 5)) + i * 2.1;
+      // the flutter's phase: its own per streamer, or `wob[1]` shared by the sheets of one cloak, so
+      // they move as one cloth instead of flapping apart (the great cloak, ADR-281)
+      const ph = this.time * (3 + 5 * Math.min(1, sp / 5)) + (S.wob ? S.wob[1] : i * 2.1);
       // a ribbon's own outward flare (model.js: the cape), lifted by a charge most on the sword side
       const right = Math.max(0, ox * _d.x + oz * _d.z);
       // … and its own billow (`breeze`: [extra out, rate]; a streamer without it is untouched): a slow
@@ -5208,7 +5210,7 @@ export class HeroAnimator {
       for (let s = 0; s < 2; s++) {
         const c = st.segs[s], j = S.segs[s];
         const lag = STREAM_LAG[s] * lg * (1 + 0.08 * sp);
-        const wob = (0.08 + 0.12 * Math.min(1, sp / 4) + 0.1 * bw) * Math.sin(ph + s * 1.4);
+        const wob = (0.08 + 0.12 * Math.min(1, sp / 4) + 0.1 * bw) * (S.wob ? S.wob[0] : 1) * Math.sin(ph + s * 1.4);
         _v.set(ox * so - vel.x * lag - oz * wob, -1 - vel.y * lag * 0.5 + Math.abs(wob) * 0.5, oz * so - vel.z * lag + ox * wob);
         _v.normalize().applyQuaternion(_qInv2.copy(_q0).invert());
         if (tumble > 0) {
