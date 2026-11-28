@@ -5,6 +5,19 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The clash dance is the default (ADR-247; branch `claude/combat-clash-dance-default`)
+
+**Owner:** watched the three films of PR 175 (today against the dance: Shen Hui, the Starless Lord, Xin Yi) and said
+"Make it default".
+
+**What changed:** `DEFAULT_CLASH` is 'dance' (combat/clashDance.js): the game plays the clash dance with no switch;
+`?clash=0` and the Lab's `clash` row `old` give the numbers before. As the flash chain does, the headless sims keep it
+off unless a scenario sets it (their posture checks were written for the old numbers); duel `clashdance` now also
+checks the default. CHANGELOG / WHAT'S NEW: the entry moved to the top as a change; COMBAT, ARCHITECTURE, ROADMAP,
+ADR-247 (an update) say so.
+
+**Open:** the ring by ear on the owner's devices (the films had no sound).
+
 ## 2026-11-26 — Tian Lei audited: straight limbs, a readable pace, two ki blasts (ADR-248; branch `claude/tian-lei-motion-32bb13`)
 
 **Owner (the boss motion audit, one session a fighter):** weird arm angles, unrealistic attacks, kicks that stay bent

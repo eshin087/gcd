@@ -758,7 +758,7 @@ once (rule 4). A red hit inside a string can't be parried or blocked: dodge it (
 the plunge, which cancels the string). Rending flurry parried hit by hit: `dragon:parried` [0, f],
 [1, f], [2, f], [3, true], chain 2 → 3 → 4, +148 posture, no damage (STRINGS scenario).
 
-## The clash dance (2026-11-26, ADR-247; `?clash=dance`, off by default until the owner picks from film)
+## The clash dance (2026-11-26, ADR-247; the default since 2026-11-27, the owner's pick from the film; `?clash=0` off)
 From research into Sekiro's deflects: the ring of the steel is the fight's rhythm, and parries close together pay
 more than the same parries spread out. The duelists only (`duelist.js` and every boss built on it; the wyrm keeps
 its own); every number is `DEFENSE.clashDance` (`combat/rules.js`), the logic `combat/clashDance.js`.

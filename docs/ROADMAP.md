@@ -1312,8 +1312,8 @@ five additions proposed to the owner, who picked the order:
 - [ ] Cuts that split the letters: hits spray the boss's own letters along the blade, a killing cut splits him
       along the swing (looks to pick on film first)
 - [x] The clash dance: parries in a row inside one string pay more posture each, the ring rises; his posture
-      recovers slower as his health falls (ADR-247): built behind `?clash=dance`, off by default
-- [ ] The owner's pick of the clash dance from film (and its ring by ear, on the iPhone too)
+      recovers slower as his health falls (ADR-247): the default, picked by the owner from the film (`?clash=0` off)
+- [ ] The owner's playtest of the clash dance's ring by ear (and on the iPhone)
 - [ ] One answer per unblockable: jump a sweep (and kick off his head), grabs dodge-only, thrusts keep the mikiri
 - [ ] A sub-weapon and a swap strike (boss rewards: a few uses per fight; the swap strikes and refills the guard)
 
