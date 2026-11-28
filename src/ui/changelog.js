@@ -29,6 +29,30 @@ export const RELEASES = [
       },
       {
         date: '2026-11-27',
+        title: 'The Starless Lord fights with better form',
+        notes: [
+          'Varr Nihil thrusts on a long straight arm out of a real lunge, brings his two-handed overheads down on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quieter and lands his front foot with the blade, in all four forms.',
+          'He is easier to read: every attack holds its windup longer before it lands, and the glint comes earlier.',
+          'His Void Lightning now grounds along its line with the floor crackling round his feet, and each new form rises out of a column of violet letters.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Cinder Wyrm raises its head naturally to rain fire',
+        notes: [
+          'When the wyrm rears up to roar its meteors into the sky, its head now rises up and forward instead of twisting back over its own neck.',
+        ],
+      },
+      {
+        date: '2026-11-27',
+        title: "Xin Yi's limbs on the line",
+        notes: [
+          'Xin Yi moves more cleanly: his punches land straight at you, his kicks stay straight through the hit, his elbows and spinning kicks reach you instead of striking short, and his low sweep passes right through you. The timing of every attack is unchanged.',
+          'His guns now point where they fire, each shot leaving the muzzle with a kick of his arm and a curtain of falling code behind it. His palm bolts in the last phase are a hot core in turning rings of digits.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'Lu Wusheng draws like a swordsman',
         notes: [
           'In the Windless Grove his hand closes on the hilt before the draw, the scabbard pulls back as the blade leaves, and the cut ends in a deep lunge; his thrusts and his overhead read as real blows.',

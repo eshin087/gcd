@@ -5,6 +5,7 @@ import { PHASE_POSES, GEAR2_POSES, BEHIND } from './poses.js';
 import { TUNING, GEARED } from './tuning.js';
 import { oneMovesNow } from './look.js';
 import * as SK from './strikes.js';
+import { limbsB, sweepOn } from './limbs.js';
 import { DIM } from '../../player/model.js';
 
 // Xin Yi's moves and reaction clips, as data (ADR-156; COMBAT.md → "The One Who Woke"). He fights
@@ -604,6 +605,15 @@ function beatA(b) {
 }
 /** The moves as the rebuild plays them (transitions as authored: their kneel is their windup). */
 export const MOVES_A = Object.fromEntries(Object.entries(MOVES).map(([k, d]) => [k, d.transition ? d : { ...d, beats: d.beats.map((b) => (b.pick ? { ...b, pick: b.pick.map(beatA) } : beatA(b))) }]));
+/** `?oneMoves=b` (ADR-253): `a` with the limbs on the line (limbs.js): straight blows down his centre line,
+ *  kicks held long through the contact, the sweep crossing the hero at its impact, short blows' zones fitted
+ *  to their reach. The guns' aim and recoil are drawn (gunAim.js, wokenOne.js); timings are `a`'s. */
+function beatB(b) {
+  let o = shortTravel(b);
+  if (o.aim === 1) o = { ...o, keys: aimSideKeys(o.cock ?? 0.7) };
+  return heldTell(limbsB(longLeg(longArm(sweepOn(o)))));
+}
+export const MOVES_B = Object.fromEntries(Object.entries(MOVES).map(([k, d]) => [k, d.transition ? d : { ...d, beats: d.beats.map((b) => (b.pick ? { ...b, pick: b.pick.map(beatB) } : beatB(b))) }]));
 export const TRANSITIONS = Object.freeze({ 2: 'ironSeeds', 3: 'rising' });
 export const COUNTERS = Object.freeze(['answer', 'answer2', 'answer3']);
 export const STREAKS = Object.freeze(['streakHands', 'streakHands2', 'streakHands3']);
@@ -615,6 +625,7 @@ const oneHand = (def) => ({ ...def, beats: def.beats.map((b) => (b.pick ? { ...b
 /** The moves as realised in phase 1 (the left hand behind his back; transitions as authored). */
 const MOVES_P1 = Object.fromEntries(Object.entries(MOVES).map(([k, d]) => [k, d.transition || d.twoHand ? d : oneHand(d)]));
 const MOVES_P1_A = Object.fromEntries(Object.entries(MOVES_A).map(([k, d]) => [k, d.transition || d.twoHand ? d : oneHand(d)]));
+const MOVES_P1_B = Object.fromEntries(Object.entries(MOVES_B).map(([k, d]) => [k, d.transition || d.twoHand ? d : oneHand(d)]));
 
 // ---------------------------------------------------------------- reaction clips
 // Tian Lei's bare-handed clips, with his own on top: THE LEAN (his ward clips: a slip back and aside, the
@@ -695,6 +706,9 @@ const REALISE_G2 = makeRealise({ TUNING, MOVES, compileClip: (keys, dur) => GEAR
 /** ... and the rebuild's (`?oneMoves=a`). */
 const REALISERS_A = PHASE_POSES.map((P, i) => makeRealise({ TUNING, MOVES: i === 0 ? MOVES_P1_A : MOVES_A, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
 const REALISE_G2_A = makeRealise({ TUNING, MOVES: MOVES_A, compileClip: (keys, dur) => GEAR2_POSES.compileClip(keys, dur), completeBeat: GEAR2_POSES.completeBeat });
+/** ... and `?oneMoves=b`'s (ADR-253). */
+const REALISERS_B = PHASE_POSES.map((P, i) => makeRealise({ TUNING, MOVES: i === 0 ? MOVES_P1_B : MOVES_B, compileClip: (keys, dur) => P.compileClip(keys, dur), completeBeat: P.completeBeat }));
+const REALISE_G2_B = makeRealise({ TUNING, MOVES: MOVES_B, compileClip: (keys, dur) => GEAR2_POSES.compileClip(keys, dur), completeBeat: GEAR2_POSES.completeBeat });
 
 /**
  * A move as it will play this time (duelist/realise.js), round the guard of the phase it is used in; a
@@ -719,9 +733,10 @@ export function realise(name, phase = 1, rnd = Math.random, opts = null) {
   if (replay) REPLAY.name = REPLAY.draws = null;
   // (phase 1 in gear 2, and gear 2's own opening: two-handed, round gear 2's guard)
   const g2 = ph === 1 && !def.transition && (GEARED.now >= 2 || def.twoHand);
-  const reb = oneMovesNow() === 'a';
-  const RS = reb ? REALISERS_A : REALISERS;
-  const A = (g2 ? (reb ? REALISE_G2_A : REALISE_G2) : RS[Math.min(RS.length, Math.max(1, ph)) - 1])(name, phase, r, opts);
+  const mv = oneMovesNow();
+  const RS = mv === 'b' ? REALISERS_B : mv === 'a' ? REALISERS_A : REALISERS;
+  const G2 = mv === 'b' ? REALISE_G2_B : mv === 'a' ? REALISE_G2_A : REALISE_G2;
+  const A = (g2 ? G2 : RS[Math.min(RS.length, Math.max(1, ph)) - 1])(name, phase, r, opts);
   if (A) {
     A.draws = draws;
     A.replay = !!replay;

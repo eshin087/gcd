@@ -4,6 +4,29 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
+One hundred and thirty pieces of work since 0.4.0:
+- **The Starless Lord fights with better form** (2026-11-27, ADR-251). *Changed (the owner's picks from the films;
+  `?lordForm=0` / `?lordPace=0` / `?boltFx=0` / `?igniteFx=0` as before):* in all four forms his thrusts land on a
+  long arm with the point on its line, out of a real lunge (front knee bent, back leg long; before, both knees
+  locked); his two-handed overheads (Falling Star, Grasp and Sever, Severance, every string's held chop) come down on
+  a diagonal across you instead of straight down; his low sweeps (Reaping Arc, Red Meridian, every red sweep) turn
+  on his feet instead of crossing his legs; his free hand stays quieter through a string; the front foot comes down
+  as the blade lands. He also fights at a readable pace (COMBAT rule 10): every move's first blow at least 0.7 s (a
+  little less each form), his blows at least 0.45 s apart, the glint 0.35 s before, the extra time a held windup.
+  Void Lightning grounds three times along its line, the floor crackling round his feet through the cast
+  (`?boltFx=c`); each form's ignition raises a column of violet letters round him that bursts out flat
+  (`?igniteFx=a`). The other options stay behind their switches.
+- **The Cinder Wyrm raises its head naturally to rain fire** (2026-11-27, ADR-258). *Fixed:* rearing up to roar
+  the meteors into the sky, the wyrm's head no longer tips back past upright and rolls over on its neck: the neck
+  rises up and forward over its forelegs and the head points up at the sky. `?wyrmHead=0` (the Lab's LOOKS row) as
+  before. *Added:* integ `wyrmhead` (opt-in): every fire move's head angle.
+- **Xin Yi's limbs on the line** (2026-11-27, ADR-253). *Changed (the owner's picks, the default):* his punches land straight down the line to you with the arm long, his kicks stay
+  straight through the hit instead of folding as it lands, his elbow, knee and spin kick reach you instead of
+  striking short, the low sweep passes through you, and his guns point down the line of fire, each shot leaving
+  the muzzle with a kick of the arm (`?oneMoves=a`: as before). Every timing is as before. His gun shots now leave a
+  curtain of falling code (`?oneGunFx=b`; `a` a tracer, `0` as before) and his palm bolts in the Source are a hot core
+  in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
+One hundred and twenty-six pieces of work since 0.4.0:
 One hundred and twenty-seven pieces of work since 0.4.0:
 - **Bai Wuji's blows land where they aim** (2026-11-27, ADR-255). *Changed:* his palm, his straight poke, Dark
   Spark's fist and the fist he pulls you onto now land on the line to your chest (they crossed past you by up to

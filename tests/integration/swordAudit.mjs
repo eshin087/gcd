@@ -127,13 +127,13 @@ export function swordAudit(H) {
       if (inAct) for (const b of A.beats) {
         if (b.feint || b._aud || A.t < b.impact) continue;
         b._aud = true;
-        impacts.push({ i: b.index ?? A.beats.indexOf(b), tell: b.def.tell ?? '-', chest: Math.round(s.chest), head: Math.round(s.head), frame: F.length - 1 });
+        impacts.push({ i: b.index ?? A.beats.indexOf(b), tell: b.def.tell ?? '-', chest: Math.round(s.chest), head: Math.round(s.head), frame: F.length - 1, kick: !!(b.def.noSweep && !b.def.cast) || b.def.part === 'feet' && !!b.def.noSweep, thrust: b.def.zone?.kind === 'line' });
       }
       G.tick(DT);
     }
     // per frame
     let wristMax = 0, wristSum = 0, wristOver = 0, gapHead = 9, gapBody = 9, gapAt = '', twoOff = 0, twoN = 0;
-    let elMin = 180, elMax = 0, freeV = 0, slide = 0, cross = 9, crossAt = '', wide = 0, narrow = 9;
+    let elMin = 180, elMax = 0, elMinAt = '', freeAt = '', freeV = 0, slide = 0, cross = 9, crossAt = '', wide = 0, narrow = 9;
     let chestWind = 0, chestWindAt = '';
     const freeLo = new THREE.Vector3(9, 9, 9), freeHi = new THREE.Vector3(-9, -9, -9);
     for (let i = 0; i < F.length; i++) {
@@ -152,11 +152,12 @@ export function swordAudit(H) {
         twoN++;
       }
       const el = ang3(b.shR, b.elR, b.grip);
+      if (el < elMin) elMinAt = `${s.ph} @${s.t.toFixed(2)}`;
       elMin = Math.min(elMin, el);
       elMax = Math.max(elMax, el);
       freeLo.min(b.wrL);
       freeHi.max(b.wrL);
-      if (i > 0 && !s.air && !F[i - 1].air) freeV = Math.max(freeV, b.wrL.distanceTo(F[i - 1].B.wrL) / DT);
+      if (i > 0 && !s.air && !F[i - 1].air) { const fv = b.wrL.distanceTo(F[i - 1].B.wrL) / DT; if (fv > freeV) { freeV = fv; freeAt = `${s.ph} @${s.t.toFixed(2)}`; } }
       // the feet: crossing along the pelvis' left axis, the stance's width on the floor
       const side = new THREE.Vector3().subVectors(b.anL, b.anR).dot(s.pelvX);
       if (side < cross) { cross = side; crossAt = s.ph; }
@@ -182,14 +183,40 @@ export function swordAudit(H) {
     // his facing: the fastest turn (deg/s)
     let yawR = 0;
     for (let i = 1; i < F.length; i++) if (!F[i].jump) yawR = Math.max(yawR, (Math.abs(wrapA(F[i].yaw - F[i - 1].yaw)) / DT) * DEG);
+    // at each impact (GCD_AUDIT_IMPACT): the sword elbow, the wrist, both knees, the front foot down or
+    // not, the blade's elevation, the cut's tilt (the point's path over the strike: 0 = level across, 90
+    // = straight down / up: a bar at the game camera), a thrust's arm line (shoulder → grip against the
+    // blade, 0 = one line) and a kick's knee (the kicking leg: the higher ankle)
+    for (const im of impacts) {
+      const s = F[im.frame], b = s.B, s0 = F[Math.max(0, im.frame - 3)].B, s1 = F[Math.min(F.length - 1, im.frame + 3)].B;
+      im.elbow = Math.round(ang3(b.shR, b.elR, b.grip));
+      im.wrist = Math.round(angV(tmp.subVectors(b.grip, b.elR).clone(), new THREE.Vector3().subVectors(b.tip, b.guard)));
+      im.knR = Math.round(ang3(b.hipR, b.knR, b.anR));
+      im.knL = Math.round(ang3(b.hipL, b.knL, b.anL));
+      const bl = new THREE.Vector3().subVectors(b.tip, b.guard);
+      im.bladeEl = Math.round(Math.asin(clamp(bl.y / Math.max(1e-6, bl.length()), -1, 1)) * DEG);
+      const tv = new THREE.Vector3().subVectors(s1.tip, s0.tip);
+      im.tilt = tv.length() > 0.02 ? Math.round(Math.asin(clamp(Math.abs(tv.y) / tv.length(), 0, 1)) * DEG) : null;
+      im.tipV = +(tv.length() / (6 * DT)).toFixed(1);
+      im.armLine = Math.round(angV(new THREE.Vector3().subVectors(b.grip, b.shR), bl));
+      // the front foot: the one further toward the hero; down = its ankle under 0.14 m
+      const fR = b.anR.clone().sub(b.pelvis).dot(new THREE.Vector3(s.hero.x, 0, s.hero.z).normalize()), fL = b.anL.clone().sub(b.pelvis).dot(new THREE.Vector3(s.hero.x, 0, s.hero.z).normalize());
+      const front = fR >= fL ? 'R' : 'L', fy = s.W[front === 'R' ? 'anR' : 'anL'].y - (s.y || 0);
+      im.front = `${front}${fy < 0.14 ? 'down' : 'up' + Math.round(fy * 100)}`;
+      if (im.kick) {
+        const up = b.anR.y > b.anL.y ? 'R' : 'L';
+        im.kickKnee = up === 'R' ? im.knR : im.knL;
+        im.kickLeg = up;
+      }
+    }
     rows.push({
       name, form, label: def.label, frames: F.length,
       wrist: { max: Math.round(wristMax), mean: Math.round(wristSum / F.length), over60: +(wristOver / F.length).toFixed(2) },
       gap: { head: +gapHead.toFixed(2), body: +gapBody.toFixed(2), at: gapAt },
       two: twoN ? +twoOff.toFixed(2) : null,
       chestWind: Math.round(chestWind), chestWindAt, impacts,
-      elbow: [Math.round(elMin), Math.round(elMax)],
-      free: { v: +freeV.toFixed(1), range: +freeHi.clone().sub(freeLo).length().toFixed(2) },
+      elbow: [Math.round(elMin), Math.round(elMax)], elMinAt,
+      free: { v: +freeV.toFixed(1), range: +freeHi.clone().sub(freeLo).length().toFixed(2), at: freeAt },
       feet: { slide: +slide.toFixed(2), cross: +cross.toFixed(2), crossAt, narrow: +narrow.toFixed(2), wide: +wide.toFixed(2) },
       yawR: Math.round(yawR),
       pop: top.map((x) => ({ j: Math.round(x.j), k: x.k, t: +x.t.toFixed(2), ph: x.ph })),
@@ -205,6 +232,15 @@ export function printAudit(rows, out) {
     if (r.fail) { out(`   ${r.name} FAIL ${r.fail}`); continue; }
     const imp = r.impacts.map((x) => `${x.chest}${x.tell[0] ?? ''}`).join(' ');
     out(`   ${r.name.padEnd(17)} ${r.form}  ${`${r.wrist.max}/${r.wrist.mean}/${r.wrist.over60}`.padEnd(19)} ${`${r.gap.head}/${r.gap.body} (${r.gap.at})`.padEnd(29)} ${String(r.two ?? '-').padEnd(5)} ${`${r.chestWind} / ${imp}`.padEnd(41)} ${`${r.elbow[0]}-${r.elbow[1]}`.padEnd(9)} ${`${r.free.v}/${r.free.range}`.padEnd(14)} ${`${r.feet.slide}/${r.feet.cross}/${r.feet.narrow}-${r.feet.wide}`.padEnd(30)} ${String(r.yawR).padStart(6)}  ${r.pop.map((p) => `${p.k} ${p.j} @${p.t} ${p.ph}`).join(' · ')}`);
+  }
+}
+
+/** The impacts as a table (GCD_AUDIT_IMPACT=1): one line a blow. */
+export function printImpacts(rows, out) {
+  out('   move              beat tell  elbow wrist knR knL  bladeEl tilt tipV  armLine front    kickKnee');
+  for (const r of rows) {
+    if (r.fail) continue;
+    for (const x of r.impacts) out(`   ${r.name.padEnd(17)} b${String(x.i).padEnd(3)} ${String(x.tell).padEnd(6)} ${String(x.elbow).padStart(5)} ${String(x.wrist).padStart(5)} ${String(x.knR).padStart(3)} ${String(x.knL).padStart(3)}  ${String(x.bladeEl).padStart(6)} ${String(x.tilt ?? '-').padStart(4)} ${String(x.tipV).padStart(5)} ${String(x.armLine).padStart(7)}${x.thrust ? '*' : ' '} ${x.front.padEnd(8)} ${x.kick ? `${x.kickLeg} ${x.kickKnee}` : ''}`);
   }
 }
 
