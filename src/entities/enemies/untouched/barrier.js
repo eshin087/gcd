@@ -13,6 +13,8 @@ import { perPhase } from './tuning.js';
 //   - on a posture break, and stays open through it;
 //   - by cracks: every ordinary parry adds one; `cracks` of them open it for openCracked[phase] s;
 //     they fade after `crackFade` s without a new one (`cracks: 0` turns cracks off).
+// While it stands a cut on the shell still takes `chip` x its damage off his bar (round 4: no stagger, no
+// posture, never his last HP).
 // While open he is hit like any duelist, harder: every cut of the hero's that is not `exact` deals
 // `openDamage` x its damage (the tuning pass, round 3: the owner's "the barrier opens easier"; no new mark:
 // the open ring on the floor is the sign, and the damage numbers read it). It closes on the timer, never while a cut of the hero's that
@@ -25,20 +27,20 @@ import { perPhase } from './tuning.js';
 //   barrier.openT       s left open (0 while up)
 //   barrier.openDur     s it was opened for (the last opening)
 //   barrier.why         what opened it last ('parry' | 'dodge' | 'cracks' | 'break' | 'counter' | 'domain' | 'debug')
-//   barrier.stats       { stops, cracks, opens: { why: n }, closes, passed }
+//   barrier.stats       { stops, cracks, opens: { why: n }, closes, passed, chip (damage through the shell) }
 //   barrier.stops(o)    from Untouched.takeHit: true = the blade stopped on the shell (deal nothing)
 //   barrier.scaled(o)   from Untouched.takeHit, after stops: the cut with openDamage on it while open (o itself otherwise)
 //   barrier.answer(r, o)   from Untouched.hitPlayer: the hero's answer to one of his blows
 //   barrier.open(why, dur) / close() / crack()    (the domain, the Lab)
 //   barrier.frame(dt), reset()
-// Events: `dragon:barrier` { state: 'stop' | 'crack' | 'open' | 'close', why, cracks, dur }.
+// Events: `dragon:barrier` { state: 'stop' | 'crack' | 'open' | 'close', why, cracks, dur } (a stop that chipped
+//   him: also damage, x, y, z where the blade stopped; the HUD prints the number there).
 
 export class Barrier {
   constructor(d) {
     this.d = d;
     this.T = d.T.wjBarrier;
     this.stats = { stops: 0, cracks: 0, opens: {}, closes: 0, passed: 0 };
-    this._stopEvt = { state: 'stop', why: '', cracks: 0, dur: 0 };
     this.reset();
   }
 
@@ -53,8 +55,28 @@ export class Barrier {
     this.lastStrike = -9;
   }
 
-  _emit(state, why = '', dur = 0) {
-    this.d.emit('dragon:barrier', { state, why, cracks: this.cracks, dur });
+  _emit(state, why = '', dur = 0, damage = 0, at = null) {
+    const e = { state, why, cracks: this.cracks, dur };
+    if (damage > 0 && at) {
+      e.damage = damage;
+      e.x = at.x;
+      e.y = at.y;
+      e.z = at.z;
+    }
+    this.d.emit('dragon:barrier', e);
+  }
+
+  /** A cut stopped on the shell still takes `chip` x its damage off his bar (round 4, the owner: "it takes
+   *  too much time to chip at him"): no stagger, no posture, never his last HP (the shell is no way to
+   *  kill him); his phases' gates hold (the engine's _applyDamage). The amount dealt. */
+  _chip(o) {
+    const d = this.d, k = Number(this.T.chip);
+    if (!(k > 0) || !Number.isFinite(k) || typeof d._applyDamage !== 'function') return 0;
+    const dmg = Math.min(Math.max(0, Math.floor(d.hp - 1)), Math.max(1, Math.round(Number(o.damage) * k)));
+    if (!(dmg > 0)) return 0;
+    d._applyDamage(dmg);
+    this.stats.chip = (this.stats.chip ?? 0) + dmg;
+    return dmg;
   }
 
   /** Open it for `dur` s (a longer opening already running is kept). */
@@ -120,7 +142,9 @@ export class Barrier {
       dz = d.position.z - (p?.position?.z ?? 0);
     }
     const l = Math.hypot(dx, dz) || 1;
-    d.fx?.barrierStop?.(pt && Number.isFinite(pt.x + pt.y + pt.z) ? pt : { x: d.position.x, y: 1.2, z: d.position.z }, { x: dx / l, z: dz / l }, !!o.heavy);
+    const at = pt && Number.isFinite(pt.x + pt.y + pt.z) ? pt : { x: d.position.x, y: 1.2, z: d.position.z };
+    d.fx?.barrierStop?.(at, { x: dx / l, z: dz / l }, !!o.heavy);
+    const chip = this._chip(o);
     d.hitstop?.(0.06, 0.04);
     d.game.shake?.(o.heavy ? 0.22 : 0.14);
     try {
@@ -128,7 +152,7 @@ export class Barrier {
     } catch (err) {
       console.error('[untouched] player.onGuarded failed', err);
     }
-    this._emit('stop');
+    this._emit('stop', '', 0, chip, at);
     // two strikes in a row on the shell: his counter
     const now = d.time;
     this.strikes = now - this.lastStrike <= this.T.counterWindow ? this.strikes + 1 : 1;

@@ -6280,6 +6280,10 @@ REACT, OPEN, dress dressUntouched, letters }`. Every new beat or move field is p
   `weigh(name, def, w, dist) → w`, `onActStart(A) → false` (refused); every handler `frame(dt)`,
   `afterPose(dt, a)`, `stop()` (a reaction, a break, his death), `reset()`. A new move goes in its file, never in
   `moves.js`.
+- **THE STRIKE ON THE SHELL** (`fxStrike.js`, ADR-266; `?wjStrike=0|a|b|c`, PENDING): `WjFx.barrierStop` calls
+  `strikeStart(fx, fx._strikes, d, point, heavy)` (true: a look took the stop, no ripple) and `_wjUpdate` calls
+  `strikeUpdate`; b / c read his figure through `DuelFx._bodyPts` at the stop. `barrier._chip(o)` takes
+  `wjBarrier.chip` x a stopped cut off his bar through the engine's `_applyDamage` (never his last HP).
 - **THE MOTION TAKES** (`motion.js`, ADR-250; `?wjMotion=0|a|b|c`, PICKED b): `moves/melee.js` makes every melee
   move's `beats` / `recovery` live getters over `liveTakes(name, def)`; the take's beats carry `wjHands` ('R' /
   'L' / 'RL': the hands the blow uses) and `wjBlink.near` (a later beat blinks only when the hero is further). `WjMelee`
@@ -6560,7 +6564,8 @@ Dragon (any attacker; the BOSS SLOT: the wyrm or the level's boss, e.g. the Ash 
   ran out, or a thrown car landed; by = who broke it) and cues each fuse as a falling piece is cued
   (`combat:tell` / `combat:flash`, source world, attack carBomb, hazard: true).
 - Bai Wuji, the Veiled Crossing's boss, added these names: `dragon:barrier {state, why, cracks, dur}` (his
-  barrier, untouched/barrier.js: state stop = the hero's blade stopped on it, crack = an ordinary parry cracked
+  barrier, untouched/barrier.js: state stop = the hero's blade stopped on it (with damage, x, y, z when the stop
+  chipped him, ADR-266: the HUD prints the number there), crack = an ordinary parry cracked
   it, open = it opened (why parry / dodge / cracks / break / counter / domain / debug; dur its seconds), close
   = it stands again) and `dragon:domain {state, x, z}` (the phase-3 transition, untouched/domain.js: state sign
   = the hand sign, escape = the hero dodged through the closing wall, caught = he is held, void = the scene is

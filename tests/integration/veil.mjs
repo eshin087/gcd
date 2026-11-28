@@ -415,6 +415,57 @@ function swing(G, dist = 1.6) {
   return { dealt: hp0 - d.hp, stops, state: p.state };
 }
 
+// ================================================================== scenario: strike (round 4)
+// (the owner: "it takes too much time to chip at him"; "when the sword is hitting the barrier, show a cool
+// ascii effect ... showing its silhouette briefly"): a stop chips wjBarrier.chip of the cut, never his last
+// HP, the HUD's number rides the stop's event; every ?wjStrike look draws its silhouette and lets it go
+async function scenarioStrike() {
+  out('\n== scenario STRIKE (a cut on the shell: the chip, the number, the silhouette in every look) ==');
+  const B = TUNING.wjBarrier;
+  const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+  {
+    const G = build();
+    const d = G.game.dragon;
+    duel(G, { dist: 1.6 });
+    const ev = [];
+    G.watch = (n, e) => { if (n === 'dragon:barrier' && e?.state === 'stop') ev.push(e); };
+    const hp0 = d.hp;
+    const r = d.takeHit({ damage: 60, part: 'body', point: { x: d.position.x, y: 1.2, z: d.position.z - 0.5 }, dir: { x: 0, z: 1 } });
+    const got = hp0 - d.hp;
+    assert(r === 0 && d.barrier.up && Math.abs(got - Math.round(60 * B.chip)) <= 1, `a 60 cut on the shell returns 0 and chips ${got} (x${B.chip}); the barrier stands`);
+    assert(ev.length === 1 && ev[0].damage === got && Number.isFinite(ev[0].x + ev[0].y + ev[0].z), `the stop's event carries the chip and where (${JSON.stringify(ev[0] ?? null)})`);
+    d.hp = 3;
+    d.brain.aiEnabled = false; // (no phase gate: the floor is the shell's own)
+    for (let i = 0; i < 4; i++) d.takeHit({ damage: 400, part: 'body', point: { x: d.position.x, y: 1.2, z: d.position.z - 0.5 } });
+    assert(d.hp === 1 && d.mode !== 'dying' && d.mode !== 'dead', `the shell never takes his last HP (${d.hp}, ${d.mode})`);
+    G.watch = null;
+  }
+  for (const look of ['0', 'a', 'b', 'c']) {
+    setLook('wjStrike', look);
+    const G = build();
+    const d = G.game.dragon;
+    duel(G, { dist: 1.6 });
+    run(G, 0.3);
+    const fx = d.fx, st = fx._strikes;
+    const f0 = G.game.fx?.fire?.count ?? 0;
+    d.takeHit({ damage: 60, part: 'body', point: { x: d.position.x + 0.2, y: 1.4, z: d.position.z - 0.5 }, dir: { x: 0, z: 1 } });
+    const live = st.list.filter((r) => r.alive);
+    const segs = live.reduce((a, r) => a + r.n, 0), lookOn = live[0]?.look ?? '-';
+    let peak = 0;
+    run(G, 0.25, () => { peak = Math.max(peak, G.game.fx?.fire?.count ?? 0); });
+    run(G, 0.8);
+    const after = st.list.filter((r) => r.alive).length;
+    if (look === '0') assert(live.length === 0 && fx._ripples.some((r) => r.alive || r.t > 0), `0: the ripple as shipped, no silhouette (${live.length})`);
+    else {
+      assert(live.length === 1 && lookOn === look, `${look}: one silhouette on the stop (${live.length}, look ${lookOn})`);
+      if (look !== 'a') assert(segs > 30, `${look}: his outline is ${segs} strokes long (> 30)`);
+      assert(peak > f0, `${look}: it prints in the fire field (${f0} -> ${peak} blobs)`);
+    }
+    assert(after === 0, `${look}: gone within a second (${after} live)`);
+  }
+  setLook('wjStrike', null);
+}
+
 // ================================================================== scenario: opened (the tuning pass, round 3)
 // (the owner: "the barrier opens easier": two ordinary parries crack it open, it stays open longer, and the
 // hero's cuts hit harder while it is open: wjBarrier.openDamage on every cut that is not exact)
@@ -544,7 +595,9 @@ async function scenarioBarrier() {
     assert(d.barrier.up && Math.abs(d._hs[1].r - (r0 + B.shell)) < 1e-9, `up at the start; his hurt spheres grown by the shell (${r0} + ${B.shell} m)`);
     const post0 = d.posture;
     const s = swing(G);
-    assert(s.stops >= 1 && s.dealt === 0 && d.posture === post0, `a cut stops on the shell: ${s.stops} stop, ${s.dealt} damage, posture ${post0} -> ${d.posture}`);
+    // (round 4: a stop still chips him, wjBarrier.chip x the cut, and nothing else: no posture)
+    const chipMax = Math.ceil(80 * (B.chip ?? 0)) + 1;
+    assert(s.stops >= 1 && s.dealt <= chipMax * s.stops && (B.chip > 0 ? s.dealt > 0 : s.dealt === 0) && d.posture === post0, `a cut stops on the shell: ${s.stops} stop, ${s.dealt} damage (the chip, x${B.chip}), posture ${post0} -> ${d.posture}`);
     // free at once: a roll out of the bounce
     place(G, 1.6);
     G.input.click(0);
@@ -1310,6 +1363,7 @@ const S = {
   patience: scenarioPatience, // (the tuning pass, round 2)
   // tune3: scenarios
   opened: scenarioOpened, // (the tuning pass, round 3)
+  strike: scenarioStrike, // (round 4: the chip and the silhouette)
   // world: scenarios
   // (the crossing never traps a thrown hero: thrown 10 m from 24 places, four ways each, through whatever
   // stands there; he ends outside every collider, inside his bound, and walks away)

@@ -3005,7 +3005,7 @@ wyrmanatomy`; `GCD_LOOKS=wyrmStrike=a` for the pass, `GCD_MOVES=` a list, `GCD_T
 ## Bai Wuji (2026-11-26, ADR-241; `?level=veil`)
 
 Bai Wuji, the Untouched: a tall, relaxed man in a bone-white coat, his eyes covered, his hands in his pockets,
-BARE-HANDED (untouched/; Tian Lei's strike builders). One health bar (20000; 26000 before ADR-250), three phases at 66 % (THE
+BARE-HANDED (untouched/; Tian Lei's strike builders). One health bar (16000, ADR-266; 20000 before, 26000 before ADR-250), three phases at 66 % (THE
 BLINDFOLD COMES OFF) and 30 % (THE MEASURELESS). Tian Lei's minimums: `flashLead` 0.26, first windups at
 least 0.40 s, hits 0.34 s apart at least; `windupScale` [1, 0.92, 0.84], `recoveryScale` [0.8, 0.7, 0.64];
 posture [1000, 1150, 1300]; `damageScale` 1.54 (35 - 60 % over Halcyon's for the same kind of blow); the
@@ -3019,6 +3019,8 @@ The hero's flurry, the flash counter and the execution pass (`exact`). It OPENS:
 - on the flash counter, and on a posture break (open through the break);
 - by cracks: each ordinary parry adds one, two open it for 5 / 4.2 / 3.4 s; they fade after 9 s without a
   new one.
+While it stands, a cut stopped on it still takes x0.25 of its damage off his bar (`wjBarrier.chip`, ADR-266;
+no stagger, no posture, never his last HP; the number prints where the blade stopped).
 While it is open every cut of the hero's that is not `exact` deals x2.5 (`wjBarrier.openDamage`,
 `barrier.scaled`; no mark of its own: the open ring and the numbers read it).
 Open, a ring on the floor runs out with the time left and blinks in its last 0.5 s; it closes on the timer,
