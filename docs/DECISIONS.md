@@ -7867,6 +7867,13 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
      his chest; not before 35 % of the active window; on a hit, once the bite lets go; slid along itself to stay
      `END.clear` from his chest on screen; a thrust streak starts 15 % behind its place. `?slashSoft=0|a|b|c`
      (default `b`) scales its thickness, strokes, length, life, flash, heat, rows and kick.
+  5. The cloth on hit 5 (round 2; the owner: "the left and right most hanging piece of the cloak ... makes it seem like
+     its the left hand"): a frame with dt 0 (a hit-stop's first) snapped every cape sheet and torn strip onto its
+     target (58 cm in a frame); now only `reset()` snaps (`clothSnap`). The front knee threw the front skirt panel
+     out to 1.0 rad: combo A keeps its stance on every step (`PLANT.max` Infinity, a long step lifted up to 10 cm) and
+     sinks at most 17 cm + 45 % of the rest (`PLANT.sink`); now 0.6 rad. The sleeve streamers trail the arm 0.3 as much
+     in an attack and swing at most 1.0 rad (`CLOTH_CALM`, the hero only, eased in and out). The free hand reaches
+     the grip of a two-handed blow over `TWO_IN` 0.2 s (it jumped 29 cm in a frame).
 - **Consequences:** the combo reads as a stance fighter's; every hit still lands (integ `planted`, `combos`); the slash
   agrees with the blade within ~12 degrees from all four sides (`slashaim`). The hand and the softness are the
   owner's to pick (both live in the Lab). No new meshes or draw calls; the softer slash spawns fewer strokes.

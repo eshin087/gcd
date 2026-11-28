@@ -13,7 +13,9 @@ One hundred and forty-two pieces of work since 0.4.0:
   thrust at chest height (it drove up at 45 degrees). The slash drawn as each swing ends now runs the way the blade
   went from every side (it was up to 58 degrees off seen side-on or from the front), comes right after the cut, is
   softer (thinner, dimmer, shorter, no white flash; `?slashSoft=0|a|b|c`) and never lies across you: the heavy
-  button's and the charged cleave's slash no longer show over your back. `?plant=0`, `?poke=0`, `?slashSoft=0`
+  button's and the charged cleave's slash no longer show over your back. *Fixed:* on the combo's last hit the cloak no
+  longer flicks out at your sides like a hand: a hit's freeze frame snapped the cape, the front knee threw a skirt
+  panel out, the sleeves whipped, and the free hand jumped onto the grip. `?plant=0`, `?poke=0`, `?slashSoft=0`
   play the combo as before.
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,

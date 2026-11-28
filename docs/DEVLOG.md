@@ -27,6 +27,17 @@ button and the charged cleave.
   up to 58 degrees (Whirling Tempest 157) -> 0-12. Softness `?slashSoft=0|a|b|c`, default `b`. Scenario `slashaim`.
 - **Films:** before (main) / after GIFs from behind, the side and the front; the agent's slash sheets per attack.
 
+- **Round 2, the cloak on hit 5** (the owner: the outer hanging pieces read as the left hand): measured every panel,
+  cape sheet and sleeve frame by frame. Three causes: a hit-stop's first frame (dt 0) snapped every cape sheet onto
+  its target (`clothSnap` now: only a reset snaps); the front knee of a deep stride threw the front-left skirt panel
+  out to 1.0 rad (combo A keeps its stance on long steps too, its sinks capped: 0.6 rad); the sleeve streamers
+  whipped with the arms (`CLOTH_CALM` in an attack) and the free hand jumped 29 cm onto the grip (`TWO_IN`). Hit 5,
+  today -> now, the most in one frame: left sleeve 76 -> 32 cm, left wrist 45 -> 28 cm, cape sheets 55-63 -> 14-17
+  cm, front skirt panel 32 -> 22 cm. Left as it is: the right forearm's 32-42 cm at the blow (the cut and the
+  contact pass, on main too). `planted` checks the frozen frame, the panel and the hand.
+- **Round 2, the softness film:** a, b, c on the same scripted combo + heavy + cleave, a close-up beside the game
+  camera's view (MP4, real and half speed).
+
 **Open:** the owner picks the hand and the softness; the PR is held for that. Combo A's other switches (`?feel=`,
 `?combo=b|c|d`) still stand.
 
