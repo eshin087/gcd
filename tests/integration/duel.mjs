@@ -6025,6 +6025,64 @@ async function scenarioAudit() {
   return last;
 }
 
+// ================================================================== scenario: parryrearm (ADR-278)
+// The anti-mash wait counts from the PRESS, not the release: a guard held and let go never makes the next press wait
+// (hold, release, tap on time: a parry), a single tap on time parries, a second quick tap after one that parried
+// nothing still waits DEFENSE.parryRearm, and a mash of presses 0.1 s apart parries nothing.
+async function scenarioParryRearm() {
+  out('\n== scenario PARRYREARM (the parry press: the wait counts from the press; a released guard is free) ==');
+  const G = build();
+  duel(G, { dist: 2.2 });
+  const { game, input } = G;
+  const d = game.dragon, p = game.player, move = 'plumThrust';
+  p.debug.god = true;
+  p.debug.noRiposte = true;
+  run(G, 0.4);
+  const reset = () => { settle(G, 8); home(G); place(G, 2.2); run(G, 0.3); };
+  // the blow's impact after the trigger, measured once
+  reset();
+  let imp = null;
+  const t0 = game.time;
+  G.watch = (n) => { if (n === 'player:hurt' && imp === null) imp = game.time - t0; };
+  d.debug.trigger(move);
+  run(G, 3, () => game.mouseGround.set(d.position.x, 0, d.position.z), () => imp !== null);
+  assert(imp !== null && imp > 0.35, `${move} lands ${imp?.toFixed(2)} s after the trigger`);
+  /** Taps at `taps` s before the impact (the guard held from the start and let go `hold` s before, if given). */
+  const answer = (taps, hold = null) => {
+    reset();
+    let r = null;
+    G.watch = (n, e) => { if (n === 'combat:answer' && r === null && e.attack === move) r = e.result; };
+    const todo = taps.map((t) => ({ t, done: false }));
+    let up = hold === null;
+    if (!up) input.press(1);
+    d.debug.trigger(move);
+    const ts = game.time;
+    run(G, imp + 0.5, () => {
+      game.mouseGround.set(d.position.x, 0, d.position.z);
+      const left = ts + imp - game.time - DT;
+      if (!up && left <= hold) { input.up(1); up = true; }
+      for (const x of todo) if (!x.done && left <= x.t) { x.done = true; input.up(1); input.click(1); }
+    }, () => r !== null);
+    if (input.buttons[1]) input.up(1);
+    G.watch = null;
+    return r;
+  };
+  const cases = [
+    ['a single tap 0.1 s before', [0.1], null, RESULT.PARRIED],
+    ['the guard let go 0.3 s before, a tap 0.1 s before', [0.1], 0.3, RESULT.PARRIED],
+    ['the guard let go 0.2 s before, a tap 0.1 s before', [0.1], 0.2, RESULT.PARRIED],
+    ['the guard let go 0.12 s before, a tap 0.05 s before', [0.05], 0.12, RESULT.PARRIED],
+    ['a tap 0.4 s then 0.1 s before (0.3 s apart)', [0.4, 0.1], null, RESULT.PARRIED],
+    ['a tap 0.3 s then 0.1 s before (0.2 s apart: the wait)', [0.3, 0.1], null, RESULT.HIT],
+    ['a mash, 0.1 s apart', [0.45, 0.35, 0.25, 0.15, 0.05], null, RESULT.HIT],
+  ];
+  for (const [label, taps, hold, want] of cases) {
+    const r = answer(taps, hold);
+    assert(r === want, `${label}: ${r} (want ${want})`);
+  }
+  return G;
+}
+
 const SCENARIOS = {
   motion: scenarioMotion,
   react: scenarioReact,
@@ -6077,6 +6135,7 @@ const SCENARIOS = {
   flashchain: scenarioFlashChain,
   clashdance: scenarioClashDance,
   deflect: scenarioDeflect,
+  parryrearm: scenarioParryRearm,
   ghostep: scenarioGhostep,
   tempo: scenarioTempo,
   chain: scenarioChain,

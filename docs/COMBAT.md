@@ -48,10 +48,12 @@ each actor's `tuning`.
    Since ADR-227 (the owner: parrying felt too tight) nearly every parry is perfect: a plain parry is
    only a press 0.20 – 0.22 s early. The plain parry's own answers (a string's riposte, the counter
    of a blue flare blow) are unchanged and come with a perfect parry too.
-   Mashing is prevented: RMB must be released `parryRearm` (0.25 s) before a new press counts —
+   Mashing is prevented: a press counts only `parryRearm` (0.25 s) after the press before it (every
+   press restarts the wait; counted from the press, not the release, so a guard held and let go never
+   makes the next press wait: hold, release and tap on time parries; ADR-276) —
    **except right after a successful parry**: a deflect re-arms at once, so the next press counts as
-   soon as RMB was released, even when the guard was held between blows (ADR-032). A press that
-   parries nothing needs the full re-arm again, so mashing still fails. Holding RMB after the press
+   soon as RMB was released, even when the guard was held between blows (ADR-032). Quick presses that
+   parry nothing keep the wait, so mashing still fails. Holding RMB after the press
    keeps blocking; between parries in rhythm the guard stays up (~0.3–0.6 s).
 5. **Perfect dodge** = a dodge started ≤ `perfectDodgeWindow` (0.2 s) before impact. Perfect
    dodges in a row are a **streak**. A perfect dodge of a **white or heavy blow** (one a parry

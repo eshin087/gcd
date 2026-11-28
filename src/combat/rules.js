@@ -131,7 +131,7 @@ export const DEFENSE = Object.freeze({
   // blow locks the blades. The owner's number (ADR-227): the perfect dodge's window, so a parry is as
   // forgiving as a dodge (it was 0.08 s). A press 0.20 - 0.22 s early is still a plain parry
   perfectParryWindow: 0.2,
-  parryRearm: 0.25, // s RMB must be released before a new press can parry again (anti-mash)
+  parryRearm: 0.25, // s after a press before the next press can parry (anti-mash; from the press, not the release: ADR-278)
   parryArc: (110 * Math.PI) / 180, // the attacker must be within this cone in front of the defender
   // --- the trade clash: a blade's blow (hit.steel, not red) that arrives while the defender's own
   // cut is in its active frames (`early` s before them to `late` s after) meets it: both blades are

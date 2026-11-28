@@ -36,6 +36,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-28',
+        title: 'The parry answers when you press it',
+        notes: [
+          'Letting go of a held guard no longer delays your next parry: hold, release and tap on time, and it parries.',
+          'Quick taps that parry nothing still make the next one wait a moment, so mashing still fails.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'The deathblow is not cut short',
         notes: [
           'Pressing guard during a deathblow no longer stops it. The guard comes up once the finisher lands.',

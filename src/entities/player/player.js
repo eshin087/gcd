@@ -227,7 +227,7 @@ export class Player {
     // the HEAVY button's press (game time held): held past CHARGE.hold it is the charge (ADR-115; it
     // was the attack button's until the heavy button came: a light no longer waits to see if it is held)
     this.hb = { held: false, t: 0 };
-    this.rmb = { held: false, upT: -Infinity, parryT: -Infinity, edge: false, chain: false };
+    this.rmb = { held: false, upT: -Infinity, pressT: -Infinity, parryT: -Infinity, edge: false, chain: false };
     this.vel = { x: 0, z: 0 }; // own movement
     this.want = { x: 0, z: 0 }; // desired movement this frame
     this.kb = { x: 0, z: 0 }; // knockback slide
@@ -734,6 +734,7 @@ export class Player {
     this.rmb.held = false;
     this.rmb.edge = false;
     this.rmb.upT = -Infinity;
+    this.rmb.pressT = -Infinity;
     this.rmb.parryT = -Infinity;
     this.rmb.chain = false; // a deflect's instant re-arm doesn't survive a respawn / reset
     this.chargeK = 0;
@@ -990,12 +991,14 @@ export class Player {
     }
     if (L.held && (!inp.act('heavy') || L.t >= CHARGE.maxHold)) L.held = false; // released (or auto-release)
 
-    // block (RMB): hold = block; a press counts as a parry attempt only after a full re-arm (anti-mash). A
-    // successful deflect re-arms at once (Rb.chain): the next press counts as soon as RMB was released,
-    // so a string can be deflected hit after hit even with the guard held between blows; whiffed
-    // presses keep the re-arm, so mashing still fails.
+    // block (RMB): hold = block; a press counts as a parry attempt only `parryRearm` s after the press before
+    // it (anti-mash: every press restarts the wait). Counted from the press, not the release (ADR-278): a
+    // guard held and let go never makes the next press wait, so hold, release and tap on time parries. A
+    // successful deflect re-arms at once (Rb.chain), so a string can be deflected hit after hit even with
+    // the guard held between blows; quick presses that parry nothing keep the wait, so mashing still fails.
     if (inp.actPressed('block')) {
-      if (Rb.chain || this.time - Rb.upT >= DEFENSE.parryRearm) Rb.parryT = this.time;
+      if (Rb.chain || this.time - Rb.pressT >= DEFENSE.parryRearm) Rb.parryT = this.time;
+      Rb.pressT = this.time;
       Rb.chain = false;
       Rb.held = true;
       Rb.edge = true;
