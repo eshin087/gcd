@@ -141,12 +141,14 @@ export class TouchControls {
     this.padPos = 'mid';
     this.padSize = 'm';
     this.padOff = { x: 0, y: 0 }; // the player's drag (px at fit 1: + left, + up), kept
+    this.guardOff = { x: 0, y: 0 }; // split: GUARD's own drag (px at fit 1: + right, + up), kept
+    this._gdrag = null; // { id, x, y, ox, oy } while a finger drags GUARD
     this.editing = false; // the padlock is open: a drag on the pad moves it
     this._drag = null; // { id, x, y, ox, oy } while a finger drags the pad
     this.fit = 1; // the touch layer's scale from the screen (CONFIG.touch.pad.fit)
     this.layout = 'classic'; // PAD_LAYOUT: 'split' = the guard on the left hand
     this.holdAttack = false; // a held ATTACK keeps cutting
-    this.swipeDodge = false; // SWIPE DODGE: a flick on the bare right half dodges that way
+    this.swipeDodge = true; // SWIPE DODGE (on by default, the owner's pick): a flick on the bare right half dodges that way
     this.swipes = new Map(); // pointerId → { x, y, t, done } (bare-screen fingers on the right half)
     this.guardGeo = null; // split: the GUARD button { x, y, w, h } (its middle, client px)
     this._hold = { t: 0, next: 0, quiet: 0 };
@@ -358,7 +360,7 @@ export class TouchControls {
 
   _savePad() {
     try {
-      const o = { pos: this.padPos, size: this.padSize, layout: this.layout, hold: this.holdAttack, swipe: this.swipeDodge, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)] };
+      const o = { pos: this.padPos, size: this.padSize, layout: this.layout, hold: this.holdAttack, sw: this.swipeDodge, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)], goff: [Math.round(this.guardOff.x), Math.round(this.guardOff.y)] };
       globalThis.localStorage?.setItem?.(PAD_KEY, JSON.stringify(o));
     } catch {
       /* private mode: the choice lasts for this page */
@@ -372,6 +374,7 @@ export class TouchControls {
     this._releaseControls();
     this.editing = on;
     this._drag = null;
+    this._gdrag = null;
     const u = this.ui;
     if (u) {
       u.root.classList.toggle('editing', on);
@@ -379,6 +382,7 @@ export class TouchControls {
         u.lockBtn.innerHTML = LOCK_SVG(on);
         u.lockBtn.setAttribute?.('aria-label', on ? 'Lock the controls here' : 'Move the controls');
       }
+      if (u.guardLock) u.guardLock.innerHTML = LOCK_SVG(on);
     }
     if (!on) this._savePad();
     return on;
@@ -388,6 +392,8 @@ export class TouchControls {
   resetPadOffset() {
     this.padOff.x = 0;
     this.padOff.y = 0;
+    this.guardOff.x = 0;
+    this.guardOff.y = 0;
     this._savePad();
     this._padLayout();
     if (this.stick.id === null) this._restStick();
@@ -416,7 +422,11 @@ export class TouchControls {
       if (PAD_SIZE.includes(o?.size)) this.padSize = o.size;
       if (PAD_LAYOUT.includes(o?.layout)) this.layout = o.layout;
       if (typeof o?.hold === 'boolean') this.holdAttack = o.hold;
-      if (typeof o?.swipe === 'boolean') this.swipeDodge = o.swipe;
+      if (typeof o?.sw === 'boolean') this.swipeDodge = o.sw;
+      if (Array.isArray(o?.goff)) {
+        this.guardOff.x = fin(Number(o.goff[0]));
+        this.guardOff.y = fin(Number(o.goff[1]));
+      }
       if (Array.isArray(o?.off)) {
         this.padOff.x = fin(Number(o.off[0]));
         this.padOff.y = fin(Number(o.off[1]));
@@ -491,8 +501,15 @@ export class TouchControls {
     if (split) {
       const rest = this._stickRest(), up = h > w, g = (up && P.split.guardPortrait) || P.split.guard;
       const gw = g.w * k, gh = g.h * k;
-      const left = up ? Math.max(8, rest.x - gw / 2) : rest.x + RING_R * fit + fin(g.gap, 14);
-      const bottom = up ? h - rest.y + RING_R * fit + fin(g.lift, 14) : py + fin(g.y) * k;
+      const left0 = up ? Math.max(8, rest.x - gw / 2) : rest.x + RING_R * fit + fin(g.gap, 14) * fit;
+      const bottom0 = up ? h - rest.y + RING_R * fit + fin(g.lift, 14) * fit : py + fin(g.y) * k;
+      // the player's drag (the padlock open), kept on the left half and clear of the top
+      const left = Math.min(Math.max(left0 + this.guardOff.x * fit, 4), Math.max(4, w * 0.5 - gw));
+      const bottom = Math.min(Math.max(bottom0 + this.guardOff.y * fit, 4), Math.max(4, h - gh - 52 * fit));
+      if (this.guardOff.x || this.guardOff.y) {
+        this.guardOff.x = (left - left0) / fit;
+        this.guardOff.y = (bottom - bottom0) / fit;
+      }
       guard = { left, bottom, w: gw, h: gh };
       this.guardGeo = { x: left + gw / 2, y: h - bottom - gh / 2, w: gw, h: gh };
     } else this.guardGeo = null;
@@ -512,6 +529,15 @@ export class TouchControls {
       gs.bottom = px2(guard.bottom);
       gs.width = px2(guard.w);
       gs.height = px2(guard.h);
+    }
+    // GUARD's own padlock: over its top-right corner (the same lock as the pad's)
+    const gl = u.guardLock?.style;
+    if (guard && gl) {
+      const lw2 = Math.max(22, 26 * fit);
+      gl.left = px2(guard.left + guard.w - lw2 * 0.65);
+      gl.bottom = px2(guard.bottom + guard.h - lw2 * 0.35);
+      gl.width = px2(lw2);
+      gl.height = px2(lw2);
     }
     for (const id in tiles) {
       const r = tiles[id], s = this.btn?.[id]?.el.style;
@@ -621,19 +647,25 @@ export class TouchControls {
       this._bindPad(pad);
 
       // the padlock: tap to move the right-hand controls (drag the pad), tap again to keep them there
-      const lockBtn = el('button', 'tc-padlock', null, root);
-      lockBtn.type = 'button';
-      lockBtn.tabIndex = -1;
-      lockBtn.innerHTML = LOCK_SVG(false);
-      lockBtn.setAttribute?.('aria-label', 'Move the controls');
-      lockBtn.addEventListener('pointerdown', (e) =>
-        this._guard('padlock', () => {
-          e.preventDefault?.();
-          e.stopPropagation?.();
-          if (this._live()) this.setEditing(!this.editing);
-        }, e),
-      );
-      lockBtn.addEventListener('click', (e) => e.preventDefault?.());
+      // (split: GUARD has one too, ADR-274; the two are one lock: open, the pad and GUARD both drag)
+      const padlock = (cls) => {
+        const b = el('button', cls, null, root);
+        b.type = 'button';
+        b.tabIndex = -1;
+        b.innerHTML = LOCK_SVG(false);
+        b.setAttribute?.('aria-label', 'Move the controls');
+        b.addEventListener('pointerdown', (e) =>
+          this._guard('padlock', () => {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            if (this._live()) this.setEditing(!this.editing);
+          }, e),
+        );
+        b.addEventListener('click', (e) => e.preventDefault?.());
+        return b;
+      };
+      const lockBtn = padlock('tc-padlock');
+      this.ui.guardLock = padlock('tc-padlock tc-guardlock');
       const editHint = el('div', 'tc-edit-hint', null, root);
       el('span', 't', 'DRAG TO MOVE', editHint);
       const reset = el('button', 'tc-edit-reset', 'RESET', editHint);
@@ -685,9 +717,33 @@ export class TouchControls {
       } catch {
         /* synthetic pointer: capture is a nicety */
       }
+      if (this.editing && def.id === 'guard') {
+        // the padlock is open: GUARD is a piece to drag, not a button
+        if (!this._gdrag) this._gdrag = { id: e.pointerId, x: fin(e.clientX), y: fin(e.clientY), ox: this.guardOff.x, oy: this.guardOff.y };
+        return;
+      }
       this._press(rec, e.pointerId);
     };
-    const up = (e) => this._release(rec, e.pointerId);
+    const up = (e) => {
+      if (this._gdrag && this._gdrag.id === e.pointerId) {
+        this._gdrag = null;
+        this._savePad();
+        return;
+      }
+      this._release(rec, e.pointerId);
+    };
+    if (def.id === 'guard') {
+      b.addEventListener('pointermove', (e) =>
+        this._guard('guard', () => {
+          const D = this._gdrag;
+          if (!D || D.id !== e.pointerId) return;
+          const f = Math.max(0.1, this.fit);
+          this.guardOff.x = D.ox + (fin(e.clientX, D.x) - D.x) / f;
+          this.guardOff.y = D.oy - (fin(e.clientY, D.y) - D.y) / f;
+          this._padLayout();
+        }, e),
+      );
+    }
     b.addEventListener('pointerdown', (e) => this._guard(def.id, down, e));
     for (const n of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(n, (e) => this._guard(def.id, up, e));
     b.addEventListener('contextmenu', (e) => e.preventDefault?.());

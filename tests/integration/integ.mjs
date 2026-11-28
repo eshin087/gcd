@@ -10101,7 +10101,9 @@ async function scenarioTouch() {
       assert(!!guard && !guard.classList.contains('tc-tile') && t.layout === 'classic' && t.holdAttack === false && t.padPoint('guard') === null, 'the default: one thumb (no GUARD on the left), no held attack');
       const lay = t.cyclePad('layout'), Gd = t.padPoint('guard'), A2 = t.padPoint('attack'), D2 = t.padPoint('dodge');
       assert(lay === 'split' && root.classList.contains('split') && !t.padGeo.tiles.block && !!D2 && t.padPoint('block') === null, 'PAD LAYOUT → split: the cluster keeps ATTACK / HEAVY / DODGE, no BLOCK tile');
-      assert(Gd && Gd.x < innerWidth * 0.4 && Gd.x - t.guardGeo.w / 2 > t.stick.ox + 62 && near(A2.x, A.x, 1e-6), `GUARD stands right of the stick's ring (its middle ${Gd?.x.toFixed(0)} px in), ATTACK where it was`);
+      // (ADR-274: close by the ring, its left edge just over the ring's glyphs)
+      const gEdge = Gd ? Gd.x - t.guardGeo.w / 2 : NaN, ringEdge = t.stick.ox + 62 * t.fit;
+      assert(Gd && Gd.x < innerWidth * 0.4 && gEdge > ringEdge - 10 && gEdge <= ringEdge + 2 && near(A2.x, A.x, 1e-6), `GUARD stands right against the stick's ring (its left edge ${gEdge.toFixed(0)} px, the ring's ${ringEdge.toFixed(0)}), ATTACK where it was`);
       P('pointerdown', 50, Bk.x, Bk.y);
       assert(!held('@block') && (held('@heavy') || held('@dodge')), 'a touch where BLOCK stood goes to the nearest tile left, never to a guard');
       P('pointerup', 50, Bk.x, Bk.y);
@@ -10126,6 +10128,28 @@ async function scenarioTouch() {
       assert(guard.classList.contains('low'), 'GUARD carries the guard meter too');
       p.guard = p.maxGuard;
       p.guardWait = 0;
+      // the padlock drags GUARD too (ADR-274; kept, RESET puts it back)
+      {
+        assert(!!cls('tc-guardlock'), 'GUARD has a padlock of its own');
+        cls('tc-guardlock').dispatch('pointerdown', { pointerType: 'touch', pointerId: 70 });
+        assert(t.editing, 'its padlock opens the lock');
+        const g0 = t.padPoint('guard');
+        touch('pointerdown', guard, 71, g0.x, g0.y);
+        touch('pointermove', guard, 71, g0.x + 30, g0.y - 20);
+        assert(!held('@block'), 'open: a drag on GUARD raises no guard');
+        touch('pointerup', guard, 71, g0.x + 30, g0.y - 20);
+        const g1 = t.padPoint('guard');
+        assert(near(g1.x, g0.x + 30, 1) && near(g1.y, g0.y - 20, 1), `GUARD followed the drag (${g0.x.toFixed(0)},${g0.y.toFixed(0)} → ${g1.x.toFixed(0)},${g1.y.toFixed(0)})`);
+        cls('tc-guardlock').dispatch('pointerdown', { pointerType: 'touch', pointerId: 72 });
+        const kept = JSON.parse(globalThis.localStorage?.getItem?.('gcd.touchPad') ?? 'null')?.goff ?? [t.guardOff.x, t.guardOff.y];
+        assert(!t.editing && kept[0] > 20, `shut: GUARD kept where it was dragged (${JSON.stringify(kept)})`);
+        touch('pointerdown', guard, 73, g1.x, g1.y);
+        assert(held('@block'), 'shut: GUARD guards again, where it now is');
+        touch('pointerup', guard, 73, g1.x, g1.y);
+        t.resetPadOffset();
+        assert(near(t.padPoint('guard').x, g0.x, 1e-6), 'RESET puts GUARD back too');
+        frames(0.5);
+      }
       // ---- HOLD ATTACK: off, a held ATTACK is one cut; on, the thumb rests there and he keeps cutting
       settle(G); place(G, 6);
       let n0 = c('player:attack');
@@ -10251,12 +10275,7 @@ async function scenarioTouch() {
     };
     frames(0.6);
     const r0 = c('player:roll');
-    assert(t.swipeDodge === false, 'SWIPE DODGE: off by default');
-    flick(41, 600, 200, -60, 0);
-    frames(0.1);
-    assert(c('player:roll') === r0, 'off: a flick does not dodge');
-    assert(t.cyclePad('swipe') === true, 'the pause switch turns it on');
-    frames(0.6);
+    assert(t.swipeDodge === true, 'SWIPE DODGE: on by default (the owner, ADR-274)');
     flick(42, 600, 200, -60, 0);
     frames(0.05);
     const d = p.rollDir;
@@ -10277,6 +10296,11 @@ async function scenarioTouch() {
     fireWin('pointerup', { pointerType: 'touch', pointerId: 46 });
     frames(0.05);
     assert(c('player:roll') === r0 + 2, 'a second finger (a pinch) is no swipe');
+    assert(t.cyclePad('swipe') === false, 'the pause switch turns it off');
+    frames(0.6);
+    flick(47, 600, 200, -60, 0);
+    frames(0.1);
+    assert(c('player:roll') === r0 + 2, 'off: a flick does not dodge');
     t.cyclePad('swipe');
     frames(1.0);
     rig.targetDistance = z1;

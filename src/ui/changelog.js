@@ -21,8 +21,8 @@ export const RELEASES = [
         date: '2026-11-28',
         title: 'Swipe to dodge on touch',
         notes: [
-          'New in the pause menu on touch: SWIPE DODGE. Flick your thumb on the right half of the screen and the hero dodges that way at once.',
-          'Pair it with PAD LAYOUT → GUARD ON LEFT to parry with your left thumb while the right one attacks and dodges.',
+          'Touch: flick your thumb on the right half of the screen and the hero dodges that way at once (SWIPE DODGE in the pause menu turns it off).',
+          'With PAD LAYOUT → GUARD ON LEFT, GUARD now sits right by the stick, and its own padlock lets you drag it where your left thumb wants it.',
         ],
       },
       {

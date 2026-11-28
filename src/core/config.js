@@ -136,8 +136,9 @@ export const CONFIG = {
           dodge: { x: 92, y: 0, w: 80, h: 84 },
         },
         flask: { x: 103, y: 96, w: 58, h: 42 },
-        guard: { gap: 14, y: 0, w: 84, h: 100 },
-        guardPortrait: { lift: 14, w: 100, h: 70 },
+        // (ADR-274, the owner: closer to the stick) its left edge just over the ring's glyphs
+        guard: { gap: -6, y: 0, w: 84, h: 100 },
+        guardPortrait: { lift: 4, w: 100, h: 70 },
       },
     },
     // HOLD ATTACK (a pause-menu switch, off by default; ADR-131): a thumb resting on ATTACK keeps
@@ -148,7 +149,7 @@ export const CONFIG = {
     // the fight starts locked on (ADR-270): on touch the hero takes the lock as the boss fight
     // begins (retried for `autoLock` s while the boss is out of lock range); 0 = off
     autoLock: 4,
-    // SWIPE DODGE (a pause-menu switch; ADR-271): a quick flick on the bare right half of the screen
+    // SWIPE DODGE (a pause-menu switch, on by default, the owner's pick; ADR-274): a quick flick on the bare right half of the screen
     // dodges the way it flicked, so the thumb never has to find the DODGE tile. It fires the moment
     // the finger has travelled `dist` px (x the screen's fit) within `time` s of touching down, not
     // on the lift; a slower drag, or a second finger (a pinch), is no swipe. `from`: where the right

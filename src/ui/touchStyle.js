@@ -309,6 +309,10 @@ html.gcd-touch #game { cursor: default; image-rendering: pixelated; }
   box-shadow: 0 0 12px rgba(255, 138, 61, 0.45);
 }
 .tc-root.off.peek .tc-padlock { opacity: 0; }
+/* GUARD's padlock (ADR-274): only with the guard on the left hand */
+.tc-guardlock { display: none; z-index: 2; }
+.tc-root.split .tc-guardlock { display: block; }
+.tc-root.editing .tc-guard { border-style: dashed; border-color: rgba(255, 138, 61, 0.7); background: rgba(255, 138, 61, 0.06); }
 .tc-edit-hint {
   position: absolute;
   display: none;
