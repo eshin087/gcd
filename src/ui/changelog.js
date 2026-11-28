@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: "The hero's wrist, thrusts and parry tap, natural",
+        notes: [
+          "The hero's sword wrist no longer bends further than a wrist can through his cuts, his rolls and the held charge: the blade follows the forearm, the swings and their timing are the same.",
+          'His rising thrust and Piercing Gale now drive the arm straight out along the point.',
+          'A tap of the guard now visibly raises the blade for a moment, so a parry no longer snaps into place from nowhere. What it blocks and parries is unchanged.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: "Bai Wuji's blows land where they aim",
         notes: [
           "Bai Wuji's palm, his straight poke, Dark Spark and the fist he pulls you onto now land on the line to your chest instead of crossing past you.",

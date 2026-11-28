@@ -28,6 +28,7 @@ import { SWORD_PARAM } from '../entities/player/gear/index.js';
 import { MYSTIC_IDS, MYSTIC_NAMES, mysticMode, setMystic } from '../entities/player/swordMystic.js';
 import { SLASH_IDS, slashMode, setSlash } from '../entities/player/slashFx.js';
 import { OFFHAND_IDS, offHandMode, setOffHand } from '../entities/player/offHand.js';
+import { WRIST_IDS, heroWrist, setHeroWrist, THRUST_IDS, heroThrust, setHeroThrust, FLICK_IDS, heroFlick, setParryFlick } from '../entities/player/heroMotion.js';
 import { FEEL_IDS, feelMode, setFeel } from '../entities/player/feel.js';
 import { COMBO_IDS, COMBOS, comboMode, setCombo } from '../entities/player/combos.js';
 import { COUNTER_IDS, counterMode, setCounterMode } from '../combat/flashChain.js';
@@ -1488,6 +1489,9 @@ export class Lab {
       ['endbeat', BEAT_IDS, setBeat, 'beatBtns', 'when the ending slash comes: beat = a short pause after the swing, 0 = as it ends (?endbeat=)', (m) => m],
       ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
       ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', "the free hand in a one-handed swing: auto = the feel's own, prod = as it ships, side = loose at his side, back = behind his back, quiet = its gestures pulled in (?offhand=)", (m) => (m === '0' ? 'prod' : m)],
+      ['heroWrist', WRIST_IDS, setHeroWrist, 'heroWristBtns', "the hero's sword wrist (ADR-256): a = past 60° off the forearm the blade eases toward 80° (the fist never bends further), b = from 50° toward 70°, old = WRIST_BACK alone, 128° (?heroWrist=)", (m) => (m === '0' ? 'old' : m)],
+      ['heroThrust', THRUST_IDS, setHeroThrust, 'heroThrustBtns', "the hero's thrusts (combo A's hit 4, Piercing Gale; ADR-256): a = the arm at full stretch along the point's line, old = the bent arm and cocked wrist before (?heroThrust=)", (m) => (m === '0' ? 'old' : m)],
+      ['parryFlick', FLICK_IDS, setParryFlick, 'parryFlickBtns', "the parry tap's guard, shown (ADR-256): a = held 0.16 s from the press (the owner's pick), b = 0.24 s, old = one frame (only the pose: blocks and parries are unchanged) (?parryFlick=)", (m) => (m === '0' ? 'old' : m)],
       ['clash', CLASH_IDS, setClashMode, 'clashBtns', "the clash dance against the duelists (?clash=): dance = parries in a row inside one of his moves pay more posture each (x1, x1.25, x1.5, x1.75), their ring rises a little, and his posture recovers more slowly as his health drops; old = today's numbers. Read at each parry", (m) => (m === '0' ? 'old' : m)],
     ]) {
       const r = el('div', 'lab-row', null, body);
@@ -1615,6 +1619,9 @@ export class Lab {
     for (const { m, el: b } of this.ui.mysticBtns ?? []) setClass(b, 'on', mysticMode() === m);
     for (const { m, el: b } of this.ui.slashBtns ?? []) setClass(b, 'on', slashMode() === m);
     for (const { m, el: b } of this.ui.offHandBtns ?? []) setClass(b, 'on', offHandMode() === m);
+    for (const { m, el: b } of this.ui.heroWristBtns ?? []) setClass(b, 'on', heroWrist() === m);
+    for (const { m, el: b } of this.ui.heroThrustBtns ?? []) setClass(b, 'on', heroThrust() === m);
+    for (const { m, el: b } of this.ui.parryFlickBtns ?? []) setClass(b, 'on', heroFlick() === m);
     for (const { m, el: b } of this.ui.feelBtns ?? []) setClass(b, 'on', feelMode() === m);
     for (const { m, el: b } of this.ui.comboBtns ?? []) setClass(b, 'on', comboMode() === m);
     for (const { m, el: b } of this.ui.counterBtns ?? []) setClass(b, 'on', counterMode() === m);

@@ -315,6 +315,16 @@ Render helpers for creature modules:
     Nihil: their `TUNING.motion` while `?ashMotion` / `?lordMotion` is on, else null: the animator as before).
     Their moves marked `motionOnly` are weighed 0 by the actor's `weigh` while the switch is off; a beat marked
     `quick` (a normal tell) may wind up `TUNING.minQuickWindup` instead of `minFirstWindup` (the data rule).
+  - **The hero's soft wrist** (ADR-256): `HeroAnimator.wristSoft` (`[from, max]` rad; null = off, every duelist and
+    the headless sims): past `from` the blade's fold off the sword forearm's line is eased toward `max` (a tanh knee,
+    `_wristEase`, before `_wristLimit` and on the two-handed grip's own blade line); the blade turns, the hand stays
+    where the arm put it. The player sets it every frame from `player/heroMotion.js` `wristSoft()` (`?heroWrist=a|b|0`,
+    default a: 60° → 80°). `heroMotion.js` `setHeroThrust` (`?heroThrust=a|0`) rewrites two keys of the
+    `risingThrust` and `heavyThrust` clips in place and drops their compiled tracks (`anim.js` `forgetSwing(name)`);
+    `'0'` puts production's keys back exactly. `?parryFlick=a|b|0` (`parryFlick()` s, default a: 0.16): a block press
+    the button lets go of at once leaves the state idle as before but keeps the animator on 'block' that long
+    (`Player._toLocoAfter`, `flickT`; any `_enter` clears it). Measured by integ.mjs `heromotion` (asserted) and
+    `heroaudit` (opt-in).
   - **The bosses' letters** (ADR-154, ADR-155, ADR-170): a boss whose kit sets `letters` (today Wen Yao's `FOX_KIT`, behind
     `?foxLetters=b`, Tian Lei's `ASC_KIT`, a getter behind `?ascLetters=a`, the owner's pick; `0` the fixed cell; Halcyon's
     `HALCYON_KIT`, a getter behind `?halLetters=a`, the owner's pick, ADR-166; and Xin Yi's `WOKEN_KIT`, the same getter

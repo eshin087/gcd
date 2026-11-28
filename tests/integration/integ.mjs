@@ -15136,6 +15136,270 @@ async function scenarioWyrmHeld() {
 }
 
 // ================================================================== scenario: wyrmaudit (opt-in: every melee string's windups, printed)
+async function scenarioHeroMotion() {
+  out("\n== scenario HEROMOTION (the motion audit's fixes, heroMotion.js: the soft wrist, the thrusts on the point's line; off = the motion before; the bosses untouched; ADR-256) ==");
+  const { makeHeroAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/heroAudit.mjs`).href);
+  const HM = await imp('src/entities/player/heroMotion.js');
+  const { SWINGS } = await imp('src/entities/player/swings.js');
+  const { setCombo } = await imp('src/entities/player/combos.js');
+  const before = JSON.stringify([SWINGS.risingThrust.keys, SWINGS.heavyThrust.keys]);
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  const p = game.player, d = game.dragon, A = p.anim;
+  p.debug.god = true;
+  const H = makeHeroAudit({ THREE, p, HD: HERO_DIM, dtOf: () => game.dt });
+  const far = () => { p.debug.teleport(d.position.x + 14, d.position.z + 14); p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z); aimAt(G); };
+  const clipOf = () => { const a = p.atk, def = a?.def; if (!def || (p.state !== 'attack' && p.state !== 'heavy')) return null; return (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? def.name ?? null; };
+  const go = (s, F) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { G.tick(DT); if (F) { const f = H.sample(); f.clip = clipOf(); const a = p.atk; f.u = a?.def ? (a.t < a.def.windup ? a.t / a.def.windup : a.t < a.def.windup + a.def.active ? 1 + (a.t - a.def.windup) / a.def.active : 2) : null; F.push(f); } } };
+  // the chain (combo A, the game's), the lone heavy, the charge held, a roll each way
+  const take = () => {
+    const F = [];
+    setCombo('a');
+    far(); go(0.5);
+    for (let k = 0; k < 5; k++) { input.click(0); go(k === 4 ? 1.1 : CHAIN_EVERY, F); }
+    far(); go(0.5); input.click(2); go(1.6, F);
+    far(); go(0.5); input.press(2); go(1.3, F); input.up(2); go(1.5, F);
+    for (const ax of [{ x: 0, y: 1 }, { x: 1, y: 0 }, { x: 0, y: -1 }]) { far(); go(0.4); input.axis = ax; go(0.2); input.tap('Space'); go(0.9, F); input.axis = { x: 0, y: 0 }; }
+    go(0.6, F);
+    setCombo('0');
+    return F;
+  };
+  const at = (F, clip) => F.filter((f) => f.clip === clip && f.u != null && f.u >= 1.6 && f.u <= 2.0);
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+  const sum = (F) => {
+    const st = H.stats(F);
+    const rt = at(F, 'risingThrust'), ht = at(F, 'heavyThrust');
+    return {
+      kink: st.kink[1], wr: st.step.wrR, pop: st.pop.wrR,
+      rt: { el: mean(rt.map((f) => f.elR)), kink: mean(rt.map((f) => f.kink)) },
+      ht: { el: mean(ht.map((f) => f.elR)), kink: mean(ht.map((f) => f.kink)) },
+    };
+  };
+  HM.setHeroWrist('0'); HM.setHeroThrust('0');
+  const off = sum(take());
+  HM.setHeroWrist('a'); HM.setHeroThrust('a');
+  const on = sum(take());
+  out(`   the wrist (blade off the forearm, deg, the most): off ${off.kink.toFixed(0)} · a ${on.kink.toFixed(0)}; the sword hand's fastest frame ${off.wr.toFixed(2)} → ${on.wr.toFixed(2)} m, its largest second difference ${off.pop.toFixed(2)} → ${on.pop.toFixed(2)} m`);
+  out(`   the rising thrust through its extension (u 1.6-2, means): elbow ${off.rt.el.toFixed(0)}° → ${on.rt.el.toFixed(0)}°, wrist ${off.rt.kink.toFixed(0)}° → ${on.rt.kink.toFixed(0)}°; Piercing Gale: elbow ${off.ht.el.toFixed(0)}° → ${on.ht.el.toFixed(0)}°, wrist ${off.ht.kink.toFixed(0)}° → ${on.ht.kink.toFixed(0)}°`);
+  assert(off.kink > 110, `with the wrist off the fist bends past 110° somewhere in the chain / heavy / charge / rolls (${off.kink.toFixed(0)}°: the defect the fix answers)`);
+  // (80° but where the grass floor lifts a low point back up over a low hand, anim.js _tipFloor, after the ease: a roll, the draw cut's coil)
+  assert(on.kink <= 100 && on.kink < off.kink - 25, `heroWrist a: the blade folds at most ~80° off the sword forearm, ≤ 100° where the grass lifts the point (${on.kink.toFixed(0)}°, was ${off.kink.toFixed(0)}°)`);
+  assert(on.wr <= off.wr + 0.02 && on.pop <= off.pop + 0.02, `the soft wrist turns the blade, not the hand: no faster sword-hand frame (${off.wr.toFixed(2)} → ${on.wr.toFixed(2)} m) and no new pop (${off.pop.toFixed(2)} → ${on.pop.toFixed(2)} m)`);
+  assert(on.rt.el >= 150 && on.rt.kink <= 30, `heroThrust a: the rising thrust extends along its line (elbow ${on.rt.el.toFixed(0)}° ≥ 150, wrist ${on.rt.kink.toFixed(0)}° ≤ 30)`);
+  assert(on.ht.el >= 130 && on.ht.kink <= 36, `heroThrust a: Piercing Gale, two-handed, extends (elbow ${on.ht.el.toFixed(0)}° ≥ 130, wrist ${on.ht.kink.toFixed(0)}° ≤ 36)`);
+  assert(on.rt.kink < off.rt.kink - 12 && on.ht.kink < off.ht.kink - 6 && on.rt.el > off.rt.el && on.ht.el >= off.ht.el - 1, 'both thrusts straighter than before: the wrist in line, the elbow no more bent');
+  // both thrusts still land where they did (REACH's way: the wyrm's chest sphere, straight in front)
+  const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+  const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+  const lands = (id, what, gap) => {
+    HM.setHeroThrust(id);
+    setCombo('a');
+    d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G);
+    if (what === 'hit4') { p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40); aimAt(G); for (let k = 0; k < 3; k++) { input.click(0); run(G, CHAIN_EVERY, { passive: true }); } }
+    const c = chest();
+    p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+    p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+    aimAt(G);
+    let hit = 0;
+    const w0 = G.watch;
+    G.watch = (n) => { if (n === 'player:hitDragon') hit++; };
+    input.click(what === 'hit4' ? 0 : 2);
+    run(G, 1.4, { passive: true });
+    G.watch = w0;
+    setCombo('0');
+    return hit > 0 ? 1 : 0;
+  };
+  const tally = (id) => [1, 1.8, 2.6].map((g) => lands(id, 'gale', g)).concat([0.6, 1.2].map((g) => lands(id, 'hit4', g)));
+  const L0 = tally('0'), L1 = tally('a');
+  out(`   lands (Piercing Gale at 1 / 1.8 / 2.6 m, combo A's hit 4 at 0.6 / 1.2 m from the chest): off ${L0.join('')} · a ${L1.join('')}`);
+  assert(L1.every((x, i) => x >= L0[i]), `the thrusts land wherever they landed before (${L0.join('')} → ${L1.join('')})`);
+  // combo A as shipped (ADR-240, PR 167): the soft wrist turns the drawn blade, which the hit sweep and the ending
+  // slash both read, so every hit must still land where it did and every slash keep its angle
+  const chain = (id, gap) => {
+    HM.setHeroWrist(id); HM.setHeroThrust(id);
+    setCombo('a');
+    d.hp = d.maxHp; d.posture = 0; run(G, 1.0, { passive: true }); settle(G);
+    const c = chest();
+    p.debug.teleport(c.x + fx * (c.r + gap), c.z + fz * (c.r + gap));
+    p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+    aimAt(G);
+    const hits = [0, 0, 0, 0, 0], lines = [];
+    const w0 = G.watch, l0 = p.slashFx.onLine;
+    G.watch = (n) => { if (n === 'player:hitDragon') { const k = p.atk?.def?.combo; if (k >= 0 && k < 5) hits[k] = 1; } };
+    p.slashFx.onLine = (ax, ay, az, bx, by, bz) => { const L = Math.hypot(bx - ax, by - ay, bz - az) || 1; lines.push({ k: p.atk?.def?.combo, v: [(bx - ax) / L, (by - ay) / L, (bz - az) / L] }); };
+    for (let k = 0; k < 5; k++) { input.click(0); run(G, k === 4 ? 1.3 : CHAIN_EVERY, { passive: true }); }
+    G.watch = w0; p.slashFx.onLine = l0;
+    setCombo('0');
+    return { hits, lines };
+  };
+  let worst = 0, L0c = '', L1c = '';
+  for (const gap of [0.8, 1.6]) {
+    const c0 = chain('0', gap), c1 = chain('a', gap);
+    L0c += c0.hits.join('') + ' '; L1c += c1.hits.join('') + ' ';
+    for (const l of c1.lines) { const m = c0.lines.find((x) => x.k === l.k); if (m) { const dot = Math.abs(m.v[0] * l.v[0] + m.v[1] * l.v[1] + m.v[2] * l.v[2]); worst = Math.max(worst, Math.acos(Math.min(1, dot)) * 180 / Math.PI); } }
+  }
+  out(`   combo A, hits 1-5 landing at 0.8 / 1.6 m: off ${L0c}· a ${L1c}; the ending slashes' angle moves at most ${worst.toFixed(1)}°`);
+  assert(L0c === L1c, `combo A lands exactly as shipped with the soft wrist (${L0c}→ ${L1c})`);
+  assert(worst <= 12, `combo A's ending slashes keep their angle with the soft wrist (at most ${worst.toFixed(1)}° off; ≤ 12)`);
+  // the parry flick (?parryFlick): a tap SHOWS the guard a moment; the state, the parry and its window are unchanged
+  const tapTake = (id) => {
+    HM.setParryFlick(id);
+    far(); go(0.6);
+    input.click(1);
+    let shown = 0, idleAt = -1;
+    for (let i = 0; i < 40; i++) { G.tick(DT); if (A.key === 'block') shown++; if (idleAt < 0 && p.state === 'idle') idleAt = i; }
+    return { shown: shown * DT, idleAt };
+  };
+  const t0 = tapTake('0'), ta = tapTake('a');
+  out(`   a lone tap: the guard shown ${t0.shown.toFixed(2)} s (old) → ${ta.shown.toFixed(2)} s (a); back to idle on frame ${t0.idleAt} → ${ta.idleAt}`);
+  assert(t0.shown <= 0.04 && ta.shown >= 0.14 && ta.shown <= 0.2, `parryFlick a: a tap shows the guard ~0.16 s (${ta.shown.toFixed(2)} s; before ${t0.shown.toFixed(2)} s)`);
+  assert(ta.idleAt === t0.idleAt, `... only the pose: the state is idle as soon as before (frame ${t0.idleAt} → ${ta.idleAt})`);
+  const parryTake = (id) => {
+    HM.setParryFlick(id);
+    settle(G); d.hp = d.maxHp; place(G, 6);
+    const F = [];
+    const tick0 = G.tick;
+    G.tick = (dt) => { tick0(dt); const f = H.sample(); f.state = p.state; F.push(f); };
+    const rec = forceAttack(G, 'bite', { answer: 'parry', settle: 1 });
+    G.tick = tick0;
+    const i = F.findIndex((f) => f.state === 'parry');
+    // the free and the sword elbow's change into the deflect pose (the frame before it → its first)
+    const jump = i > 0 ? Math.max(Math.abs(F[i].elL - F[i - 1].elL), Math.abs(F[i].elR - F[i - 1].elR)) : NaN;
+    return { res: rec.res, jump };
+  };
+  const p0 = parryTake('0'), pa = parryTake('a');
+  out(`   a parry on the wyrm's bite: ${p0.res} → ${pa.res}; the elbows' jump into the deflect pose ${p0.jump.toFixed(0)}° → ${pa.jump.toFixed(0)}°`);
+  assert(p0.res === pa.res, `parryFlick a: the parry's outcome is the same (${p0.res} → ${pa.res})`);
+  HM.setParryFlick('0');
+  HM.setHeroWrist('0'); HM.setHeroThrust('0');
+  assert(JSON.stringify([SWINGS.risingThrust.keys, SWINGS.heavyThrust.keys]) === before, "heroThrust '0' puts production's keys back exactly");
+  G.tick(DT);
+  assert(p.anim.wristSoft === null, 'heroWrist 0: the animator has no soft wrist (WRIST_BACK alone, as before)');
+  // the bosses' animators never take it (the duelists share HeroAnimator: their output is unchanged)
+  const { HeroAnimator } = await imp('src/entities/player/anim.js');
+  assert(new HeroAnimator(p.rig, p, null, {}).wristSoft === null, 'a HeroAnimator built without the player (every duelist) has wristSoft null');
+  return G;
+}
+
+async function scenarioHeroAudit() {
+  out("\n== scenario HEROAUDIT (the hero's whole moveset as motion: joints, snaps, pops, the wrist, the feet, transitions; ADR-256) ==");
+  // (opt-in: a printed table, no bars. GCD_COMBO picks the light combo, default the game's own, combo A;
+  //  GCD_HA_WRIST / GCD_HA_THRUST the fixes (heroMotion.js, default '0': the motion before);
+  //  GCD_HA_TRACE=<label> prints that segment frame by frame; GCD_AUDIT_OUT=<file> writes the rows as JSON)
+  const { makeHeroAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/heroAudit.mjs`).href);
+  const { setCombo, DEFAULT_COMBO } = await imp('src/entities/player/combos.js');
+  const G = build();
+  const { game, input } = G;
+  fightSetup(G);
+  setCombo(process.env.GCD_COMBO ?? DEFAULT_COMBO);
+  const p = game.player, d = game.dragon, A = p.anim;
+  p.debug.god = true;
+  p.lean.on = false;
+  const HM = await imp('src/entities/player/heroMotion.js');
+  HM.setHeroWrist(process.env.GCD_HA_WRIST ?? '0');
+  HM.setHeroThrust(process.env.GCD_HA_THRUST ?? '0');
+  out(`   (heroWrist ${HM.heroWrist()} · heroThrust ${HM.heroThrust()} · combo ${process.env.GCD_COMBO ?? DEFAULT_COMBO})`);
+  const H = makeHeroAudit({ THREE, p, HD: HERO_DIM, dtOf: () => game.dt });
+  const far = () => { p.debug.teleport(d.position.x + 14, d.position.z + 14); p.yaw = Math.atan2(d.position.x - p.position.x, d.position.z - p.position.z); aimAt(G); };
+  const clipOf = () => { const a = p.atk, def = a?.def; if (!def || (p.state !== 'attack' && p.state !== 'heavy')) return null; return (A.atkDef === def && A.atkAnim ? A.atkAnim : def.anim)?.clip ?? def.name ?? null; };
+  const tl = []; // the timeline: { label, F, contact }
+  let take = '';
+  const labelOf = () => { const c = clipOf(); return c ? `${p.state === 'heavy' ? 'H:' : ''}${c}` : p.state; };
+  const tick = () => { G.tick(DT); const F = H.sample(); F.label = labelOf(); F.take = take; const a = p.atk; F.u = a?.def ? (a.t < a.def.windup ? a.t / a.def.windup : a.t < a.def.windup + a.def.active ? 1 + (a.t - a.def.windup) / a.def.active : 2) : null; tl.push(F); return F; };
+  const go = (s, before) => { for (let i = 0, n = Math.round(s / DT); i < n; i++) { before?.(); tick(); } };
+  const rest = (s = 0.8) => { input.axis = { x: 0, y: 0 }; go(s); };
+  const begin = (name) => { far(); go(0.5); take = name; };
+
+  begin('combo');
+  for (let k = 0; k < 5; k++) { input.click(0); go(k === 4 ? 1.1 : CHAIN_EVERY); }
+  rest();
+  begin('lone heavy');
+  input.click(2); go(1.6); rest();
+  for (let k = 1; k <= 4; k++) {
+    begin(`heavy after ${k}`);
+    for (let j = 0; j < k; j++) { input.click(0); go(CHAIN_EVERY); }
+    input.click(2); go(1.8); rest();
+  }
+  begin('charge');
+  input.press(2); go(1.3); input.up(2); go(1.6); rest();
+  begin('sprint slash');
+  input.axis = { x: 0, y: 1 }; input.hold('ShiftLeft'); go(1.0); input.click(0); go(0.3); input.release('ShiftLeft'); input.axis = { x: 0, y: 0 }; go(1.0); rest();
+  begin('roll cut');
+  input.axis = { x: 0, y: 1 }; go(0.3); input.tap('Space'); go(0.35); input.axis = { x: 0, y: 0 }; input.click(0); go(1.2); rest();
+  for (const [nm, ax] of [['roll fwd', { x: 0, y: 1 }], ['roll back', { x: 0, y: -1 }], ['roll left', { x: -1, y: 0 }], ['roll right', { x: 1, y: 0 }]]) {
+    begin(nm);
+    input.axis = ax; go(0.25); input.tap('Space'); go(0.9); rest();
+  }
+  begin('backstep');
+  input.tap('Space'); go(0.9); rest();
+  begin('block');
+  input.press(1); go(1.2); input.up(1); go(0.8);
+  begin('parry tap');
+  input.click(1); go(1.0);
+  begin('run');
+  input.axis = { x: 0, y: 1 }; go(1.2); rest(0.8);
+  begin('block→light');
+  input.press(1); go(0.6); input.up(1); input.click(0); go(1.0);
+  begin('run→light');
+  input.axis = { x: 0, y: 1 }; go(0.8); input.click(0); go(0.2); input.axis = { x: 0, y: 0 }; go(1.0);
+  // a real parry and a perfect dodge into the flurry, on the wyrm's bite
+  run(G, 1.5, { passive: true }); settle(G); d.hp = d.maxHp;
+  take = 'parry'; place(G, 6);
+  const tl0 = tl.length;
+  const w0 = G.watch;
+  // (forceAttack ticks on its own: sample inside the watch-free tick wrapper)
+  const tick0 = G.tick;
+  G.tick = (dt) => { tick0(dt); const F = H.sample(); F.label = labelOf(); F.take = take; tl.push(F); };
+  forceAttack(G, 'bite', { answer: 'parry', settle: 1 });
+  run(G, 1.0, { passive: true });
+  settle(G); d.hp = d.maxHp;
+  take = 'flurry'; place(G, 6);
+  p.debug.streak(3);
+  p.debug.flurryAny = true;
+  forceAttack(G, 'bite', { answer: 'dodge', settle: 1 });
+  for (let i = 0; i < 600 && (p.state === 'flurry' || p.state === 'plunge'); i++) { aimAt(G); G.tick(DT); }
+  run(G, 1.0, { passive: true });
+  G.tick = tick0;
+  G.watch = w0;
+  out(`   (${tl.length} frames; ${tl.length - tl0} in the parry / flurry takes)`);
+
+  // segments: a run of frames with one label inside one take
+  const segs = [];
+  for (let i = 0; i < tl.length; i++) {
+    const F = tl[i], L = segs[segs.length - 1];
+    if (L && L.take === F.take && L.label === F.label) L.F.push(F);
+    else segs.push({ take: F.take, label: F.label, F: [F], i0: i });
+  }
+  out('   segment                     frames  (m a frame: fastest step, largest second difference · deg: one-frame changes · ranges)');
+  const rows = [];
+  const seen = new Map();
+  for (const S of segs) {
+    if (S.F.length < 2) continue;
+    // (the segment plus the frame before it: what its entry costs)
+    const F = S.i0 > 0 && tl[S.i0 - 1].take === S.take ? [tl[S.i0 - 1], ...S.F] : S.F;
+    const st = H.stats(F);
+    const key = `${S.take}|${S.label}`;
+    const n = (seen.get(key) ?? 0) + 1;
+    seen.set(key, n);
+    const label = `${S.take.slice(0, 11)}·${S.label}${n > 1 ? '#' + n : ''}`;
+    // the pose at the contact (u 1.5: the middle of the active frames)
+    const c = S.F.find((x) => x.u != null && x.u >= 1.5);
+    rows.push({ label, st, contact: c ? { el: c.elR, kink: c.kink, elev: c.elev, elL: c.elL } : null });
+    out('   ' + H.row(label, st) + (c ? `  @contact el ${c.elR.toFixed(0)} kink ${c.kink.toFixed(0)} elev ${c.elev.toFixed(0)}` : ''));
+  }
+  const tr = process.env.GCD_HA_TRACE;
+  if (tr) {
+    for (const S of segs) {
+      if (!`${S.take}·${S.label}`.includes(tr)) continue;
+      out(`   -- trace ${S.take}·${S.label}`);
+      for (const F of S.F) out(`     u ${F.u == null ? ' -- ' : F.u.toFixed(2)} dt ${F.dt.toFixed(3)} elR ${F.elR.toFixed(0)} elL ${F.elL.toFixed(0)} kink ${F.kink.toFixed(0)} elev ${F.elev.toFixed(0)} chest ${(F.chest * 57.3).toFixed(0)} hip ${(F.hip * 57.3).toFixed(0)} wrR ${F.b.wrR.toArray().map((x) => x.toFixed(2))} wrL ${F.b.wrL.toArray().map((x) => x.toFixed(2))} anR ${F.feetW[0].toArray().map((x) => x.toFixed(2))} anL ${F.feetW[1].toArray().map((x) => x.toFixed(2))}`);
+    }
+  }
+  if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
+  return G;
+}
+
 async function scenarioWyrmAudit() {
   out('\n== scenario WYRMAUDIT (each blow of each melee string: the held windup of the striking part and the body, by tell) ==');
   const { makeWyrmAudit } = await import(pathToFileURL(`${ROOT}/tests/integration/motionAudit.mjs`).href);
@@ -15333,9 +15597,11 @@ const SCENARIOS = {
   breach: scenarioBreach,
   forestedge: scenarioForestEdge,
   probe: scenarioProbe,
+  heromotion: scenarioHeroMotion,
+  heroaudit: scenarioHeroAudit,
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'wyrmanatomy', 'wyrmhead']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'wyrmaudit', 'wyrmanatomy', 'wyrmhead', 'heroaudit']); // run only when named
 // GCD_SKIP: scenarios left out of `all` because the caller runs them beside this process
 const SKIP = new Set((process.env.GCD_SKIP || '').split(',').filter(Boolean));
 for (const name of SKIP) if (!SCENARIOS[name]) { out(`GCD_SKIP: unknown scenario '${name}'`); process.exit(2); }

@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-one pieces of work since 0.4.0:
+One hundred and thirty-two pieces of work since 0.4.0:
+- **The hero's wrist, thrusts and parry tap, natural** (2026-11-27, ADR-256). *Fixed:* his sword wrist no longer bends past
+  what a wrist can (it reached 128° off the forearm between the keys of a cut, through every roll and in the held
+  charge): past 60° the blade eases toward 80°, the hand's path and every timing as before. The rising thrust (combo
+  A's fourth hit) and Piercing Gale now extend the arm along the point's line, the wrist in line with the forearm.
+  A parry tap now shows the guard for 0.16 s from the press (it showed for one frame, so the deflect pose
+  snapped in from nowhere when a blow met it); only the pose: what blocks and parries is unchanged. The owner's
+  picks from the films. `?heroWrist=0` / `?heroThrust=0` / `?parryFlick=0` show them as before, `?heroWrist=b` a
+  tighter wrist, `?parryFlick=b` a longer guard (the Lab's `heroWrist` / `heroThrust` / `parryFlick` rows).
+  *Added:* the hero's motion audit (integ.mjs `heroaudit`, `heromotion`).
 - **The performance readout measures by itself** (2026-11-27, ADR-261). *Changed:* with `?perf`, BENCH now runs on its own
   during a fight (once early, then at the slow moments, four times at most); play, then tap REPORT. `?perf=manual`
   keeps it to the button.
