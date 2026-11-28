@@ -4927,7 +4927,8 @@ async function scenarioBlackout() {
   const { game, input } = G;
   const d = game.dragon, p = game.player, O = TELL_STYLE.black.out, bo = game.blackout;
   run(G, 0.3);
-  assert(bo && typeof bo.beat === 'function' && B.getBlack() === B.BLACK_DEFAULT && B.BLACK_DEFAULT === '0' && RT.getRedTrail() === '0', 'game.blackout is up (ui/tells.js), and both switches default to today\'s look');
+  const BI = await imp('src/combat/blackImpact.js'), bi = game.blackImpact;
+  assert(bo && typeof bo.beat === 'function' && bi && B.getBlack() === B.BLACK_DEFAULT && B.BLACK_DEFAULT === 'b' && RT.getRedTrail() === 'a' && BI.getBlackImpact() === 'a', 'game.blackout and game.blackImpact are up (ui/tells.js); the owner picks are the defaults: black b, redTrail a, blackImpact a');
   p.debug.god = true;
   /** Black Tide from 5 m, the guard held; `cut(t)` may cancel it `t` s into the charge. */
   const tide = (mode, cut = null) => {
@@ -4972,6 +4973,38 @@ async function scenarioBlackout() {
   const b = tide('b');
   assert(b.kAt(b.t0 + b.dur * 0.5) > 0.3 && b.kAt(b.t0 + b.dur * 0.5) < 0.7 && b.kAt(b.flashT) > 0.95, `?black=b: half dark half way through the charge (${b.kAt(b.t0 + b.dur * 0.5).toFixed(2)}), all of it at the cue`);
   assert(O.c.depth > O.a.depth && O.c.over === O.a.over && O.b.depth === O.a.depth, 'c is a deeper a, b a slower a: one dimension each');
+  // --- the black impact: hit or miss, the blow lands with a blast at its point; a cancelled one never does
+  const W = game.world, gb = W.groundBlow;
+  const blasts = [];
+  W.groundBlow = (x, z, o) => { if (o?.kind === 'blast') blasts.push({ x, z, t: game.time, power: o.power }); return gb?.call(W, x, z, o); };
+  const lands = (mode) => {
+    BI.setBlackImpact(mode);
+    const f0 = bi.stats.fired, n0 = blasts.length;
+    const r = tide('b');
+    return { r, fired: bi.stats.fired - f0, blasts: blasts.slice(n0) };
+  };
+  const held = lands('a');
+  const T0 = d.T, lead = Array.isArray(T0.flashLead) ? T0.flashLead[0] : T0.flashLead;
+  const dt0 = held.blasts[0] ? held.blasts[0].t - held.r.flashT : NaN;
+  assert(held.fired === 1 && held.blasts.length === 1 && held.blasts[0].power >= 2 && Math.abs(dt0 - lead) < 0.1, `?blackImpact=a: Black Tide on a held guard lands ONE blast (power ${held.blasts[0]?.power}) at its impact (${dt0.toFixed(2)} s after the cue, lead ${lead})`);
+  // (a miss: the hero 12 m off, out of its reach)
+  BI.setBlackImpact('a');
+  B.setBlack('b');
+  settle(G, 8);
+  home(G);
+  place(G, 12);
+  run(G, 0.3);
+  const f1 = bi.stats.fired, hp1 = p.hp;
+  d.debug.trigger('blackTide');
+  run(G, 4, () => game.mouseGround.set(d.position.x, 0, d.position.z), () => bi.stats.fired > f1 && d.mode !== 'act');
+  assert(bi.stats.fired - f1 === 1 && hp1 - p.hp === 0 && bi.stats.last && !bi.stats.last.hit, `... and a miss (the hero 12 m off, no HP lost) lands it too (${bi.stats.fired - f1})`);
+  const none = lands('0');
+  assert(none.fired === 0 && none.blasts.length === 0, '?blackImpact=0: no blast (the blow as before)');
+  BI.setBlackImpact('a');
+  const fc = bi.stats.fired;
+  tide('b', { at: 1.0, fn: () => d.debug.stagger() });
+  assert(bi.stats.fired === fc && !bi.armed, 'a black blow staggered in its charge never lands its blast');
+  W.groundBlow = gb;
   // --- every cancel path lets go (mode b: dark from the start)
   const cancels = [
     ['a stagger', () => d.debug.stagger()],

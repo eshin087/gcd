@@ -102,7 +102,17 @@ export const TELL_STYLE = Object.freeze({
     pale: {
       flare: { tint: null, light: [0.85, 0.88, 1.0], dark: 0 },
       glint: { size: [0.16, 0.42], heat: 3.2, flicker: 0.35 },
-      motes: 0.45,
+      motes: 0.45, // (the share of today's motes drawn)
+    },
+    // THE BLACK IMPACT (ADR-271, ?blackImpact=; combat/blackImpact.js): every black blow, hit or miss,
+    // lands with the heaviest blow a boss has. `lead` s after the cue when no beat can be read; `r` m and
+    // `power` (POWER scale) the blast on the world (a crater from 1.2), `mark` the floor's blast mark;
+    // `shock` m the front of dust, `k` its strength, `gust` the grass; a `light` of `lightK`; the camera's
+    // shake [far, near] (`near` m) and punch m; the frame held `stop` s on a miss; the `sub`'s strength;
+    // `wyrm` x every size on the wyrm.
+    impact: {
+      lead: 0.32, r: 3.2, power: 1.8, mark: 2, shock: 6.5, k: 1.8, gust: 3, light: [1.0, 0.92, 0.8], lightK: 7,
+      near: 10, shake: [0.45, 0.85], punch: 0.6, stop: 0.07, sub: 2.5, wyrm: 1.8,
     },
     out: {
       a: { over: 0.3, depth: 0.78, grey: 0.92 },

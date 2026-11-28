@@ -1,15 +1,15 @@
 import { TELL, TELL_STYLE } from './rules.js';
 
-// THE BLACKOUT (?black=0|a|b|c; default 0 = today's violet charge; ADR-271). The owner's Phantom Blade
+// THE BLACKOUT (?black=0|a|b|c; default b, the owner's pick 2026-11-27; 0 = the violet charge before; ADR-271). The owner's Phantom Blade
 // Zero reference (2026-11-27): while a boss charges a BLACK blow the whole picture drains toward dark
 // grey and dims, the boss stays lit and readable, a white glint sits on the striking part, and colour
 // snaps back on the strike. The owner's one exception to "no background colour change": black blows
 // only, never red, blue or normal ones.
-//   0  today: the eclipse with violet strokes on the striking part, the body darkened violet, the flare
+//   0  before: the eclipse with violet strokes on the striking part, the body darkened violet, the flare
 //      dyed violet, the screen's edges dimming (ui/tells.js).
 //   a  the film: the dark drops in over the last 0.3 s before the cue, holds through it, snaps back on
 //      the strike.
-//   b  as a, but the dark builds through the whole charge (~1.5 s).
+//   b  as a, but the dark builds through the whole charge (~1.5 s). THE DEFAULT.
 //   c  as a, but darker.
 // In a, b and c the violet goes (TELL_STYLE.black.pale): the flare undyed (a white-hot streak), the
 // charge a white point with pale motes drawn in, no darkened body, no dark screen edges.
@@ -33,7 +33,7 @@ const q = (name) => {
     return null;
   }
 };
-export const BLACK_DEFAULT = '0'; // today's look until the owner picks
+export const BLACK_DEFAULT = 'b'; // the owner's pick (2026-11-27): the dark builds through the whole charge
 /** The switch (the Lab cycles it; read every frame). */
 export const BLACK = { opts: OPTS, mode: OPTS.includes(q('black')) ? q('black') : BLACK_DEFAULT };
 export const getBlack = () => BLACK.mode;

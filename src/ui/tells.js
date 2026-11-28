@@ -1,6 +1,7 @@
 import { TELL } from '../combat/rules.js';
 import { el, num } from './dom.js';
 import { Blackout, blackOn } from '../combat/blackout.js';
+import { BlackImpact } from '../combat/blackImpact.js';
 
 // Screen-edge cues. The attack tells themselves live in the world (docs/COMBAT.md): a blow is read
 // from its windup and cued by a white glint, or by THE FLARE of a moment (ADR-118). The HUD adds no
@@ -39,6 +40,9 @@ export class TellEdges {
     // the blackout (combat/blackout.js): the whole picture's grade on a black blow, cleared with the edges
     this.black = new Blackout(game);
     game.blackout = this.black;
+    // ... and the black blow's impact, hit or miss (combat/blackImpact.js), stepped with it
+    this.impact = new BlackImpact(game);
+    game.blackImpact = this.impact;
     const ev = game.events;
     ev?.on('combat:flash', (d) => this._onFlash(d));
     ev?.on('combat:charge', (d) => {
@@ -58,6 +62,7 @@ export class TellEdges {
     this.redAt = -1;
     this.chargeAt = -1;
     this.black.clear();
+    this.impact.disarm();
   }
 
   _onFlash(d) {
@@ -108,6 +113,7 @@ export class TellEdges {
     }
     this.edges.update(realDt, red, sx, sy, W, H, this.kind);
     this.black.update();
+    this.impact.update();
   }
 
   /** Cool cyan edge pulse for Ghostep (driven by the HUD). */

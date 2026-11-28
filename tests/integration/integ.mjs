@@ -3620,7 +3620,16 @@ async function scenarioFlare() {
   run(G, O.drop + 0.15, { passive: true });
   assert(kCut > 0.2 && bo.k === 0, `?black=b: staggered in the charge, the dark (${kCut.toFixed(2)}) is gone (${bo.k})`);
   bo.update = up0;
-  B.setBlack('0');
+  // --- the black impact (?blackImpact=a, the default): Black maw lands its blast on a miss too (the hero far)
+  const bi = game.blackImpact;
+  settle(G);
+  place(G, 16);
+  run(G, 0.3, { passive: true });
+  const f0 = bi.stats.fired, hpB = p.hp;
+  d.debug.trigger('blackMaw');
+  run(G, 5, { passive: true });
+  assert(bi.stats.fired - f0 === 1 && hpB === p.hp && !bi.stats.last?.hit, `Black maw missing the hero (16 m off) still lands its blast (${bi.stats.fired - f0}), ${bi.stats.last ? Math.hypot(bi.stats.last.x - d.position.x, bi.stats.last.z - d.position.z).toFixed(1) : '-'} m from the wyrm`);
+  B.setBlack(B.BLACK_DEFAULT);
   run(G, 4, { passive: true });
   return G;
 }
@@ -4401,7 +4410,8 @@ async function scenarioLab() {
     // (Armageddon's meteors fall for ~12 s after the trigger: its window is longer; a background
     // hazard never spills into the next ability's count)
     // (a flying combo (flight, 2nd pass) runs 7 - 13 s to its crash: it gets the longer window too)
-    const r = forceAttack(G, a.name, { max: a.name === 'meteorRain' ? 17 : TUNING.attacks[a.name]?.parts ? 16 : 9, settle: 600 });
+    // (Cataclysm rolls up to nine blows: its last cue can come after 9 s; ADR-271's impact shifted the seeded stream onto such a roll)
+    const r = forceAttack(G, a.name, { max: a.name === 'meteorRain' ? 17 : TUNING.attacks[a.name]?.parts ? 16 : a.name === 'cataclysm' ? 14 : 9, settle: 600 });
     run(G, 10, { passive: true, god: true }, () => !d.brain.action && d.state === 'combat');
     d.hazards.clear();
     d.brood?.clear?.(); // (a brood lives on past its move: none spills into the next ability's count)

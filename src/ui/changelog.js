@@ -21,8 +21,9 @@ export const RELEASES = [
         date: '2026-11-27',
         title: 'A black blow can darken the whole picture, a red string can cut in red',
         notes: [
-          'Two new looks to try, not on yet: a charged (black) blow can drain the whole picture to dark grey while the boss charges, his weapon lit by a white point, the colour snapping back as he strikes.',
-          'And a red string can leave a thin red crescent on every cut of a sword boss, from the red flash on.',
+          'A charged (black) blow now drains the whole picture to dark grey while the boss charges, his weapon lit by a white point, the colour snapping back as he strikes.',
+          'And it always lands like the heaviest blow of the fight, even when it misses you: the ground craters, what stands near breaks, dust tears out across the floor and the screen shakes.',
+          'A red string leaves a thin red crescent on every cut of a sword boss, from the red flash on.',
         ],
       },
       {

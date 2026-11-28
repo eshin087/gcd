@@ -23,6 +23,7 @@ import { BLUE_TELL_LOOK, blueTellMode, setBlueTell } from '../entities/enemies/d
 import { DB_MATRIX, getDbMatrix, setDbMatrix } from '../combat/deathblowMatrix.js';
 import { BLACK, getBlack, setBlack } from '../combat/blackout.js';
 import { RED_TRAIL, getRedTrail, setRedTrail } from '../combat/redTrail.js';
+import { BLACK_IMPACT, getBlackImpact, setBlackImpact } from '../combat/blackImpact.js';
 import { DB_SFX, getDbSfx, setDbSfx } from '../audio/deathblowSfx.js';
 import { PARRY_FX, parryFxMode, setParryFx, parryGrowMode, setParryGrow } from '../combat/parrySparks.js';
 import { RIPOSTE_CUT, riposteMode, setRiposteMode } from '../entities/player/riposteCut.js';
@@ -1385,13 +1386,19 @@ export class Lab {
       this.game.blackout?.clear();
       this._syncCutBtns();
     });
-    this.ui.blackBtn.title = "a black (charged) blow's look (?black=; ADR-271): 0 = today's violet eclipse, body and flare; a = the blackout: the picture drains to dark grey over the last 0.3 s before the cue, the boss stays lit with a white point on the striking part, colour snaps back on the strike; b = as a, the dark builds through the whole charge; c = as a, darker";
+    this.ui.blackBtn.title = "a black (charged) blow's look (?black=; ADR-271): 0 = the violet eclipse, body and flare as before; a = the blackout: the picture drains to dark grey over the last 0.3 s before the cue, the boss stays lit with a white point on the striking part, colour snaps back on the strike; b = as a, the dark builds through the whole charge; c = as a, darker. Default b (the owner's pick)";
+    this.ui.blackImpactBtn = button(stkGrid, `blackImpact ${getBlackImpact()}`, () => {
+      const M = BLACK_IMPACT.opts;
+      setBlackImpact(M[(M.indexOf(getBlackImpact()) + 1) % M.length]);
+      this._syncCutBtns();
+    });
+    this.ui.blackImpactBtn.title = "a black blow's landing (?blackImpact=; ADR-271): a (the default) = hit or miss, it lands with a blast: a crater, what stands near breaks, a shock front of dust, a hard shake, a held frame, an explosion's sound; 0 = only what its move did before";
     this.ui.redTrailBtn = button(stkGrid, `redTrail ${getRedTrail()}`, () => {
       const M = RED_TRAIL.opts;
       setRedTrail(M[(M.indexOf(getRedTrail()) + 1) % M.length]);
       this._syncCutBtns();
     });
-    this.ui.redTrailBtn.title = "a red blow's blade trail (?redTrail=; ADR-271): 0 = none (today); a = from the red flare on, every cut leaves a thin red crescent just outside its edge (~0.2 s); b = the same, longer (~0.45 s). Blades only";
+    this.ui.redTrailBtn.title = "a red blow's blade trail (?redTrail=; ADR-271): 0 = none (as before); a (the default, the owner's pick) = from the red flare on, every cut leaves a thin red crescent just outside its edge (~0.2 s); b = the same, longer (~0.45 s). Blades only";
     this.ui.dbmatrixBtn = button(stkGrid, `dbmatrix ${getDbMatrix()}`, () => {
       const M = DB_MATRIX.opts;
       setDbMatrix(M[(M.indexOf(getDbMatrix()) + 1) % M.length]);
@@ -1678,6 +1685,7 @@ export class Lab {
     if (this.ui.blueTellBtn) this.ui.blueTellBtn.textContent = `blueTell ${blueTellMode()}`;
     if (this.ui.blackBtn) this.ui.blackBtn.textContent = `black ${getBlack()}`;
     if (this.ui.redTrailBtn) this.ui.redTrailBtn.textContent = `redTrail ${getRedTrail()}`;
+    if (this.ui.blackImpactBtn) this.ui.blackImpactBtn.textContent = `blackImpact ${getBlackImpact()}`;
     if (this.ui.dbmatrixBtn) this.ui.dbmatrixBtn.textContent = `dbmatrix ${getDbMatrix()}`;
     if (this.ui.dbsfxBtn) this.ui.dbsfxBtn.textContent = `dbsfx ${getDbSfx()}`;
     if (this.ui.burstBtn) this.ui.burstBtn.textContent = `burst ${burstLevel()}`;

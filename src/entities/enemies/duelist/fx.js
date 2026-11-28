@@ -583,9 +583,12 @@ export class DuelFx {
    */
   charge(x0, y0, z0, u, dt, k = 1) {
     if (!Number.isFinite(x0 + y0 + z0 + u) || !(dt > 0)) return;
-    // the blackout (?black=, combat/blackout.js): the charge keeps the picture dark, and is drawn pale
+    // the blackout (?black=, combat/blackout.js): the charge keeps the picture dark and is drawn pale
+    // (TELL_STYLE.black.pale: no eclipse, no violet, no dye; a white point and pale motes). The fight's
+    // stream (rnd / rand) is drawn the same in both looks, so a look never moves a seeded fight; the
+    // pale look's own choices come from the look stream (lr / lrand).
     this.game?.blackout?.beat();
-    if (blackOn()) return this._paleCharge(x0, y0, z0, u, dt, k);
+    const pale = blackOn(), G = TELL_STYLE.black.pale;
     const C = TELL_CHARGE, A = this._axes();
     const P = this._toCamera(x0, y0, z0), x = P.x, y = P.y, z = P.z;
     this._chargeAcc += dt * C.rate * (0.3 + 0.7 * u);
@@ -595,13 +598,19 @@ export class DuelFx {
       const a = this.rnd() * TAU, r = this.rand(C.from[0], C.from[1]) * k, lf = this.rand(C.life[0], C.life[1]);
       const ca = Math.cos(a), sa = Math.sin(a);
       const dx = A.rx * ca + A.ux * sa, dy = A.ry * ca + A.uy * sa, dz = A.rz * ca + A.uz * sa;
+      const spark = this.rnd() < C.sparks / C.rate;
+      if (pale) {
+        // (a share of the motes, one pale streak each; no violet sparks)
+        if (this.lr() < G.motes) this._blob(x + dx * r, y + dy * r, z + dz * r, (-dx * r) / lf, (-dy * r) / lf, (-dz * r) / lf, lf, C.size[1] * k, C.size[1] * 0.6 * k, 0.9 + 0.5 * u, 1.2, K_STEEL);
+        continue;
+      }
       // born on a circle round the point (in the screen's plane), it arrives as it dies: two blobs
       // one behind the other, so each mote is a short streak
       for (let j = 0; j < 2; j++) {
         const rr = r * (1 + 0.1 * j);
         this._blob(x + dx * rr, y + dy * rr, z + dz * rr, (-dx * rr) / lf, (-dy * rr) / lf, (-dz * rr) / lf, lf, C.size[0] * k, C.size[1] * k, C.heat * (0.7 + 0.3 * u) * (1 - 0.3 * j), C.heat * 0.6, K_STEEL);
       }
-      if (this.rnd() < C.sparks / C.rate) {
+      if (spark) {
         const o = this._rec(x + dx * r, y + dy * r, z + dz * r, lf, 0.18, 0.06, '|', [1.3, 0.4, 3.0], [0.4, 0.06, 0.9]);
         o.vx = (-dx * r) / lf;
         o.vy = (-dy * r) / lf;
@@ -620,43 +629,23 @@ export class DuelFx {
     const life = this._frame();
     if (life > 0) {
       const S0 = this._screen(x, y, z), D = 12 * S0.mpp, rr = kn * 0.42, n = Math.max(12, Math.round((TAU * rr) / (S0.cw * S0.mpp)));
-      this._blob(x, y, z, 0, 0, 0, life, kn, kn, 0.62, 0.62, K_STEEL);
+      if (!pale) this._blob(x, y, z, 0, 0, 0, life, kn, kn, 0.62, 0.62, K_STEEL);
       for (let i = 0; i < n; i++) {
         const a = (i / n) * TAU, fl = 0.55 + 0.45 * this.rnd();
         // (round on screen: a letter cell is taller than it is wide, the ring is laid in metres)
-        this._cell(A, x, y, z, Math.cos(a) * rr, Math.sin(a) * rr, life, D, C.corona * fl * (0.6 + 0.4 * u));
+        if (!pale) this._cell(A, x, y, z, Math.cos(a) * rr, Math.sin(a) * rr, life, D, C.corona * fl * (0.6 + 0.4 * u));
+      }
+      if (pale) {
+        // the blackout's glint: a white point that grows and flickers harder toward the cue
+        const g = (G.glint.size[0] + (G.glint.size[1] - G.glint.size[0]) * u) * k, fl = 1 - G.glint.flicker * u * this.lr();
+        this._blob(x, y, z, 0, 0, 0, life, g, g, G.glint.heat * fl, G.glint.heat * fl, K_STEEL);
       }
     }
     // the dye: everything steel within `zone` m of the weapon prints as dark (fireField.js tint)
     const F = this.fire, S = this._screen(x, y, z);
     if (F?.tint && S.ok) {
-      const rpx = (C.zone * k) / S.mpp;
-      F.tint((this._chargeId ??= 900000 + ((this.rnd() * 90000) | 0)), S.px, S.py, rpx, rpx, TELL_STYLE.black.flare.tint, 1, 1, 0.1);
-    }
-  }
-
-  /**
-   * The black charge in the blackout (TELL_STYLE.black.pale; ADR-271): no eclipse, no violet, no dye.
-   * A white point on the striking part that grows and flickers harder toward the cue (the glint the
-   * film keeps lit in the dark), and pale motes drawn in from round it, fewer than today's smoke.
-   */
-  _paleCharge(x0, y0, z0, u, dt, k = 1) {
-    const C = TELL_CHARGE, G = TELL_STYLE.black.pale, A = this._axes();
-    const P = this._toCamera(x0, y0, z0), x = P.x, y = P.y, z = P.z;
-    this._chargeAcc += dt * C.rate * G.motes * (0.3 + 0.7 * u);
-    let guard = 0;
-    while (this._chargeAcc >= 1 && guard++ < 8) {
-      this._chargeAcc -= 1;
-      const a = this.rnd() * TAU, r = this.rand(C.from[0], C.from[1]) * k, lf = this.rand(C.life[0], C.life[1]);
-      const dx = A.rx * Math.cos(a) + A.ux * Math.sin(a), dy = A.ry * Math.cos(a) + A.uy * Math.sin(a), dz = A.rz * Math.cos(a) + A.uz * Math.sin(a);
-      this._blob(x + dx * r, y + dy * r, z + dz * r, (-dx * r) / lf, (-dy * r) / lf, (-dz * r) / lf, lf, C.size[1] * k, C.size[1] * 0.6 * k, 0.9 + 0.5 * u, 1.2, K_STEEL);
-    }
-    if (this._chargeAcc > 8) this._chargeAcc = 0;
-    const life = this._frame();
-    if (life > 0) {
-      const g = (G.glint.size[0] + (G.glint.size[1] - G.glint.size[0]) * u) * k;
-      const fl = 1 - G.glint.flicker * u * this.rnd();
-      this._blob(x, y, z, 0, 0, 0, life, g, g, G.glint.heat * fl, G.glint.heat * fl, K_STEEL);
+      const rpx = (C.zone * k) / S.mpp, id = (this._chargeId ??= 900000 + ((this.rnd() * 90000) | 0));
+      if (!pale) F.tint(id, S.px, S.py, rpx, rpx, TELL_STYLE.black.flare.tint, 1, 1, 0.1);
     }
   }
 
@@ -1727,7 +1716,7 @@ export class DuelFx {
       const la = Math.hypot(pb.x - pa.x, pb.y - pa.y, pb.z - pa.z), lb = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
       if (la > 0.05 && lb > 0.05) {
         const oa = RT.out / la, ob = RT.out / lb;
-        this._ink(pb.x + (pb.x - pa.x) * oa, pb.y + (pb.y - pa.y) * oa, pb.z + (pb.z - pa.z) * oa, b.x + (b.x - a.x) * ob, b.y + (b.y - a.y) * ob, b.z + (b.z - a.z) * ob, this.rand(RT.life[0], RT.life[1]), RT.heat, 0, RT.heat, 0, K_FIRE);
+        this._ink(pb.x + (pb.x - pa.x) * oa, pb.y + (pb.y - pa.y) * oa, pb.z + (pb.z - pa.z) * oa, b.x + (b.x - a.x) * ob, b.y + (b.y - a.y) * ob, b.z + (b.z - a.z) * ob, this.lrand(RT.life[0], RT.life[1]), RT.heat, 0, RT.heat, 0, K_FIRE);
       }
     }
     // the edge of the cut: the tip's path, written on the grid; a second, dimmer line inside it
