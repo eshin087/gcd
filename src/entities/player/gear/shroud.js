@@ -316,9 +316,13 @@ export const GREAT_SHEETS = [
   { on: 'chest', at: [0, 0.2, -0.165], ry: Math.PI, w: [0.19, 0.22, 0.25], len: [0.44, 0.43], out: 0.06, wrap: 0.24, strips: [0.17, 0.1, 0.23, 0.13], fork: [0, 1, 0, 0], seed: 3 },
   { on: 'chest', at: [0.11, 0.2, -0.13], ry: Math.PI - 0.55, w: [0.14, 0.17, 0.2], len: [0.435, 0.425], out: 0.07, wrap: 0.22, strips: [0.14, 0.21, 0.12], fork: [1, 0, 0], seed: 17 },
   { on: 'chest', at: [-0.11, 0.2, -0.13], ry: Math.PI + 0.55, w: [0.14, 0.17, 0.2], len: [0.435, 0.425], out: 0.07, wrap: 0.22, strips: [0.2, 0.11, 0.16], fork: [0, 0, 1], seed: 29 },
-  // down each side from the back of the shoulder, the front edge purple: the arms stay out of it
-  { on: 'chest', at: [0.155, 0.2, -0.07], ry: Math.PI - 1.15, w: [0.11, 0.15, 0.17], len: [0.435, 0.425], out: 0.06, wrap: 0.18, strips: [0.18, 0.12, 0.2], fork: [0, 1, 0], seed: 67, edge: -1 },
-  { on: 'chest', at: [-0.155, 0.2, -0.07], ry: Math.PI + 1.15, w: [0.11, 0.15, 0.17], len: [0.435, 0.425], out: 0.06, wrap: 0.18, strips: [0.15, 0.21, 0.11], fork: [0, 0, 1], seed: 41, edge: 1 },
+  // down each side from the back of the shoulder
+  { on: 'chest', at: [0.155, 0.2, -0.07], ry: Math.PI - 1.15, w: [0.12, 0.17, 0.2], len: [0.435, 0.425], out: 0.08, wrap: 0.18, strips: [0.18, 0.12, 0.2], fork: [0, 1, 0], seed: 67 },
+  { on: 'chest', at: [-0.155, 0.2, -0.07], ry: Math.PI + 1.15, w: [0.12, 0.17, 0.2], len: [0.435, 0.425], out: 0.08, wrap: 0.18, strips: [0.15, 0.21, 0.11], fork: [0, 0, 1], seed: 41 },
+  // ... and one more each side, from the top of the shoulder down his flank (the owner: "too thin ...
+  // its legs all showing"): the cloak's front edge, purple; the arms swing in front of it
+  { on: 'chest', at: [0.18, 0.205, -0.005], ry: Math.PI - 1.85, w: [0.13, 0.19, 0.23], len: [0.43, 0.42], out: 0.1, wrap: 0.17, strips: [0.16, 0.22, 0.12], fork: [0, 0, 1], seed: 83, edge: -1 },
+  { on: 'chest', at: [-0.18, 0.205, -0.005], ry: Math.PI + 1.85, w: [0.13, 0.19, 0.23], len: [0.43, 0.42], out: 0.1, wrap: 0.17, strips: [0.13, 0.2, 0.17], fork: [1, 0, 0], seed: 97, edge: 1 },
   // a short torn shoulder cape on the sword arm (as on the cloak before)
   SHROUD_SHEETS[4],
 ].map((d, i, A) => (i < A.length - 1 ? { ...d, wob: GREAT_WOB } : d));
