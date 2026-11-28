@@ -5,6 +5,30 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — Agents check what their branch changed before a PR; CI runs the full set (ADR-276; `test/changed-suites`)
+
+**Goal:** the owner saw the later chats take longer to open PRs. Each agent ran the full `npm test` before
+its PR (ADR-205), about 75 minutes of work on 8 shared slots, so agents near a PR at once queued for them.
+
+- **The rule (CLAUDE.md, "Go easy on the owner's PC"):** before a PR, run `npm test -- --changed`, not the
+  full set. CI runs every task on every PR and auto-merge waits for it, so the gate is unchanged.
+- **`--changed` (`tests/run.mjs`, rules in `tests/changed.mjs`):** the files changed since the branch left
+  `origin/main` (committed, staged, unstaged, new), mapped to tasks by first-match rules: a boss (folder,
+  level, set) to his suite, the wyrm to `integ`, the living world to `life`, the dragon print to its
+  suites, a suite or test helper to the suites that use it, docs to `changelogcheck`, and any other
+  `src/` file to everything. `--list` prints the pick and why; `--base <ref>` compares with another ref.
+- **`changedcheck` (a new task, ~1 s):** every boss folder and level has a rule, every task a rule names
+  exists, the files `BOSSES` names exist, and a handful of example picks.
+
+**Verification:** `changedcheck` passes; `--changed --list` on this branch picks everything (it changes
+the runner); the rules replayed over the last 60 merged PRs narrow 9. The other 51 touch shared code,
+mostly `duelist/lookSwitch.js`. The full `npm test` was not run locally, on purpose: CI runs it on the PR.
+
+**Open:** narrowing `duelist/lookSwitch.js` would need its diff read by section (each boss's switches
+sit in its own block); left for later, if the owner wants more out of `--changed`.
+
+---
+
 ## 2026-11-28 — The wyrm's death neck, every white spark seen, the scythe and the leap (ADR-274; branch `dragon/death-neck-tells`)
 
 **Owner:** "when the dragon dies and flies up, the head and neck looks unnatural ... like the neck is broken";
@@ -62,8 +86,7 @@ of close and far all in one clip." Picked from the clip: **A, the middle guard**
 - **Checked:** `heroref` green (the hold, the blend, the three habits, every move out of it within ×1.5 + 10 cm of
   the stance before, the guard from the hold); the hero suites; a film strip of a light chain, a block and a roll
   out of the hold.
-- **Open:** the owner on the preview (lock-on duels, strafing); whether the turned-down holds b-d stay.
-## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
+- **Open:** the owner on the preview (lock-on duels, strafing); whether the turned-down holds b-d stay.## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
 
 **Goal:** two looks from the owner's Phantom Blade Zero reference (a boss fight they sent): a charged (black) attack
 drains the whole picture to dark grey, the boss alone readable with a white glint, colour back on the strike; a red

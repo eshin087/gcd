@@ -48,6 +48,8 @@ npm test         # headless integration sims (real game modules, mocked DOM/WebG
                  #  woke.mjs: Xin Yi, `woke.mjs . strategy` opt-in)
                  # --only integ,life: only those tasks (names from --list). Locally every run
                  # shares 8 slots machine-wide (ABYSS_JOBS) at low priority; CI is unchanged (ADR-205)
+                 # --changed: only the tasks that cover what this branch changed since origin/main
+                 #  (--list: the pick and why; --base <ref>; rules in tests/changed.mjs; ADR-276)
 npm run perf     # what a frame costs on THIS machine's GPU: draw calls / triangles by pass, GPU ms at 1080p and the phone's size,
                  # script ms by module (--all, --levels ash,city, --4k, --save a baseline, --check; ADR-206)
 npm run build    # single-file dist/index.html (what Vercel serves)
@@ -168,8 +170,13 @@ In Claude Code the preview config is `.claude/launch.json` (`gcd-dev`).
   and AUTO quality (ADR-200) is the safety net, not a licence to spend. A new level gets a baseline row.
 - **Go easy on the owner's PC (ADR-205).** Many agents share one machine, and the owner games on it.
   - While working, test only what you changed: one suite (`node tests/integration/<suite>.mjs . <scenario>`)
-    or `npm test -- --only <names>`. Run the full `npm test` once, before opening the PR; CI runs
-    everything anyway.
+    or `npm test -- --only <names>`. Before opening the PR, run `npm test -- --changed` (the tasks
+    that cover what the branch changed; `--changed --list` shows the pick and why; ADR-276), not the
+    full set: CI runs every task on every PR and it cannot merge until they pass. When `--changed`
+    says "everything" (shared code: combat, the hero, the duelist engine, core, render, main.js), run
+    the suites your change is about with `--only` and let CI run the rest. A CI failure after the PR
+    is open is fixed on the branch like any other. A new boss or level gets a rule in
+    `tests/changed.mjs` (`changedcheck` fails until it has one).
   - Never start a second `npm test` while one of yours is still running. If a test command times out,
     check whether it is still running (and wait for it or stop it) before running it again.
   - Run long test commands in the background and wait for them; do not start another meanwhile.
