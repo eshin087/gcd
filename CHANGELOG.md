@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-one pieces of work since 0.4.0:
+One hundred and forty-two pieces of work since 0.4.0:
+- **The last blow, up close** (2026-11-28, ADR-272). *Added (off by default, for the owner to pick from the
+  films):* `?lastBlow=a|b|c`: when your blow takes a boss's health to zero, the camera cuts to a close, low shot of
+  the two of you, time slows as the blade goes through and he goes down, the shot holds, then the camera comes back
+  and his death, his line and the victory play as before. `a` a cut and a short hold (0.8 s), `b` a cut and the
+  long hold (2 s), `c` the same shot pushed in fast from further back (and out again) with the long hold; `off` as before. Any killing blow takes it (a
+  cut, a heavy, the execution, the flurry, a deathblow, the plunge, a returned shot); the wyrm is framed by where
+  your blade met it, its body coming down over you. Camera and time only (no grade, no dim, no colour); you cannot
+  be hurt while it holds and your control comes back when it ends. The Lab's FIGHT row: `Last blow`, `Next blow
+  kills`.
 - **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
   the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s

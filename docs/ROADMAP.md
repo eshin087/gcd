@@ -204,6 +204,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.99 — The last blow: a close, low shot of the killing blow (2026-11-28, `claude/flow-cinematic-last-blow-7cd4a2`, ADR-272)
+- [x] One mechanism for every boss: the shot as the killing blow lands, time slowed, held, the camera back; framing as data per level
+- [x] Three variants one thing apart (`?lastBlow=a|b|c`; the Lab's FIGHT row), `off` the default; any blow kills into it, a Lab Kill never
+- [x] Every level's boss killed with each mode in the headless suite (`lastblow.mjs`): the victory, the reward and the lines as before
+- [x] Filmed on Shen Hui (today, a, b, c) and the wyrm (today, b); checked at 720p, 1440p and the phone
+- [ ] The owner's pick (then the default); the shot played on the iPhone
+- [ ] Filmed on the others: Halcyon killed in the air, the Fox with his selves round him, a plunge on the wyrm's head
+
 ## M1.99 — Bai Wuji's barrier shows where your blade hits it, and he goes down quicker (2026-11-28, `enemies/untouched`, ADR-266)
 - [x] A cut on the barrier chips a quarter of its damage (never his last HP), its number where the blade stopped
 - [x] His health 16000 (20000); the bench: the good bot in about 2.3 min

@@ -5,6 +5,41 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — The last blow: a close, low shot of the killing blow (ADR-272; `claude/flow-cinematic-last-blow-7cd4a2`)
+
+**Goal:** the owner approved a cinematic last blow from a Phantom Blade Zero boss film (2026-11-27): as the boss's
+health runs out, a low close angle on the killing blow, held about two seconds, then the fight ends. Behind a
+switch, two or three variants one thing apart, filmed, a draft PR; the default stays off.
+
+**Found first (every boss):** the duelists and the wyrm die inside `takeHit` (`dragon:death` and the death beat
+start there), the hero's `player:hitDragon` follows in the same call; the flow then waits for `dragon:dead`. The
+wyrm's hurt spheres are emptied the frame it starts dying.
+
+**Built** (`game/lastBlow.js`, `game/lastBlowTuning.js`, `?lastBlow=off|a|b|c`; the Lab's FIGHT `Last blow` and
+`Next blow kills`): on a death within 0.35 s of a landed blow of the hero's (any blow, a returned shot too), a
+camera placed beside the line between the two fighters (12 deg toward the hero's back, 14 deg down, ~6 - 7 m),
+the game camera's side first, through `game.viewOverride` (new `holdAim`); time x0.2 at the
+cut easing to x0.85; a = cut + 0.8 s, b = cut + 2 s, c = a cut to the shot 1.8 x further back and a 0.32 s dolly in (and out) + 2 s (the first push, from the
+game camera's pose, swept down through the courtyard's pillars on film). The hero is unhurt and his input off
+only while it holds; the rush clock stops; a reset cancels. Every place is checked: the hero's ground, colliders,
+the sight lines, the floor, the boss's body (the wyrm: its rig points). Tried and changed on film: 28 deg toward
+the hero's back stacked the pair in depth (12 now); a check for props near the camera first moved the shot to the
+far side (left and right swapped): the game camera's side now wins over a pillar at the edge; the wyrm framed by
+its chest put the camera 16 m out (the hero a fifth of the frame): it is framed by the contact now, looking up,
+from the side it does not fall toward (measured: it rolls onto its right), and the shot cuts back early if its
+body still comes within 1.2 m of the camera.
+
+**Verified:** `lastblow.mjs` (new; in `npm test`): every level's boss killed with each mode (the victory, the
+reward and his lines as with it off, the hold never exceeded, nothing lands on the hero, the input, the camera and
+the clock given back), every kind of killing blow, the Lab Kill (no shot), a pause, a reset mid-shot, the restart.
+Films (1280 x 720, real speed): Shen Hui today / a / b / c and a 2 x 2 grid of them, the wyrm today / b and
+side by side, a 720p / 1440p / phone sheet: `films/last-blow/` in the worktree (git-ignored) and the shared notes
+folder's `last-blow-films/`.
+
+**Open:** the owner's pick; Halcyon killed in flight, the Fox's selves and a plunge on the wyrm's head not filmed.
+
+---
+
 ## 2026-11-28 — The finish: one tap to begin, game-menu buttons, a new touch pad that fits and moves (ADR-270; `ui/polish-touch`)
 
 **Owner:** one tap on the path or BEGIN HERE must start; BOSS RUSH and BEGIN HERE looked bad, the menus should look

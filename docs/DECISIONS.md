@@ -7893,3 +7893,46 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   look options (2) were not offered as variants: the owner asked for the finish itself; `?menu=0` still shows
   the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
   to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
+
+## ADR-272 — The last blow: a close, low shot of the killing blow, behind a switch (2026-11-28)
+
+- **Context:** the owner sent a Phantom Blade Zero boss film (2026-11-27) as the reference for "epic moments and
+  combat feel" and approved a cinematic last blow: as the boss's health runs out the camera cuts to a low, close
+  angle on the killing blow, holds about two seconds, then the fight ends. Their rules: no screen grade, dim or
+  colour change for a combat moment (camera and time only); a slash sits on the contact; the bosses keep their own
+  death beats and lines; author it by hand, no footage; nothing a watcher cannot follow; the default is what the
+  owner approved. What happened on the frame a boss's health reached zero (read from the code, every boss): the
+  duelists and the wyrm both die INSIDE `takeHit` (`_die` / `brain.die` emit `dragon:death` and start the death
+  beat), the hero's `player:hitDragon` follows in the same call; a returned bullet's `dragon:returned` the same;
+  the flow only hides the boss bar, then enters the victory on `dragon:dead` after the death clip (Shen Hui 2.4 s
+  plus his ash, the wyrm 2.5 + 2.5 s). The camera stayed the game camera throughout.
+- **Decision:** one mechanism for every boss, `game/lastBlow.js` (owned by the flow, beside the arrival), the
+  framing per level as data (`lastBlowTuning.js`), behind `?lastBlow=off|a|b|c` (the Lab's FIGHT row), OFF by
+  default until the owner picks from the films.
+  1. TRIGGER: `dragon:death` within 0.35 s of a landed blow of the hero's, whatever it was (a cut, a heavy, the
+     execution, the flurry, a deathblow, the plunge) or a returned shot. No blow (a Lab Kill, a burn): no shot.
+  2. THE SHOT: the existing `game.viewOverride` hook (it was the model viewer's), with `holdAim` (the aim does
+     not follow a cursor in a camera he does not play from). The two subjects
+     (the hero's chest; the boss's chest, or for the wyrm the contact point) fitted in the real camera's view from
+     the side of the line between them, 12 deg toward the hero's back, looking 14 deg down (the wyrm: 5 deg up);
+     the game camera's side first (a cut to the other side swaps left and right), a boss that falls to one side
+     filmed from the other. It follows them, damped. A place must stand on the hero's ground, off every collider
+     and the boss's body (the wyrm's rig points: its hurt spheres go as it dies), above the floor, and see both
+     past every collider; first also with no collider near the camera inside the frame. None: no shot.
+  3. TIME: the flow's own time scale (min-merged with its slow-mo and a cinematic moment, not a hitstop): x0.2 at
+     the cut, easing to x0.85 by the end, so the contact lingers and he is seen to go down.
+  4. THE VARIANTS, each one thing apart: a = a cut, a 0.8 s hold; b = a cut, the film's 2 s; c = a push, 2 s:
+     a cut to the shot 1.8 x further back along its own line of sight and a 0.32 s dolly in (out the same way).
+     The first push moved from the game camera's pose (36 m up) to the shot's and on film swept down through the
+     courtyard's pillars; the dolly's start passes the same placement rules (or one halfway, or none: a cut).
+  5. SAFETY: the hero is unhurt and his input off only while it holds (a pause gives it back), the rush clock
+     stops, any reset or Lab jump cancels it, and the shot cuts back at once if the falling body comes within
+     `keep` m of the camera. The victory, the reward, the lines and the restarts are untouched.
+- **Consequences:** every level's boss takes the shot in the headless suite (`tests/integration/lastblow.mjs`:
+  a light cut or the execution kills him with each mode; the victory, the reward and his lines as with it off; the
+  hold never exceeded; nothing lands on the hero; the camera, the input and the clock given back; a heavy, the
+  flurry, a deathblow, the plunge and a returned shot all take it; the Lab Kill takes none; a pause and a reset).
+  No boss falls back by data today; a fight cornered among pillars or trees can still find no clear place and
+  plays as before. The wyrm's framing by the contact suits a blow on its body or legs; a plunge on its head frames
+  the head from below. Open: the owner's pick; Halcyon killed in flight and the Fox's selves crossing the shot are
+  covered by the general rules only, not filmed.

@@ -498,6 +498,29 @@ Against a duelist (`?parryRiposte=deathblow`, the default; `planted` / `old` the
   spray, a wound, pools on the floor), the Flesh sound (`?dbsfx=a`).
 - A chain of perfect parries grows (`?parryGrow=a`): more sparks a tier, embers, a short heat flash.
 
+## The last blow (2026-11-28, ADR-272; `?lastBlow=`, off until the owner picks)
+The owner's reference (a Phantom Blade Zero boss film, 2026-11-27): the killing blow seen from a low, close angle,
+held for about two seconds, then the fight ends. `game/lastBlow.js`, numbers in `game/lastBlowTuning.js`.
+- **When:** a boss dies (`dragon:death`) within 0.35 s (real) of a blow of the hero's that landed: any blow
+  (`player:hitDragon` with damage, not guarded: a light cut, a heavy, the execution, the flurry, a deathblow, the
+  plunge) or a returned bullet / ki shot (`dragon:returned`). A Lab Kill, a burn, a death with no blow of his: no
+  shot, today's behaviour.
+- **The shot:** the camera cuts (`a`, `b`) to the two fighters, or (`c`) cuts to the same shot 1.8 x further back
+  and dollies in along its line of sight in 0.32 s (out the same way at the end), to the two fighters from the side of the
+  line between them, turned 12 deg toward the hero's back, looking 14 deg down from about 6 - 7 m (the game
+  camera: 58 deg from 36 m); the side the game camera looks from first, so who stands left and right does not
+  swap. It follows them, damped, as he falls. The wyrm is framed by the CONTACT (the hero and the point where his
+  blade met it, looking 5 deg up, its body looming over them), from the side it does not fall toward.
+- **Time:** slowed to x0.2 at the cut, easing to x0.85 by the end of the hold (`a` 0.8 s, `b` / `c` 2 s, the
+  film's): about 1 s of the fight passes in the long hold, the contact lingers and he is seen to go down (Shen
+  Hui sinks to his knees in it; the wyrm's chest crashes down beside the hero). Then the camera cuts back (after
+  the dolly out, `c`) and his own death beat, his line, the victory and the reward carry on as before.
+- **The hero** cannot be hurt while it holds (every blow ignored, a burn holds) and his input is off; never longer
+  than the hold. A pause holds the shot and gives the input back for the menu. The rush clock does not run in it.
+- **Camera and time only:** no grade, no dim, no vignette, no colour. The camera never stands in a collider, past
+  the hero's ground, under the floor or in the boss's body, and sees both fighters past every collider; if no place
+  is clear, no shot. If his falling body still comes within `keep` m of it, it cuts back at once.
+
 ## The streak and the flurry (2026-11-14, ADR-091)
 Owner: "more different perfect dodge animations instead of the same one ... if the player keeps doing
 more successful perfect dodges in a streak, make the attack also hit the # of attacks the player is

@@ -55,9 +55,10 @@ the world, on the same time); at 30 fps the world steps once with 33 ms, at 20 f
 step is 41.7 ms. A slow machine so pays twice for the fighters only (the world and the effects were
 about 40 % of a step). New per-frame code that is not part of the duel's timing goes in the world's
 step, not in `simulate`; anything in it must be stable at a 42 ms step (world test `worldstep`).
-**View override** (`game.viewOverride`, Lab model viewer only): when it is
-`{ pos, target, focus? }` (Vector3-likes, world metres), main.js places the camera at `pos` looking
-at `target` right after the rig update, and the fog centre (`U.uFocus`), the light-pool selection
+**View override** (`game.viewOverride`: the Lab model viewer and the last blow's shot, `game/lastBlow.js`;
+ADR-272): when it is `{ pos, target, focus?, holdAim? }` (Vector3-likes, world metres), main.js places the
+camera at `pos` looking at `target` right after the rig update (`holdAim`: `updateMouseGround` keeps the last ground
+point, so the hero does not turn toward what the cursor points at in a camera he does not play from), and the fog centre (`U.uFocus`), the light-pool selection
 and the shadow box follow `focus` (default `target`) instead of the player / rig focus.
 `uCamPos`, `uCamRight/Up`, `uPlayerScreen`, `uBossScreen` and the ASCII pass are all derived from the overridden
 camera, so lighting, rim / outline, particles and the glyph grid work from any angle. The rig keeps
@@ -117,7 +118,7 @@ ADR-120).
 | `fxDt` | the running step's FX time (see Frame order): particles and lights run on through a hit-stop. In the world's step it is the FX time of every fighters' step since the last one, as `dt` and `realDt` are |
 | `hitstop(sec, scale=0.04)` | brief time-scale dip measured in real seconds (also the perfect-dodge slow-mo, the plunge's included: `hitstop(0.6, 0.3)`) |
 | `debugTimeScale` | Lab multiplier on game time (1 = normal). Only the Lab writes it. |
-| `viewOverride` | `null` or `{ pos, target, focus? }` — camera override applied by main.js after the rig (see Frame order). Only the Lab model viewer writes it. |
+| `viewOverride` | `null` or `{ pos, target, focus?, holdAim? }` — camera override applied by main.js after the rig (see Frame order). Written by the Lab model viewer and the last blow's shot (`flow.lastBlow.view`, ADR-272); the last blow takes it only when it is null, and clears it only when it is still its own. |
 | `lights` | `add({x,y,z,color:[r,g,b],intensity,radius,life,fade,fadeIn,flicker,low,slotFade})` → light (mutable `x,y,z`, `.set()`, `.kill()`). The pool (`render/lights.js` `LightPool`) fills the shader's `MAX_PL` slots with the best-scoring lights (intensity × radius over distance to the focus). A **low** light (`low: true`, 2026-11-23, ADR-180: the living world's lanterns, the Skybreak Ring's braziers) takes only the slots the others leave free: its rank among the low lights (without the flicker; one holding a slot keeps it against a light only up to 1.25 × better) picks which; it fades INTO a slot it is given and OUT of one it must give up over `slotFade` s (default 0.3; it holds the slot while fading, so for that moment the least of the others waits), never a pop. With no low light alive the pool picks exactly as before. `pool.used` / `pool.usedLow`: slots the last update wrote, all and low (tests, the Lab) |
 | `fx.add` / `fx.alpha` | glyph particles, additive-HDR / alpha-blended. `spawn({x,y,z,vx,vy,vz,life,size,sizeEnd,glyph,color,colorEnd,alpha,alphaEnd,gravity,drag,spin,rot,flicker,stretch})`. `glyph`: char, string of chars (random pick) or atlas index. |
 | `fx.ripple` / `fx.stamp` | the impact pass (ADR-149): `fx.ripple` = `ImpactRipple` (`render/impactRipple.js`: `hit(x, y, z, o, k)`, `update(dt)`, `clear()`, `write(pipeline)`; `n`, `live`), `fx.stamp` = `{ clear }` (`combat/impactStamp.js`: `stampHit`, `stampUpdate`, `stampClear`). Both run on fx time and are cleared on a level reset (flow, `world.debug.setVisible`) |
@@ -2878,7 +2879,21 @@ cinematic({ x, z, zoom = -9, weight = 0.6, slowmo = 0.3, dur = 0.8, kind }): boo
                                        // weight toward (x, z) (cameraRig.cine; eases in over 1/5, out over 2/5). A newer
                                        // moment replaces a running one. Emits 'game:cinematic {kind}'. False outside play.
 cine, cineScale                        // the running moment (null) and its time scale this frame (1)
+lastBlow                               // the cinematic last blow (game/lastBlow.js, ?lastBlow=; ADR-272), below
+_scale()                               // the time scale outside a pause: min(slowmo, cineScale, lastBlow.scale), 0.05..1
 ```
+**The last blow** (2026-11-28, ADR-272; `flow.lastBlow`, `game/lastBlow.js`, numbers `game/lastBlowTuning.js`;
+COMBAT.md "The last blow"): `update(rdt)` once a frame (before `_updateCinematic`), `cancel()` from `_resetWorld`
+and `_debugPrelude`. It listens to `dragon:death`, `player:hitDragon` and `dragon:returned` (no new event): a death
+within `window` real s of a landed blow of the hero's is decided on the next frame (mode off, not in the fight,
+the hero down, the camera taken, no blow, too far apart, no clear place: `skipped` says which; `rejects` counts
+what turned the places down). While it runs: `active` / `holding` true, `scale` its time scale (the flow
+min-merges it), `view` written to `game.viewOverride`, the hero's input off (back for a pause), `player._takeHit`
+returns IGNORED and `player._damage` / the burn do nothing (`game.flow.lastBlow.holding`), the rush clock gets
+the state 'lastBlow' (it does not tick). Ends after the mode's `hold` (or at once with `cutShort` when the boss's
+body comes within `keep` m of the camera): the view cleared if still its own, the input back, `taken` + 1,
+`last` = { kind, level, mode, side, d }. Exports `LAST_BLOW` (`opts`, `mode`), `lastBlowMode()`, `setLastBlow(m)`
+(the Lab). Per frame: no allocation, never throws out, never writes NaN.
 **The streak pass** (ADR-167): `cinematic` also takes `ease` ([in, out]: the shares of `dur` the camera eases in / out over; default [0.2, 0.4]), `back` (the share the slow motion eases back over; default 0.34) and `quiet` (no `game:cinematic`: the perfect dodge's cinema look, which must not ring the moment's gong). A perfect parry of a blade in the sharp / cinema look takes its own flash (`PERFECT_FEEL[feel].parry.flash`) and cinema's `grade.dimPulse` instead of the 0.55 flash; a perfect dodge's cool grade holds `PERFECT_FEEL[feel].dodge.pulse`. `update` calls `perfectUpdate(game, dt, realDt)` each frame; the fx clear calls `perfectClear()` and `game.fx.streak.clear()`. The flurry's screen flashes and its dip are scaled by `burstScreen()` (above).
 
 Owns `game.state`, title → explore → bossIntro → boss → dead/victory, pause (Esc), bonfire rest (E),
@@ -3089,6 +3104,9 @@ jump flow states, god mode, infinite flasks, time scale, AI on/off, hitbox overl
 only to the `debug` APIs above, plus the `game.viewOverride` and `world.debug.setVisible` hooks for
 the model viewer. The timing trainer also logs `combat:deflectChain`, `dragon:phase3`,
 `dragon:phase` and `dragon:plunged`. Captures start the plunge with `player.debug.plunge(execution)`.
+Since 2026-11-28 (ADR-272): FIGHT → **Last blow** cycles `?lastBlow=` off / a / b / c (read as the boss dies) and
+**Next blow kills** (`lab._lastHit()`: a duelist into his last phase, his change not played, 1 HP; the wyrm at 1 HP)
+films the shot from a real blow; the Lab's **Kill** deals no blow of the hero's and never takes it.
 Since 2026-11-16 (ADR-120): FIGHT → **Ablaze** cycles the phase-3 fire off / a / b / c
 (`dragon.debug.ablaze`); WORLD → **Wear wall** (a tail's blow, power 1, on the nearest standing wall
 tree or landmark piece: watch its stages) and **Wreck wall** (blasts and fire in the wall straight
