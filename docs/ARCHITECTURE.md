@@ -845,7 +845,7 @@ onGuarded({ deflect, heavy, attacker })
 // recovery; not the execution's thrust). A flask still waits for 35 % of the recovery.
 deathblowClaims(att): boolean            // a duelist asks it before it crosses the blades on a perfect parry of a
                                        // `lock` blow (duelist.onParried): true when the deathblow combo that parry
-                                       // armed takes it instead (a blue blow, ?dbLock=combo, the default; ADR-277)
+                                       // armed takes it instead (a blue blow, ?dbLock=combo, the default; ADR-280)
 startBladeLock(att, { start, push, decay, dur, hold, dist }): boolean
                                        // a duelist's perfectly parried `lock` blow (ADR-062): state 'lock', every press
                                        // of attack / guard pushes the meter +push, it falls decay / s; 1 wins, 0 loses,
@@ -5632,8 +5632,10 @@ A `Duelist` with `LORD_KIT`; COMBAT.md → "The Starless Lord" has the fight. Th
 kind = 'duelist';  name = 'VARR NIHIL, THE STARLESS LORD';  phase 1..4 = his blade FORM
 lives: { total: 4, left }      // the forms still to beat (this one included); hp / maxHp = this form's bar
 lit: 0..1                      // how far the blades are lit (they extend from the hilt)
-blades: { A, B, hiltB, Q, off, L }   // main blade, the staff's second blade + joined hilt, the cross-hilt's
-                               // side blades, the off-hand saber's joint and its blade (gear.js names them)
+blades: { A, B, hiltB, Q, off, L, cores }   // main blade, the staff's second blade + joined hilt, the cross-hilt's
+                               // side blades, the off-hand saber's joint and its blade (gear.js names them);
+                               // cores: [[blade, slit]] the split blades' dark slits (`?lordRef=a`, ADR-277;
+                               // empty otherwise), kept shown and scaled with their blades by _showForm
 _onHpZero()                    // an empty bar BREAKS him (no death): on one knee for posture.breakTime
 onExecute({ damage })          // the DEATHBLOW: the form ends ('dragon:plunged {execution, deathblow, form}');
                                // forms 1-3: react 'executed', then kit.transitions[form + 1] (enterPhase: a

@@ -8,6 +8,7 @@
 //   npm run perf -- --levels ash,city one or more (ids or aliases)
 //   npm run perf -- --4k              also 3840 x 2160
 //   npm run perf -- --black           with a black blow's blackout pinned full on (?black=a, ADR-271): its cost
+//   npm run perf -- --query lordRef=a  extra URL parameters for every level (a look switch's cost, ADR-277)
 //   npm run perf -- --save            keep this run as this machine's baseline (.perf/baseline.json, not committed)
 //   npm run perf -- --check           exit 1 when a level draws over 10 % more calls or triangles than the baseline
 //
@@ -100,7 +101,7 @@ const results = {};
 for (const lv of wanted) {
   process.stdout.write(`perf: ${lv} ...`);
   // autoq=0: the resolution is the probe's, not the controller's; the 1x ratio and the rest as the dev server serves
-  await send('Page.navigate', { url: `http://localhost:${WEB}/?level=${lv}&autoq=0&fpscap=0` });
+  await send('Page.navigate', { url: `http://localhost:${WEB}/?level=${lv}&autoq=0&fpscap=0${valueOf('--query') ? `&${valueOf('--query')}` : ''}` });
   let ready = false;
   for (let i = 0; i < 150 && !ready; i++) {
     await sleep(300);

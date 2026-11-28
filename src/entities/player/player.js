@@ -905,7 +905,7 @@ export class Player {
     // or a held light). Pressed mid-swing / mid-roll, the request waits while RMB stays held, so the
     // guard comes up the moment it can instead of only at the end of the recovery.
     // (not inside a deathblow combo: a guard press there ended it with nothing dealt. The press waits while the
-    // button stays held and the guard comes up in the finisher's tail, as after any swing; ADR-277)
+    // button stays held and the guard comes up in the finisher's tail, as after any swing; ADR-280)
     const Rb = this.rmb;
     if (Rb.edge && this.state !== 'block' && this.state !== 'parry' && this.db.phase !== 'combo' && this._canGuard()) {
       // the guard spends the held heavy press, otherwise _tickBlock would re-enter the charge at once
@@ -2167,7 +2167,7 @@ export class Player {
    * Returns false when the hero can't lock (down, plunging).
    */
   /** A duelist asks before it crosses the blades on a perfect parry: true when the deathblow combo that parry
-   *  armed takes it instead (deathblow.js `deathblowClaims`, `?dbLock=`; ADR-277). */
+   *  armed takes it instead (deathblow.js `deathblowClaims`, `?dbLock=`; ADR-280). */
   deathblowClaims(att) {
     return deathblowClaims(this, att);
   }

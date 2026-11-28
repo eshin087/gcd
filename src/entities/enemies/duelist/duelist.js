@@ -480,7 +480,7 @@ export class Duelist {
     if (this.mode !== 'act' || !a) return; // the parry broke his posture (broken) or the move is gone
     if (a) a.parried = (a.parried ?? 0) + 1;
     // the blade lock: a PERFECT parry of a blow marked `lock` crosses the blades, unless the deathblow combo that
-    // parry armed takes it (a blue blow, player.deathblowClaims; he recoils below and the combo follows; ADR-277)
+    // parry armed takes it (a blue blow, player.deathblowClaims; he recoils below and the combo follows; ADR-280)
     const P = this.game.player;
     if (b?.def?.lock && P?.deflect?.perfect && !P.deathblowClaims?.(this) && this.brain.startLock()) return;
     // the full deflect: every real hit of a long string parried → he reels (a cinematic moment)
