@@ -19,6 +19,20 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-27',
+        title: 'The performance readout measures by itself',
+        notes: ['With ?perf in the address, BENCH now runs on its own during a fight, at the slow moments too. Just play, then tap REPORT.'],
+      },
+      {
+        date: '2026-11-27',
+        title: 'The Starless Lord fights with better form',
+        notes: [
+          'Varr Nihil thrusts on a long straight arm out of a real lunge, brings his two-handed overheads down on a diagonal across you, turns his low sweeps on his feet, keeps his free hand quieter and lands his front foot with the blade, in all four forms.',
+          'He is easier to read: every attack holds its windup longer before it lands, and the glint comes earlier.',
+          'His Void Lightning now grounds along its line with the floor crackling round his feet, and each new form rises out of a column of violet letters.',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'The Cinder Wyrm raises its head naturally to rain fire',
         notes: [
           'When the wyrm rears up to roar its meteors into the sky, its head now rises up and forward instead of twisting back over its own neck.',

@@ -8,11 +8,12 @@ import { DuelBrain } from '../duelist/brain.js';
 import { perPhase } from '../duelist/realise.js';
 import { LORD_LOADOUT, SABER, buildOffSaber } from './gear.js';
 import { formPoses, glidePose } from './poses.js';
-import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, STREAKS, realise } from './moves.js';
+import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, STREAKS, realise, formOn } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LordFx } from './fx.js';
 import { LordTerrain } from './terrain.js';
 import { LINKS } from './links.js';
+import { LordSpecialFx, boltLook } from './specialFx.js';
 import { LordSpells } from './spells.js';
 import { dressFrame as dressLord } from './look.js';
 import { lookOf } from '../duelist/lookSwitch.js';
@@ -81,7 +82,11 @@ export const LORD_KIT = Object.freeze({
   scale: TUNING.scale,
   dress: dressLord,
   // the sword motion pass behind `?lordMotion=` (ADR-226): its numbers while on, null ('0') as before
-  motion: () => (lookOf('lordMotion', '0') === '0' ? null : TUNING.motion),
+  // (and ADR-251's form, `?lordForm=`: its thrusts open the arm further)
+  motion: () => (lookOf('lordMotion', '0') === '0' ? null : formOn() ? TUNING.formMotion : TUNING.motion),
+  // (ADR-251's form: a planted foot its clip lifts eases off its spot, as Shen Hui's does (ADR-250), so the
+  // step keyed into a cut leaves where the foot stood instead of jumping to the key)
+  animOpts: Object.freeze({ liftEase: () => (formOn() ? TUNING.formMotion.liftEase : 0) }),
 });
 
 /** His mind: the duelist's, with each form's own reaction clips. */
@@ -220,6 +225,7 @@ export class StarlessLord extends Duelist {
     // (the base constructor resets before this class's own fields could exist: made here)
     (this.terrain ??= new LordTerrain(this)).reset();
     (this.spells ??= new LordSpells(this)).reset();
+    (this.specialFx ??= new LordSpecialFx(this)).reset(); // the specials' looks (specialFx.js, ADR-251)
     // enthroned: the root sits at the seat (the pose's hips are lowered to it)
     this.position.y = TUNING.intro.seatY;
     if (this.blades) {
@@ -651,7 +657,8 @@ export class StarlessLord extends Duelist {
         // round the hero stay as they are
         const D = cur.def, k = clamp((a.t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1), h = this._hand;
         const kind = D.bolt ? 'bolt' : D.pull ? 'pull' : D.grip ? 'grip' : D.cast?.kind === 'star' ? 'star' : D.release?.style === 'rift' ? 'rift' : D.release?.style === 'push' ? 'push' : D.cast?.kind === 'debris' ? 'debris' : D.cast?.kind === 'storm' ? 'storm' : null;
-        if (kind) fx.gather(kind, h, k, dt);
+        // (a Void Lightning look, ?boltFx, draws its own windup in place of the bolt's gather: specialFx.js)
+        if (kind && !(kind === 'bolt' && boltLook() !== '0')) fx.gather(kind, h, k, dt);
         if (D.pull) {
           const p = this.game.player;
           if (p?.getChestPos && k > 0.25) {
@@ -667,7 +674,7 @@ export class StarlessLord extends Duelist {
         }
       } else if (cur && !cur.feint) {
         const D = cur.def, k = clamp((a.t - cur.start) / Math.max(0.05, cur.impact - cur.start), 0, 1), h = this._hand;
-        if (D.bolt) fx.crackle(h.x, h.y, h.z, k, dt);
+        if (D.bolt) { if (boltLook() === '0') fx.crackle(h.x, h.y, h.z, k, dt); }
         else if (D.pull) {
           fx.crackle(h.x, h.y, h.z, k, dt, [2.8, 0.2, 0.3]);
           const p = this.game.player;
@@ -688,6 +695,7 @@ export class StarlessLord extends Duelist {
         else if (D.release?.style === 'push' || D.cast?.kind === 'debris' || D.cast?.kind === 'storm') fx.crackle(h.x, h.y, h.z, k * 0.7, dt, [2.4, 1.6, 2.0]);
       }
     }
+    this.specialFx?.frame(dt, a); // (Void Lightning's, the ignitions' looks: ?boltFx / ?igniteFx)
     if (this.mode === 'broken') fx.stunStars(this._hs[0]);
   }
 
@@ -700,6 +708,7 @@ export class StarlessLord extends Duelist {
       this._changing = false;
       this.fx.igniteNova(this.position.x, this.position.z, TUNING.ignite.ringRadius, this.phase);
       this.fx.igniteBurst(this._hilt, this._tip, 1.5);
+      this.specialFx?.ignite(this.phase);
       this.game.shake?.(0.4);
       this.game.world?.forest?.ambience?.flare?.(1);
       return;
@@ -712,13 +721,16 @@ export class StarlessLord extends Duelist {
       if (inLine && b.cover) {
         // the hero stands behind cover: the bolt strikes that (brain._coverFor already blasted it)
         this.fx.lightning(h.x, h.y, h.z, b.cover.x, Math.min(1.4, b.cover.h * 0.6), b.cover.z, 1.1, true);
+        _v.set(b.cover.x, Math.min(1.4, b.cover.h * 0.6), b.cover.z);
       } else if (inLine && p?.getChestPos) {
         p.getChestPos(_v, true);
         this.fx.lightning(h.x, h.y, h.z, _v.x, _v.y, _v.z, 1.1, true);
       } else {
         const r = TUNING.bolt.range * 0.8;
-        this.fx.lightning(h.x, h.y, h.z, this.position.x + Math.sin(this.yaw) * r, 0.4, this.position.z + Math.cos(this.yaw) * r, 1.1, true);
+        _v.set(this.position.x + Math.sin(this.yaw) * r, 0.4, this.position.z + Math.cos(this.yaw) * r);
+        this.fx.lightning(h.x, h.y, h.z, _v.x, _v.y, _v.z, 1.1, true);
       }
+      this.specialFx?.bolt(h, _v); // (?boltFx: its look over the bolt)
       this.emit('dragon:explosion', { x: h.x, z: h.z, radius: 2 });
     }
   }

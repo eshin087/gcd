@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-one pieces of work since 0.4.0:
+One hundred and thirty-two pieces of work since 0.4.0:
 - **A slash of fine digits, and a left hand that stays out of his body** (2026-11-27, ADR-262). *Changed (the owner's pick from the films):*
   every sword attack's slash is now a thin straight line of small steel-blue digits drawn across the foe the way the
   sword crossed the screen as the swing ends, as if the blade cut the world's code open, gone in about 0.2 s, with a
@@ -24,6 +24,20 @@ One hundred and thirty-one pieces of work since 0.4.0:
   (heavier for heavies). The blade smears for a frame or two at the fastest part of every swing. The light combo
   steps in further, holds each finishing pose while its slash flashes, then rises. Checked facing all four ways
   and on the phone camera, upright and sideways.
+- **The performance readout measures by itself** (2026-11-27, ADR-261). *Changed:* with `?perf`, BENCH now runs on its own
+  during a fight (once early, then at the slow moments, four times at most); play, then tap REPORT. `?perf=manual`
+  keeps it to the button.
+- **The Starless Lord fights with better form** (2026-11-27, ADR-251). *Changed (the owner's picks from the films;
+  `?lordForm=0` / `?lordPace=0` / `?boltFx=0` / `?igniteFx=0` as before):* in all four forms his thrusts land on a
+  long arm with the point on its line, out of a real lunge (front knee bent, back leg long; before, both knees
+  locked); his two-handed overheads (Falling Star, Grasp and Sever, Severance, every string's held chop) come down on
+  a diagonal across you instead of straight down; his low sweeps (Reaping Arc, Red Meridian, every red sweep) turn
+  on his feet instead of crossing his legs; his free hand stays quieter through a string; the front foot comes down
+  as the blade lands. He also fights at a readable pace (COMBAT rule 10): every move's first blow at least 0.7 s (a
+  little less each form), his blows at least 0.45 s apart, the glint 0.35 s before, the extra time a held windup.
+  Void Lightning grounds three times along its line, the floor crackling round his feet through the cast
+  (`?boltFx=c`); each form's ignition raises a column of violet letters round him that bursts out flat
+  (`?igniteFx=a`). The other options stay behind their switches.
 - **The Cinder Wyrm raises its head naturally to rain fire** (2026-11-27, ADR-258). *Fixed:* rearing up to roar
   the meteors into the sky, the wyrm's head no longer tips back past upright and rolls over on its neck: the neck
   rises up and forward over its forelegs and the head points up at the sky. `?wyrmHead=0` (the Lab's LOOKS row) as

@@ -639,7 +639,11 @@ Render helpers for creature modules:
   with each pipeline step left out (shadows, world, hero see-through, fire field, letters, effects, glow: the
   step's draws skipped by wrapping `renderer.render`), the still shadow map redrawn every frame, then at ~0.7x
   the device pixels and back through `applyQuality`; the results go in the report. A new pipeline pass gets a
-  line in its `is` table.
+  line in its `is` table. AUTO BENCH (ADR-261,
+  `AUTO_BENCH`; `?perf=manual` turns it off): in a fight (`game.state === 'boss'`) BENCH runs by itself
+  `firstAt` (8) s in, then on a slow burst (6 of the last 30 frames over 20 ms), 10 s apart, 4 in all, a
+  lighter one (k 3, 2 readings); each bench records why it ran, AUTO's step and whether the lite world is
+  on, and the frame after it (its freeze) is not recorded.
   BENCH also reads the LIVING WORLD in one extra reading (ADR-245): every batch `ship` has marked
   `userData.lifeBatch`, the wind (`uWind` 0), the step flash and the wake left out together; the report
   prints it as its own line (it overlaps the steps above) and everything is put back. The lamps' flames
