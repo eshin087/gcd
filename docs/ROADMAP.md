@@ -55,6 +55,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
   - [x] The hero's meters and the boss's never overlap: the top row is fitted to the screen (ADR-131)
   - [x] Two pad switches to try: PAD LAYOUT "guard on left" (one thumb cuts, the other parries) and HOLD ATTACK (ADR-131)
   - [ ] Owner's pick on the phone: which of the two becomes the default, where GUARD stands
+  - [x] SWIPE DODGE: a flick on the right half dodges that way (ADR-278)
+  - [x] Owner's verdict on SWIPE DODGE: liked, on by default; GUARD against the stick with its own padlock (ADR-278)
+  - [x] A second guard under ATTACK, quieter GUARD and padlocks, LEFT / RIGHT GUARD switches, PAD LAYOUT picks BLOCK's place (ADR-278)
+  - [ ] The swipe's numbers on the phone; a touch timing allowance if parries are still late
   - [ ] Phone ideas not built yet (ADR-131 lists them): the game drawn under the notch (viewport-fit=cover), a
         drag-to-place layout editor, a left-handed mirror, an "add to home screen" hint for full screen on iOS
 - [x] Owner approval; released as v0.4.0

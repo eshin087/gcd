@@ -31,6 +31,17 @@ export const RELEASES = [
       },
       {
         date: '2026-11-28',
+        title: 'Swipe to dodge on touch',
+        notes: [
+          'Touch: flick your thumb on the right half of the screen and the hero dodges that way at once (SWIPE DODGE in the pause menu turns it off).',
+          'With LEFT BLOCK on, a BLOCK button sits right by the stick, and its own padlock lets you drag it where your left thumb wants it. A second BLOCK can sit under ATTACK for the right thumb.',
+          'The left GUARD and the padlocks are drawn fainter so the controls stay out of your way.',
+          'Both guard buttons are now called BLOCK, without the line under them, and the ATTACK dagger points down. The stick and the left BLOCK are drawn as plain symbols, no frames.',
+          'New in the pause menu on touch: LEFT BLOCK and RIGHT BLOCK switches (hide either one), and PAD LAYOUT picks whether BLOCK sits beside or under ATTACK.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'Varr Nihil after the reference pack, to try',
         notes: [
           'A new look for Varr Nihil to try before it becomes his own: his hood, helm, armour and whole cape kept in every form, and every blade split into two red-white rails with a dark slit between them.',

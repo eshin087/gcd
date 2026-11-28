@@ -99,6 +99,16 @@ One hundred and forty-seven pieces of work since 0.4.0:
   blade instead of the big white star and ring (the Lab's `blueTell`). *Changed (the owner's pick, the defaults):*
   the perfect parry is `c`, a pinpoint where the blades cross and its sparks, no gold burst; the blue cue is `a`
   (`?parryClash=0` / `?blueTell=0` as before).
+- **Swipe to dodge on touch** (2026-11-28, ADR-278). *Added (a pause-menu switch, on by default; `?swipe=0`):*
+  SWIPE DODGE: a quick flick on the bare right half of the screen dodges the way it flicked, the moment it moves
+  (no need to find the DODGE tile, which stays). *Changed:* with PAD LAYOUT → GUARD ON LEFT (`?pad=split`) the
+  GUARD button stands right against the stick and has its own padlock: unlock it to drag GUARD where your left
+  thumb wants it (kept), a second GUARD stands under ATTACK, and GUARD and the padlocks are drawn quieter so the
+  controls do not pull the eye. *Added (pause menu):* LEFT GUARD and RIGHT GUARD switches to show or hide either
+  guard button (one always stays), and PAD LAYOUT now picks where BLOCK sits in the right cluster (beside or
+  under ATTACK). Both guard buttons are named BLOCK, the gauge line under them is gone, and ATTACK's dagger points
+  down; the stick and the left BLOCK are drawn as glyphs only, no frames (`?leftLook=a|b` the other two looks);
+  on the right, BLOCK beside ATTACK and DODGE under it.
 - **One tap to begin, menus with a finish, and touch controls that fit and move** (2026-11-28, ADR-270). *Fixed:* on
   a phone, a tap on a world, BEGIN HERE or BOSS RUSH on the title acts at once (iOS took the first tap as a hover).
   *Changed:* the title's and the pause menu's buttons and panels in a finished look (cut corners, the world and its

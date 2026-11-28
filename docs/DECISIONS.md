@@ -7894,6 +7894,44 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the oldest title. Open: the owner's verdict on an iPhone and on the small phone (the fit's floor 0.62 may want
   to be higher for thumbs), and whether the mouse and pad want the start lock-on too.
 
+## ADR-278 — Swipe to dodge on touch (2026-11-28)
+- **Context:** the owner, on a phone: "i cant seem to be able to react fast enough for parry or dodge with the
+  mobile controls vs mouse keyboard or controller". The rules are the same on every input (a swing cancels into a
+  guard or a dodge at once, presses buffer 0.3 s); the difference is the hand: on the phone one right thumb leaves
+  ATTACK and has to find a flat tile it cannot feel. The owner picked two things to try first: the guard on the
+  left hand (PAD LAYOUT "guard on left", already built in ADR-131) and a swipe to dodge.
+- **Decision:** SWIPE DODGE, a pause-menu switch beside HOLD ATTACK (`touch.swipeDodge`, kept in `gcd.touchPad`,
+  `?swipe=1|0`). A finger on the bare right half of the screen in play that travels 30 px (x the screen's fit)
+  within 0.2 s of touching down dodges the way it went, at that moment (no wait for the lift), once per touch.
+  The direction rides with the press: `input.dodgeToward(x, y)` pulses `@dodge` and leaves `dodgeAim` for that
+  frame; the player keeps it with the buffered roll (`rollAim`) and rolls that way over the stick (so a swipe can
+  dodge sideways while the stick runs forward). A slow drag and a two-finger pinch never dodge; the DODGE tile
+  stays. Its mark is a short ASCII streak of chevrons that fades in 0.3 s.
+- **The owner's verdict (same day):** "i like the swipe dodge": ON BY DEFAULT (saved under a new key, `sw`, so
+  everyone gets it); and the left GUARD "more closer to the dpad" and "locked/unlocked": GUARD now stands against
+  the stick's ring (`split.guard.gap` 14 → -6 px, upright `lift` 14 → 4), with a padlock of its own over its
+  corner; the two padlocks are one lock, open both the pad and GUARD drag, GUARD's place is kept (`goff`).
+- **Then (same day):** "have a 2nd guard button available below the attack button as well": in the left-guard
+  layout the BLOCK tile stands under ATTACK too (both feed `@block`, the right cluster raised by its height). "The
+  left guard button looks really out of play ... the lock symbols ... more subtle ... i dont want the UI to stick
+  out": GUARD takes the tiles' corner brackets and a fainter frame at 0.4 opacity (full while held); the padlocks
+  lose their disc and frame and rest at 0.34 opacity (0.9 open). One design, no options offered: it is the same
+  look as the tiles, only quieter.
+- **And:** "allow options in settings to remove either left or right guard button and also allow the player to
+  change the button layout": PAD LAYOUT now only picks the cluster's arrangement (BLOCK BESIDE / BLOCK UNDER
+  ATTACK); LEFT GUARD and RIGHT GUARD are two switches of their own (one always stays). A pad saved with the
+  old `split` keeps its left GUARD. The pause menu grows two entries; it scrolls.
+- **Then:** "have it both named block", "the attack symbol flipped upside down", "make the guard and cursor
+  design on the left more seamless ... out of place with the random bottom bar line": the left button is BLOCK,
+  the gauge line is gone from both BLOCKs (the HUD's GD meter carries it), the dagger points down, BLOCK is
+  centred on the stick, and the left side's look is three options for the owner to pick on the phone
+  (`?leftLook=a|b|c`). The owner picked `c` (glyphs only), the default; and "swap dodge and block on the right
+  side": BLOCK beside ATTACK and DODGE under it again (the default arrangement), `?pad=split` only turns the
+  left BLOCK on, an older saved pad takes the default arrangement (`v: 2`).
+- **Consequences:** first shipped off, then on after the owner tried it on the phone. The
+  pad itself is not a swipe surface (a flick that starts on ATTACK still slides between tiles); open: a flick
+  off the pad, a touch timing allowance (the wider parry / perfect-dodge windows on touch the owner was offered).
+
 ## ADR-271 — The blackout for a black blow, red trails for a red string: options behind switches (2026-11-27)
 
 - **Context:** the owner sent a Phantom Blade Zero boss fight as the reference for combat feel and approved two of

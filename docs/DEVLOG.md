@@ -95,6 +95,36 @@ rule of ADR-276 (PR 201): no full `npm test` on this machine; the lead runs the 
 music; the press's stroke; an audit of the arsenal and terrain poses at the game camera.
 
 ---
+## 2026-11-28 — Swipe to dodge on touch, the guard on the left to try (ADR-278; `ui/touch-swipe-dodge`)
+
+**Owner:** too slow to parry or dodge on the phone compared with mouse / keyboard / controller; picked "guard on the
+left hand as an option and swipe to dodge" to test first.
+
+- **Why it is slow:** not the rules (every input cancels and buffers the same) but one right thumb doing ATTACK,
+  BLOCK and DODGE on flat tiles.
+- **SWIPE DODGE** (pause menu, `?swipe=1`): a quick flick on the bare right half dodges that way, fired mid-flick
+  (30 px x fit within 0.2 s). `input.dodgeToward` → `player.rollAim` → `_startRoll` rolls along the swipe.
+- **Guard on the left** was already a pause switch (PAD LAYOUT → GUARD ON LEFT, `?pad=split`, ADR-131); checked it
+  still fits beside ADR-270's pad.
+- **Checked:** `integ.mjs . touch` green with new checks (off by default, a flick left / down rolls that way, the
+  left half, a pinch); the browser at 852 x 393 with `?swipe=1&pad=split` (a flick rolls the hero the way it went,
+  the streak shows).
+- **The owner tried it:** liked the swipe → ON by default. GUARD moved against the stick's ring and given its own
+  padlock (one lock with the pad's: open, GUARD drags too; kept as `goff`, RESET puts it back). Touch suite: new
+  checks (GUARD against the ring, its padlock, the drag, kept, RESET); browser at 852 x 393 and 393 x 852.
+- **Then:** a second guard (the BLOCK tile) under ATTACK in the left-guard layout; the left GUARD drawn like the
+  tiles and quieter (0.4 opacity, fainter frame); the padlocks bare icons at 0.34. Touch suite green with new
+  checks (the second guard under ATTACK, the slide from ATTACK raises it); browser at 852 x 393.
+- **And:** the owner asked for the guards to be removable and the layout changeable: PAD LAYOUT = BLOCK BESIDE /
+  BLOCK UNDER, plus LEFT GUARD and RIGHT GUARD switches (one always stays; old saved `split` = left GUARD on).
+  Touch suite green with new checks; the pause menu toggles and saves (browser).
+- **Then:** both buttons named BLOCK, no gauge line under them, ATTACK's dagger down, the left BLOCK centred on the
+  stick, and three left-side looks behind `?leftLook=a|b|c` for the owner to pick (a quiet, b a pair of tiles, c
+  glyphs only). Touch suite green.
+- **Picked:** `leftLook` c (glyphs only) is the default; DODGE and BLOCK swapped back on the right (BLOCK beside
+  ATTACK, DODGE under); `?pad=split` only turns the left BLOCK on; old saves take the default arrangement (`v: 2`).
+- **Open:** whether GUARD should be the default layout; a touch timing
+  allowance if parries are still late.
 
 ## 2026-11-28 — The world suite's felled-trunk check made deterministic (branch `test/wreck-trunk-flake`)
 
