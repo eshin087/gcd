@@ -2,6 +2,7 @@ import { P, v3, to3 } from '../../player/anim.js';
 import { DIM } from '../../player/model.js';
 import { clamp, lerp } from '../../../core/math.js';
 import { createDuelPoses, setSw } from '../duelist/poses.js';
+import { refMove } from './refLook.js';
 
 // The Starless Lord's four guard stances, one per blade form, the pose functions built round each
 // (duelist/poses.js: the clip format, the blade-driven arms, the gait) and his GLIDE: past a walk he
@@ -61,14 +62,45 @@ const CARRY = [
 ];
 
 /** One pose set per form (index 0 = form 1): a heavy, slow breath; the staff carried level at a run. */
-export const FORM_POSES = GUARDS.map((G, i) =>
+const poseSet = (G, i) =>
   createDuelPoses(G, {
     breath: { k: 2.2, period: 3.6 },
     ...(i === 2 ? { run: { hand: [-0.05, -0.34, 0.1], pole: [-0.8, -0.4, -0.3], blade: [-1.3, 0.2], flat: [0, 1, 0] } } : {}),
-  }));
+  });
+export const FORM_POSES = GUARDS.map(poseSet);
 
-/** The pose set of a form (1-based, clamped). */
-export const formPoses = (form) => FORM_POSES[Math.min(FORM_POSES.length, Math.max(1, form | 0)) - 1];
+// ---------------------------------------------------------------- after the reference pack (ADR-276)
+// `?lordRefMove=a` (refLook.js): the reference's grounded bearing: every guard lower on wider feet (the
+// knees bent, the weight down: its "slow grounded" stance), form 1's free hand a fist at his side
+// (01 T07 / G1), form 3's hands wide on the staff (lord.js: the off hand down the joined hilt), form 4
+// upright with the hands under the cross-guard and the point over his head (13 H1, which replaces every
+// form-4 guard drawn point-down on the earlier sheets).
+const REF_GUARD = { sink: 0.09, wide: 0.06, stride: 1.12 };
+const grounded = (G, k = {}) => Object.freeze({
+  ...G,
+  bY: G.bY - REF_GUARD.sink,
+  rF: [G.rF[0] - REF_GUARD.wide, G.rF[1], G.rF[2] * REF_GUARD.stride],
+  lF: [G.lF[0] + REF_GUARD.wide, G.lF[1], G.lF[2] * REF_GUARD.stride],
+  rK: [G.rK[0] - 0.1, G.rK[1], G.rK[2]],
+  lK: [G.lK[0] + 0.1, G.lK[1], G.lK[2]],
+  ...k,
+});
+export const GUARDS_REF = Object.freeze([
+  grounded(GUARDS[0], { lH: [0.2, -0.34, 0.16], lP: [0.8, -0.5, -0.2] }),
+  grounded(GUARDS[1]),
+  grounded(GUARDS[2]),
+  grounded(GUARDS[3], { rH: [0.12, -0.27, 0.27], sw: [0.0, 1.52] }),
+]);
+export const FORM_POSES_REF = GUARDS_REF.map(poseSet);
+
+/** The pose set of a form (1-based, clamped): the reference's while `?lordRefMove` is on. */
+export const formPoses = (form) => {
+  const S = refMove() ? FORM_POSES_REF : FORM_POSES;
+  return S[Math.min(S.length, Math.max(1, form | 0)) - 1];
+};
+
+const GLIDE_0 = { bz: 0.06, pitch: 0.2, roll: 0.15, trail: [0.2, 0.36] };
+const GLIDE_REF = { bz: 0.1, pitch: 0.32, roll: 0.22, trail: [0.3, 0.5] };
 
 /**
  * The glide (animator key 'glide': not a walking clip, so the foot planner leaves the feet alone):
@@ -76,15 +108,17 @@ export const formPoses = (form) => FORM_POSES[Math.min(FORM_POSES.length, Math.m
  * space), the legs hanging and trailing, the toes down, the steel carried low behind him.
  */
 export function glidePose(p, A) {
-  const f = clamp((A.player?.form ?? 1) | 0, 1, CARRY.length), K = FORM_POSES[f - 1], C = CARRY[f - 1];
+  const f = clamp((A.player?.form ?? 1) | 0, 1, CARRY.length), K = formPoses(f), C = CARRY[f - 1];
   K.duelStance(p, A);
   const mx = clamp(A.mx ?? 0, -1, 1), mz = clamp(A.mz ?? 1, -1, 1);
   const t = A.time ?? 0, bob = Math.sin(t * 2.4), sway = Math.sin(t * 1.3 + 0.8);
+  // (ADR-276, `?lordRefMove`: 02 L2 / L3: inclined further into the glide, the legs trailing further)
+  const R = refMove() ? GLIDE_REF : GLIDE_0;
   p[P.bodyY] = -0.03 + 0.018 * bob;
-  p[P.bodyZ] = 0.06 * mz;
+  p[P.bodyZ] = R.bz * mz;
   p[P.bodyX] = 0.03 * mx;
-  p[P.pitch] = 0.2 * mz;
-  p[P.roll] = -0.15 * mx + 0.02 * sway;
+  p[P.pitch] = R.pitch * mz;
+  p[P.roll] = -R.roll * mx + 0.02 * sway;
   p[P.yaw] = lerp(K.GUARD.yaw, 0.04, 0.7);
   p[P.pelvY] = 0.02;
   p[P.spX] = -0.08 * mz;
@@ -92,8 +126,8 @@ export function glidePose(p, A) {
   p[P.hdX] = -0.1 * mz + 0.04;
   p[P.hdY] = -0.04;
   // the legs: one a little ahead of the other, both trailing the way he came from
-  v3(p, P.rF, -0.1 - 0.1 * mx, 0.1 + 0.014 * bob, -0.06 - 0.2 * mz);
-  v3(p, P.lF, 0.12 - 0.1 * mx, 0.2 - 0.014 * bob, -0.02 - 0.36 * mz);
+  v3(p, P.rF, -0.1 - 0.1 * mx, 0.1 + 0.014 * bob, -0.06 - R.trail[0] * mz);
+  v3(p, P.lF, 0.12 - 0.1 * mx, 0.2 - 0.014 * bob, -0.02 - R.trail[1] * mz);
   v3(p, P.rK, -0.12, 0, 1);
   v3(p, P.lK, 0.2, 0, 1);
   p[P.rFy] = -0.12;

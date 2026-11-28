@@ -8,7 +8,7 @@ import { DuelBrain } from '../duelist/brain.js';
 import { perPhase } from '../duelist/realise.js';
 import { LORD_LOADOUT, SABER, buildOffSaber } from './gear.js';
 import { formPoses, glidePose } from './poses.js';
-import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, TRANSITIONS, COUNTERS, STREAKS, realise, formOn } from './moves.js';
+import { MOVES, MOVE_NAMES, CLIP, CLIPS_BY_FORM, clipsOf, TRANSITIONS, COUNTERS, STREAKS, realise, formOn } from './moves.js';
 import { TUNING } from './tuning.js';
 import { LordFx } from './fx.js';
 import { LordTerrain } from './terrain.js';
@@ -17,7 +17,8 @@ import { LordSpecialFx, boltLook } from './specialFx.js';
 import { LordSpells } from './spells.js';
 import { dressFrame as dressLord } from './look.js';
 import { lookOf } from '../duelist/lookSwitch.js';
-import { refLook } from './refLook.js';
+import { refLook, refMove } from './refLook.js';
+import { P } from '../../player/anim.js';
 import { clashOn, clashRegenK } from '../../../combat/clashDance.js';
 
 // The Starless Lord (COMBAT.md → "The Starless Lord"): a dark lord from the stars, enthroned in the
@@ -38,10 +39,28 @@ import { clashOn, clashRegenK } from '../../../combat/clashDance.js';
 //   - the throne: he sits until the hero comes through the door, rises, and leaps down to the seal.
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
+// (ADR-276, `?lordRefMove`: the staff held wide: in form 3 the off hand sits down the joined hilt, not
+// beside the sword hand (03 / 06 F6, 15 B3); `offAt` m up the blade from the grip, negative = toward the
+// back blade)
+const REF_STAFF_HAND = -0.14;
+const staffHands = (p, A) => {
+  // (the duelist's poses never write offAt: it is set every frame here, and back to 0 out of the staff)
+  if ((A.player?.form ?? 1) === 3 && refMove()) p[P.offAt] = REF_STAFF_HAND * Math.min(1, Math.max(0, p[P.twoHand]));
+  else if (p[P.offAt] !== 0) p[P.offAt] = 0;
+};
 const POSES = Object.freeze({
-  loco: (p, A) => formPoses(A.player?.form ?? 1).duelLoco(p, A),
-  duel: (p, A) => formPoses(A.player?.form ?? 1).duelClip(p, A),
-  glide: glidePose,
+  loco: (p, A) => {
+    formPoses(A.player?.form ?? 1).duelLoco(p, A);
+    staffHands(p, A);
+  },
+  duel: (p, A) => {
+    formPoses(A.player?.form ?? 1).duelClip(p, A);
+    staffHands(p, A);
+  },
+  glide: (p, A) => {
+    glidePose(p, A);
+    staffHands(p, A);
+  },
 });
 /** The beat a move is in at its time t (its windup or its active frames), or null. */
 const beatNow = (a) => (a ? a.beats.find((b) => a.t < b.end + 1e-6) ?? null : null);
@@ -93,7 +112,7 @@ export const LORD_KIT = Object.freeze({
 /** His mind: the duelist's, with each form's own reaction clips. */
 class LordBrain extends DuelBrain {
   get C() {
-    return CLIPS_BY_FORM[clamp(this.d.phase | 0, 1, CLIPS_BY_FORM.length) - 1];
+    return clipsOf(clamp(this.d.phase | 0, 1, CLIPS_BY_FORM.length)); // (ADR-276: the reference's while ?lordRefMove is on)
   }
   set C(v) {} // (the base constructor assigns the kit's set: his is per form)
 

@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-28',
+        title: 'Varr Nihil after the reference pack, to try',
+        notes: [
+          'A new look for Varr Nihil to try before it becomes his own: his hood, helm, armour and whole cape kept in every form, and every blade split into two red-white rails with a dark slit between them.',
+          'And a new way for him to move: lower, wider guards, blows that sink into the cut, bigger reactions and a deeper glide. His timing and damage are exactly as before.',
+          'Add lordRef=a and lordRefMove=a to the address to try them.',
+        ],
+      },
+      {
         date: '2026-11-27',
         title: 'A black blow can darken the whole picture, a red string can cut in red',
         notes: [
