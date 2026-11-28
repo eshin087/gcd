@@ -7807,7 +7807,8 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     pinpoint where the blades cross (the mark's X at 0.12 x, a cell or two) and the spark spit carries the parry;
     **`?blueTell=a`** (duelist/fx.js `TELL_GLINT.blueSmall`, the Lab's `blueTell`) a small cross on his blade (4 x 2
     cells, no rays, no ring, held as long), dyed blue by a fire-field tint zone as the flares are, with a blue sparkle
-    and light. Both off by default until the owner picks from the films (`newparry-vs-today`); filmed
+    and light. **Both the owner's pick from the films ("Yes, new look") and the defaults** (`?parryClash=0` /
+    `?blueTell=0` as before); filmed
     with the 1.8 m gap beside today. Seen in the same zoom: the largest thing on screen before his thrust is his blue
     tell glint (a star and ring) right over the hero where the blades will meet; a gameplay cue, left as it is.
 - **Consequences:** a adds 0.35 s between the parry and the combo and 0.08 s to the first blow (the combo's own

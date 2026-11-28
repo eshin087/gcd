@@ -17,7 +17,9 @@ One hundred and forty pieces of work since 0.4.0:
   feet as before; the Lab's `strikeGap`); `?parryClash=a|b` draws the perfect parry's gold clash and its mark smaller
   (b: the X alone, no rings; c: no gold at all, a pinpoint where the blades cross and the sparks) so the crossing
   blades show (the Lab's `parryClash`); `?blueTell=a` draws a boss's blue parry cue as a small blue cross on his
-  blade instead of the big white star and ring (the Lab's `blueTell`).
+  blade instead of the big white star and ring (the Lab's `blueTell`). *Changed (the owner's pick, the defaults):*
+  the perfect parry is `c`, a pinpoint where the blades cross and its sparks, no gold burst; the blue cue is `a`
+  (`?parryClash=0` / `?blueTell=0` as before).
 - **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner's pick from the films):* the
   Thousand-Body Fox's straight punches and palms now land on an open arm along one line to you (the elbow 162 - 167°,
   was 123 - 139°), his roundhouse, his paper selves' rising kick and both ankle sweeps land on a straight leg (the

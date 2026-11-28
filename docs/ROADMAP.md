@@ -436,7 +436,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The deathblow played on the iPhone; the wyrm's parry answer (it keeps the flurry riposte)
 - [x] The parry → deathblow exchange readable to a watcher: a break beat, space, a clean contact, filmed (`?dbread=`, ADR-264)
 - [x] The owner's pick of `?dbread=` made the default (`all`)
-- [ ] The parry's look: `?parryClash=c` (a pinpoint and sparks) and `?blueTell=a` (a small blue cross): the owner's pick
+- [x] The parry's look: `?parryClash=c` (a pinpoint and sparks) and `?blueTell=a` (a small blue cross): the owner's pick, the defaults
 - [ ] The strike gap (`?strikeGap=b`, off): re-key Shen Hui's lunges for the room, or keep the spacing as authored
 - [ ] A next round on the perfect dodge, if any: from a concrete reference and one narrow prototype; never the background
 

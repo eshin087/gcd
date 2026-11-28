@@ -42,7 +42,7 @@ full suites failed: any strike-gap floor bends Shen Hui's authored lunges (`ashf
 dash through the hero) stopped short, the pace sims drifted. The floor is now dashes only, never a dash through him,
 and off by default. Then the owner turned the gold parry burst down and the white star with a ring (his BLUE TELL,
 not the parry): `?parryClash=c` (no gold, a pinpoint and the sparks) and `?blueTell=a` (a small cross dyed blue),
-filmed beside today (`newparry-vs-today`), off until picked.
+filmed beside today (`newparry-vs-today`). **The owner's pick:** "Yes, new look": both the defaults.
 
 ---
 
