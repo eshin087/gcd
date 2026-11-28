@@ -90,15 +90,15 @@ export const FIRE_PALETTES = {
     stops: [[0.44, 0.012, 0.03], [1.3, 0.04, 0.08], [2.2, 0.16, 0.2], [2.85, 0.8, 0.78], [3.2, 2.5, 2.45]],
     hdr: 0.6, fill: 0.08, back: [0.5, 0.8], lick: 0.5, erode: 0.75, boil: 12, warp: 0.6,
   },
-  // SAINT (the Last Foundry: the False Saint's jets, sensors, sight line, lance and the beams' bodies;
-  // ADR-0FS). A swap of the void slot (falseSaint/fx.js FsFx), as gold. His sensors' pale cyan: a dark teal
-  // rim, a pale cyan body, an ivory-white heart. Paler and greener than `azure` / `pearl` and never
-  // saturated blue, so nothing of his reads as the blue parry cue; the fire slot stays the engine's orange
-  // (molten steel, what burns) and every dodge mark stays the fire kind's red. It hardly climbs (a jet stays
-  // a tongue, a beam a beam) and boils fast (a jet's flicker).
+  // SAINT (the Last Foundry: the False Saint's jets, charges, lance and the beams' bodies; ADR-0FS). A swap of
+  // the void slot (falseSaint/fx.js FsFx), as gold. INCANDESCENT: jet exhaust and white-hot metal, a dark
+  // amber rim, a pale amber-white body, a white heart; paler and whiter than `gold`, never red (the red cues
+  // keep the fire kind's red) and never cyan or blue (blue means a parry: nothing of his that signals an
+  // attack may be either; his cyan sensors are glyph particles, not heat). The fire slot stays the engine's
+  // (molten steel, what burns). It hardly climbs (a jet stays a tongue, a beam a beam) and boils fast.
   saint: {
-    stops: [[0.03, 0.22, 0.26], [0.16, 0.72, 0.82], [0.62, 1.5, 1.62], [1.55, 2.35, 2.4], [2.95, 3.05, 2.9]],
-    hdr: 0.6, fill: 0.07, back: [0.5, 0.8], lick: 0.35, erode: 0.6, boil: 13, warp: 0.5, haze: [0.5, 0.9, 1.0],
+    stops: [[0.46, 0.2, 0.04], [1.1, 0.58, 0.14], [1.8, 1.36, 0.66], [2.45, 2.2, 1.6], [3.05, 3.0, 2.8]],
+    hdr: 0.6, fill: 0.07, back: [0.5, 0.8], lick: 0.35, erode: 0.6, boil: 13, warp: 0.5, haze: [1.0, 0.82, 0.55],
   },
   steel: {
     stops: [[0.5, 0.5, 0.6], [1.2, 1.2, 1.32], [1.9, 1.88, 1.85], [2.7, 2.65, 2.55], [3.5, 3.4, 3.2]],

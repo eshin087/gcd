@@ -9,7 +9,7 @@
 // k; n (sensors); life (afterimage). One driver per effect, and one per move that strings them together:
 //   jet jets rosaryJets jetBurst afterimage dashTrail vespers sensor death shellFlake shellStrip coreVent
 //   transition2 transition3 transition4 sightLine vigil passingBell absolution revelation triptych choir
-//   kyrie verdict lastRite pour sparks hitMetal · 'stopAll' ends the one playing
+//   kyrie verdict lastRite pour sparks palmHit footPlant hitMetal · 'stopAll' ends the one playing
 // (the sheets: docs/looks/foundry/fs-fx-*.jpg are filmed from these)
 
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -254,7 +254,7 @@ const DRIVERS = {
         const s = 0.1 + i * 0.07;
         if (!cross(prev, t, s)) continue;
         const sh = d.partPoint ? d.partPoint(i % 2 ? 'shoulderL' : 'shoulderR', d.fx._partV) : _e.set(d.position.x, 1.8, d.position.z);
-        const last = i >= 9, a = i * 2.39996, r = last ? 0 : 1.6 + 3.2 * Math.sqrt((i + 0.5) / 9);
+        const last = i >= 9, a = i * 2.39996, r = last ? 0 : 2.4 + 4.2 * Math.sqrt((i + 0.5) / 9);
         d.fx.fly({ kind: 'missile', x: sh.x, y: sh.y + 0.2, z: sh.z, tx: o._tx + Math.cos(a) * r, tz: o._tz + Math.sin(a) * r, T: 1.7 + (i % 4) * 0.18 + (last ? 0.5 : 0), apex: 5 + (i % 3), r: 1.3, track: last ? 0.6 : 0, expect: false });
       }
     },
@@ -321,6 +321,22 @@ const DRIVERS = {
     dur: 0.5,
     frame: (d, t, o, prev) => {
       if (cross(prev, t, 0.02)) d.fx.sparks(d.position.x, 1.2, d.position.z, Math.sin(d.yaw), Math.cos(d.yaw), fin(o.n, 16), 1);
+    },
+  },
+  palmHit: {
+    // the pack's C1: a palm, a palm, the heel-palm shove at the target's chest
+    dur: 1.2,
+    frame: (d, t, o, prev) => {
+      target(d, o);
+      for (const [s, k] of [[0.05, 1], [0.45, 1], [0.85, 1.5]]) if (cross(prev, t, s)) d.fx.palmHit(o._tx - o._ux * 0.4, 1.3, o._tz - o._uz * 0.4, o._ux, o._uz, k);
+    },
+  },
+  footPlant: {
+    // the pack's C2: a planted, sliding stop (a jet dash's landing) toward the target
+    dur: 1.0,
+    frame: (d, t, o, prev) => {
+      target(d, o);
+      if (cross(prev, t, 0.05)) d.fx.footPlant(d.position.x + o._ux * 0.3, d.position.z + o._uz * 0.3, o._ux, o._uz, 0.9, 1);
     },
   },
   hitMetal: {

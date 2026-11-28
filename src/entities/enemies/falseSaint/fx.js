@@ -15,10 +15,13 @@ import * as FX_DEBUG from './fxDebug.js';
 // Positions are world metres; `d` the boss; `k` 0..1 a strength / progress; `dt` the frame's.
 //
 // HIS COLOURS: the fire field's VOID slot is his palette on this level (FIRE_PALETTES.saint, swapped in as
-// this class is built, as the Skybreak Ring swaps in gold): a teal rim, a pale cyan body, an ivory heart,
-// the colour of his sensors; his jets, his sight line, the lance and the beams' bodies are it. `fire` is
-// what burns and molten steel (scars, trenches, blasts, the pour); `steel` the white-hot cores. A red cue
-// stays the engine's red (the fire kind at a low heat): every mark on the floor that asks for a dodge is red.
+// this class is built, as the Skybreak Ring swaps in gold): INCANDESCENT, a dark amber rim, a pale
+// amber-white body, a white heart: jet exhaust and white-hot metal; his jets, the lance, the charges and the
+// beams' bodies are it. `fire` is what burns and molten steel (scars, trenches, blasts, the pour) and every
+// RED cue (the fire kind at a low heat: the marks, the sight line, the locked reticle); `steel` the white-hot
+// cores. CYAN IS COSMETIC ONLY (the owner's v04 pack): his sensors and his shell's sparks, drawn as tiny glyph
+// particles and a light, never heat, never anything that signals an attack (blue means "parry" here). The
+// engine's white contact glint (combat:flash) stays the brightest thing at a contact.
 //
 // THE SURFACE (C = the caller calls it every frame while the thing lives; 1 = once). Every method draws
 // nothing and costs nothing until it is called; none throws; a NaN argument is ignored.
@@ -31,16 +34,21 @@ import * as FX_DEBUG from './fxDebug.js';
 //                                          back, dust, grit, a thump
 //   afterimage(d, dx, dz, life, ox = 0, oz = 0)  1  a figure left where he was (moved by ox, oz m), drifting
 //                                          along (dx, dz), hanging `life` s (0.6; 1.0 - 1.4 for Vespers'
-//                                          lines): pale steel with a cyan edge. Returns the blobs spent (~150 - 300)
+//                                          lines): pale steel with a hot edge. Returns the blobs spent (~150 - 300)
 //   dashTrail(ax, az, bx, bz, k)        1  a jet streak's line from a (where he left) to b: a crisp floor line,
-//                                          a fainter one at his chest's height, cyan heat hanging on it, grit
-//   sensor(k)                           C  his sensor(s) lit (k 0..1; how many by d.dressPhase: 1 from P2, 3
-//                                          in P4). Through his death (mode 'dying') they go out one by one
+//                                          a fainter one at his chest's height, his jets' heat hanging on it, grit
+//   sensor(k)                           C  his sensor(s) lit: tiny cyan letters, cosmetic (k 0..1; how many by
+//                                          d.dressPhase: 1 from P2, 3 in P4). Through his death (mode 'dying') they go out one by one
 //                                          by themselves (update: sensorOut at 0.45, 1.05, 1.65 s)
 //   sensorOut(i)                        1  sensor i (0..2) goes out: a pop of cyan, a falling blip
 //   shellFlake(point, cut, k)           1  a chip of his shell at world point {x,y,z}, `cut` {x, z} the
-//                                          blade's travel, k the exposure it took (d.shell.last): 2 - 9
-//                                          pale chips, a spark or two where metal shows
+//                                          blade's travel, k the exposure it took (d.shell.last): 2 - 6 small
+//                                          pale chips flying OUTWARD from the part, a cyan spark or two off
+//                                          the bare metal (cosmetic; the pack's C4 shed)
+//   palmHit(x, y, z, dx, dz, k)         1  a palm's physical contact (the pack's C1): small white sparks on
+//                                          along the blow, fading pale chips, a puff of air (k 1.5 the shove)
+//   footPlant(x, z, dx, dz, len, k)     1  a foot planted hard, sliding `len` m along (dx, dz) (the pack's C2
+//                                          slip / brake): a scuff on the floor, grit and dust, sparks from P3
 //   shellStrip(x, y, z, k)              1  a burn of shell off him (molten 0.05: a few flakes there; a
 //                                          transition 1: flakes curling off his whole body, burning)
 //   coreVent(k)                         C  the chest core's vent (P4's change, Last Rite's whine), k 0..1
@@ -50,7 +58,7 @@ import * as FX_DEBUG from './fxDebug.js';
 //                                          drawn into the core, the core venting, three sensors flickering)
 //   transitionBurst(n, x, z, r)         1  its impact: 2 sparks and dust; 3 a ring of jet heat; 4 a NOVA
 //   THE LASERS
-//   sightLine(ax, az, bx, bz, k, fromEye = true)  C  the thin cyan sight line before a cut: the floor line
+//   sightLine(ax, az, bx, bz, k, fromEye = true)  C  the thin RED sight line before a cut: the floor line
 //                                          a → b it marks (dashed early, solid, blinking late), a cross at b,
 //                                          a thin line from his eye to b (k 0..1 to the fire)
 //   laser(ax, ay, az, bx, by, bz, k)    C  the white-hot cutting line (a his eye, b where it meets the floor)
@@ -78,7 +86,7 @@ import * as FX_DEBUG from './fxDebug.js';
 //   shellFall(x, y, z, k)               C  the shell coming down (its whistle starts with it)
 //   shellBurst(x, z, r, power)          1  its burst (the great shell: a larger r and power)
 //   THE LANCE
-//   reticle(x, z, k, locked)            C  the reticle on the hero (cyan brackets closing, k 0..1 to the
+//   reticle(x, z, k, locked)            C  the reticle on the hero (pale brackets closing, k 0..1 to the
 //                                          lock); `locked`: red, still, blinking, a column over it; the
 //                                          moment it locks a burst and the lock tone
 //   skyLance(x, z, r, k)                C  the pillar of light (k 0..1 through its life)
@@ -102,7 +110,7 @@ export const FS_FX_METHODS = Object.freeze([
   'jet', 'jetBurst', 'afterimage', 'dashTrail', 'sensor', 'sensorOut', 'shellFlake', 'shellStrip', 'coreVent', 'transition', 'transitionBurst',
   'sightLine', 'laser', 'scar', 'cannonCharge', 'cannonBeam', 'cannonEnd', 'gunFlash', 'bolt', 'boltHit',
   'missileLaunch', 'missile', 'missileMark', 'blast', 'shellMark', 'shellFall', 'shellBurst', 'reticle', 'skyLance', 'pour', 'sparks',
-  'missileCut', 'mortarFlash', 'ringShock', 'fly', 'cancelFlights',
+  'missileCut', 'mortarFlash', 'ringShock', 'palmHit', 'footPlant', 'fly', 'cancelFlights',
 ]);
 
 /** Every sound his effects emit (`dragon:spell { name }`; sfx.js has a recipe for each: saint.mjs checks). */
@@ -110,12 +118,13 @@ export const FS_SOUNDS = Object.freeze([
   'fsJetLight', 'fsJetBurst', 'fsDash', 'fsSensorOut', 'fsFlake', 'fsStrip', 'fsCoreWhine', 'fsSkin', 'fsArm', 'fsFrame', 'fsMoment',
   'fsSight', 'fsLaser', 'fsCharge', 'fsBeam', 'fsCoreBeam', 'fsBeamEnd', 'fsGun', 'fsBoltHit', 'fsLaunch', 'fsBlast', 'fsMissileCut',
   'fsMortar', 'fsWhistle', 'fsShellBurst', 'fsTrack', 'fsLock', 'fsLance', 'fsRing', 'fsPour', 'fsServo', 'fsHitMetal', 'fsPowerDown',
+  'fsPalm', 'fsScuff',
 ]);
 
 /** The look's numbers (data): the jets, the sensors, the death, the servo. */
 export const FS_FX_BODY = Object.freeze({
-  jet: { len: [0.35, 1.2], width: [0.12, 0.3], rate: 55, light: 1.8 },
-  sensor: { size: 0.1, heat: 0.95, light: 0.9 },
+  jet: { len: [0.35, 1.1], width: [0.07, 0.17], rate: 40, light: 1.2 },
+  sensor: { size: 0.13, light: 0.9 },
   death: { out: [0.45, 1.05, 1.65] }, // s into his death each sensor goes out (the last lit first)
   servo: { stride: 1.05, from: 3 }, // m between two servo sounds; the phase they start in
   metal: 0.5, // a part's exposure from which a cut on it rings as metal
@@ -128,14 +137,14 @@ const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 // glyph colours
 const SKIN = [1.0, 0.82, 0.66], SKIN_END = [0.32, 0.25, 0.2];
 const CLOTH = [0.32, 0.32, 0.34], CLOTH_END = [0.1, 0.1, 0.11];
-const CYAN = [1.3, 2.7, 3.2], CYAN_END = [0.08, 0.35, 0.55];
+const CYAN = [1.3, 2.7, 3.2], CYAN_END = [0.08, 0.35, 0.55], CYAN_DIM = [0.4, 0.85, 1.0];
 const WHITE = [3.3, 3.3, 3.1];
 const HOT = [3.4, 2.1, 0.8], HOT_END = [0.6, 0.1, 0.02];
-const STEELG = [2.4, 2.5, 2.7], STEEL_END = [0.3, 0.32, 0.36];
+const PALE = [1.15, 1.12, 1.05], PALE_END = [0.25, 0.24, 0.22];
 const GRIT = [0.32, 0.3, 0.28], GRIT_END = [0.12, 0.11, 0.1];
 const PLATE = [0.52, 0.52, 0.55], PLATE_END = [0.16, 0.16, 0.17];
-const L_CYAN = ARSENAL_FX.L_CYAN, L_WHITE = [1.0, 0.95, 0.88], L_FIRE = [1.0, 0.52, 0.18];
-// (AscFx's gold, met in the inherited beam: turned to his cyan)
+const L_HEAT = ARSENAL_FX.L_HEAT, L_SENSOR = [0.55, 0.88, 1.0], L_WHITE = [1.0, 0.95, 0.88], L_FIRE = [1.0, 0.52, 0.18];
+// (AscFx's gold, met in the inherited beam: turned to his warm white)
 const isGold = (c) => Array.isArray(c) && c[0] === 1.0 && c[1] === 0.78 && c[2] === 0.36;
 const isGoldGlyph = (c) => Array.isArray(c) && ((c[0] === 4.0 && c[1] === 3.0) || (c[0] === 0.8 && c[1] === 0.4 && c[2] === 0.04));
 const BURN_AT = ['shoulderR', 'elbowR', 'chest', 'handR'], SHOULDERS = ['shoulderR', 'shoulderL'];
@@ -191,18 +200,18 @@ export class FsFx extends AscFx {
     }
   }
 
-  /** A light kept while asked for: AscFx's gold (the inherited beam's) is his cyan here. */
+  /** A light kept while asked for: AscFx's gold (the inherited beam's) is his warm white here. */
   _keep(key, x, y, z, color, intensity, radius, flicker = 0) {
-    return super._keep(key, x, y, z, isGold(color) ? L_CYAN : color, intensity, radius, flicker);
+    return super._keep(key, x, y, z, isGold(color) ? L_HEAT : color, intensity, radius, flicker);
   }
   _light(o) {
-    if (o && isGold(o.color)) o.color = L_CYAN;
+    if (o && isGold(o.color)) o.color = L_HEAT;
     return super._light(o);
   }
   _spawn(pool, o) {
     if (o && isGoldGlyph(o.color)) {
-      o.color = CYAN;
-      if (isGoldGlyph(o.colorEnd) || o.colorEnd) o.colorEnd = CYAN_END;
+      o.color = WHITE;
+      if (isGoldGlyph(o.colorEnd) || o.colorEnd) o.colorEnd = HOT_END;
     }
     super._spawn(pool, o);
   }
@@ -313,9 +322,9 @@ export class FsFx extends AscFx {
     while (st.acc >= 1) {
       st.acc -= 1;
       const sp = this.lrand(4, 8) * (0.5 + 0.5 * k);
-      this._blob(x + dx * L * 0.5, y + dy * L * 0.5, z + dz * L * 0.5, dx * sp + this.lrand(-0.5, 0.5), dy * sp + this.lrand(-0.3, 0.5), dz * sp + this.lrand(-0.5, 0.5), this.lrand(0.1, 0.18), W * 1.6, W * 2.6, 0.42 * k, 0, K_VOID, 3);
+      this._blob(x + dx * L * 0.5, y + dy * L * 0.5, z + dz * L * 0.5, dx * sp + this.lrand(-0.5, 0.5), dy * sp + this.lrand(-0.3, 0.5), dz * sp + this.lrand(-0.5, 0.5), this.lrand(0.08, 0.14), W * 1.2, W * 1.8, 0.32 * k, 0, K_VOID, 3);
     }
-    this._keep(JET_KEY[name], x, y, z, L_CYAN, Q.light * k, 3 + 2 * k, 0.25);
+    this._keep(JET_KEY[name], x, y, z, L_HEAT, Q.light * k, 3 + 2 * k, 0.25);
   }
 
   jetBurst(x, z, dx = 0, dz = 0, k = 1) {
@@ -341,7 +350,7 @@ export class FsFx extends AscFx {
       o.gravity = -8;
       this._spawn(this.alpha, o);
     }
-    this._light({ x, y: 0.6, z, color: L_CYAN, intensity: 2 * k, radius: 4, life: 0.15, fade: 0.15 });
+    this._light({ x, y: 0.6, z, color: L_HEAT, intensity: 2 * k, radius: 4, life: 0.15, fade: 0.15 });
     this._say('fsJetBurst', x, z, k);
   }
 
@@ -350,7 +359,7 @@ export class FsFx extends AscFx {
     const lf = Math.max(0.15, Math.min(2, fin(life, 0.6)));
     const ddx = fin(dx, 0), ddz = fin(dz, 0), mx = fin(ox, 0), mz = fin(oz, 0);
     let spent = this.ghost(d, this._ghostOpt(ddx * 0.6, ddz * 0.6, lf, 0, mx, mz, 0, 0, 0));
-    // a cyan edge: every fifth of the figure's points, a small cool blob of his palette (his jets' light)
+    // a hot edge: every fifth of the figure's points, a small blob of his palette (his jets' heat)
     const n = this._bodyPts(d), P = this._gp;
     for (let i = 0; i < n; i += 5) {
       this._blob(P[i * 3] + mx, P[i * 3 + 1], P[i * 3 + 2] + mz, ddx * 0.15, this.lrand(0, 0.15), ddz * 0.15, lf * this.lrand(0.6, 0.9), 0.16, 0.1, 0.4, 0, K_VOID, 1);
@@ -368,7 +377,7 @@ export class FsFx extends AscFx {
     // the floor line (crisp, on the grid), a fainter one at his chest's height
     this._ink(ax, 0.45, az, bx, 0.45, bz, 0.45 + 0.35 * k, 0.95 * k, 0, 0.75 * k, 0, K_STEEL);
     this._ink(ax, 1.25, az, bx, 1.25, bz, 0.28 + 0.12 * k, 0.55 * k, 0, 0.35 * k, 0, K_VOID);
-    // cyan heat hanging on it, rising a little; smoke low along it
+    // his jets' heat hanging on it, rising a little; smoke low along it
     const n = Math.min(60, Math.ceil(L / 0.4));
     for (let i = 0; i <= n; i++) {
       const u = i / n, x = ax + (bx - ax) * u, z = az + (bz - az) * u;
@@ -426,15 +435,18 @@ export class FsFx extends AscFx {
         const at = B_.death.out[n - 1 - i] ?? 9;
         if (at - D.t < 0.3) kk *= Math.sin(t * 70 + i) > 0 ? 1 : 0.25;
       }
+      // (one tiny cyan letter a sensor: a glyph particle held one frame, pulled toward the camera so his
+      // head does not hide it; never heat, so it can never read as a cue)
       const C = this._toCamera(P.x, P.y, P.z);
-      this._blob(C.x, C.y, C.z, 0, 0, 0, life, Q.size, Q.size, Q.heat * kk, Q.heat * kk, K_VOID);
-      this._blob(C.x, C.y, C.z, 0, 0, 0, life, Q.size * 0.5, Q.size * 0.5, 1.05 * kk, 1.05 * kk, K_STEEL);
+      const o = this._rec(C.x, C.y, C.z, life, Q.size, Q.size, '*', kk > 0.55 ? CYAN : CYAN_DIM, null);
+      o.alphaEnd = 1;
+      this._spawn(this.add, o);
       lit++;
       lx += P.x;
       ly += P.y;
       lz += P.z;
     }
-    if (lit) this._keep('fsSensor', lx / lit, ly / lit, lz / lit, L_CYAN, Q.light * k * (0.6 + 0.4 * lit), 1.8, 0);
+    if (lit) this._keep('fsSensor', lx / lit, ly / lit, lz / lit, L_SENSOR, Q.light * k * (0.6 + 0.4 * lit), 1.8, 0);
   }
 
   sensorOut(i = 0) {
@@ -451,10 +463,8 @@ export class FsFx extends AscFx {
       o.drag = 2;
       this._spawn(this.add, o);
     }
-    if (this.fire) {
-      const C = this._toCamera(P.x, P.y, P.z);
-      this._blob(C.x, C.y, C.z, 0, 0, 0, 0.18, 0.16, 0.05, 1.2, 0, K_STEEL);
-    }
+    const C = this._toCamera(P.x, P.y, P.z), f = this._rec(C.x, C.y, C.z, 0.2, 0.16, 0.05, '*', CYAN, CYAN_END);
+    this._spawn(this.add, f);
     this._say('fsSensorOut', P.x, P.z, n);
   }
 
@@ -515,37 +525,106 @@ export class FsFx extends AscFx {
     }
   }
 
+  /** (the v04 pack's C4 shed) A cut chipped his shell: a FEW SMALL chips fly OUTWARD from the struck part
+   *  (away from his body's axis, a little along the blade), tumble and fade; a cyan spark or two off the
+   *  metal left bare (cosmetic). Never a cloud: 2 - 6 chips. */
   shellFlake(point, cut, k = 0.1) {
     if (!point || !Number.isFinite(point.x + point.y + point.z)) return;
     const x = point.x, y = point.y, z = point.z, kk = clamp01(fin(k, 0.1));
-    const n = Math.max(2, Math.min(9, Math.round(2 + kk * 40)));
+    const n = Math.max(2, Math.min(6, Math.round(2 + kk * 25)));
     const cx = fin(cut?.x, 0), cz = fin(cut?.z, 0), cl = Math.hypot(cx, cz);
     const p = this.d?.position, ox = p ? x - p.x : 0, oz = p ? z - p.z : 0, ol = Math.hypot(ox, oz) || 1;
     for (let i = 0; i < n; i++) {
-      const sp = this.lrand(1.2, 3.2), cloth = i % 3 === 2;
-      const o = this._rec(x + this.lrand(-0.06, 0.06), y + this.lrand(-0.08, 0.08), z + this.lrand(-0.06, 0.06), this.lrand(0.5, 0.9), this.lrand(0.11, 0.16), 0.08, cloth ? "~-," : "'`,.^", cloth ? CLOTH : SKIN, cloth ? CLOTH_END : SKIN_END);
-      o.vx = (cl > 1e-3 ? (cx / cl) * sp : 0) + (ox / ol) * this.lrand(0.5, 1.5) + this.lrand(-0.6, 0.6);
-      o.vy = this.lrand(0.5, 2.4);
-      o.vz = (cl > 1e-3 ? (cz / cl) * sp : 0) + (oz / ol) * this.lrand(0.5, 1.5) + this.lrand(-0.6, 0.6);
+      const out = this.lrand(1.6, 3.2), along = this.lrand(0.3, 1.1), cloth = i % 3 === 2;
+      const o = this._rec(x + this.lrand(-0.05, 0.05), y + this.lrand(-0.06, 0.06), z + this.lrand(-0.05, 0.05), this.lrand(0.45, 0.8), this.lrand(0.09, 0.13), 0.06, cloth ? "~-," : "'`,.^", cloth ? CLOTH : SKIN, cloth ? CLOTH_END : SKIN_END);
+      o.vx = (ox / ol) * out + (cl > 1e-3 ? (cx / cl) * along : 0) + this.lrand(-0.5, 0.5);
+      o.vy = this.lrand(0.6, 2.2);
+      o.vz = (oz / ol) * out + (cl > 1e-3 ? (cz / cl) * along : 0) + this.lrand(-0.5, 0.5);
       o.gravity = -9;
       o.drag = 1.2;
       o.spin = this.lrand(-9, 9);
-      o.alphaEnd = 0.3;
       this._spawn(this.alpha, o);
     }
-    // where the frame shows under it: a spark or two
+    // where the frame shows under it: a cyan spark or two (cosmetic; the pack's shell sparks)
     const sh = this.d?.shell;
     if ((sh?.exposure ?? 0) > 0.12) {
       for (let i = 0; i < 2; i++) {
-        const o = this._rec(x, y, z, this.lrand(0.15, 0.3), 0.1, 0.03, "'+", WHITE, HOT_END);
-        o.vx = cx * 3 + this.lrand(-1.5, 1.5);
+        const o = this._rec(x, y, z, this.lrand(0.15, 0.3), 0.09, 0.03, "'+", CYAN, CYAN_END);
+        o.vx = (ox / ol) * 2.5 + this.lrand(-1.2, 1.2);
         o.vy = this.lrand(0, 2);
-        o.vz = cz * 3 + this.lrand(-1.5, 1.5);
+        o.vz = (oz / ol) * 2.5 + this.lrand(-1.2, 1.2);
         o.drag = 3;
         this._spawn(this.add, o);
       }
     }
     this._say('fsFlake', x, z, kk);
+  }
+
+  /** (the v04 pack's C1 palm) A palm's physical contact at (x, y, z) along (dx, dz), `k` its weight (1 a
+   *  palm, 1.5 the heel-palm shove): small white contact sparks thrown on along the blow, a few pale glyph
+   *  chips that fade where it met, a puff of air. Small on purpose: the engine's white glint (combat:flash)
+   *  stays the brightest thing at the contact. ~10 particles, 8 blobs, once. */
+  palmHit(x, y, z, dx = 0, dz = 0, k = 1) {
+    if (!Number.isFinite(x + y + z + dx + dz + k)) return;
+    k = Math.max(0.4, Math.min(2, k));
+    const l = Math.hypot(dx, dz), ux = l > 1e-3 ? dx / l : 0, uz = l > 1e-3 ? dz / l : 0;
+    for (let i = 0; i < Math.round(7 * k); i++) {
+      const sp = this.lrand(2.5, 6) * k;
+      const o = this._rec(x, y, z, this.lrand(0.12, 0.26), 0.09, 0.03, "'+.", WHITE, HOT_END);
+      o.vx = ux * sp + this.lrand(-1.8, 1.8);
+      o.vy = this.lrand(-0.5, 2);
+      o.vz = uz * sp + this.lrand(-1.8, 1.8);
+      o.drag = 3.5;
+      this._spawn(this.add, o);
+    }
+    for (let i = 0; i < Math.round(4 * k); i++) {
+      const o = this._rec(x + this.lrand(-0.12, 0.12), y + this.lrand(-0.1, 0.12), z + this.lrand(-0.12, 0.12), this.lrand(0.35, 0.6), 0.1, 0.07, ".:'", PALE, PALE_END);
+      o.vx = ux * this.lrand(0.3, 1) + this.lrand(-0.3, 0.3);
+      o.vy = this.lrand(0.1, 0.6);
+      o.vz = uz * this.lrand(0.3, 1) + this.lrand(-0.3, 0.3);
+      o.drag = 2;
+      this._spawn(this.alpha, o);
+    }
+    if (this.fire) {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU, ca = Math.cos(a), sa = Math.sin(a);
+        this._blob(x, y + sa * 0.2, z, (ux * 2 - uz * ca * 2.5) * k, sa * 2.5 * k, (uz * 2 + ux * ca * 2.5) * k, 0.12, 0.26, 0.4, 0.3, 0, K_SMOKE, 4);
+      }
+    }
+    this._say('fsPalm', x, z, k);
+  }
+
+  /** (the v04 pack's C2 slip / brake) A foot planted hard at (x, z), sliding along (dx, dz) `len` m: a short
+   *  scuff line on the floor, grit and dust kicked ahead of the sole, a few sparks off the metal shin from
+   *  phase 3. The jet dash's landing, the slip of his counter, a booster move's stop. Once. */
+  footPlant(x, z, dx = 0, dz = 0, len = 0.6, k = 1) {
+    if (!Number.isFinite(x + z + dx + dz + len + k)) return;
+    k = Math.max(0.3, Math.min(2, k));
+    const l = Math.hypot(dx, dz), ux = l > 1e-3 ? dx / l : 0, uz = l > 1e-3 ? dz / l : 0, L = Math.max(0.1, Math.min(3, len));
+    if (this.fire && l > 1e-3) this._ink(x - ux * L, 0.42, z - uz * L, x, 0.42, z, 0.5, 0.4 * k, 0, 0.55 * k, 0, K_SMOKE);
+    for (let i = 0; i < Math.round(9 * k); i++) {
+      const sp = this.lrand(1, 3.5) * k;
+      const o = this._rec(x, 0.1, z, this.lrand(0.3, 0.6), 0.12, 0.05, ",.'`", GRIT, GRIT_END);
+      o.vx = ux * sp + this.lrand(-1, 1);
+      o.vy = this.lrand(0.4, 1.8);
+      o.vz = uz * sp + this.lrand(-1, 1);
+      o.drag = 2.4;
+      o.gravity = -7;
+      this._spawn(this.alpha, o);
+    }
+    this.dust(x, z, 0.5 * k);
+    if (fin(this.d?.dressPhase, 1) >= 3) {
+      for (let i = 0; i < 4; i++) {
+        const o = this._rec(x, 0.15, z, this.lrand(0.15, 0.3), 0.09, 0.03, "'+", HOT, HOT_END);
+        o.vx = ux * this.lrand(2, 5) + this.lrand(-1, 1);
+        o.vy = this.lrand(0.5, 2);
+        o.vz = uz * this.lrand(2, 5) + this.lrand(-1, 1);
+        o.drag = 3;
+        o.gravity = -9;
+        this._spawn(this.add, o);
+      }
+    }
+    this._say('fsScuff', x, z, k);
   }
 
   shellStrip(x, y, z, k = 0.1) {
@@ -577,7 +656,7 @@ export class FsFx extends AscFx {
     this._say('fsStrip', x, z, kk);
   }
 
-  /** The core's glow at its point: a white heart, a cyan disc; `vent` puffs heat out of it. */
+  /** The core's glow at its point: a white heart, a disc of his heat; `vent` puffs heat out of it. */
   _coreGlow(k, vent = true) {
     const P = this._part('core');
     if (!P || !this.fire) return;
@@ -596,7 +675,7 @@ export class FsFx extends AscFx {
         const sp = this.lrand(1.5, 4) * k;
         this._blob(x + f.x * 0.1, y, z + f.z * 0.1, f.x * sp + this.lrand(-0.6, 0.6), this.lrand(0.5, 2), f.z * sp + this.lrand(-0.6, 0.6), this.lrand(0.15, 0.3), 0.26, 0.5, 0.45 * k, 0, K_VOID, 2, 1);
         if (k > 0.6 && this.lr() < 0.25) {
-          const o = this._rec(x, y, z, this.lrand(0.2, 0.4), 0.1, 0.03, "'+.", WHITE, CYAN_END);
+          const o = this._rec(x, y, z, this.lrand(0.2, 0.4), 0.1, 0.03, "'+.", WHITE, HOT_END);
           o.vx = f.x * 4 + this.lrand(-2, 2);
           o.vy = this.lrand(0, 3);
           o.vz = f.z * 4 + this.lrand(-2, 2);
@@ -605,7 +684,7 @@ export class FsFx extends AscFx {
         }
       }
     }
-    this._keep('fsCore', x, y, z, L_CYAN, 0.8 + 3.5 * k, 3 + 3 * k, 0.15);
+    this._keep('fsCore', x, y, z, L_HEAT, 0.8 + 3.5 * k, 3 + 3 * k, 0.15);
   }
 
   coreVent(k) {
@@ -744,7 +823,7 @@ export class FsFx extends AscFx {
         }
       }
       this.shock(x, z, r, this._opt(1.0, 0.25, 'dust', 0, true));
-      this._light({ x, y: 1, z, color: L_CYAN, intensity: 5, radius: r * 2.4, life: 0.4, fade: 0.35 });
+      this._light({ x, y: 1, z, color: L_HEAT, intensity: 5, radius: r * 2.4, life: 0.4, fade: 0.35 });
     } else {
       // sparks off him and a front of dust
       for (let i = 0; i < 26; i++) {
@@ -758,7 +837,7 @@ export class FsFx extends AscFx {
         this._spawn(this.add, o);
       }
       this.shock(x, z, r * 0.8, this._opt(0.7, 0.1, 'dust', 0, false));
-      this._light({ x, y, z, color: L_CYAN, intensity: 3, radius: 6, life: 0.3, fade: 0.3 });
+      this._light({ x, y, z, color: L_HEAT, intensity: 3, radius: 6, life: 0.3, fade: 0.3 });
     }
     this._say('fsMoment', x, z, n);
     void d;

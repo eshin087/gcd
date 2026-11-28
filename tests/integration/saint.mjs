@@ -755,6 +755,7 @@ async function scenarioFx() {
     missileLaunch: () => F.missileLaunch(0, 2, -2, 8), missile: () => F.missile({ x, y: 4, z, vx: 3, vy: -6, vz: 1, k: 0.5 }), missileMark: () => F.missileMark(x, z, 1.3, 0.6), blast: () => F.blast(x, z, 1.6, 1),
     shellMark: () => F.shellMark(x, z, 1.3, 0.6), shellFall: () => F.shellFall(x, 12, z, 0.7), shellBurst: () => F.shellBurst(x, z, 2, 1),
     reticle: () => F.reticle(x, z, 0.5, false), skyLance: () => F.skyLance(x, z, 1.4, 0.5), pour: () => F.pour(12.5, 3, -6.5, 1), sparks: () => F.sparks(x, 1, z, 1, 0, 12, 1),
+    palmHit: () => F.palmHit(x, 1.3, z, 1, 0, 1), footPlant: () => F.footPlant(0, -2, 1, 0, 0.8, 1),
     missileCut: () => F.missileCut(x, 2, z, 1, 0), mortarFlash: () => F.mortarFlash(0, 2.2, -2, 3), ringShock: () => F.ringShock(x, z, 5, 1),
     fly: () => F.fly({ kind: 'missile', x: 0, y: 2, z: -2, tx: x, tz: z, T: 1, expect: false }), cancelFlights: () => F.cancelFlights(),
   };
@@ -774,7 +775,7 @@ async function scenarioFx() {
     () => F.missile({ x: 0, y: N }), () => F.missileMark(0, 0, N, 0.5), () => F.blast(N, 0), () => F.shellMark(0, 0, 1, N), () => F.shellFall(0, N, 0, 0.5),
     () => F.shellBurst(0, N), () => F.reticle(N, 0, 0.5), () => F.skyLance(0, 0, N, 0.5), () => F.pour(N, 3, 0, 1), () => F.sparks(0, N, 0, 1, 0, 5, 1),
     () => F.shellFlake({ x: N, y: 0, z: 0 }, null, 0.1), () => F.shellStrip(N, 1, 0, 1), () => F.transition(2, N), () => F.transitionBurst(3, N, 0, 4), () => F.coreVent(N),
-    () => F.missileCut(N, 0, 0), () => F.mortarFlash(N, 0, 0), () => F.ringShock(0, N, 4), () => F.fly({ kind: 'bolt', x: N, tx: 1, tz: 1, expect: false }),
+    () => F.missileCut(N, 0, 0), () => F.palmHit(N, 1, 0, 1, 0), () => F.footPlant(0, N, 1, 0), () => F.mortarFlash(N, 0, 0), () => F.ringShock(0, N, 4), () => F.fly({ kind: 'bolt', x: N, tx: 1, tz: 1, expect: false }),
   ];
   for (const f of nanCalls) { try { f(); G.tick(DT); } catch (err) { nanThrew.push(err.message); } }
   run(G, 2);

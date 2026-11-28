@@ -1,13 +1,17 @@
 import { K_FIRE, K_SMOKE, K_VOID, K_STEEL, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 import { TELL } from '../../../combat/rules.js';
+import { lookOf } from '../duelist/lookSwitch.js';
 
 // The False Saint's arsenal, drawn (the FX AGENT's file): the lasers, the palm and core cannons, the forearm
 // gun's bolts, the missiles, the mortar's shells, the sky lance, and the pools behind them. FsFx (fx.js)
 // forwards its surface here; `F` is the FsFx (DuelFx's _blob / _ink / _dot / _frame / _rec / _spawn /
 // _toCamera / _axes / lr(), AscFx's beam / _keep / _across). Heat in the fire field (STYLE.md "The fire
-// field"): the void slot is HIS palette here (FIRE_PALETTES.saint: a teal rim, a pale cyan body, an ivory
-// heart: his sensors' light), `fire` is molten steel and burning, `steel` the white-hot cores and sparks'
-// strokes. Glyph particles only for what flies on its own, one letter cell: sparks, casings, grit, plate
+// field"): the void slot is HIS palette here (FIRE_PALETTES.saint: incandescent, a dark amber rim, a pale
+// amber-white body, a white heart: jet exhaust and white-hot metal), `fire` is molten steel, burning and every
+// RED cue (the marks, the sight line, the locked reticle), `steel` the white-hot cores and sparks' strokes.
+// NOTHING here that signals an attack is cyan or blue (blue means "parry" in this game; the owner's v04 pack):
+// cyan is his sensors' and his shell's sparks' alone (fx.js), cosmetic.
+// Glyph particles only for what flies on its own, one letter cell: sparks, casings, grit, plate
 // chips. Jitter from F.lr() (the looks' stream), never Math.random.
 //
 // TWO LAYERS, both open to the arsenal agent:
@@ -29,7 +33,6 @@ const TAU = Math.PI * 2;
 const clamp01 = (v) => (v > 1 ? 1 : v > 0 ? v : 0);
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
 // glyph colours (linear; the additive pool for what burns, the alpha pool for what is matter)
-const CYAN = [1.3, 2.7, 3.2], CYAN_END = [0.08, 0.35, 0.55];
 const WHITE = [3.3, 3.3, 3.1], WHITE_END = [0.6, 0.55, 0.5];
 const HOT = [3.4, 2.1, 0.8], HOT_END = [0.6, 0.1, 0.02];
 const RED = [3.2, 0.35, 0.2], RED_END = [0.7, 0.04, 0.02];
@@ -38,23 +41,27 @@ const PLATE = [0.52, 0.52, 0.55], PLATE_END = [0.16, 0.16, 0.17];
 const DIRT = [0.32, 0.29, 0.26], DIRT_END = [0.12, 0.11, 0.1];
 const SMOKE_G = [0.34, 0.33, 0.32], SMOKE_END = [0.1, 0.1, 0.1];
 // lights
-export const L_CYAN = [0.55, 0.88, 1.0];
+/** The warm white light of his jets, beams and guns (his attacks: never cyan or blue, which mean a parry). */
+export const L_HEAT = [1.0, 0.84, 0.6];
 const L_WHITE = [1.0, 0.95, 0.88], L_FIRE = [1.0, 0.52, 0.18], L_RED = [1.0, 0.14, 0.06];
 
 /** The look's numbers (data, not logic): sizes in metres, heats as the fire field reads them. */
 export const FS_FX_ARSENAL = Object.freeze({
-  sight: { heat: 0.62, blink: 9, dash: 0.55 }, // the sight line: its heat at k 1, its blink (Hz) in the last 0.2 of k, dash period m
+  sight: { heat: 0.34, blink: 9, dash: 0.55 }, // the sight line: its heat at k 1, its blink (Hz) in the last 0.2 of k, dash period m
   laser: { core: 1.12, sheath: 0.5, sparks: 60, smoke: 12, light: 2.6 },
-  scar: { life: 6.5, step: 0.32, heat: 0.78, steel: 0.5, smoke: 6, embers: 9 }, // life s at k 1; heat per blob (x GROUND_GAIN)
-  trench: { life: 9, rows: 3, heat: 0.95 },
+  scar: { life: 6.5, step: 0.32, heat: 0.3, steel: 0.5, smoke: 6, embers: 9 }, // life s at k 1; heat per blob (x GROUND_GAIN)
+  trench: { life: 9, rows: 2, heat: 0.22 },
   cannon: { lick: 70, foot: 1.2, light: 4.5 },
-  mark: { step: 0.32, heat: 0.5, fill: 0.36, blink: 7 },
+  mark: { step: 0.34, heat: 0.36, rise: 0.2, fill: 0.2, blink: 7, disc: [0.05, 0.09] }, // disc: the 'disc' style's fill heat at k 0 / added by k 1
   missile: { apex: 5, r: 1.3, trailStep: 0.28, speedMin: 8 },
   shell: { r: 1.6, top: 34, climb: 0.3 }, // top: the height it climbs out of view to; climb: share of the flight spent going up
   reticle: { r0: 2.4, r1: 1.15, column: 7 },
   lance: { top: 28 },
 });
 const A_ = FS_FX_ARSENAL;
+/** The marks' look (`?fsMark=ring|disc`, read live): ring = a ring of red blobs and a ring closing in;
+ *  disc = a dim red disc under the ring, the rim written on the letter grid. */
+const markStyle = () => lookOf('fsMark', 'disc');
 
 // ---------------------------------------------------------------- the pools
 /** One projectile of the flights' pool (fly). Valid while `alive` and its `id` is the one you were given. */
@@ -192,15 +199,16 @@ export const heldFor = (F, S, key) => {
 /**
  * The sight line before a cut (k 0..1 to the fire; every frame). (ax, az) → (bx, bz) the line on the
  * floor the cut will draw (a == b: one spot); `fromEye` (default true): a thin line from his eye to b too.
- * Cyan strokes on the letter grid: dashed and faint early, solid and bright late, blinking in the last
- * fifth. ~2 lines of ink cells.
+ * RED strokes on the letter grid (the fire kind at a low heat, as every dodge cue: the cut is a red-tell
+ * move; never cyan or blue, which mean a parry): dashed and faint early, solid and brighter late, blinking in
+ * the last fifth. ~2 lines of ink cells.
  */
 export function sightLine(F, S, ax, az, bx, bz, k, fromEye = true) {
   if (!F.fire || !Number.isFinite(ax + az + bx + bz + k)) return;
   k = clamp01(k);
   const Q = A_.sight, t = now(F);
   const blink = k > 0.8 ? (Math.sin(t * Q.blink * TAU) > -0.2 ? 1 : 0.45) : 1;
-  const h = (0.3 + Q.heat * k) * blink, y = 0.42;
+  const h = (0.4 + Q.heat * k) * blink, y = 0.42;
   const L = Math.hypot(bx - ax, bz - az);
   if (L > 0.3) {
     if (k < 0.55) {
@@ -208,23 +216,23 @@ export function sightLine(F, S, ax, az, bx, bz, k, fromEye = true) {
       const n = Math.min(40, Math.ceil(L / Q.dash)), ph = (t * 3) % 1;
       for (let i = 0; i < n; i += 2) {
         const u0 = Math.min(1, (i + ph) / n), u1 = Math.min(1, (i + ph + 1) / n);
-        F._ink(ax + (bx - ax) * u0, y, az + (bz - az) * u0, ax + (bx - ax) * u1, y, az + (bz - az) * u1, 0, h, 0, h, 0, K_VOID);
+        F._ink(ax + (bx - ax) * u0, y, az + (bz - az) * u0, ax + (bx - ax) * u1, y, az + (bz - az) * u1, 0, h, 0, h, 0, K_FIRE);
       }
-    } else F._ink(ax, y, az, bx, y, bz, 0, h, 0, h, 0, K_VOID);
+    } else F._ink(ax, y, az, bx, y, bz, 0, h, 0, h, 0, K_FIRE);
   }
   if (fromEye && F.d?.eyePoint) {
     const E = F.d.eyePoint(F._eyeV);
-    if (E && Number.isFinite(E.x + E.y + E.z)) F._ink(E.x, E.y, E.z, bx, y, bz, 0, h * 0.8, 0, h, 0, K_VOID);
+    if (E && Number.isFinite(E.x + E.y + E.z)) F._ink(E.x, E.y, E.z, bx, y, bz, 0, h * 0.8, 0, h, 0, K_FIRE);
   }
-  // the spot it picks: a small cross of cyan
+  // the spot it picks: a small red cross
   const c = 0.28 + 0.2 * k;
-  F._ink(bx - c, y, bz, bx + c, y, bz, 0, h * 1.1, 0, h * 1.1, 0, K_VOID);
-  F._ink(bx, y, bz - c, bx, y, bz + c, 0, h * 1.1, 0, h * 1.1, 0, K_VOID);
+  F._ink(bx - c, y, bz, bx + c, y, bz, 0, h * 1.1, 0, h * 1.1, 0, K_FIRE);
+  F._ink(bx, y, bz - c, bx, y, bz + c, 0, h * 1.1, 0, h * 1.1, 0, K_FIRE);
   if (fresh(F, S, 'sight', bx, bz, 30)) F._say('fsSight', bx, bz, 0);
 }
 
 /** The white-hot cutting line, his eye (a) → where it meets the floor (b), k its strength (every frame).
- *  A white core, a cyan sheath either side, the foot molten (fire), sparks spat back, smoke. */
+ *  A white core, an orange sheath either side (fire), the foot molten, sparks spat back, smoke. */
 export function laser(F, S, ax, ay, az, bx, by, bz, k) {
   if (!F.fire || !Number.isFinite(ax + ay + az + bx + by + bz + k) || !(k > 0.01)) return;
   k = clamp01(k);
@@ -233,9 +241,9 @@ export function laser(F, S, ax, ay, az, bx, by, bz, k) {
   if (!(L > 0.05)) return;
   const C = F._across(dx, dy, dz), t = now(F);
   const fl = 0.88 + 0.12 * Math.sin(t * 53) * Math.sin(t * 17);
-  F._ink(ax, ay, az, bx, by, bz, 0, Q.core * fl * (0.6 + 0.4 * k), 0, Q.core * fl * (0.6 + 0.4 * k), 0, k > 0.6 ? K_STEEL : K_VOID);
+  F._ink(ax, ay, az, bx, by, bz, 0, Q.core * fl * (0.6 + 0.4 * k), 0, Q.core * fl * (0.6 + 0.4 * k), 0, k > 0.6 ? K_STEEL : K_FIRE);
   const off = 0.07;
-  for (const sd of [-1, 1]) F._ink(ax + C.x * off * sd * 0.4, ay + C.y * off * sd * 0.4, az + C.z * off * sd * 0.4, bx + C.x * off * sd, by + C.y * off * sd, bz + C.z * off * sd, 0, Q.sheath * fl * k, 0, Q.sheath * fl * k, 0, K_VOID);
+  for (const sd of [-1, 1]) F._ink(ax + C.x * off * sd * 0.4, ay + C.y * off * sd * 0.4, az + C.z * off * sd * 0.4, bx + C.x * off * sd, by + C.y * off * sd, bz + C.z * off * sd, 0, Q.sheath * fl * k, 0, Q.sheath * fl * k, 0, K_FIRE);
   const life = F._frame();
   const fy = Math.max(0.12, Math.min(by, 0.5));
   if (life > 0) {
@@ -275,19 +283,25 @@ function hotLine(F, ax, az, bx, bz, w, life, heat, rows, steel) {
   const L = Math.hypot(bx - ax, bz - az), Q = A_.scar;
   if (!(L > 0.05) || !(life > 0)) return 0;
   const ux = (bx - ax) / L, uz = (bz - az) / L, n = Math.min(120, Math.max(1, Math.ceil(L / Q.step)));
+  // (the fire kind climbs as tongues by its heat: the long glow is kept LOW, so it lies on the plates as a
+  // line of dull red-orange letters and does not stand up as a wall of flame; the white-hot is a short steel
+  // core and a short hot fire line over it, the long cooling glow the scorch map's heat in the floor)
+  const sc = F.d?.game?.world?.scorch;
   let spent = 0;
   for (let i = 0; i <= n; i++) {
     const u = i / n, x = ax + (bx - ax) * u, z = az + (bz - az) * u;
     for (let r = 0; r < rows; r++) {
       const off = rows > 1 ? (r / (rows - 1) - 0.5) * w * 0.8 : 0, j = F.lr();
-      const s = Math.max(0.35, (w / rows) * 1.25);
-      F._blob(x - uz * off, GROUND_Y, z + ux * off, 0, 0, 0, life * (0.8 + 0.4 * j), s, s * 0.8, heat * GROUND_GAIN * (0.85 + 0.3 * j), 0, K_FIRE);
+      const s = Math.max(0.3, (w / rows) * 1.1);
+      F._blob(x - uz * off, GROUND_Y, z + ux * off, 0, 0, 0, life * (0.8 + 0.4 * j), s, s * 0.7, heat * GROUND_GAIN * (0.85 + 0.3 * j), 0, K_FIRE);
       spent++;
     }
     if (steel > 0 && i % 2 === 0) {
       F._blob(x, GROUND_Y + 0.05, z, 0, 0, 0, 0.45 + 0.3 * F.lr(), 0.3, 0.2, steel * GROUND_GAIN, 0, K_STEEL);
-      spent++;
+      F._blob(x, GROUND_Y, z, 0, 0, 0, 0.35 + 0.2 * F.lr(), 0.3, 0.2, 0.5 * GROUND_GAIN, 0, K_FIRE);
+      spent += 2;
     }
+    if (sc?.burnCircle && i % 2 === 0) sc.burnCircle(x, z, Math.max(0.35, w * 0.6), 0.35, 0.9);
   }
   return spent;
 }
@@ -356,7 +370,7 @@ function updateScars(F, S, dt) {
 }
 
 // ---------------------------------------------------------------- THE CANNONS
-/** A cannon's charge at `part` ('palmR' | 'palmL' | 'core'), k 0..1 (every frame): motes of cyan drawn in,
+/** A cannon's charge at `part` ('palmR' | 'palmL' | 'core'), k 0..1 (every frame): motes of his heat drawn in,
  *  an iris of light tightening, a white heart growing; the level's light dims (ambience.dim). */
 export function cannonCharge(F, S, part, k) {
   const d = F.d;
@@ -388,7 +402,7 @@ export function cannonCharge(F, S, part, k) {
     F._blob(Pc.x, Pc.y, Pc.z, 0, 0, 0, life, (0.12 + 0.2 * k) * big, (0.12 + 0.2 * k) * big, hh, hh, k > 0.6 ? K_STEEL : K_VOID);
   }
   const key = part === 'core' ? 'chargeCore' : part === 'palmL' ? 'chargePalmL' : 'chargePalmR';
-  F._keep(key, x, y, z, L_CYAN, 0.6 + 2.4 * k, 3 + 3 * k, 0.15);
+  F._keep(key, x, y, z, L_HEAT, 0.6 + 2.4 * k, 3 + 3 * k, 0.15);
   F.game.world?.forest?.ambience?.dim?.(k * (part === 'core' ? 0.9 : 0.6));
   heldSay(F, S, key, 'fsCharge', x, z, 99, part === 'core' ? 2 : 1.2);
 }
@@ -437,7 +451,7 @@ export function cannonBeam(F, S, ax, ay, az, bx, by, bz, w, k) {
     F._spawn(F.add, o);
   }
   F._keep('fsBeamFoot', bx, fy + 0.5, bz, L_FIRE, Q.light * k, 6, 0.35);
-  F._keep('fsBeamMouth', ax, ay, az, L_CYAN, 2.5 * k, 5, 0.2);
+  F._keep('fsBeamMouth', ax, ay, az, L_HEAT, 2.5 * k, 5, 0.2);
   if (w > 2.4) heldSay(F, S, 'beamCore', 'fsCoreBeam', ax, az, 1.1, 1.2);
   else heldSay(F, S, 'beamPalm', 'fsBeam', ax, az, 1.1, 1.2);
 }
@@ -460,7 +474,7 @@ export function cannonEnd(F, S, ax, az, bx, bz, w) {
 }
 
 // ---------------------------------------------------------------- THE BOLTS
-/** The forearm gun fires (once): a cyan flash, strokes thrown forward, two brass casings kicked out. */
+/** The forearm gun fires (once): a hot white flash, strokes thrown forward, two brass casings kicked out. */
 export function gunFlash(F, S, x, y, z, dx, dz) {
   if (!F.fire || !Number.isFinite(x + y + z + dx + dz)) return;
   const l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l, base = Math.atan2(uz, ux);
@@ -485,11 +499,11 @@ export function gunFlash(F, S, x, y, z, dx, dz) {
     o.alphaEnd = 0.6;
     F._spawn(F.alpha, o);
   }
-  F._light({ x, y, z, color: L_CYAN, intensity: 2.4, radius: 5, life: 0.1, fade: 0.1 });
+  F._light({ x, y, z, color: L_HEAT, intensity: 2.4, radius: 5, life: 0.1, fade: 0.1 });
   F._say('fsGun', x, z, 0);
 }
 
-/** A bolt in flight (every frame): b { x, y, z, dx, dy, dz, k, back }: a hard white head, a cyan streak
+/** A bolt in flight (every frame): b { x, y, z, dx, dy, dz, k, back }: a hard white head, a streak of his heat
  *  behind it; `back` (a perfect parry sent it home): white-hot with a fire edge. */
 export function bolt(F, S, b) {
   if (!F.fire || !b || !Number.isFinite(b.x + b.y + b.z + b.dx + b.dz)) return;
@@ -505,13 +519,13 @@ export function bolt(F, S, b) {
   if (F.lr() < 0.35) F._blob(tx, ty, tz, F.lrand(-0.3, 0.3), F.lrand(0, 0.4), F.lrand(-0.3, 0.3), F.lrand(0.14, 0.22), 0.26, 0.12, 0.3 * k, 0, b.back ? K_FIRE : K_VOID, 2);
 }
 
-/** A bolt bites what it hits (once): a burst of sparks, a cyan flash, a puff of grit. */
+/** A bolt bites what it hits (once): a burst of sparks, a hot flash, a puff of grit. */
 export function boltHit(F, S, x, y, z, k = 1) {
   if (!Number.isFinite(x + y + z + k)) return;
   k = Math.max(0.3, Math.min(2, k));
   for (let i = 0; i < Math.round(12 * k); i++) {
     const a = F.lr() * TAU, sp = F.lrand(2, 7) * k;
-    const o = F._rec(x, y, z, F.lrand(0.15, 0.35), 0.11, 0.03, "*+'", F.lr() < 0.4 ? CYAN : WHITE, CYAN_END);
+    const o = F._rec(x, y, z, F.lrand(0.15, 0.35), 0.11, 0.03, "*+'", F.lr() < 0.4 ? HOT : WHITE, HOT_END);
     o.vx = Math.cos(a) * sp;
     o.vz = Math.sin(a) * sp;
     o.vy = F.lrand(-1, 4);
@@ -526,7 +540,7 @@ export function boltHit(F, S, x, y, z, k = 1) {
     }
   }
   F.dust?.(x, z, 0.5 * k);
-  F._light({ x, y, z, color: L_CYAN, intensity: 2 * k, radius: 4, life: 0.12, fade: 0.1 });
+  F._light({ x, y, z, color: L_HEAT, intensity: 2 * k, radius: 4, life: 0.12, fade: 0.1 });
   F._say('fsBoltHit', x, z, k);
 }
 
@@ -593,16 +607,32 @@ export function missileMark(F, S, x, z, r, k, cross = true) {
   k = clamp01(k);
   const Q = A_.mark, t = now(F);
   const blink = k > 0.8 ? (Math.sin(t * Q.blink * TAU) > 0 ? 1.18 : 0.8) : 1;
-  const n = Math.min(64, Math.max(14, Math.round((TAU * r) / Q.step))), h = (Q.heat + 0.22 * k) * GROUND_GAIN * blink;
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * TAU;
-    F._blob(x + Math.cos(a) * r, GROUND_Y, z + Math.sin(a) * r, 0, 0, 0, life, 0.32, 0.32, h, h, K_FIRE);
+  const n = Math.min(64, Math.max(14, Math.round((TAU * r) / Q.step))), h = (Q.heat + Q.rise * k) * GROUND_GAIN * blink;
+  if (markStyle() === 'disc') {
+    // a dim red disc over the whole area (it warms as it comes), its rim written on the letter grid
+    for (let i = 0; i < 9; i++) {
+      const rr = r * 0.62 * Math.sqrt((i + 0.5) / 9), a = i * 2.39996;
+      F._blob(x + Math.cos(a) * rr, GROUND_Y, z + Math.sin(a) * rr, 0, 0, 0, life, r * 0.8, r * 0.8, (Q.disc[0] + Q.disc[1] * k) * GROUND_GAIN, 0, K_FIRE);
+    }
+    const m = Math.min(40, Math.max(12, Math.round((TAU * r) / 0.5)));
+    let px = x + r, pz = z;
+    for (let i = 1; i <= m; i++) {
+      const a = (i / m) * TAU, qx = x + Math.cos(a) * r, qz = z + Math.sin(a) * r;
+      F._ink(px, GROUND_Y, pz, qx, GROUND_Y, qz, 0, h * 0.75, 0, h * 0.75, 1, K_FIRE);
+      px = qx;
+      pz = qz;
+    }
+  } else {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU;
+      F._blob(x + Math.cos(a) * r, GROUND_Y, z + Math.sin(a) * r, 0, 0, 0, life, 0.28, 0.28, h, h, K_FIRE);
+    }
   }
   // the fill: a second ring closing in from the rim (where it has reached, the floor between is red)
   const ri = r * (1 - 0.92 * k), m = Math.min(48, Math.max(6, Math.round((TAU * ri) / 0.36))), hi = Q.fill * GROUND_GAIN;
   for (let i = 0; i < m; i++) {
     const a = (i / m) * TAU;
-    F._blob(x + Math.cos(a) * ri, GROUND_Y, z + Math.sin(a) * ri, 0, 0, 0, life, 0.3, 0.3, hi, hi, K_FIRE);
+    F._blob(x + Math.cos(a) * ri, GROUND_Y, z + Math.sin(a) * ri, 0, 0, 0, life, 0.26, 0.26, hi, hi, K_FIRE);
   }
   if (cross && k > 0.5) {
     const c = r * 0.45, hc = Q.heat * GROUND_GAIN * 0.8;
@@ -687,7 +717,7 @@ export function mortarFlash(F, S, x, y, z, n = 1) {
 export function shellMark(F, S, x, z, r, k) {
   if (!F.fire || !Number.isFinite(x + z + r + k) || !(r > 0)) return;
   missileMark(F, S, x, z, r, k, false);
-  const h = (A_.mark.heat + 0.25 * clamp01(k)) * GROUND_GAIN;
+  const h = (A_.mark.heat + A_.mark.rise * clamp01(k)) * GROUND_GAIN;
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * TAU + Math.PI / 4, ca = Math.cos(a), sa = Math.sin(a);
     F._ink(x + ca * r * 1.08, GROUND_Y, z + sa * r * 1.08, x + ca * (r * 1.08 + 0.55), GROUND_Y, z + sa * (r * 1.08 + 0.55), 0, h, 0, h, 0, K_FIRE);
@@ -742,7 +772,7 @@ export function shellBurst(F, S, x, z, r = 2, power = 1) {
 
 // ---------------------------------------------------------------- THE LANCE
 /**
- * The reticle on the hero (every frame; k 0..1 to the lock): four cyan brackets turning, closing in from
+ * The reticle on the hero (every frame; k 0..1 to the lock): four pale steel brackets turning, closing in from
  * A_.reticle.r0 to r1 m; `locked`: they stop, turn RED and blink, a ring closes round them and a thin red
  * column stands over the spot. The moment it locks (false → true): a burst of red, the lock tone. The lock
  * is drawn on the floor AND in the air (the column), so it reads behind the hero's body.
@@ -765,7 +795,7 @@ export function reticle(F, S, x, z, k, locked = false) {
   if (!(life > 0)) return;
   const r = locked ? Q.r1 : Q.r0 + (Q.r1 - Q.r0) * k, spin = locked ? 0 : t * 1.6;
   const blink = locked ? (Math.sin(t * 10 * TAU) > -0.3 ? 1 : 0.55) : 1;
-  const kind = locked ? K_FIRE : K_VOID, h = (locked ? 0.62 : 0.45 + 0.25 * k) * GROUND_GAIN * blink;
+  const kind = locked ? K_FIRE : K_STEEL, h = (locked ? 0.62 : 0.26 + 0.14 * k) * GROUND_GAIN * blink;
   for (let i = 0; i < 4; i++) {
     const a = spin + (i / 4) * TAU + Math.PI / 4;
     // a bracket: an arc of a quarter's third, and a tick inward
@@ -783,7 +813,7 @@ export function reticle(F, S, x, z, k, locked = false) {
     }
     F._ink(x, 0.4, z, x, Q.column, z, 0, 0.5 * blink, 0, 0.3 * blink, 0, K_FIRE);
     F._keep('fsReticle', x, 1.5, z, L_RED, 1.6 * blink, 4, 0);
-  } else F._keep('fsReticle', x, 1.2, z, L_CYAN, 0.6 + 0.8 * k, 3.5, 0);
+  } else F._keep('fsReticle', x, 1.2, z, L_HEAT, 0.6 + 0.8 * k, 3.5, 0);
 }
 
 /** The pillar of light (every frame; k 0..1 through its life: up fast, held, then thinning): from the
@@ -808,7 +838,7 @@ export function skyLance(F, S, x, z, r, k) {
   while (S.acc.lance >= 1) {
     S.acc.lance -= 1;
     const a = F.lr() * TAU, sp = F.lrand(3, 8);
-    const o = F._rec(x + Math.cos(a) * r, 0.3, z + Math.sin(a) * r, F.lrand(0.3, 0.55), 0.12, 0.03, "*+'", F.lr() < 0.5 ? WHITE : CYAN, CYAN_END);
+    const o = F._rec(x + Math.cos(a) * r, 0.3, z + Math.sin(a) * r, F.lrand(0.3, 0.55), 0.12, 0.03, "*+'", F.lr() < 0.5 ? WHITE : HOT, HOT_END);
     o.vx = Math.cos(a) * sp;
     o.vz = Math.sin(a) * sp;
     o.vy = F.lrand(2, 6);

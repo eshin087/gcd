@@ -2419,4 +2419,29 @@ export const SFX = {
       ping(v, t, 'sine', 880, 0.03, 1.2);
     },
   },
+  /** (v04 pack C1) A palm lands (o.dur its weight; 1.5 the shove): a flat, dense slap of a hand on cloth,
+   *  a short body thump under it. */
+  fsPalm: {
+    prio: 5, rev: 0.15, gap: 0.06, falloff: 0.7,
+    play(v, t, o) {
+      const k = clamp(num(o.dur, 1), 0.4, 2);
+      burst(v, t, 'pink', 'bandpass', 1500, 1.1, 0.35 * k, 0.05, 0.0008);
+      burst(v, t, 'white', 'highpass', 3000, 0.7, 0.08 * k, 0.025, 0.0005);
+      thump(v, t, 120, 55, 0.08, 0.45 * k, 0.16);
+    },
+  },
+  /** (v04 pack C2) A foot planted and slid (o.dur its weight): a gritty scrape over the plates, a knock. */
+  fsScuff: {
+    prio: 4, rev: 0.12, gap: 0.08, falloff: 0.75,
+    play(v, t, o) {
+      const k = clamp(num(o.dur, 1), 0.3, 2);
+      thump(v, t, 95, 50, 0.06, 0.3 * k, 0.12);
+      const c = v.noise('white', t, t + 0.3);
+      const bp = v.filter('bandpass', 2200, 1.2);
+      const g = v.gain(0);
+      spikes(g.gain, t, 0.26, 9, 0.1 * k, 0.002, 0.012, 0.6);
+      c.connect(bp).connect(g).connect(v.out);
+      swish(v, t, 'pink', 'bandpass', 900, 0.9, [[0, 0], [0.02, 0.12 * k], [0.25, 0]]);
+    },
+  },
 };
