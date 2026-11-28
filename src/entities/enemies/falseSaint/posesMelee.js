@@ -207,8 +207,10 @@ const mlUpCoil = {
   yaw: -0.42, bY: -0.36, pitch: 0.12, hip: -0.1, rH: [0.02, -0.34, 0.16], rP: [-0.8, -0.6, 0.0], sw: [0, 1.0], lH: [-0.02, -0.02, 0.34],
   rF: [-0.3, ANK, -0.24], lF: [0.26, ANK, 0.22], rK: [-0.7, 0, 0.7], lK: [0.6, 0, 0.8],
 };
+// (v04: the hand-heel driven up and OUT in front of the chin, not up the chest: a gap between the arm and the
+// body seen from above; it was 0.16 m from his chest's axis at the contact)
 const mlUp = {
-  yaw: 0.22, bY: -0.08, pitch: -0.1, spX: -0.06, hip: 0.14, rH: [0.1, 0.26, 0.46], rP: [-0.8, -0.6, 0.3], sw: [0, 1.5], lH: [-0.04, -0.06, 0.2],
+  yaw: 0.22, bY: -0.08, pitch: -0.08, spX: -0.06, hip: 0.14, rH: [0.08, 0.2, 0.54], rP: [-0.8, -0.6, 0.3], sw: [0, 1.5], lH: [-0.04, -0.06, 0.2],
   rF: [-0.2, ANK, -0.14], rFy: 0.1, lF: [0.24, ANK, 0.3],
 };
 

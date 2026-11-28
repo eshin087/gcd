@@ -84,9 +84,11 @@ const IDLE = W({
   rF: [-0.13, ANK, -0.02], lF: [0.13, ANK, 0.03], rK: [-0.1, 0, 1], lK: [0.1, 0, 1], rFy: -0.15, lFy: 0.12, flat: 1,
 });
 /** A13: thrown back by a blow. */
+// (v04, A13: the arms FLUNG out low and wide, clear of the body from above, the head snapped back: the read
+// of a blow that landed, at 34 px)
 const RECOIL_BIG = W({
-  bY: -0.1, bZ: -0.12, pitch: -0.34, yaw: -0.36, spX: -0.12, hdX: -0.38, hdY: 0.1,
-  rH: [-0.28, -0.1, 0.0], rP: [-0.8, 0.3, -0.5], lH: [0.3, -0.14, 0.02], lP: [0.8, 0.3, -0.5], sw: [-0.6, -0.4],
+  bY: -0.1, bZ: -0.12, pitch: -0.38, yaw: -0.36, spX: -0.14, hdX: -0.46, hdY: 0.1,
+  rH: [-0.42, -0.2, -0.06], rP: [-0.8, 0.4, -0.5], lH: [0.44, -0.24, 0.0], lP: [0.8, 0.4, -0.5], sw: [-0.6, -0.4],
   rF: [-0.22, ANK, -0.42], lF: [0.26, ANK, 0.16], rK: [-0.5, 0, 0.85], lK: [0.4, 0, 0.9],
 });
 /** A14: the recovery: crouched wide and low, the open hands low before the knees, the head up on the hero. */
