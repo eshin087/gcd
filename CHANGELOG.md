@@ -22,8 +22,8 @@ One hundred and forty-one pieces of work since 0.4.0:
   (`?parryClash=0` / `?blueTell=0` as before).
 - **One tap to begin, menus with a finish, and touch controls that fit and move** (2026-11-28, ADR-270). *Fixed:* on
   a phone, a tap on a world, BEGIN HERE or BOSS RUSH on the title acts at once (iOS took the first tap as a hover).
-  *Changed:* the title's and the pause menu's buttons and panels in a finished look (cut corners, an ember BEGIN
-  HERE, a gold BOSS RUSH card); held upright, the open world's panel stays on screen. Touch: FLASK | HEAVY over
+  *Changed:* the title's and the pause menu's buttons and panels in a finished look (cut corners, the world and its
+  buttons in one panel, an ember BEGIN HERE beside BOSS RUSH); held upright, the open world's panel stays on screen. Touch: FLASK | HEAVY over
   BLOCK | ATTACK with DODGE right under ATTACK; the pad sits further in from the right edge; every control scales
   with the screen (smaller on a small near-square phone, larger on a tablet); the phase call keeps below the HUD.
   *Added:* a padlock over the pad: open it and drag the right-hand controls anywhere (kept; RESET puts them

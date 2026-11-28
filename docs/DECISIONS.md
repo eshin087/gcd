@@ -7873,8 +7873,10 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
      once (travel, begin, the rush).
   2. THE FINISH (`titleMenuStyle.js`, `hudStyle.js`): two corners cut off every button and panel, a hairline
      frame, an ember rule along a panel's top. BEGIN HERE is an ember-filled button (a sheen on hover, the chevron
-     steps out, a small press); TRAVEL the same shape, cooler, so BEGIN stays the hottest thing; BOSS RUSH a gold
-     card with an emblem, its line, its best and a chevron; WHAT'S NEW / CONTROLS / CLOSE quiet cut frames that
+     steps out, a small press); TRAVEL the same shape, cooler, so BEGIN stays the hottest thing; BOSS RUSH (first a
+     gold card under the panel; the owner: it "looks out of place" and left "a lot of empty space on the right")
+     is one panel with the world: the world's lines on the left, BEGIN HERE / TRAVEL and BOSS RUSH stacked on the
+     right (side by side under it, upright), BOSS RUSH an ember outline on the dark, its line and its best; WHAT'S NEW / CONTROLS / CLOSE quiet cut frames that
      light ember. The pause menu's buttons and panel take the same cut and an ember edge on hover / the pad's
      focus. Held upright, the open world's panel sticks to the bottom of the list (BEGIN always on screen).
   3. THE PAD (`CONFIG.touch.pad`): FLASK | HEAVY over BLOCK | ATTACK, DODGE under ATTACK; ATTACK touches the

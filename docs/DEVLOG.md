@@ -15,8 +15,9 @@ controls further left, and a lock / unlock button to move them (kept).
 - **Two taps, found:** the entries selected on `mouseenter` / `focus` and re-drew the detail; iOS takes that first
   tap as a hover. Now only a mouse's hover / a keyboard's focus selects (`titleMenu.js`). The desktop always worked
   with one click (checked).
-- **The finish:** cut-corner buttons and panels, an ember BEGIN HERE with a sheen, a cooler TRAVEL, a gold BOSS RUSH
-  card, quiet corner buttons; the pause menu in the same look; upright, the open world's panel sticks to the bottom.
+- **The finish:** cut-corner buttons and panels, an ember BEGIN HERE with a sheen, a cooler TRAVEL, then (the owner:
+  the gold rush card looked out of place, empty space on the right) one panel: the world on the left, BEGIN HERE and
+  an ember-outline BOSS RUSH stacked on the right; quiet corner buttons; the pause menu in the same look; upright, the open world's panel sticks to the bottom.
 - **The pad:** FLASK | HEAVY / BLOCK | ATTACK / DODGE under ATTACK; PAD POSITION's places further in; the whole
   layer scales with the screen (`pad.fit`, replaces `pad.tall`); the padlock drags it (`padOff`, kept, RESET).
 - **Lock-on:** `flow._enterBoss` → `player.takeLock()` each frame for up to 4 s, on touch only.
