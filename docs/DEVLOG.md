@@ -26,7 +26,13 @@ shot `awaiting`). Tests: asc LIMBS, READABLE.
 455, its slide 2.19 → 1.23 m (the rest is the sweeping foot on the floor, by design). Films: before / after per
 form, game camera and close side, half speed; the blast and pace options.
 
-**Next.** The owner's picks (make them PICKED, `ascPace` / `ascShot` out of `awaiting`, mark the PR ready). Open: the
+**Picks (2026-11-27).** The owner took all three: the straight limbs, the readable pace, the sun (PICKED; the PR marked
+ready). On the new defaults the suite found: the sweep's spin keyed 120° apart folded the leg (now every 60°, the foot
+skimming 8 cm, reach 1.2), the long punches went 0.37 m into the hero (the lunge 0.12 m shorter), the pace's hold
+inside a dash run (dash blows keep their windup) and its moved cue on ki beats (the Lord's ADR-251 exemptions
+adopted); the bots read each cue's lead (`cueLead`); PACE floors re-pinned (F1 64, F2 71); MOTION's slide line
+counted lifted steps (0.16 → 0.11 m); the Lab's Training answered paced bosses early (`_lead()` reads the fired
+cue). Blast cost: asc `shotcost` (opt-in). Open: the
 dash thrusts' feet, the transformations' kneel-to-stand, Thousand Hands' last palm; the beam and the orb as effect
 options if the owner wants them.
 ## 2026-11-27 — Blows land on what they strike (ADR-259; branch `claude/contact-motion-246eeb`)

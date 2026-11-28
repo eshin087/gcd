@@ -254,7 +254,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] `?ascMotion=b`: long straight punches down his centre, straight kicks, the sweep from a drop stance on a planted foot (asc LIMBS)
 - [x] `?ascPace=a`: rule 10's floor as held cocks (asc READABLE)
 - [x] `?ascShot=a|b`: the ki blast as a sun or a comet, in the Fox's and Bai Wuji's idiom
-- [ ] The owner's picks of the three; the picks made the default
+- [x] The owner's picks (2026-11-27): straight limbs, the readable pace, the sun; the defaults
 - [ ] Not done: the transformations' kneel-to-stand jolts (~600 mm/f²), Thousand Hands' last palm (671), the beam and Raining Suns' gather as effect options
 ## M1.93 — The perfect parry gets the perfect dodge's window (2026-11-26, `claude/combat-perfect-parry-window-d6503b`, ADR-227)
 - [x] `DEFENSE.perfectParryWindow` 0.08 → 0.20 s (the owner's pick); the plain parry window 0.22 s unchanged

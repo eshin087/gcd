@@ -118,8 +118,8 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
-        title: 'Tian Lei audited: straight limbs, a readable pace and two ki blasts to choose',
-        notes: ['Tian Lei, to try before it becomes the default: ?ascMotion=b lands his punches with the arm long and straight down his centre, his kicks with the leg straight, and his low sweep from a drop stance; ?ascPace=a gives every blow a longer, held windup and the glint earlier; ?ascShot=a or b redraws his ki blasts (a sun, or a comet). All three are in the Lab: LOOKS.'],
+        title: 'Tian Lei audited: straight limbs, a readable pace, a sun for his ki blasts',
+        notes: ['Tian Lei moves cleaner: his punches land with the arm straight down his centre, his kicks with the leg straight, and his low sweep comes from a drop stance. Every blow has a longer, held windup and the glint comes earlier, so each is easier to read. His ki blasts fly as small golden suns. Add ?ascMotion=a, ?ascPace=0 or ?ascShot=0 for each as before.'],
       },
       {
         date: '2026-11-26',

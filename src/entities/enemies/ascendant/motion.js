@@ -228,11 +228,17 @@ export function straightLimbs(beat, keys) {
       // (the contact key and every key after it: the follow-through keeps its own draw-back)
       for (const k of out) if (k[0] >= 1 - 1e-6 && Array.isArray(k[1][h])) k[1] = { ...k[1], [h]: add(k[1][h], d) };
     }
+    // the longer arm reaches further: the body's lunge into the blow is `lungeCut` m shorter, so the fist stops
+    // at the hero's body (the long arm put it 0.37 m into his 0.45 m circle)
+    for (const k of out) if (k[0] >= 1 - 1e-6 && Number.isFinite(k[1].bZ)) k[1] = { ...k[1], bZ: k[1].bZ - T.lungeCut };
   }
   if (kick) {
-    const f = part === 'footL' ? 'lF' : 'rF', want = T.legReach * L_LEG;
+    const f = part === 'footL' ? 'lF' : 'rF', want = (mo.kind === 'sweep' ? T.sweepReach : T.legReach) * L_LEG;
     const sweep = mo.kind === 'sweep', cock = beat.cock ?? 0.62;
-    if (sweep) dropStance(out, hit, cock, f);
+    if (sweep) {
+      dropStance(out, hit, cock, f);
+      sweepTurn(out, hit);
+    }
     for (const k of out) {
       const [u, p] = k;
       const v = p[f];
@@ -240,7 +246,11 @@ export function straightLimbs(beat, keys) {
       // (the contact; the sweep's leg from the drop through its turn along the floor; the axe's leg held up
       // over his head)
       const at = sweep ? u >= cock - 1e-6 && u <= 2.01 : mo.kind === 'axe' ? u < 1 && v[1] > hipOf(p, 1)[1] + 0.2 : Math.abs(u - 1) < 1e-6;
-      if (at) k[1] = { ...p, [f]: longFoot(p, f, want) };
+      if (!at) continue;
+      const q = longFoot(p, f, want);
+      // (the sweep skims the floor `sweepSkim` m up: a foot keyed ON the floor is a planted one to the feet's
+      // planner, held in the world against his turn and stepped, the leg folding at the contact)
+      k[1] = { ...p, [f]: sweep && Array.isArray(q) ? [q[0], Math.max(q[1], ANK + T.sweepSkim), q[2]] : q };
     }
     // the sweep: he turns ON his planted foot (it stood 0.16 m off his pivot, so it went round a metre of
     // floor with him: sliding feet); it sits `sweepPivot` m from his root, its own side kept
@@ -263,6 +273,29 @@ export function straightLimbs(beat, keys) {
  *  for the drop and turns on a planted foot (the root still sliding in under him dragged the foot 0.5 m and
  *  flipped its knee mid-turn). */
 export const sweepCloseBy = () => (lookOf('ascMotion', '0') === 'b' ? TUNING.limbs.sweepClose : null);
+/**
+ * The sweep's turn re-keyed every 60 deg (keys 120 deg apart let the spline cut the corners: the sweeping foot
+ * came 0.4 m in toward him between keys and the leg folded mid-turn, the knee jolting): from the contact key
+ * (`hit`) round one full turn, the body and the feet turned together, linear between keys; the reset key
+ * after u 2 is kept.
+ */
+function sweepTurn(out, hit) {
+  const sg = Math.sign(hit.yaw ?? 1) || 1, n = 6;
+  const keep = out.filter(([u]) => u < 1 + 1e-6 || u > 2 + 1e-6);
+  const turn = [];
+  for (let j = 1; j <= n; j++) {
+    const a = (-sg * Math.PI * 2 * j) / n, o = { ...hit, yaw: (hit.yaw ?? 0) + a, e: 'l' };
+    for (const g of ['rF', 'lF']) {
+      const v = hit[g];
+      if (!Array.isArray(v)) continue;
+      const z = v.length === 3 ? v[2] : v[1], q = rotXZ(v[0], z, a);
+      o[g] = [q[0], v.length === 3 ? v[1] : ANK, q[1]];
+    }
+    turn.push([1 + j / n, o]);
+  }
+  out.length = 0;
+  out.push(...[...keep, ...turn].sort((x, y) => x[0] - y[0]));
+}
 const rotXZ = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
 /**
  * The sweep's windup as a DROP STANCE (in place of the tuck: the sweeping foot drawn in under his hip

@@ -4,13 +4,15 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-- **Tian Lei audited: straight limbs, a readable pace and two ki blasts to choose** (2026-11-26, ADR-248). *Added, to choose (not the default yet):* `?ascMotion=b`
-  lands Tian Lei's straight punches with the arm long and in one line down his centre (they crossed it, elbows at
-  ~150°), his kicks with the leg straight (the roundhouses at ~100°), and his sweep from a drop stance, turning on a
-  planted foot (the tuck's knee flipped and the planted foot slid a metre). `?ascPace=a` puts every blow at the
-  fairness floor: a move's first blow 0.7 s, its blows 0.45 s apart, the glint 0.35 s before, the extra time a
-  held pose. `?ascShot=a` (the sun) or `b` (the comet) redraws his ki blasts. The Lab's LOOKS rows for each.
 One hundred and thirty-seven pieces of work since 0.4.0:
+- **Tian Lei audited: straight limbs, a readable pace, a sun for his ki blasts** (2026-11-26, ADR-248). *Changed (the owner's picks from the films):* Tian Lei's
+  straight punches land with the arm long and in one line down his centre (they crossed it, elbows at ~150°), his
+  kicks with the leg straight (the roundhouses at ~100°), and his sweep comes from a drop stance, turning on a
+  planted foot (the tuck's knee flipped and the planted foot slid a metre). Every blow sits at the fairness floor:
+  a move's first blow 0.7 s, its blows 0.45 s apart, the glint 0.35 s before, the extra time a held windup pose
+  (the snap jabs stay quick). His ki blasts fly as suns: a white heart, gold turning round it, a spinning ring, a
+  pool of light under it, a burst that folds in and breaks. `?ascMotion=a`, `?ascPace=0`, `?ascShot=0` (the Lab's
+  LOOKS) give each back as before; `?ascShot=b` is the comet that was not picked.
 - **Shen Hui fights with better form** (2026-11-26, ADR-250). *Changed (the owner's pick; `?ashForm=0` as before):* his thrusts
   land on a straight arm with the point on its line, out of a real lunge (front knee bent, back leg long); his
   overheads come down one-handed on a diagonal across you instead of straight down; his low sweeps turn on his feet
