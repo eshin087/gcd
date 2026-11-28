@@ -31,6 +31,47 @@ after table and the films (all nine bosses, 0 | a | b, half speed) in the PR.
 
 **Open:** the wyrm's poses; the execution's thrust, the plunge and the flurry's cuts; blows whose
 zone outreaches the drawn limb (the motion sessions' data, listed in the notes folder).
+## 2026-11-26 — The run from the owner's sketch: trailing sword carries, the free arm opened out (ADR-229; branch `claude/hero-run-sketch-6baa40`)
+
+**Owner (2026-11-25):** "from the back the left arm seems way too pressed in and makes it seem like he has no left
+arm during the run. also have the sword be in this angle when he's running instead of it being held in the front",
+with a sketch of a blade going on from the forearm, ~35-40° below level. **Measured** the free arm on the drawn
+frame (headless Edge, the hero rendered alone four ways: image masks, the camera lean's shear included): today's
+forearm clear of the coat on 10-40 % of a stride (gap ~0). **Built (options, defaults unchanged):** `?runArm=e`
+(open: 90-100 % clear, 9-12 cm) and `f` (wider: 100 %, 15-18 cm); `?runSword=trail|swept|side` (the blade in the
+forearm's line behind him, the wrist 15-40° against `old`'s 57-84°, the steel ≥ 20 cm off the legs, never through
+the coat). A block / parry / flask / charge out of a trailing blade now enters over 0.24 s (it flipped 75° in a
+frame, `old` too). **Verified:** `herorun` (new bounds for e / f and the trailing carries; the wrist, legs and coat
+newly measured), an in-page audit against today's `d` / `hip` (start, stop, sprint, strafe, turn, light, roll,
+block, heal). **Sent the owner** close-up films (today | A trail | B swept | C side; today | e | f; the game camera,
+behind, his side, the front; half-speed copies). **The owner picked** `e` + `trail`, "but the right arm needs to be straight ... instead of having an angle": the
+solver's soft reach had bent the asked 170° elbow to 151°; the trail carry now asks for the arm's full reach
+(`_swordOpen`) a hair past the arm's length (`over` 1.03: at exactly its length it still drew 168°, a kink the
+owner saw from the game camera), so the arm hangs straight back (176°), the blade 1-5° off it. **Then** the owner, with a game-camera
+screenshot and a red arrow down and out to his right: "too straight back ... the arm angle also looks unnatural".
+Measured screen angles at the game camera (arm and blade 74-75° down the screen) and searched live: the arm now
+hangs out from his side with a soft elbow (154-161°), the blade out along the arrow (~48° down the screen,
+azimuth ~117°, 23-35° below level), rocking with the stride; smoother than both versions before. **Then**,
+through the owner's asks: `flail` (the blade swinging loose, `pendulum()`), four solid back angles (`b15`-`b45`),
+four arms for A (`a1`-`a4`), and "all of them look unnatural ... make it ... anatomy wise correct". The cause:
+every carry put the blade near the forearm's line, a grip no fist makes (the blade leaves a fist at ~90° to the
+forearm). **`nat`** (the default): the arm relaxed at his side, the fist by his hip, the blade 45-82° off the
+forearm, behind him and a little out, steady; ~61° down the screen at the game camera. Films sent. **Then**
+the arm's joint (the elbow jutting back as he leans), then "all look bad" (the pointing back, the grip, a stiff arm,
+the whole run). Rebuilt from the hand (`fistBlade`: the blade set in the fist, a real grip, the arm a runner's);
+three concepts; the owner picked **`g2`** (the point down beside his leg) "but make sure the arm and sword doesn't
+clip with the cloak fabric": measured against every coat panel and cape streamer it passed within 0.3 cm; the hand
+further off his side and the thumb out, now ≥ 12.6 cm. The default; films sent. **Open:** the owner also ticked
+"the whole run" (legs, lean, torso): a separate pass (the loco lean is shared with the duelists' footwork).
+**Then** four run styles (`?runStyle=`, turned down), the fist at the hip from the owner's photo (`h`, turned down),
+and the guard (`?runArm=g`, the fist held before his chin and chest, posed in the chest's frame), turned down
+("looks really bad from the other angles"): the free arm is `e` again, then `a` (the owner's pick of the
+variations). **The sword hand's grip:** measured where the forearm enters the fist in the sword's frame; `g2`'s
+came in on the thumb's side (a fist wrung round); now opposite the thumb, as in his stand and his guard (`twist`). Both are the defaults now; films
+before | after sent. **Open:** setting
+off from an idle action that holds the blade up turns a trailing blade 11° a frame; the backpedal guard swings a
+trailing blade round at 12-15 cm a frame² (hip 8, old 13).
+
 ## 2026-11-27 — Bai Wuji's motion audit (ADR-255; branch `claude/bai-wuji-motion-bd1653`, built on PR 176)
 
 **Owner:** the boss motion audit (2026-11-26): weird arm angles, unrealistic attacks, bent kicks; every attack

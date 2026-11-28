@@ -119,6 +119,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-26',
+        title: 'The hero runs with his sword held low, its point down beside his leg, gripped as a hand grips it',
+        notes: [
+          'On the run he grips his sword the way a hand does: its point hangs down beside his right leg, a little ahead, and rides with his arm as it swings, clear of his coat. His fist sits on the handle the way a hand grips one, and his free arm swings naturally with his stride. ?runSword=hip and ?runArm=d give the run before.',
+          'Out of a run with the blade trailing behind him, blocking no longer flips the sword round in one frame.',
+        ],
+      },
+      {
+        date: '2026-11-26',
         title: 'The flash chain: counter him three times in a row',
         notes: ['A flash counter (attack just before his blow lands) no longer ends his combo. He is knocked back and strikes back at once; counter that too, and once more. The third counter in a row hits hardest and leaves him reeling. Add ?counter=0 for the old single counter.'],
       },

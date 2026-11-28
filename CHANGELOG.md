@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-four pieces of work since 0.4.0:
+One hundred and thirty-five pieces of work since 0.4.0:
 - **Blows land on what they strike** (2026-11-27, ADR-259). *Changed (the owner's pick from the films, `b`, the
   default):* every hit, block and guard is drawn ON what it strikes in the frozen frame (a blade's edge bites a
   few cm in, a fist lands on the body; it used to stop 10 - 75 cm short or show 10 - 40 cm through), held there
@@ -15,6 +15,13 @@ One hundred and thirty-four pieces of work since 0.4.0:
   body eases into it, feet planted). `?contact=0` as before, `?contact=a` without the reach. Nothing of any result, damage, window or timing moves
   (the duel and asc `contact` scenarios play one exchange three ways and compare every result). The Lab's
   `contact` row. *Added:* the contact audit (the duel / asc `contact` scenarios).
+- **The hero runs with his sword held low, its point down beside his leg, gripped as a hand grips it** (2026-11-26, ADR-229).
+  *Changed:* on the run and the sprint he holds his sword the way a hand grips one, the thumb ahead: its point
+  hangs down beside his right leg, a little ahead and out, and it rides with his arm as it swings with his stride,
+  clear of his legs and his coat (before: the blade forward at his hip, level). His fist sits on his forearm as a hand closes on a grip (the thumb
+  away from the wrist), and his free arm swings naturally with his stride. *Added:* the other carries tried on the way stay behind switches: `?runSword=g1|g3|nat|n1|n3|flail|b15|b25|b35|b45|a1|a2|a3|a4|trail|swept|side|hip|old`, `?runArm=e|f|g|h|d` (the Lab's
+  `run sword` and `run arm` rows). *Fixed:* out of a run with the blade trailing behind him, a block, a parry, the
+  flask or a charge no longer flips the sword round in one frame (nor whips it up from a blade held low).
 - **The performance readout measures by itself** (2026-11-27, ADR-261). *Changed:* with `?perf`, BENCH now runs on its own
   during a fight (once early, then at the slow moments, four times at most); play, then tap REPORT. `?perf=manual`
   keeps it to the button.
