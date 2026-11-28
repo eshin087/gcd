@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-seven pieces of work since 0.4.0:
+One hundred and thirty-eight pieces of work since 0.4.0:
+- **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner's pick from the films):* the
+  Thousand-Body Fox's straight punches and palms now land on an open arm along one line to you (the elbow 162 - 167°,
+  was 123 - 139°), his roundhouse, his paper selves' rising kick and both ankle sweeps land on a straight leg (the
+  sweep stays straight through its whole turn), his hooks and uppercuts keep a real bend, and his leaps with the heel
+  or both fists come down short so the heel and fists land on you, not him. Paper Rain ends on a backfist, so the
+  uppercut is only ever the blue flare. Timings, tells and numbers unchanged. `?foxLimbs=0` / `?foxCues=0` play him as
+  before.
 - **Bai Wuji's barrier shows itself when your blade hits it, and he goes down quicker** (2026-11-28, ADR-266). *Changed:* a cut that stops on Bai
   Wuji's barrier still takes a quarter of its damage off his bar (no stagger, never his last HP), its number shown
   where the blade stopped; his health is 16000 (was 20000). *Added:* the barrier's silhouette lit from where the

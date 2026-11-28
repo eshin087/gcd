@@ -307,7 +307,17 @@ Render helpers for creature modules:
     `TUNING.armSoft` (the hero's `HERO_SOFT`) and `TUNING.legSoft`. `HeroAnimator.kickStretch` (ADR-221; null by
     default): `[from, to, add, lift0, lift1]`: a foot off the ground (lift0 .. lift1 m) asked for past `from` of
     the leg's length is carried out along its line by up to `add` of it at `to`, so a kick lands with the leg
-    straight; Xin Yi sets it, `legSoft` and `armSoft` every frame from his `?oneMoves=` switch.
+    straight; Xin Yi sets it, `legSoft` and `armSoft` every frame from his `?oneMoves=` switch. Wen Yao sets all
+    three (Xin Yi's numbers, `thousandFox/limbs.js` `LIMBS`) on his animator in his kit's `dress` and on every paper
+    self's in `FoxClones.pose`, while `?foxLimbs=` is on (ADR-249).
+  - **A foot lifted mid-step** (ADR-249): `HeroAnimator` `opts.liftFromStep` (bool; off = as before), read with
+    `opts.liftEase` in `_feetClip`: a foot the clip lifts while the foot planner is still stepping it (mode 1)
+    eases from where it was drawn last frame (`F.ox / oy / oz / oyaw`, model space), not only a planted one. Wen
+    Yao's kit sets it (his paper selves share his kit's options).
+  - **A leap that comes down short** (ADR-249): a duelist beat's `leap: { from, lock, apex, stop }`: `stop` (m,
+    optional; 0 / unset = on the hero, as always) brings the landing spot that much short of the hero along his
+    line (`brain.js` `_leap`), so a heel or fists that strike ahead of him land on the hero. Wen Yao's limbs pass
+    sets it on his axe-heel and hammer-fist leaps; no other boss uses it.
   - **A sword boss's grip** (ADR-226): `HeroAnimator.gripMax` (rad; 0 / unset = off, the hero and every other boss):
     after the sword arm's solve, a forearm more than gripMax off the blade turns toward it round the elbow
     (`_gripAlign`; the hand and `rig.sword.position` move, the blade's direction never). A duelist kit's optional

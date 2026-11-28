@@ -1759,6 +1759,61 @@ async function scenarioMotion() {
     assert(k1.held >= 0.12 && k1.held > k0.held && taller, `${name} (${k1.tell}): held ${k0.held.toFixed(2)} -> ${k1.held.toFixed(2)} s (>= 0.12), the cock's pelvis ${k0.cock.pel} -> ${k1.cock.pel} m (${k1.tell === TELL.BLUE ? 'taller' : 'lower'})`);
     if (true) assert(r1.pop <= 0.3, `${name}: no joint jumps more than 0.3 m in a frame (${r0.pop.toFixed(2)} ${r0.popK} -> ${r1.pop.toFixed(2)} ${r1.popK})`);
   }
+  // 2b. every move, as shipped: no joint jumps more than 0.3 m in a frame (ADR-249: Hand to Hand's jab lifted
+  // a lead foot the planner was still stepping and it jumped 0.43 m: anim.js liftFromStep)
+  {
+    const bad = [];
+    let n = 0;
+    for (const name of MOVE_NAMES) {
+      const def = MOVES[name];
+      if (def.hidden || def.transition || def.verdict) continue;
+      const ph = Math.max(1, def.phase ?? 1);
+      const G = build();
+      duel(G, { dist: 4, form: ph });
+      const A = makeAudit({ THREE, G, DT, place });
+      const band = def.band ?? [0, 4];
+      const r = A.measure(name, { dist: Math.max(2.0, Math.min(6, (band[0] + Math.min(band[1], 8)) / 2)), phase: ph });
+      if (r.fail) { bad.push(`${name} ${r.fail}`); continue; }
+      n++;
+      if (r.pop > 0.3) bad.push(`${name} ${r.pop.toFixed(2)} ${r.popK}@${r.popAt}`);
+    }
+    assert(n >= 18 && !bad.length, `every move (${n}): no joint jumps more than 0.3 m in a frame (${bad.join(' | ') || 'ok'})`);
+  }
+  // 3. the limbs at the contact (ADR-249, ?foxLimbs=a, the default): a straight blow lands on an open arm,
+  // a kick on a straight leg (the sweep through its turn), a bent blow keeps its bend; '0' as before
+  {
+    const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js');
+    const CASES = [['foxBite', 1, 2.4], ['brushstrokes', 1, 2.0], ['riposte', 1, 2.0], ['foxPearl', 1, 4], ['sweepingBrush', 1, 1.6], ['changingPlaces', 1, 6], ['paperUpkick', 1, 1.6], ['relay', 2, 2.0], ['kiteString', 2, 4], ['foxPounce', 3, 6]];
+    const rows = {};
+    for (const mode of ['0', 'a']) {
+      setLook('foxLimbs', mode);
+      for (const [name, ph, dist] of CASES) {
+        const G = build();
+        duel(G, { dist: 4, form: ph });
+        rows[mode + name] = anatomyOf(G, name, { dist, phase: ph });
+      }
+    }
+    setLook('foxLimbs', null);
+    const straight = [], kicks = [], bent = [];
+    for (const [name] of CASES) {
+      const r1 = rows['a' + name], r0 = rows['0' + name];
+      if (r1.fail || r0.fail) { assert(false, `${name}: measured (${r1.fail ?? r0.fail})`); continue; }
+      r1.beats.forEach((b, i) => {
+        const was = r0.beats[i] ?? {};
+        if (b.kick != null && b.part.startsWith('foot')) kicks.push([`${name}#${i}`, was.kick, b.kick]);
+        else if (b.elbow) {
+          const m = MOVES[name], beat = m.beats.filter((x) => !x.feint)[i], kind = beat?.mo?.kind ?? (beat?.pearl === 'drive' ? 'palm' : '?');
+          if (['jab', 'cross', 'palm', 'double'].includes(kind)) straight.push([`${name}#${i}`, was.elbow?.[0], b.elbow[0]]);
+          if (['hook', 'uppercut'].includes(kind)) bent.push([`${name}#${i}`, was.elbow?.[0], b.elbow[0]]);
+        }
+      });
+    }
+    const fmt = (L) => L.map(([n, a, b]) => `${n} ${a}->${b}`).join(', ');
+    assert(straight.length >= 6 && straight.every(([, , e]) => e >= 155), `?foxLimbs=a: every straight blow lands on an open arm, elbow >= 155 deg (${fmt(straight)})`);
+    assert(kicks.length >= 4 && kicks.every(([, , k]) => k >= 155), `?foxLimbs=a: every kick lands on a straight leg, knee >= 155 deg (${fmt(kicks)})`);
+    assert(bent.length >= 2 && bent.every(([, , e]) => e >= 95 && e <= 130), `?foxLimbs=a: a hook / an uppercut keeps its bend, elbow 95 - 130 deg (${fmt(bent)})`);
+    assert(straight.every(([, a]) => a < 150) && kicks.some(([, a]) => a < 140), `?foxLimbs=0: the limbs as before (bent at the contact)`);
+  }
 }
 
 // ================================================================== scenario: audit (opt-in: every move's motion, printed)
@@ -1785,7 +1840,92 @@ async function scenarioAudit() {
   if (process.env.GCD_AUDIT_OUT) fs.writeFileSync(process.env.GCD_AUDIT_OUT, JSON.stringify(rows, null, 1));
 }
 
+// ================================================================== scenario: anatomy (ADR-249: the limbs at the contact)
+/** Every blow's limbs at its contact, on the rig (the paper selves' blows too: the hidden self-moves are
+ *  the clips they play): the striking leg's knee and the support knee (interior angle, 180 = straight),
+ *  the striking arm's elbow, and how far the striking wrist sits off the shoulder → target line. Printed
+ *  per beat; `GCD_ANAT_OUT` writes the rows as JSON. Asserted bars live in `motion`. */
+function anatomyOf(G, name, { dist = 2.4, phase = 1, maxFrames = 900 } = {}) {
+  const { game } = G;
+  const d = game.dragon, p = game.player;
+  p.debug.god = true;
+  place(G, dist);
+  for (let i = 0; i < 30; i++) { place(G, dist); G.tick(DT); }
+  if (!d.debug.trigger(name)) return { name, fail: 'trigger' };
+  const V = () => new THREE.Vector3();
+  const tmp = V();
+  // (in the rig's own frame: the drawn lean and scale sit on the root)
+  const inv = new THREE.Matrix4();
+  const at = (o, x = 0, y = 0, z = 0) => tmp.set(x, y, z).applyMatrix4(o.matrixWorld).applyMatrix4(inv).clone();
+  const ang = (a, b, c) => { const u = V().subVectors(a, b).normalize(), w = V().subVectors(c, b).normalize(); return (Math.acos(Math.max(-1, Math.min(1, u.dot(w)))) * 180) / Math.PI; };
+  const frames = [];
+  let beats = null;
+  for (let i = 0; i < maxFrames; i++) {
+    G.tick(DT);
+    p.debug.heal();
+    const a = d.brain.act;
+    if (!a || a.name !== name) break;
+    beats ??= a.beats.map((b) => ({ impact: b.impact, active: b.def.active ?? 0.08, feint: !!b.def.feint, tell: b.def.tell ?? null, part: b.def.part ?? '-' }));
+    const R = d.rig;
+    R.root.updateMatrixWorld(true);
+    inv.copy(R.root.matrixWorld).invert();
+    const leg = (s) => { const L = R.legs[s]; const h = at(L.thigh), k = at(L.shin), f = at(L.foot); return { knee: ang(h, k, f), foot: f, hip: h }; };
+    const arm = (s) => { const A = R.arms[s]; const sh = at(A.upper), el = at(A.fore), wr = s === 'R' ? at(A.fore, 0, -0.26, 0) : at(A.wrist); return { elbow: ang(sh, el, wr), sh, wr }; };
+    frames.push({ t: a.t, R: leg('R'), L: leg('L'), aR: arm('R'), aL: arm('L'), hero: p.position.clone(), inv: inv.clone() });
+    if (process.env.GCD_ANAT_TRACE) { const f = frames[frames.length - 1], P = d.anim.cur; out(`    t ${a.t.toFixed(3)} kneeR ${f.R.knee.toFixed(0)} kneeL ${f.L.knee.toFixed(0)} elR ${f.aR.elbow.toFixed(0)} elL ${f.aL.elbow.toFixed(0)} footR ${f.R.foot.x.toFixed(2)},${f.R.foot.y.toFixed(2)},${f.R.foot.z.toFixed(2)} hipR ${f.R.hip.y.toFixed(2)} d ${f.R.foot.distanceTo(f.R.hip).toFixed(2)} tgt ${[31,32,33,3,4,1].map((i) => P?.[i]?.toFixed(2)).join(',')}`); }
+  }
+  if (!beats) return { name, fail: 'short' };
+  const per = [];
+  for (const b of beats) {
+    if (b.feint) continue;
+    const i0 = frames.findIndex((f) => f.t >= b.impact - 1e-6);
+    if (i0 < 0) continue;
+    const i1 = Math.min(frames.length - 1, frames.findIndex((f) => f.t >= b.impact + b.active - 1e-6) >>> 0 || i0);
+    const seg = frames.slice(i0, Math.max(i0 + 1, i1 + 1));
+    const side = /R$/.test(b.part) ? 'R' : /L$/.test(b.part) ? 'L' : null;
+    const isLeg = /^foot|^knee/.test(b.part), isArm = /^fist/.test(b.part) || b.part === 'palms';
+    const row = { tell: b.tell, part: b.part };
+    if (isLeg && side) {
+      const sup = side === 'R' ? 'L' : 'R';
+      row.kick = Math.round(Math.max(...seg.map((f) => f[side].knee)));
+      row.support = Math.round(seg[0][sup].knee);
+      row.footY = +seg[0][side].foot.y.toFixed(2);
+    }
+    if (isArm) {
+      const sides = side ? [side] : ['R', 'L'];
+      row.elbow = sides.map((s) => Math.round(Math.max(...seg.map((f) => f['a' + s].elbow))));
+      // the wrist's distance off the line shoulder → the hero's chest (m)
+      row.off = sides.map((s) => {
+        const f = seg[0], A = f['a' + s], tgt = V().set(f.hero.x, 1.1, f.hero.z).applyMatrix4(f.inv);
+        const dir = V().subVectors(tgt, A.sh).normalize(), w = V().subVectors(A.wr, A.sh);
+        return +w.addScaledVector(dir, -w.dot(dir)).length().toFixed(2);
+      });
+    }
+    per.push(row);
+  }
+  return { name, beats: per };
+}
+async function scenarioAnatomy() {
+  out('\n== scenario ANATOMY (opt-in: every blow\'s limbs at its contact: kick knee / support knee, elbow, the wrist off the line) ==');
+  { const { setLook } = await imp('src/entities/enemies/duelist/lookSwitch.js'); for (const kv of (process.env.GCD_LOOKS || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); setLook(k, v); } }
+  const names = process.env.GCD_MOVES ? process.env.GCD_MOVES.split(',') : MOVE_NAMES.filter((n) => !MOVES[n].transition && !MOVES[n].verdict);
+  const rows = [];
+  for (const name of names) {
+    const def = MOVES[name];
+    const phase = Math.max(1, def.phase ?? 1);
+    const G = build();
+    duel(G, { dist: 4, form: phase });
+    const band = def.band ?? [0, 4];
+    const r = anatomyOf(G, name, { dist: process.env.GCD_ANAT_DIST ? +process.env.GCD_ANAT_DIST : Math.max(1.6, Math.min(5, (band[0] + Math.min(band[1], 6)) / 2)), phase });
+    rows.push(r);
+    if (r.fail) { out(`  ${name.padEnd(16)} FAIL ${r.fail}`); continue; }
+    for (const b of r.beats) out(`  ${name.padEnd(16)} ${String(b.tell ?? '-').padEnd(6)} ${b.part.padEnd(6)} ${b.kick != null ? `kick knee ${b.kick}° support ${b.support}° foot y ${b.footY}` : ''}${b.elbow ? `elbow ${b.elbow.join('/')}° off ${b.off.join('/')} m` : ''}`);
+  }
+  if (process.env.GCD_ANAT_OUT) fs.writeFileSync(process.env.GCD_ANAT_OUT, JSON.stringify(rows, null, 1));
+}
+
 const S = {
+  anatomy: scenarioAnatomy,
   audit: scenarioAudit,
   motion: scenarioMotion,
   cost: scenarioCost,
@@ -1805,7 +1945,7 @@ const S = {
   beam: scenarioBeam,
 };
 // (smoke is opt-in: a minute per phase of a fight, for a quick look)
-const OPT_IN = new Set(['smoke', 'cost', 'audit']);
+const OPT_IN = new Set(['smoke', 'cost', 'audit', 'anatomy']);
 const list = SCEN === 'all' ? Object.keys(S).filter((k) => !OPT_IN.has(k)) : SCEN.split(',');
 for (const k of list) {
   if (!S[k]) { out(`unknown scenario ${k}`); process.exit(2); }
