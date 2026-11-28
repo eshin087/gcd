@@ -6996,6 +6996,94 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   the preview. With PR 145 the break may come before as many perfect parries are banked, so a deathblow may be
   shorter. Tests: duel `clashdance`, lord `clashdance`.
 
+## ADR-250 — Bai Wuji round 3: the glide (his melee motion, the owner's pick of three takes), the barrier opens easier, cuts x2.5 through it; his mercy counted in real time (2026-11-27)
+
+- **Context:** the owner after playing the shipped fight (ADR-241 - 243): "the fight is pretty hard right now
+  and takes forever to do damage to him"; his kicks and punches "do not look natural and look off"; "faster and
+  cooler", effortless and invincible. Their answers: the barrier opens easier (two ordinary parries crack it
+  open, it stays open longer, the hero's cuts hit harder while it is open, hp near 20000, a good player wins in
+  about three minutes); effortless and one-handed (hands in his pockets most of phase 1, one out in phase 2,
+  both in phase 3; fast snaps, held poses only on blue / red); film 2 - 3 takes, they pick. They picked **b,
+  the glide**. Why his melee looked off: his realiser had no `keysOf`, so ADR-225's motion layer (held blue /
+  red windups, released feet) never reached him; his knees were 96 - 131 deg at the contact, his fists Tian
+  Lei's boxer guard, his strings lunged.
+- **Decision:**
+  1. THE TAKES (`untouched/motion.js`, `?wjMotion=0|a|b|c`; PICKED `b`; `0` = as first shipped): each melee
+     move's `beats` / `recovery` are live getters over the take; a take rebuilds the pose keys (hand-keyed,
+     ADR-236), retimes the windups (normal blows cut toward the engine's floors, blue / red keep most of theirs:
+     the held pose is the read; the cock moves late, a snap), recoveries x 0.66 (b), a string's later beat out
+     of a short blink round the hero (`wjBlink.near`; b blinks every later beat, flank / behind / other flank),
+     and `wjHands` (the hands a blow uses). THE HAND LAYER (`poses.js` `wjHandsLayer`, `pilot.wjPin` eased by
+     `WjMelee`) keeps the others in his pockets. Tells, zones, damage, knockback and the engine's minimums do
+     not move (veil.mjs DATA, MOTION, MOTIONAUDIT).
+  2. THE BARRIER OPENS EASIER (`wjBarrier`): `cracks` 4 -> 2; open after a perfect answer 4.0 / 3.2 / 2.6 ->
+     6 / 5 / 4.2 s; by cracks 2.4 / 2.0 / 1.6 -> 5 / 4.2 / 3.4 s; `openDamage` 2.5 (new; `barrier.scaled(o)`):
+     every cut that is not `exact` deals x2.5 while it is open. No new mark: the open ring and the numbers read
+     it. hp 26000 -> 20000. Patience after 30 -> 20 s.
+  3. THE BENCH WITH THE GLIDE (six seeds, god mode off): openDamage 2.2 gave the good bot 2 wins in 6, 2.35 4
+     in 6, **2.5 6 in 6 in 147 / 166 / 191 s** (2.8 min mean); the perfect bot 6 in 6 in 106 - 119 s, untouched;
+     fencing 3 in 6; roller 4 in 6 in 167 - 191 s; blocker dead at 39 s; the pace defender dead in all six at
+     patience 20 (95 - 553 s; at 30 and 25 one seed lived out 600 s). Longer openings by cracks changed nothing:
+     the good bot opens him by cracks 1 - 3 times a fight (ADR-227's parry windows leave the ordinary-parry band
+     about a frame wide).
+  4. THE PERFECT BOT'S HITS were the bot's, not his: it rolled out of falling pieces too late for the next red,
+     tapped one parry for two cues 0.08 s apart, and rolled away facing off him. The bench's bots now roll out
+     of a falling piece as its cue comes (late once to cover a red that follows within 0.3 s), roll the way that
+     keeps him in front, and hold the guard for two guard cues within 0.3 s: 0 hits on 12 seeds.
+  5. MERCY IN REAL TIME (`WjMelee`): a hit's freeze holds the hero as long as it holds the clock, so the stretch
+     out of his own hands is counted in `game.realDt` (three quick Five Sides blows measured 1.19 s of game time
+     while the hero was held 1.52 s); a blocked blow that would empty the guard meter adds `GUARD.openDur`, not a
+     plain stagger. A falling piece never lands on a hero who is down (`destructibles.js`).
+- **Consequences:** a good player beats him in about three minutes; a pure defender still dies. Open: the
+  ledger forgets a red once it has landed, so the fairness guard never holds a blow that lands while the hero is
+  still in the roll that answered a falling piece (shared duelist code, left); patience is slow against a pure
+  defender because his next blow lands in the knocked-open guard about one time in ten.
+
+## ADR-255 — Bai Wuji's motion audit: straight blows on the line to the hero, a kick's return without the snap, phase 1's casting hand out of its pocket (2026-11-27)
+
+- **Context:** the owner's motion audit of every boss (2026-11-26: "weird looking arm angles", "attacks that look
+  unrealistic", kicks "still bended", every attack readable; Bai Wuji's spell effects are the bar, kept). His
+  melee motion had just been rebuilt and picked (ADR-250, the glide), so this pass audits the glide, built on it
+  (PR 176), and changes only what the measures found. A new opt-in scenario `veil.mjs . anatomy` measures every
+  move of his in every phase on the rig: the striking limb at each contact, an arm's line to the hero (degrees
+  off the line from his shoulder to the hero's chest, flat and up / down, at the contact and at the release),
+  the largest one-frame jump and when. Two traps in measuring a line: the duelists' rig root carries a
+  world-fixed tilt toward the camera on a non-uniform scale (x -0.24 rad; 1.21 / 1.38 / 1.21), so the hero is
+  placed in an UNTILTED frame (his position, yaw and scale), and the hero's place is taken the frame before the
+  contact (the blow's own throw moves him inside the hit frame).
+- **Found:** the glide's kicks land straight (knee 166 - 175 deg; 107 - 132 before ADR-250) and its straight hand
+  blows open (152 - 169 deg); every blow faces the hero at its contact. But (1) the palm, the poke, Dark Spark's
+  fist and the Yank's fist crossed past his centreline, 12 - 31 deg off the line to the hero's chest (Dark Spark's
+  fist passed him by most of a metre); (2) inside a string a kick's contact pose was held dead still (u 1.0 -
+  1.22) and the leg snapped back to the chamber in the last frames of a ~0.15 s follow-through: a 0.4 - 0.57 m
+  one-frame jump (Three Count, Four Sides, Too Slow, Everywhere); (3) ADR-250's hand layer pins the right hand in
+  its pocket through any phase-1 move whose beat names no `wjHands`, so phase 1's Azure Draw lost its finger and
+  the Yank's BLUE fist (a parry cue) glinted inside a pocket (elbow 112 deg, the arm 81 deg down).
+- **Decision:**
+  1. `?wjPolish=0|a` (PICKED `a`, the owner's pick from the films; `untouched/motion.js` POLISH, built into a second set of takes,
+     read live): (1) each straight hand blow's contact hand moved back toward his centreline by AIM (palm -0.12,
+     poke -0.1, Dark Spark -0.2 m; the Yank's fist -0.14 through its own `wjKeysP`, played by his realiser's
+     `keysOf`): now 1 - 10 deg off; (2) a kick's follow-through is a moving hold (12 % back toward the chamber by
+     u 1.14) that eases into the chamber at u 1.7: Three Count's worst jump 0.51 -> 0.34 m, Everywhere's 0.48 ->
+     0.25. What is left is the snap of the strike itself (the owner's fast glide). A follow-through past the
+     contact was tried and dropped (it drove the axe heel into the road: 0.50 m).
+  2. `?wjCastHand=0|a|b` (PICKED `a`, the owner's pick from the films; `WjMelee._motionFrame`): a phase-1 beat of Azure Draw or the
+     Yank uses the right hand: `a` for the whole cast, `b` from 0.55 of its windup (the pull and the flick), `0`
+     round 3's pocket. Curb Pull keeps both hands in (its own design).
+  3. No effect is upgraded: his spells are the owner's bar for the game, and no special of his reads weaker than
+     the rest of his set on film.
+  4. Tests: `veil.mjs . polish` (default) asserts the lines, the return and the casting hand; `anatomy` (opt-in)
+     prints the table. No tell, windup, zone, damage or timing moves.
+  5. THE MERCY FOR SPELLS AND PIECES: the full run's DOWNTIME (seed 7, on the fight path these poses gave it) found
+     Crimson Cast's burst landing 0.05 s after the hero stood up from Overhead's knockdown: 2.92 s out of his own
+     hands (the cap 1.5). His melee beats spare such a blow (`WjMelee._spare`), his spells and thrown pieces only
+     spared a hero who was still down. Now `WjMelee.chainsLock(knockdown)` asks the same rule, and the spells'
+     `_strike` and terrain's `_heroDown` pass a blow over a hero it would chain (the blow still flies, cued; it
+     only does not land).
+- **Consequences:** the owner picked `a` and `a` from the films (2026-11-27): the defaults. Left for the hero
+  session: one-frame jumps of a SUPPORT foot after a blink (Five Sides 0.47 m, Passing Through 0.55 m) come from
+  the hero animator's `_feetClip`.
+
 ## ADR-251 — The Starless Lord's form: thrusts on the arm's line, a real lunge, diagonal overheads, sweeps on the feet, the step on the blow; a readable pace and looks for two specials, to pick (`?lordForm` / `?lordPace` / `?boltFx` / `?igniteFx`) (2026-11-27)
 
 - **Context:** the owner's motion audit of every boss ("weird looking arm angles and sword positioning and attacks
@@ -7137,6 +7225,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   With `b` the default, the pace meter's phase-3 longest gap was re-pinned 3.9 -> 4.7 s: seed 4242 now rolls Pushing
   Hands then Unwriting (its bricks held before the first is thrown), 4.52 s; on five fresh seeds `b`'s worst phase-3
   gap is 2.91 s (`a`'s 2.67), and `a` itself fails the phase-2 cap on one of them (4.02 s).
+
 ## ADR-252 — Lu Wusheng audited: the draw's hands and lunge, thrusts in line, a diagonal overhead, the readable pace, three looks for the draw (`?sheathForm=` `?sheathPace=` `?drawFx=`) (2026-11-27)
 
 - **Context:** the owner asked for every boss's motion to be audited against `docs/ANIMATION.md` and the Sekiro /

@@ -219,7 +219,8 @@ export class WjTerrain {
   /** The hero is down (a knockdown) or gone: nothing of his lands on him now. */
   _heroDown() {
     const p = this.game.player;
-    return !p?.position || p.alive === false || p.state === 'knockdown' || p.state === 'dead';
+    // (and a hero just up from a knockdown that a blow now would chain past the cap: the melee's mercy, ADR-255)
+    return !p?.position || p.alive === false || p.state === 'knockdown' || p.state === 'dead' || !!this.d.parts?.melee?.chainsLock?.(true);
   }
 
   _morphing() {

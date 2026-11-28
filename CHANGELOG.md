@@ -31,6 +31,13 @@ One hundred and thirty-one pieces of work since 0.4.0:
   in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
 One hundred and twenty-six pieces of work since 0.4.0:
 One hundred and twenty-seven pieces of work since 0.4.0:
+- **Bai Wuji's blows land where they aim** (2026-11-27, ADR-255). *Changed:* his palm, his straight poke, Dark
+  Spark's fist and the fist he pulls you onto now land on the line to your chest (they crossed past you by up to
+  30 degrees); his kicks ease back after the contact instead of snapping off a dead stop; in his first phase his
+  right hand comes out of its pocket to cast Azure Draw and the Yank, so the Yank's blue fist is a fist you can
+  see (`?wjPolish=0` and `?wjCastHand=0` as before; `?wjCastHand=b` the hand out only at the end of the cast).
+  *Fixed:* a spell or a thrown piece of his no longer knocks you down again the moment you stand up from a
+  knockdown (his kicks and punches already held back there).
 - **Lu Wusheng draws like a swordsman** (2026-11-27, ADR-252). *Changed (the owner's pick from the films):* his fist closes on the hilt as he settles, the scabbard is pulled back
   level behind him as the blade leaves, and the draw ends in a real lunge (the front knee bent, the back leg long,
   the arm open) instead of a straight-legged split; his thrusts land on a long arm in line with the scabbard; the
@@ -61,6 +68,14 @@ One hundred and twenty-seven pieces of work since 0.4.0:
   pause; the parry's ring rises a little with the run; and his posture recovers more slowly as his health drops
   (full speed above 75 % HP, then x0.85, x0.75, x0.5 and x0.25 below 10 %; for the Starless Lord, Tian Lei and Xin
   Yi this replaces their own curve, never faster than before). `?clash=0` or no switch: as before.
+- **Bai Wuji glides: quicker, one-handed, and his barrier opens easier** (2026-11-27, ADR-250). *Changed:* Bai Wuji's kicks and punches are
+  rebuilt by hand: his legs land straight, his hands stay in his pockets for most of phase 1 (one comes out in
+  phase 2, both in phase 3), normal blows snap out of the stance, blue and red ones hold a pose you can read, and
+  every later blow of a string comes out of a short blink round you (`?wjMotion=0` as before; `a`, `c` the other
+  takes). His barrier opens easier: two ordinary parries crack it open, it stays open longer (6 / 5 / 4.2 s after a
+  perfect answer), your cuts deal x2.5 through it, and his health is 20000 (was 26000); his patience runs out
+  after 20 s. *Fixed:* a falling piece no longer lands on you while you are down, and his mercy counts the time
+  you are held in real time, so a quick string cannot hold you past the cap through hit freezes.
 - **The perfect parry earns its own reward: the deathblow** (2026-11-26, ADR-211). *Changed:* a perfect parry no
   longer answers with the perfect dodge's flurry. Against the human bosses, parries fill the gold posture bar and
   bank PERFECT parries (they no longer count in the dodge streak); a string's last blow parried makes him recoil and

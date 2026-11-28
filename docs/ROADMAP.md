@@ -201,6 +201,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [x] Only the drawn letters uploaded, empty batches out of the frame; the step flash and the wake return outside their reach (`?lifeFast=0` = before)
 - [x] BENCH (`?perf`) reads the living world's share
 - [ ] The owner's BENCH on the iPhone and the laptop; the trees' wind vertex cost on a quiet GPU
+## M1.98 — Bai Wuji glides: quicker, one-handed, and his barrier opens easier (2026-11-27, `enemies/untouched`, ADR-250)
+- [x] Three motion takes behind `?wjMotion=0|a|b|c` (`untouched/motion.js`; the hand layer keeps his hands in his pockets); the owner picked b, the glide
+- [x] The barrier opens easier: two cracks, longer openings, cuts x2.5 through it; hp 20000; patience after 20 s
+- [x] The bench's bots answer falling pieces and paired cues as a person would; the perfect bot untouched on 12 seeds
+- [x] His mercy counts the lock in real time; no falling piece on a downed hero
+- [ ] The ledger forgets a landed red (shared duelist code); patience against a pure defender is slow
 
 ## M1.94 — A ninth level: the Veiled Crossing and Bai Wuji, the Untouched (2026-11-26, `enemies/untouched`, ADR-241 – ADR-243)
 - [x] `?level=veil`: a levelled city crossing at night, every piece breakable, tower tops that come down, the
@@ -1217,6 +1223,11 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
       `?ashMotion` / `?lordMotion`, films sent
   - [x] The owner's pick from the films: both, as the default (Piercing Ash keeps its old thrust)
   - [ ] Their feet (a planted foot handed to a clip slides; legs cross in spins), the Starless Night cast's wrist
+- [x] Bai Wuji (ADR-255, on the glide of ADR-250): the anatomy audit (`veil.mjs . anatomy`), straight blows on the
+      line to the hero, a kick's return without the snap, phase 1's casting hand out of its pocket, behind
+      `?wjPolish` / `?wjCastHand`; films sent
+  - [x] The owner's pick from the films: both `a`, as the default
+  - [ ] A support foot jumps after a blink (Five Sides, Passing Through: anim.js `_feetClip`)
 - [x] The Starless Lord's form (ADR-251, `?lordForm`): thrusts on the arm's line in a real lunge, diagonal
       two-handed overheads, sweeps on the feet, a quieter free hand, the step landing with the blow, all four forms;
       measured per form (`lord.mjs . formaudit`) and filmed
