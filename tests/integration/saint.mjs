@@ -2493,9 +2493,9 @@ async function scenarioArFair() {
   const G0 = TUNING.pressure.guard, sep = G0.sep;
   let lands = 0, bad = 0, delays = 0, dropped = 0, guards = 0;
   const w0 = { choir: MOVES.choir.weight, kyrie: MOVES.kyrie.weight, verdict: MOVES.verdict.weight };
-  MOVES.choir.weight = [0, 0, 4, 4];
-  MOVES.kyrie.weight = [0, 0, 0, 4];
-  MOVES.verdict.weight = [0, 0, 0, 3];
+  MOVES.choir.weight = [0, 0, 2.2, 2.2];
+  MOVES.kyrie.weight = [0, 0, 0, 2.2];
+  MOVES.verdict.weight = [0, 0, 0, 1.6];
   try {
     for (const seed of SEEDS) {
       for (const ph of [3, 4]) {
