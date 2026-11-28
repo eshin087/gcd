@@ -70,14 +70,14 @@ function urlTouch() {
   }
 }
 
-/** ?leftLook=a|b|c: how the stick and the left BLOCK are drawn (ADR-274; options for the owner to pick). */
+/** ?leftLook=a|b|c: how the stick and the left BLOCK are drawn (ADR-274; the owner picked c, glyphs only). */
 export const LEFT_LOOKS = ['a', 'b', 'c'];
 function urlLeftLook() {
   try {
     const v = new URLSearchParams(String(globalThis.location?.search ?? '')).get('leftLook');
-    return LEFT_LOOKS.includes(v) ? v : 'a';
+    return LEFT_LOOKS.includes(v) ? v : 'c';
   } catch {
-    return 'a';
+    return 'c';
   }
 }
 
@@ -89,10 +89,13 @@ function urlPad() {
     if (typeof s !== 'string') return o;
     const q = new URLSearchParams(s);
     const l = (q.get('pad') || '').toLowerCase();
-    if (PAD_LAYOUT.includes(l)) {
-      o.layout = l;
-      o.lguard = l === 'split'; // (?pad=split: the guard on the left, as in ADR-131)
-    }
+    // ?pad=split: the left BLOCK on (the owner: with BLOCK beside ATTACK and DODGE under it, so the
+    // arrangement stays the player's); ?pad=classic: the left BLOCK off; ?pad=under: BLOCK under ATTACK
+    if (l === 'split') o.lguard = true;
+    else if (l === 'classic') {
+      o.lguard = false;
+      o.layout = 'classic';
+    } else if (l === 'under') o.layout = 'split';
     const flag = (k) => (q.has(k) ? !['0', 'false', 'off'].includes((q.get(k) || '').toLowerCase()) : null);
     if (flag('lguard') !== null) o.lguard = flag('lguard');
     if (flag('rguard') !== null) o.rguard = flag('rguard');
@@ -164,7 +167,7 @@ export class TouchControls {
     this._drag = null; // { id, x, y, ox, oy } while a finger drags the pad
     this.fit = 1; // the touch layer's scale from the screen (CONFIG.touch.pad.fit)
     this.layout = 'classic'; // PAD_LAYOUT, the right cluster's arrangement: 'classic' BLOCK beside ATTACK, DODGE under; 'split' DODGE beside, BLOCK under
-    this.leftLook = urlLeftLook(); // ?leftLook=a|b|c (the owner picks one)
+    this.leftLook = urlLeftLook(); // ?leftLook=a|b|c (default c, the owner's pick)
     this.leftGuard = false; // the GUARD button beside the stick (ADR-274: its own switch)
     this.rightGuard = true; // the BLOCK tile in the right cluster (never both off)
     this.holdAttack = false; // a held ATTACK keeps cutting
@@ -390,7 +393,7 @@ export class TouchControls {
 
   _savePad() {
     try {
-      const o = { pos: this.padPos, size: this.padSize, layout: this.layout, lg: this.leftGuard, rg: this.rightGuard, hold: this.holdAttack, sw: this.swipeDodge, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)], goff: [Math.round(this.guardOff.x), Math.round(this.guardOff.y)] };
+      const o = { v: 2, pos: this.padPos, size: this.padSize, layout: this.layout, lg: this.leftGuard, rg: this.rightGuard, hold: this.holdAttack, sw: this.swipeDodge, off: [Math.round(this.padOff.x), Math.round(this.padOff.y)], goff: [Math.round(this.guardOff.x), Math.round(this.guardOff.y)] };
       globalThis.localStorage?.setItem?.(PAD_KEY, JSON.stringify(o));
     } catch {
       /* private mode: the choice lasts for this page */
@@ -450,7 +453,9 @@ export class TouchControls {
       const o = JSON.parse(globalThis.localStorage?.getItem?.(PAD_KEY) ?? 'null');
       if (PAD_POS.includes(o?.pos)) this.padPos = o.pos;
       if (PAD_SIZE.includes(o?.size)) this.padSize = o.size;
-      if (PAD_LAYOUT.includes(o?.layout)) this.layout = o.layout;
+      // (v2, ADR-274: a pad saved before kept 'split' for the left guard; the arrangement it meant is BLOCK
+      // under ATTACK, the owner's swap puts BLOCK beside it again, so an old save takes the default)
+      if (PAD_LAYOUT.includes(o?.layout) && o?.v === 2) this.layout = o.layout;
       // (a pad saved before the guards had their own switches: 'split' was the guard on the left)
       this.leftGuard = typeof o?.lg === 'boolean' ? o.lg : o?.layout === 'split';
       if (typeof o?.rg === 'boolean') this.rightGuard = o.rg;
