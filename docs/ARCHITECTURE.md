@@ -1274,7 +1274,12 @@ a slow frame ends a cut; `_sliceEnd` lays the last); tests: `onFacet(ax, ay, az,
 look holds the hand (`P.sd`), the free wrist is `BLADE_PTS[13]` in the coat's sheet test (`_bladePts`). **The light combos** (ADR-240, `combos.js` `COMBOS`, `setCombo` /
 `comboMode`, `?combo=`, the Lab's `combo` row): `setCombo` writes a combo's `anim`, `variants`, timings and a
 finisher's `kind` / `heavy` / `contact` onto `LIGHT` (production's kept in `BASE` and restored by '0'), and sets
-its feel and hand (`feel.js` `setFeel`, `setFeelHand`). Imported by player.js for the URL. Combo A's hits 4 and 5
+its feel and hand (`feel.js` `setFeel`, `setFeelHand`). Imported by player.js for the URL. A combo of six hits
+(combo E, ADR-267) wears a sixth light def (`SIXTH`, combo 6) pushed onto `LIGHT` while it is on (the chain runs
+`LIGHT[combo % LIGHT.length]`); production's fifth (the slam) is made a plain light under it; `KEYS` also restores
+`damage` / `poise`. `offHand.js` `DEFAULT_OFFHAND` is 'auto' in the game: each combo's own hand (combo A's the belt,
+combo E's '0', the clip's own keyed free arm). The hero's gear has an optional `shield` slot (gear/shield.js
+`errant.shield`, `?shield=1` via `shieldFromUrl`, built on `arms.L.fore`; looks only). Combo A's hits 4 and 5
 (ADR-263, `A45`, `setA45` / `a45Mode`, `?a45=0|a|b|c`, the Lab's `a45` row) are put into `COMBOS.a.hits` by `setA45`
 (re-worn at once when combo A is on). A hit's clip may carry `warp` ([windup, active, recovery] curve names, as a
 feel's): `swingPose` plays that hit on it over its feel's (`k._fl`, built once per feel).

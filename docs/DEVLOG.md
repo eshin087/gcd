@@ -5,6 +5,22 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — Combo E from the owner's reference film, with and without a shield (ADR-267; branch `claude/hero-attack-feel`, held)
+
+**Owner:** "i dont like any of this. lets try this. make the main character attack animation exactly like this youtube
+video ... do one without a shield and one with a shield". Asked: download it (yes), mirror it (sword stays right), the
+light combo only, the shield looks only.
+
+**Done:** studied the 21 s film frame by frame (12-24 fps sheets of the front and side passes, a key sheet per hit: coil,
+across, end); six clips keyed from it, mirrored; combo E (`?combo=e`) on its timing with its own free arm; a six-hit
+chain; the shield as gear (`?shield=1`). Compared side by side with the film (mirrored), then deepened the crouch and the
+twist after hits 1 and 3 (the film turns him far enough to show his back), and eased two keys where the blade hung back
+past 110° off the forearm. Round 6 set aside on a local branch.
+
+**Tests:** new `comboe`; `offhand` (the browser's free-hand default is 'auto' again).
+
+**Next / open:** the owner's look; whether combo E becomes the default; the shield in the idle and the guard.
+
 ## 2026-11-27 — Production's combo and instant slash on the swing, the belt hand, the slash's subtler tones (ADR-265; branch `claude/hero-attack-feel`, held)
 
 **Owner:** "i dont like any of this. lets just incorporate the new left hand animation and use the existing production auto

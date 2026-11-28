@@ -37,6 +37,21 @@ export const COMBOS = {
       ...[0, 1], // hits 4 and 5: A45 below (`?a45=`)
     ],
   },
+  // E (ADR-267; the owner, 2026-11-27: "make the main character attack animation exactly like this youtube video"):
+  // the six hits of the owner's reference film, mirrored (swings.js `eFall` ... `eLowSweep`), on the film's own timing
+  // (measured at 60 fps: the cuts' contacts 0.34-0.45 s apart), production's clock (no feel), the free arm keyed as the
+  // film's shield arm (`hand` '0': the clip's own free hand). `?shield=1` puts the shield on that arm (gear/shield.js).
+  e: {
+    name: 'Errant', feel: '0', hand: '0',
+    hits: [
+      hit('eFall', 0.15, 0.12, 0.26, 0.28),
+      hit('eRiseBack', 0.06, 0.12, 0.22, 0.32),
+      hit('eOverhead', 0.16, 0.14, 0.3, 0.28),
+      hit('eFallBack', 0.1, 0.11, 0.26, 0.28),
+      hit('eRiseSweep', 0.1, 0.13, 0.24, 0.28, null, null, { ...F(0.06, 0.14, 0.4, 0.09, 0.55), damage: 34, poise: 14 }),
+      hit('eLowSweep', 0.12, 0.14, 0.5, 0.3, null, FIN, { ...F(0.12, 0.42, 1.4, 0.2, 0.7), damage: 66, poise: 44 }),
+    ],
+  },
   b: {
     name: 'Tempest', feel: 'flow', hand: 'quiet',
     hits: [
@@ -117,18 +132,33 @@ export function setA45(m) {
   if (comboNow === 'a') setCombo('a');
   return true;
 }
-export const COMBO_IDS = ['0', 'a', 'b', 'c', 'd'];
-const KEYS = ['anim', 'variants', 'windup', 'active', 'recovery', 'chain', 'kind', 'heavy', 'contact', 'hitstop', 'shake', 'punch', 'kick', 'lunge'];
+export const COMBO_IDS = ['0', 'a', 'b', 'c', 'd', 'e'];
+const KEYS = ['anim', 'variants', 'windup', 'active', 'recovery', 'chain', 'kind', 'heavy', 'contact', 'hitstop', 'shake', 'punch', 'kick', 'lunge', 'damage', 'poise'];
 const BASE = LIGHT.map((d) => Object.fromEntries(KEYS.map((k) => [k, d[k]])));
 let comboNow = '0';
 /** The light combo now ('0' production's, or a COMBOS key). */
 export const comboMode = () => comboNow;
 /** Wear a combo on the five light defs (and its feel); '0' gives production's back. False for an unknown id. */
+// (a combo of six hits wears a sixth light def while it is on (combo E): a copy of production's first, numbered 6; the
+// chain (player.js: LIGHT[combo % LIGHT.length]) runs 1 … 6 and round again; any other combo takes it off)
+const SIXTH = { ...LIGHT[0], name: 'sixth', combo: 6, variants: [] };
 export function setCombo(m) {
   const id = String(m);
   if (!COMBO_IDS.includes(id)) return false;
   const C = COMBOS[id] ?? null;
+  while (LIGHT.length > BASE.length) LIGHT.pop();
+  if (C && C.hits.length > LIGHT.length) {
+    for (const k of KEYS) if (LIGHT[0][k] !== undefined) SIXTH[k] = BASE[0][k];
+    LIGHT.push(SIXTH);
+  }
   LIGHT.forEach((d, i) => {
+    if (i >= BASE.length) {
+      const H = C.hits[i];
+      Object.assign(d, { anim: H.anim, variants: [], windup: H.windup, active: H.active, recovery: H.recovery, chain: H.chain, kind: 'light', heavy: false, contact: 'light' });
+      if (H.fin) Object.assign(d, H.fin);
+      if (H.feel) Object.assign(d, H.feel);
+      return;
+    }
     for (const k of KEYS) {
       if (BASE[i][k] === undefined) delete d[k];
       else d[k] = BASE[i][k];
@@ -142,6 +172,7 @@ export function setCombo(m) {
     d.recovery = H.recovery;
     d.chain = H.chain;
     if (H.fin) Object.assign(d, H.fin);
+    else if (C.hits.length > BASE.length && d.kind === 'slam') Object.assign(d, { kind: 'light', heavy: false, contact: 'light' });
     if (H.feel) Object.assign(d, H.feel);
   });
   setFeel(C ? C.feel : '0');

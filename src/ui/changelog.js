@@ -101,6 +101,14 @@ export const RELEASES = [
       },
       {
         date: '2026-11-27',
+        title: 'A six-hit sword-and-shield combo to try',
+        notes: [
+          'A new light combo to try (?combo=e): six cuts in big diagonals and flats, deep in the knees, the whole body turning with each, ending in a low sweep and a raised blade.',
+          'Add ?shield=1 to carry a shield on your free arm through it (looks only: blocking and parrying are unchanged).',
+        ],
+      },
+      {
+        date: '2026-11-27',
         title: 'The instant slash on your swing from every side, and your free hand at your hip',
         notes: [
           'The light combo plays as it did before this round. Each swing\'s straight slash is now laid on the swing itself, so it follows your sword from every side: facing the camera, side-on or away.',

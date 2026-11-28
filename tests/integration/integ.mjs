@@ -6405,7 +6405,7 @@ async function scenarioSlice() {
   const m0 = [SX.slashMode(), SX.sliceMode(), SX.sliceWhenMode(), SX.sliceFormMode(), SX.placeMode(), SX.slashToneMode()];
   // the owner's call (2026-11-27, ADR-265): production's instant slash (the line in strokes), laid on the swing's path, in
   // its full tone until the owner picks a subtler one
-  assert(m0[0] === 'line' && m0[4] === 'path' && m0[5] === 'full' && m0[3] === 'curve', `the default slash is the instant slash line on the swing's path, full tone (${m0[0]}, ${m0[4]}, ${m0[5]}; the slice ${m0[3]})`);
+  assert(m0[0] === 'line' && m0[4] === 'path' && m0[5] === 'soft' && m0[3] === 'curve', `the default slash is the instant slash line on the swing's path, soft tone (the owner's pick) (${m0[0]}, ${m0[4]}, ${m0[5]}; the slice ${m0[3]})`);
   let last = null;
   const run1 = (yaw, plan, when, col, boss, form = 'curve', look = 'slice', place = 'path') => {
     SX.setSlash(look);
@@ -6826,6 +6826,109 @@ async function scenarioInstantSlash() {
 // frame of hits 1-4 where it moves more than 0.7 of production's free hand's most (a full turn's frames aside), no NaN), and it is home on the pose's own hand by 1.2 s after; a
 // two-handed blow keeps it on the grip (the slam: p[sd] 0, the second hand at the grip); '0' (the default)
 // never hangs it.
+// COMBOE (ADR-267; the owner, 2026-11-27: "make the main character attack animation exactly like this youtube video ...
+// do one without a shield and one with a shield"): combo E's six hits (swings.js eFall … eLowSweep) chain 1 … 6 and round
+// again; each lands on the wyrm in its active window from 1.6 m; the sword arm's wrist (forearm against blade) stays under
+// 110° and the free hand off the sword arm, no NaN; production's chain comes back whole (five defs, the slam);
+// `?shield=1`'s item builds only when asked (the default loadout has no shield mesh) and hangs on the free forearm.
+async function scenarioComboE() {
+  out('\n== scenario COMBOE (the reference film\'s six-hit combo; the shield) ==');
+  const CO = await imp('src/entities/player/combos.js');
+  const { LIGHT } = await imp('src/entities/player/combat.js');
+  const OHm = await imp('src/entities/player/offHand.js');
+  const { buildHero, DIM: MD } = await imp('src/entities/player/model.js');
+  const { P: AP } = await imp('src/entities/player/anim.js');
+  const c0 = CO.comboMode(), o0 = OHm.offHandMode();
+  let last = null;
+  try {
+    CO.setCombo('e');
+    OHm.setOffHand('auto');
+    assert(LIGHT.length === 6 && LIGHT.map((d) => d.anim.clip).join() === 'eFall,eRiseBack,eOverhead,eFallBack,eRiseSweep,eLowSweep' && LIGHT[4].kind === 'light' && LIGHT[5].heavy,
+      `combo E wears six light defs, the sixth its finisher (${LIGHT.map((d) => `${d.anim.clip}/${d.kind}`).join(', ')})`);
+    // the chain in open air: the order, the loop, the arms
+    {
+      const G = (last = build());
+      fightSetup(G);
+      settle(G);
+      const { game, input } = G, d = game.dragon, p = game.player, r = p.rig;
+      p.debug.god = true;
+      p.debug.teleport(d.position.x + 40, d.position.z + 40);
+      aimAt(G);
+      for (let i = 0; i < 20; i++) G.tick(DT);
+      const seq = [], v = new THREE.Vector3(), w = new THREE.Vector3(), t = new THREE.Vector3();
+      let kink = 0, nan = false, near = Infinity;
+      for (let i = 0, N = Math.round(3.6 / DT); i < N; i++) {
+        if (i % Math.round(0.38 / DT) === 0 && i < Math.round(2.9 / DT)) { aimAt(G); input.click(0); }
+        G.tick(DT);
+        const k = p.state === 'attack' ? p.atk?.def?.combo : 0;
+        if (k && seq.at(-1) !== k) seq.push(k);
+        if (!k) continue;
+        // the sword wrist: the forearm (elbow → grip) against the blade
+        v.setFromMatrixPosition(r.arms.R.fore.matrixWorld);
+        w.set(0, -MD.foreArm, 0).applyMatrix4(r.arms.R.fore.matrixWorld);
+        const e = r.sword.matrixWorld.elements;
+        t.set(e[8], e[9], e[10]).normalize();
+        const f = w.clone().sub(v).normalize();
+        const kk = (Math.acos(Math.max(-1, Math.min(1, f.dot(t)))) * 180) / Math.PI;
+        if (process.env.GCD_E_TRACE && kk > 95) out(`   kink ${kk.toFixed(0)}° hit ${k} u ${(p.atk.t < p.atk.def.windup ? p.atk.t / p.atk.def.windup : p.atk.t < p.atk.def.windup + p.atk.def.active ? 1 + (p.atk.t - p.atk.def.windup) / p.atk.def.active : 2 + (p.atk.t - p.atk.def.windup - p.atk.def.active) / p.atk.def.recovery).toFixed(2)}`);
+        kink = Math.max(kink, kk);
+        const L = new THREE.Vector3(0, -MD.foreArm, 0).applyMatrix4(r.arms.L.fore.matrixWorld);
+        if (!Number.isFinite(L.x + L.y + L.z + w.x + w.y + w.z)) nan = true;
+        if (p.anim.cur[AP.twoHand] < 0.5) near = Math.min(near, L.distanceTo(w) / (p.drawScale || 1));
+      }
+      assert(seq.slice(0, 7).join('') === '1234561' && kink <= 110 && !nan,
+        `combo E chains 1 … 6 and round again (${seq.join('')}), the sword wrist at most ${kink.toFixed(0)}° off the forearm (≤ 110)${nan ? ', NaN' : ''}`);
+    }
+    // each hit lands from 1.6 m in its own active window
+    {
+      const got = [];
+      for (let n = 1; n <= 6; n++) {
+        const G = (last = build());
+        fightSetup(G);
+        settle(G);
+        const { game, input } = G, d = game.dragon, p = game.player;
+        const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+        const chest = () => d.hurtSpheres.filter((h) => h.part === 'body').reduce((a, h) => ((h.x - d.position.x) * fx + (h.z - d.position.z) * fz > (a.x - d.position.x) * fx + (a.z - d.position.z) * fz ? h : a));
+        p.debug.god = true;
+        p.debug.teleport(d.position.x + fx * 40, d.position.z + fz * 40);
+        aimAt(G);
+        let hit = null;
+        for (let k = 1; k <= n; k++) {
+          if (k === n) {
+            const c = chest();
+            p.debug.teleport(c.x + fx * (c.r + 1.6), c.z + fz * (c.r + 1.6));
+            p.yaw = Math.atan2(c.x - p.position.x, c.z - p.position.z);
+            G.watch = (nn, e) => { if (nn === 'player:hitDragon' && !hit) hit = { combo: p.atk?.def?.combo, t: p.atk?.t ?? NaN, def: p.atk?.def, guarded: e.guarded }; };
+          }
+          aimAt(G);
+          input.click(0);
+          run(G, k < n ? 0.38 : 1.2, { passive: true });
+        }
+        G.watch = null;
+        got.push(hit && hit.combo === n && hit.t >= hit.def.windup - 1e-6 && hit.t <= hit.def.windup + hit.def.active + 1e-6 ? 1 : 0);
+      }
+      assert(got.every((x) => x === 1), `each of combo E's six hits lands on the wyrm from 1.6 m in its active window (${got.join('')})`);
+    }
+    CO.setCombo('0');
+    assert(LIGHT.length === 5 && LIGHT[4].kind === 'slam' && LIGHT[4].damage === 66 && LIGHT[0].anim.clip === 'fallingCut', `production's chain comes back whole (${LIGHT.length} defs, the fifth ${LIGHT[4].kind} ${LIGHT[4].damage})`);
+    // the shield: only when asked, on the free forearm
+    {
+      const U0 = build().game.U;
+      const count = (rig) => { let n = 0; rig.root.traverse((o) => { if (o.isMesh) n++; }); return n; };
+      const plain = buildHero(U0), worn = buildHero(U0, { ...plain.loadout, shield: 'errant.shield' });
+      let onFore = 0;
+      worn.arms.L.fore.traverse((o) => { if (o.isMesh && o.userData.slot === 'shield') onFore++; });
+      if (process.env.GCD_E_TRACE) { const sl = []; worn.root.traverse((o) => { if (o.isMesh && o.userData.slot === 'shield') sl.push(`${o.parent === worn.arms.L.fore ? 'fore' : o.parent?.name || '?'}:${o.geometry.attributes.position.count}`); }); out(`   shield meshes: ${sl.join(' ')}`); }
+      assert(!plain.loadout.shield && worn.loadout.shield === 'errant.shield' && count(worn) > count(plain) && onFore === count(worn) - count(plain),
+        `?shield=1's shield builds only when asked (${count(plain)} → ${count(worn)} meshes, ${onFore} on the free forearm)`);
+    }
+  } finally {
+    CO.setCombo(c0);
+    OHm.setOffHand(o0);
+  }
+  return last;
+}
+
 async function scenarioOffHand() {
   out('\n== scenario OFFHAND (the free hand in a one-handed swing: offHand.js) ==');
   const OH = await imp('src/entities/player/offHand.js');
@@ -16013,6 +16116,7 @@ const SCENARIOS = {
   combos: scenarioCombos,
   feel: scenarioFeel,
   offhand: scenarioOffHand,
+  comboe: scenarioComboE,
   streakfx: scenarioStreakFx,
   timerip: scenarioTimeRip,
   swordmystic: scenarioSwordMystic,

@@ -252,6 +252,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The owner's pick of the slash's tone
 - [ ] Combo A's hit 1 snaps his chest ~60° in its first frame out of the fight hold (found, not changed)
 
+## M1.98 — Combo E: the reference film's combo, with and without a shield (2026-11-27, `claude/hero-attack-feel`, ADR-267)
+- [x] Six clips keyed from the film (front and side views), mirrored; combo E on its timing (`?combo=e`; scenario `comboe`)
+- [x] A six-hit chain (combos.js wears a sixth light def while a six-hit combo is on)
+- [x] The shield: a `shield` gear slot, `errant.shield`, `?shield=1`, looks only
+- [x] Round 6 (the arms, the thrust, the slash line from measurement) set aside on a local branch: the owner did not like it
+- [ ] The owner's look at combo E against the film (video sent); whether it becomes the default
+- [ ] The shield in the idle and the guard (today only the attacks key the shield arm)
+
 ## M1.95 — The impact pass (2026-11-26, `claude/hero-attack-feel`, ADR-244)
 - [x] Every ending slash in front of him, a whiff's carried with his dash; checked facing all four ways (scenario `slashfeel`)
 - [x] Harder hits: hit-stop, kick, shake, sparks along the cut, a steel scar, the slash's ring; the blade's smear

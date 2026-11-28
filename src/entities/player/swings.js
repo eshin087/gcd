@@ -326,6 +326,116 @@ export const SWINGS = {
     ],
   },
 
+  // ---- combo E (`?combo=e`, ADR-267): the owner's reference film, pose for pose ----------------------
+  // The owner, 2026-11-27: "make the main character attack animation exactly like this youtube video ... do one without a
+  // shield and one with a shield"; asked, they chose it MIRRORED (the film's swordsman is left-handed: here the sword stays
+  // in his right hand, the shield on his left arm) and the light combo only. Six hits, each keyed from the film's frames
+  // seen from the front and from the side: the pose at the coil (u 1), across his front (u 1.5), at the end of the cut (u 2),
+  // held. The film's swordsman fights low (a wide, deep stance, the knees well bent), cuts in big diagonals and flats that
+  // turn the whole body (the chest ends 60-80° round), and keeps his shield arm working: in front of him as a guard
+  // between cuts, thrown out wide to open the body for the first, tucked behind him at the end of a cut across. Without a
+  // shield the free arm does the same. Every cut starts where the one before it left the blade.
+  /** 1. The falling diagonal: from the guard the sword rises high over the right shoulder while the shield arm swings out
+   *  wide; one diagonal falls across him to low beside the left knee, the body wound round to his left, deep in the knees. */
+  eFall: {
+    line: 'right',
+    lF: [0.2, 0.52], rF: [-0.2, -0.46], fy: [0.25, -0.75], drag: 0.16,
+    keys: [
+      { u: 0.45, h: [-0.12, 0.02, 0.10], a: [-120, 55], by: -0.16, bz: -0.05, bx: -0.05, hip: -0.24, sy: -0.32, sx: -0.04, l: [0.32, -0.26, 0.18], lp: [0.8, -0.55, 0.15], ld: [70, -15], pn: [1, 0, 0.2], lk: 0, hs: 0 },
+      { u: 1.0, h: [-0.04, 0.27, -0.04], a: [-178, 48], by: -0.15, bz: -0.07, bx: -0.05, hip: -0.34, sy: -0.44, sx: -0.06, sz: 0.05, l: [0.42, -0.3, 0.1], lp: [0.75, -0.6, 0.1], ld: [85, -25], pn: [1, 0, 0], lk: 0, hs: 0 },
+      { u: 1.25, h: [-0.08, 0.12, 0.29], a: [-82, 26] },
+      { u: 1.5, h: [0.12, -0.12, 0.47], a: [-28, 6], by: -0.31, bz: 0.08, bx: 0.01, hip: 0.2, sy: 0.14, sx: 0.32, sz: 0.0, l: [0.3, -0.32, -0.02], lp: [0.7, -0.5, -0.45], ld: [120, -30], pn: [0, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.25, -0.33, 0.31], a: [44, -30] },
+      { u: 2.0, h: [0.29, -0.40, 0.16], a: [106, -46], by: -0.43, bz: 0.13, bx: 0.05, hip: 0.73, sy: 0.94, sx: 0.45, sz: -0.06, l: [0.24, -0.38, -0.26], lp: [0.6, -0.35, -0.7], ld: [160, -45], pn: [-1, 0, 0], lk: 0 },
+      { u: 2.15, by: -0.45, bz: 0.14, bx: 0.06, hip: 0.81, sy: 1.04, sx: 0.48 },
+      { u: 2.6, h: [0.29, -0.40, 0.16], a: [108, -45], by: -0.41, bz: 0.13, bx: 0.05, hip: 0.74, sy: 0.96, sx: 0.45, sz: -0.06, l: [0.24, -0.38, -0.26] },
+    ],
+  },
+  /** 2. The rising backhand: straight out of the first cut's low finish, the blade sweeps back across his front, low and
+   *  rising, and ends with the arm stretched out to his right at shoulder height, the blade up; the shield comes back in
+   *  front of him. */
+  eRiseBack: {
+    line: 'flat',
+    lF: [0.2, 0.48], rF: [-0.2, -0.46], fy: [0.3, -0.7], drag: 0.16,
+    keys: [
+      { u: 1.0, h: [0.29, -0.40, 0.15], a: [118, -38], by: -0.40, bz: 0.06, bx: -0.04, hip: 0.5, sy: 0.66, sx: 0.4, l: [0.22, -0.36, -0.2], lp: [0.6, -0.4, -0.65], ld: [150, -40], pn: [-1, 0, 0], lk: 0, hs: 0 },
+      { u: 1.25, h: [0.22, -0.36, 0.31], a: [66, -24] },
+      { u: 1.5, h: [0.02, -0.28, 0.44], a: [6, -10], by: -0.32, bz: 0.08, bx: 0.01, hip: 0.06, sy: 0.04, sx: 0.28, l: [-0.02, -0.24, 0.3], lp: [0.75, -0.6, 0.1], ld: [-70, 5], pn: [0, 0, -1], lk: 0 },
+      { u: 1.75, h: [-0.28, -0.14, 0.38], a: [-58, 14] },
+      { u: 2.0, h: [-0.45, 0.02, 0.20], a: [-98, 40], by: -0.20, bz: 0.1, bx: 0.05, hip: -0.34, sy: -0.44, sx: 0.08, sz: 0.06, l: [-0.08, -0.2, 0.32], lp: [0.75, -0.6, 0.1], ld: [-75, 10], pn: [0, 0, -1], lk: 0 },
+      { u: 2.15, by: -0.21, bz: 0.11, bx: 0.06, hip: -0.4, sy: -0.52, sx: 0.06 },
+      { u: 2.6, h: [-0.44, 0.03, 0.19], a: [-100, 41], by: -0.20, bz: 0.1, bx: 0.05, hip: -0.36, sy: -0.46, sx: 0.08, sz: 0.06, l: [-0.08, -0.2, 0.32] },
+    ],
+  },
+  /** 3. The overhead: the sword goes straight up over his head behind the raised shield, then comes down in a steep
+   *  diagonal across him into a long lunge, the point ending low beside the left knee. */
+  eOverhead: {
+    line: 'right',
+    step: [0.6, 1.6],
+    lF: [0.2, 0.62], rF: [-0.2, -0.5], fy: [0.2, -0.75], drag: 0.18,
+    keys: [
+      { u: 0.5, h: [-0.30, 0.12, 0.12], a: [-118, 62], by: -0.18, bz: -0.04, bx: -0.04, hip: -0.24, sy: -0.3, sx: 0.02, l: [-0.08, -0.18, 0.32], lp: [0.75, -0.6, 0.1], ld: [-75, 15], pn: [0, 0, -1], lk: 0, hs: 0 },
+      { u: 1.0, h: [-0.06, 0.38, 0.00], a: [-176, 72], by: -0.14, bz: -0.06, bx: -0.05, hip: -0.14, sy: -0.16, sx: -0.06, l: [-0.06, -0.12, 0.33], lp: [0.75, -0.6, 0.1], ld: [-75, 25], pn: [0, 0, -1], lk: 0 },
+      { u: 1.25, h: [-0.06, 0.26, 0.28], a: [-120, 55] },
+      { u: 1.5, h: [0.06, -0.04, 0.47], a: [-26, 16], by: -0.32, bz: 0.1, bx: 0.01, hip: 0.18, sy: 0.12, sx: 0.36, l: [0.26, -0.3, 0.04], lp: [0.7, -0.5, -0.4], ld: [110, -25], pn: [0, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.22, -0.31, 0.36], a: [40, -34] },
+      { u: 2.0, h: [0.26, -0.40, 0.21], a: [98, -52], by: -0.46, bz: 0.18, bx: 0.05, hip: 0.60, sy: 0.78, sx: 0.52, sz: -0.06, l: [0.24, -0.38, -0.24], lp: [0.6, -0.35, -0.7], ld: [160, -45], pn: [-1, 0, 0], lk: 0 },
+      { u: 2.15, by: -0.48, bz: 0.19, bx: 0.06, hip: 0.68, sy: 0.88, sx: 0.55 },
+      { u: 2.6, h: [0.25, -0.40, 0.22], a: [100, -51], by: -0.45, bz: 0.17, bx: 0.05, hip: 0.61, sy: 0.81, sx: 0.52, sz: -0.06, l: [0.24, -0.38, -0.24] },
+    ],
+  },
+  /** 4. The falling backhand: the sword is carried up over the left shoulder and falls across him the other way, to low
+   *  beside the right hip, the body turning back round to his right; the shield comes up in front again. */
+  eFallBack: {
+    line: 'left',
+    lF: [0.2, 0.5], rF: [-0.2, -0.46], fy: [0.2, -0.75], drag: 0.16,
+    keys: [
+      { u: 0.5, h: [0.30, -0.10, 0.20], a: [120, 30], by: -0.34, bz: 0.06, bx: -0.04, hip: 0.44, sy: 0.56, sx: 0.2, l: [0.2, -0.36, -0.12], lp: [0.6, -0.45, -0.6], ld: [140, -35], pn: [-1, 0, 0], lk: 0, hs: 0 },
+      { u: 1.0, h: [0.33, 0.16, 0.08], a: [158, 46], by: -0.18, bz: -0.04, bx: -0.05, hip: 0.38, sy: 0.5, sx: -0.02, sz: -0.05, l: [0.3, -0.36, -0.04], lp: [0.65, -0.55, -0.4], ld: [120, -30], pn: [0, -1, 0], lk: 0 },
+      { u: 1.25, h: [0.25, 0.10, 0.32], a: [104, 34] },
+      { u: 1.5, h: [0.08, -0.08, 0.47], a: [30, 10], by: -0.30, bz: 0.09, bx: 0.01, hip: -0.04, sy: 0.0, sx: 0.32, l: [0.04, -0.26, 0.3], lp: [0.75, -0.6, 0.1], ld: [-60, 0], pn: [0, 0, -1], lk: 0 },
+      { u: 1.75, h: [-0.14, -0.28, 0.40], a: [-34, -20] },
+      { u: 2.0, h: [-0.26, -0.39, 0.22], a: [-80, -40], by: -0.37, bz: 0.13, bx: 0.05, hip: -0.36, sy: -0.46, sx: 0.4, sz: 0.06, l: [-0.08, -0.2, 0.32], lp: [0.75, -0.6, 0.1], ld: [-75, 10], pn: [0, 0, -1], lk: 0 },
+      { u: 2.15, by: -0.39, bz: 0.14, bx: 0.06, hip: -0.44, sy: -0.54, sx: 0.44 },
+      { u: 2.6, h: [-0.26, -0.40, 0.21], a: [-82, -40], by: -0.37, bz: 0.13, bx: 0.05, hip: -0.38, sy: -0.48, sx: 0.4, sz: 0.06, l: [-0.08, -0.2, 0.32] },
+    ],
+  },
+  /** 5. The rising sweep: from low behind the right hip, a wide sweep across his front that rises as it goes, the arm
+   *  stretched all the way across to high on his left, the body turned with it. */
+  eRiseSweep: {
+    line: 'left',
+    lF: [0.2, 0.5], rF: [-0.2, -0.46], fy: [0.3, -0.7], drag: 0.16,
+    keys: [
+      { u: 0.5, by: -0.34, bz: -0.04, bx: -0.05, hip: -0.44, sy: -0.54, sx: 0.36, l: [-0.08, -0.2, 0.32], lp: [0.75, -0.6, 0.1], ld: [-75, 10], pn: [0, 0, -1], lk: 0, hs: 0 },
+      { u: 1.0, h: [-0.20, -0.44, -0.06], a: [-150, -24], by: -0.33, bz: -0.05, bx: -0.05, hip: -0.38, sy: -0.48, sx: 0.32, l: [-0.06, -0.22, 0.32], lp: [0.75, -0.6, 0.1], ld: [-75, 5], pn: [0, 0, -1], lk: 0 },
+      { u: 1.25, h: [-0.06, -0.36, 0.30], a: [-68, -12] },
+      { u: 1.5, h: [0.14, -0.19, 0.46], a: [-20, 0], by: -0.22, bz: 0.08, bx: 0.01, hip: 0.12, sy: 0.06, sx: 0.24, l: [0.24, -0.3, 0.08], lp: [0.7, -0.5, -0.4], ld: [110, -25], pn: [0, -1, 0], lk: 0 },
+      { u: 1.75, h: [0.34, -0.02, 0.40], a: [40, 22] },
+      { u: 2.0, h: [0.44, 0.14, 0.23], a: [78, 40], by: -0.15, bz: 0.11, bx: 0.05, hip: 0.4, sy: 0.54, sx: 0.06, sz: -0.05, l: [0.24, -0.38, -0.24], lp: [0.6, -0.35, -0.7], ld: [160, -45], pn: [-1, 0, 0], lk: 0 },
+      { u: 2.15, by: -0.14, bz: 0.12, bx: 0.06, hip: 0.46, sy: 0.62, sx: 0.04 },
+      { u: 2.6, h: [0.44, 0.16, 0.23], a: [80, 41], by: -0.15, bz: 0.11, bx: 0.05, hip: 0.42, sy: 0.56, sx: 0.06, sz: -0.05, l: [0.24, -0.38, -0.24] },
+    ],
+  },
+  /** 6. The low sweep and the flourish (the finisher): the blade drops to his left hip as he sinks deep, sweeps flat
+   *  across his front at knee height to his right, then he rises and lifts the sword high and out to his right, the shield
+   *  in front, and holds it. */
+  eLowSweep: {
+    line: 'low',
+    home: 0.6,
+    lF: [0.22, 0.48], rF: [-0.22, -0.46], fy: [0.4, -0.8], drag: 0.18,
+    keys: [
+      { u: 0.5, h: [0.42, -0.20, 0.12], a: [120, 0], by: -0.34, bz: 0.04, bx: -0.05, hip: 0.46, sy: 0.6, sx: 0.24, l: [0.2, -0.38, -0.14], lp: [0.6, -0.4, -0.6], ld: [150, -40], pn: [-1, 0, 0], lk: 0, hs: 0 },
+      { u: 1.0, h: [0.30, -0.42, 0.05], a: [148, -18], by: -0.46, bz: -0.02, bx: -0.05, hip: 0.4, sy: 0.52, sx: 0.4, l: [0.06, -0.3, 0.26], lp: [0.75, -0.6, 0.1], ld: [-60, 5], pn: [0, 0, -1], lk: 0 },
+      { u: 1.25, h: [0.18, -0.41, 0.26], a: [80, -20] },
+      { u: 1.5, h: [0.00, -0.40, 0.33], a: [-4, -18], by: -0.51, bz: 0.1, bx: 0.01, hip: 0.04, sy: 0.0, sx: 0.48, l: [-0.06, -0.24, 0.32], lp: [0.75, -0.6, 0.1], ld: [-75, 10], pn: [0, 0, -1], lk: 0 },
+      { u: 1.75, h: [-0.20, -0.40, 0.27], a: [-62, -14] },
+      { u: 2.0, h: [-0.31, -0.38, 0.18], a: [-100, -6], by: -0.46, bz: 0.12, bx: 0.05, hip: -0.32, sy: -0.4, sx: 0.4, sz: 0.05, l: [-0.08, -0.2, 0.32] },
+      { u: 2.3, h: [-0.42, 0.08, 0.20], a: [-86, 36], by: -0.24, bz: 0.1, bx: 0.04, hip: -0.24, sy: -0.32, sx: 0.12 },
+      { u: 2.5, h: [-0.40, 0.22, 0.18], a: [-76, 52], by: -0.16, bz: 0.08, bx: 0.04, hip: -0.2, sy: -0.28, sx: 0.04, sz: 0.06, l: [-0.08, -0.18, 0.33], lp: [0.75, -0.6, 0.1], ld: [-75, 15], pn: [0, 0, -1], lk: 0 },
+      { u: 2.6, h: [-0.40, 0.22, 0.18], a: [-76, 52], by: -0.16, bz: 0.08, bx: 0.04, hip: -0.2, sy: -0.28, sx: 0.04, sz: 0.06, l: [-0.08, -0.18, 0.33] },
+    ],
+  },
+
   // ---- the charged attack ----------------------------------------------------------------------
   /** The dashing cleave (combat.js CLEAVE), both hands on the grip: he leaves the charge's coil
    *  leaning into the dash with the blade still up beside his head, winding back over the shoulder,

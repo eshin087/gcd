@@ -58,6 +58,7 @@ gets the `base.*` item for it. Any other slot may be empty.
 | `waist` | cloth hanging from the belt line: skirt panels, tassets | `pelvis` | `wanderer.skirt` |
 | `back` | cloaks and capes | `chest`, and `arms.{R,L}.upper` for sheets draped over an arm | `shroud.cloak` |
 | `weapon` | the weapon in the right hand: blade, grip, guard, pommel, gem | `sword` | `wanderer.sword` |
+| `shield` | a shield on the left forearm (looks only: blocking is the sword's; ADR-267). Built in `arms.L.fore`'s frame | `arms.L.fore` | none (`errant.shield` with `?shield=1`, gear/shield.js) |
 
 `arms` and `legs` own the limb itself (there is no skin mesh under the sleeves or the pants), so an
 item for those slots must draw the whole limb, hands and feet included. `chest` likewise owns the

@@ -234,7 +234,7 @@ export const SLASH_TONE = {
   faint: { col: 0.33, size: 0.6, life: 0.7, flash: false, hair: 0, hairA: 0, alpha: 0.7, burst: 0.3, smear: 0 },
   thin: { col: 0.5, size: 0.35, life: 0.55, flash: false, hair: 0, hairA: 0, alpha: 0.9, burst: 0.3, smear: 0 },
 };
-let toneNow = 'full';
+let toneNow = 'soft';
 export const slashToneMode = () => toneNow;
 // (the tone's colours, built when it is picked: no allocation a frame)
 const TCOL = { light: {}, heavy: {} };

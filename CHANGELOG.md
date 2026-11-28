@@ -4,7 +4,14 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-seven pieces of work since 0.4.0:
+One hundred and thirty-eight pieces of work since 0.4.0:
+- **A six-hit sword-and-shield combo to try** (2026-11-27, ADR-267). *Added, to compare (not the default):* `?combo=e`, a
+  six-hit light combo keyed pose for pose from the owner's reference film (mirrored, so the sword stays in the right
+  hand): a falling diagonal from high over the right shoulder, a rising backhand out to the right, an overhead into a
+  lunge, a falling backhand, a wide rising sweep, and a low knee-height sweep into a raised-blade finish, all deep in the
+  knees with the body turning far round, on the film's own timing (the cuts 0.34-0.45 s apart); the free arm works as
+  the film's shield arm (a guard before him, thrown out wide, tucked behind). `?shield=1` puts a heater shield on that
+  arm (looks only: blocking and parrying are unchanged). The Lab's `combo` row has it.
 - **The instant slash on your swing from every side, and your free hand at your hip** (2026-11-27, ADR-262, ADR-263, ADR-265). *Changed (the owner's call
   after the films):* the light combo is the live one again (combo A as it ships, its moves and timing; the impact pass's
   clock and hit numbers and the hits 4-5 options stay behind `?a45=`) and the slash is the live straight instant slash,

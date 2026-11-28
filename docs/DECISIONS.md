@@ -7799,3 +7799,32 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Consequences:** the default slash is a stroke line again (the `slice` scenario checks the default and each tone:
   every swing drawn, each subtler tone's brightest and largest stroke under full's, no flash). The sims are unchanged
   (the chain's defs and `auto` hand).
+
+## ADR-267 — Combo E: the reference film's combo pose for pose, with and without a shield (2026-11-27)
+
+- **Context:** the owner, of round 6 (the arms, the thrust and the slash line fixed from measurement): "i dont like any
+  of this. lets try this. make the main character attack animation exactly like this youtube video ... do one without a
+  shield and one with a shield. if you need to change the sword placement to the left hand if that is easier do that".
+  This brings back working from footage, which the owner had stopped on 2026-11-26; they asked for it. Asked, they chose:
+  download the film to study it frame by frame; MIRROR it (the film's swordsman is left-handed; the sword stays in the
+  right hand, the shield on the left arm); the light combo only; the shield looks only.
+- **Read from the film** (a 21 s reference at 60 fps, the same combo from the front, the side and behind): six hits about
+  0.34-0.45 s apart: (1) a falling diagonal from high over the sword shoulder to low beside the far knee, the shield arm
+  thrown out wide in the windup, the chest ending ~90° round, deep in the knees; (2) a rising backhand flat across the
+  front to the arm out at shoulder height, the blade up, the shield back before him; (3) straight overhead behind the
+  shield, a steep diagonal into a lunge; (4) a falling backhand from over the shield shoulder; (5) a wide sweep rising to
+  the arm stretched across, high; (6) wound to the shield side, a knee-height sweep across, rising to a raised blade.
+- **Decision:** six new clips (swings.js `eFall`, `eRiseBack`, `eOverhead`, `eFallBack`, `eRiseSweep`, `eLowSweep`) keyed
+  from the film's front and side frames, mirrored, each hit starting where the last left the blade; the hands' keys held
+  within the arm's reach (the crouch and the lean give the height); combo E (`?combo=e`, "Errant") on the film's timing,
+  production's clock (no feel), its own free arm (the clip's keys: the film's shield arm). A six-hit chain: combos.js
+  wears a sixth light def while such a combo is on. The shield: a `shield` gear slot and `errant.shield` (a heater shield
+  of the hero's own `armor` / `bevel` / `trim` inks on the left forearm), worn with `?shield=1`; looks only. The browser's
+  free-hand default goes back to 'auto' (each combo's own: combo A keeps the belt). Round 6 is set aside, unpushed, on the
+  local branch `claude/hero-attack-feel-round6-backup`. Not the default: the owner compares it first (a video of the film,
+  mirrored, beside ours from the front and the side).
+- **Consequences:** the sims keep production's chain; scenario `comboe` checks the six defs, the loop 1 … 6, every hit
+  landing from 1.6 m in its window, the sword wrist ≤ 110° (103° at worst, early in hits 1 and 5 where the blade hangs
+  back), production coming back whole, and the shield only when asked, on the free forearm. Left: the idle and the guard
+  are the hero's own (the film's guard is a deep crouch with the shield up and the sword low); ours fights a little less
+  deep and turns a little less than the film even after the second pass.
