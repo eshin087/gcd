@@ -51,6 +51,21 @@ export function swordFromUrl() {
   }
 }
 
+/** ?cloak= (the owner's design sheet of 2026-11-28, gear/shroud.js GREAT_SHEETS; until they pick):
+ *  value -> back item id. a = the sheet's great cloak to the boots with the cowl, b = the same to the
+ *  calf, c = to the boots on today's mantle (no cowl). */
+export const CLOAK_PARAM = Object.freeze({ a: 'shroud.greatcloak', b: 'shroud.greatcloak-calf', c: 'shroud.greatcloak-bare' });
+
+/** The back item the page's ?cloak= asks for, or null (none, an unknown value, no location: the tests). */
+export function cloakFromUrl() {
+  try {
+    const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('cloak') : null;
+    return CLOAK_PARAM[q] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** What the hero wears today: the Shrouded set (gear/shroud.js, ADR-043: a hood, a wrap tunic,
  *  bound sleeves and the tattered cloak) over the Wanderer's boots, coat tails and sword. No
  *  shoulder armour: the mantle carries the shoulders. */
