@@ -5,13 +5,16 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and thirty-seven pieces of work since 0.4.0:
-- **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Added (options, not yet picked; today's stays the
-  default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
+- **The parry and the deathblow, readable** (2026-11-27, ADR-264). *Changed (the owner's pick from the films, `all`,
+  the default):* `?dbread=` makes the moment between a parry and the deathblow it starts readable to someone watching,
   three ways: `a` the break (the parry throws a boss open, arms wide and stumbling back, and you hold a beat of 0.35 s
   before stepping in to cut him while he reels), `b` space (you strike from 1.3 m and every blow drives him back, so
   the two bodies never merge), `c` a clean contact (the flash at each cut smaller, beside the wound on his far side
   and gone at once instead of held through the freeze; the burst out of his back thinner; no white streak on the
-  finishing thrust; his body's white flash dim), `all` the three, `0` as before. The blows and their damage never change. The Lab's `dbread` row.
+  finishing thrust; his body's white flash dim), `all` the three (the default), `0` as before. The blows and their damage never change. The Lab's `dbread`
+  row. *Added (options, not yet picked):* `?strikeGap=a|b` keeps a sword boss's blows from bringing him nearer than
+  1.5 / 1.8 m, so the blades meet in the open between you at a parry (never past what the blow reaches; fists and
+  feet as before; the Lab's `strikeGap`).
 - **The clash dance: parries in a row break him faster** (2026-11-27, ADR-247). *Changed (the owner's pick from the
   film):* against the human bosses, parries in a row inside one of his strings pay more posture each (x1, x1.25,
   x1.5, then x1.75); the run starts over when his string ends, when a blow lands on you, or after a pause. The

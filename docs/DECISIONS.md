@@ -7694,8 +7694,18 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     thrust draws no white `thrustStreak` (measured: the brightest thing on screen at the finisher, by far) and every
     blow's impact burst (`PlayerFx.contact`) is the low quality's lighter one (`lite`). Shatter Web's cut line, the
     blood and the parry's own sparks at the blades stay.
-  - `all`: the three. `0` (the default until the owner picks from the films): as before.
+  - `all`: the three, **the owner's pick from the films and the default** ("all is fine"). `0`: as before.
+  - **The strike gap** (`?strikeGap=0|a|b`, `duelist/strikeGap.js`, the Lab's `strikeGap`), asked for next: "during
+    the parries you cant see the swords parrying and clashing with each other because the characters are clumped
+    up". Shen Hui's step-in aims at 0.66 - 0.72 x a blow's reach and his Riposte thrust's dash stops 1.0 m from the
+    hero: the cut was parried at 1.42 m, the thrust at 1.01 m. A floor on how near a duelist's own root motion (the
+    windup's step-in, a dash, authored travel) brings him for a BLADE blow (`_part` marks a bare-handed kit's limb:
+    left as authored), capped at 0.85 x the blow's reach so every blow lands where it did: a 1.5 m, b 1.8 m (the
+    parries at 1.5 / 1.5 m and 1.8 / 1.7 m). Off by default until the owner picks. Seen zoomed: the spacing shows
+    the bodies apart up to the contact, but on a perfect parry the gold clash, its mark and its spark spit (ADR-181)
+    cover the hero's chest, where the blades meet, at any gap: raised with the owner, not changed.
 - **Consequences:** a adds 0.35 s between the parry and the combo and 0.08 s to the first blow (the combo's own
   tempo after that is unchanged); b and a let the hero leave ADR-211's 0.6 m disc round where he parried. The duel
   suite's `deathblow` (f) plays every mode on a posture break and a blue parry: the same blows and damage, the beat,
-  the reel kept, the spacing, the dim flash. The owner's pick becomes the default (`?dbread=0` keeps today's).
+  the reel kept, the spacing, the dim flash; (g) the strike gap's floor with every blue blow still parried. The
+  older parts (a) - (e) pin `?dbread=0` (they measure ADR-211's combo as built).

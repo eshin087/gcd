@@ -29,7 +29,12 @@ beat 0.35 s, he reels and stays open (a broken foe stays on his knee), b's gaps 
 (today beside each option, real and half speed, Shen Hui's Riposte, 3 blows): the shared notes folder's
 `dbread-films/`; gaps today 1.08 m, a 1.6 m, b 1.3 - 1.75 m, all 1.4 m.
 
-**Next:** the owner picks from the films; their pick becomes the default (`?dbread=0` keeps today's).
+**The owner's pick:** `all`, made the default. Then: "during the parries you cant see the swords parrying and clashing
+with each other because the characters are clumped up". Measured: the cut parried at 1.42 m, the blue thrust at 1.01 m
+(his step-in aims at ~0.7 x a blow's reach, the thrust's dash stops at 1.0 m). Added `?strikeGap=a|b` (a floor of
+1.5 / 1.8 m on a duelist's own root motion for blade blows, capped by the blow's reach; off until picked), filmed
+beside today. Zoomed, the bodies stand apart up to the contact, but the perfect parry's gold clash, mark and sparks
+cover the hero's chest where the blades cross at any gap: asked the owner before touching that look (ADR-181).
 
 ---
 
