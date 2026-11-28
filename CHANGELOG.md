@@ -5,10 +5,11 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and thirty-seven pieces of work since 0.4.0:
-- **Bai Wuji's barrier shows his outline when your blade hits it, and he goes down quicker** (2026-11-28, ADR-266). *Changed:* a cut that stops on Bai
+- **Bai Wuji's barrier shows where your blade hits it, and he goes down quicker** (2026-11-28, ADR-266). *Changed:* a cut that stops on Bai
   Wuji's barrier still takes a quarter of its damage off his bar (no stagger, never his last HP), its number shown
-  where the blade stopped; his health is 16000 (was 20000); and the barrier shows itself for the hit: a faint
-  outline of his body a hand's width off it, whole, gone when the hit ends (`?wjStrike=0`: the ripple as before).
+  where the blade stopped; his health is 16000 (was 20000); every cut on the barrier shows a faint patch of it where
+  it landed, gone in a moment (`?wjStrike=0`: the ripple as before). *Removed:* the ring on the floor that counted
+  his barrier's opening down (`?wjSign=1` brings it back).
 - **The clash dance: parries in a row break him faster** (2026-11-27, ADR-247). *Changed (the owner's pick from the
   film):* against the human bosses, parries in a row inside one of his strings pay more posture each (x1, x1.25,
   x1.5, then x1.75); the run starts over when his string ends, when a blow lands on you, or after a pause. The

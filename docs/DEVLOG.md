@@ -5,24 +5,24 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-28 — Bai Wuji round 4: the chip, 16000, the barrier as his outline for the hit (branch `wj3/barrier-playtest`; ADR-266)
+## 2026-11-28 — Bai Wuji round 4: the chip, 16000, the barrier shown where each cut lands (branch `wj3/barrier-playtest`; ADR-266)
 
 **Owner:** "right now it takes too much time to chip at [him] so balance it to be bit easier to do damage on him.
 when the player hits him and the sword is hitting the [barrier], show a cool ascii effect of the sword hitting the
 barrier and it showing its silhouette briefly."
 
 **What changed.** A cut stopped on the shell chips x0.25 of its damage (`wjBarrier.chip`, `barrier._chip`; never
-his last HP; the number rides `dragon:barrier` stop to the HUD). hp 20000 -> 16000. `untouched/fxStrike.js`: three
-filmed looks (an oval, his outline, rippling outlines, each a wave of light) were turned down: "a subtle barrier that's
-an outline of his body ... only shows the full ascii outline during the hit, and goes away after the hit ends". Now a
-stop draws only that: his outline (mesh points, marching squares) a hand off his body, faint (heat 0.42), whole, for
-0.16 s, one stroke per letter cell (the first film stacked pieces into white digits). `?wjStrike=a` PICKED, `0` the
-ripple.
+his last HP; the number rides `dragon:barrier` stop to the HUD). hp 20000 -> 16000. `untouched/fxStrike.js`, after four filmed tries the owner turned down (three waves of light
+round the shell; his body's whole outline for the hit: "this looks bad"): "always show up on every hit that [the
+barrier] is blocking ... a cool subtle ascii invisible shield briefly showing per hit on the hit location". Now every
+stop shows a patch of the shell where it landed: a faint net of crossing strokes opening 0.3 -> 0.8 m round the point,
+gone in 0.22 s, nothing else drawn; six at once. `?wjStrike=a` PICKED, `0` the ripple. The ring on the floor counting
+an opening down is off (`?wjSign=1`), the owner's call.
 
 **Verification.** Bench (6 seeds): today's main, the good bot 4/6 in 163 - 211 s; the chip alone 4/6 in 160 - 187 s;
 16000 + chip 4/6 in 120 - 150 s (deaths with 5 % of his bar left), fencing 5/6; blocker and pace still die.
 `veil.mjs . strike` (the chip, its event, every look draws and is gone in a second); filmed on headless Edge
-(`docs/looks/veil/wjStrike-outline.jpg`); full `npm test` before the PR.
+(`docs/looks/veil/wjStrike-patch.jpg`); full `npm test` before the PR.
 
 **Next.** The owner plays it; a sound for the chip if they want one.
 

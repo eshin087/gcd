@@ -7665,7 +7665,7 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   `twist` 30° toward −X: (−0.32, −0.60, 0.74), between the two approved poses; the flat shows to the game camera
   (|n·cam| ≥ 0.63; edge-on under ~0.3 vanishes). `g2`'s wrist cap is 26° (the point 8-35° below level).
 
-## ADR-266 — Bai Wuji round 4: a cut on the barrier chips him, his health 16000, the barrier shows as his body's outline for the hit (`?wjStrike`) (2026-11-28)
+## ADR-266 — Bai Wuji round 4: a cut on the barrier chips him, his health 16000, the barrier shows a patch of itself where each cut lands (`?wjStrike`); no floor ring (2026-11-28)
 
 - **Context:** the owner after the glide (ADR-250): "it takes too much time to chip at him", "balance it to be bit
   easier to do damage on him"; and "when the player hits him and the sword is hitting the barrier, show a cool ascii
@@ -7679,14 +7679,17 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
      (good bot 163 - 211 s -> 160 - 187 s); a person cuts it often, which is what the owner felt.
   2. HP 20000 -> 16000: the good bot 4 of 6 in 120 - 150 s (2.3 min; 2.8 before), its two deaths with 5 % of his
      bar left; fencing 5 of 6 in 87 - 115 s. The blocker and pace bots still die (they never cut).
-  3. THE OUTLINE (`untouched/fxStrike.js`, `?wjStrike=a`, PICKED; `0` the ripple as first shipped). Filmed first
-     as three looks (the shell's oval lit round from the point; his outline lit from the point; three outlines
-     rippling out), each a wave of light. The owner turned all three down: "it should be like a subtle barrier
-     that's an outline of his body and anytime you hit him it only shows the full ascii outline during the hit,
-     and goes away after the hit ends." So a stop now draws ONLY the shell, whole and at once: his figure as drawn
-     at the stop (his mesh points on the camera's plane, a distance field, marching squares) a hand's width off his
-     body, in faint strokes (heat 0.42; 0.5 for a heavy cut), for the hit (0.16 s; 0.2 heavy), then gone. No wave,
-     no white point, no push of air, no ripple. Each letter cell of the outline prints once a frame (pieces sharing
-     a cell stacked to white digits in the first film). Sheet: `docs/looks/veil/wjStrike-outline.jpg`.
+  3. THE PATCH (`untouched/fxStrike.js`, `?wjStrike=a`, PICKED; `0` the ripple as first shipped). Three tries the
+     owner turned down: three looks, each a wave of light (the shell's oval, his outline, rippling outlines); then
+     his body's whole outline for the hit ("this looks bad"). Their words: "it should always show up on every hit
+     that [the barrier] is blocking ... doesn't have to be a perfect outline of the boss character and should be
+     like a cool subtle ascii invisible shield briefly showing per hit on the hit location". So every cut stopped on
+     the shell shows a PATCH of it where it landed: a faint net of crossing strokes on the shell's surface, opening
+     from 0.3 to 0.8 m round the point (x1.25 heavy), brightest there (heat 0.55), soft to its edge, cut off at the
+     shell's outline, gone in 0.22 s (0.29 heavy). Six can show at once (every hit has its own). Nothing else of the
+     stop is drawn. One stroke per letter cell a frame. Sheet: `docs/looks/veil/wjStrike-patch.jpg`.
+  4. NO RING ON THE FLOOR: the ring that counted an opening down round his feet (ADR-241's open sign) is off, the
+     owner's call ("get rid of the circle below [him]"); `?wjSign=1` draws it.
 - **Consequences:** the fight is about a fifth shorter, and cutting his barrier is no longer wasted: it chips
-  him and shows the barrier's shape. Open: whether the chip wants its own sound.
+  him and shows the barrier where it struck. The opening has no floor sign now: its burst, and his cuts landing,
+  show it. Open: whether the chip wants its own sound.
