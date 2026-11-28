@@ -4,7 +4,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-three pieces of work since 0.4.0:
+One hundred and thirty-six pieces of work since 0.4.0:
 - **Shen Hui fights with better form** (2026-11-26, ADR-250). *Changed (the owner's pick; `?ashForm=0` as before):* his thrusts
   land on a straight arm with the point on its line, out of a real lunge (front knee bent, back leg long); his
   overheads come down one-handed on a diagonal across you instead of straight down; his low sweeps turn on his feet
@@ -13,6 +13,18 @@ One hundred and thirty-three pieces of work since 0.4.0:
   down and lands into the cut) instead of flying in a crouch. The same timings and cues. *Added:* Ember Whirl
   raises a cyclone of fire round him, and Heaven-Splitting Fall splits the floor in fire ahead and behind
   (the owner's picks; `?whirlFx=` / `?fallFx=` a, c or 0 for the others).
+- **Blows land on what they strike** (2026-11-27, ADR-259). *Changed (the owner's pick from the films, `b`, the
+  default):* every hit, block and guard is drawn ON what it strikes in the frozen frame (a blade's edge bites a
+  few cm in, a fist lands on the body; it used to stop 10 - 75 cm short or show 10 - 40 cm through), held there
+  through the freeze, a heavy blow a beat longer, then the swing carries on; a blocked blow stops on your blade with
+  your guard nudged onto it, a cut on a boss's guard stops on his steel; the sparks sit where the two met; and the
+  struck part answers (your head snaps away, your body twists or folds, a shoulder knocked back, a leg buckles;
+  a boss's reaction now knows the arm too), and a boss's blow that would fall short of you is reached into (his
+  body eases into it, feet planted). The execution's and the plunge's bursts sit where your blade enters, and the
+  wyrm's bite lunges its head onto you as it lands. `?contact=0` as before, `?contact=a` without the reach,
+  `?contact=c` with a longer step-in reach. Nothing of any result, damage, window or timing moves
+  (the duel and asc `contact` scenarios play one exchange three ways and compare every result). The Lab's
+  `contact` row. *Added:* the contact audit (the duel / asc `contact` scenarios).
 - **The hero runs with his sword held low, its point down beside his leg, gripped as a hand grips it** (2026-11-26, ADR-229).
   *Changed:* on the run and the sprint he holds his sword the way a hand grips one, the thumb ahead: its point
   hangs down beside his right leg, a little ahead and out, and it rides with his arm as it swings with his stride,
@@ -44,8 +56,6 @@ One hundred and thirty-three pieces of work since 0.4.0:
   the muzzle with a kick of the arm (`?oneMoves=a`: as before). Every timing is as before. His gun shots now leave a
   curtain of falling code (`?oneGunFx=b`; `a` a tracer, `0` as before) and his palm bolts in the Source are a hot core
   in turning rings of digits (`?oneBoltFx=a`; `b` a folding column, `0` as before).
-One hundred and twenty-six pieces of work since 0.4.0:
-One hundred and twenty-seven pieces of work since 0.4.0:
 - **Bai Wuji's blows land where they aim** (2026-11-27, ADR-255). *Changed:* his palm, his straight poke, Dark
   Spark's fist and the fist he pulls you onto now land on the line to your chest (they crossed past you by up to
   30 degrees); his kicks ease back after the contact instead of snapping off a dead stop; in his first phase his
