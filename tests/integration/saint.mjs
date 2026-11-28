@@ -718,6 +718,162 @@ async function scenarioEvents() {
   assert(CATALOGUE.size > 20, `the catalogue is read (${CATALOGUE.size} names)`);
 }
 
+// ================================================================== world: the set (the world agent's)
+async function scenarioWorld() {
+  out('\n== scenario WORLD (the Last Foundry: its pieces, the hazards drawn and measured, the tanks, the light, the reset) ==');
+  const { FOUNDRY_TUNING: FT } = await imp('src/world/lastFoundry.js');
+  const G = build();
+  const { game } = G;
+  const W = game.world, D = W.destructibles, set = W.forest, F = set.foundry, L = D.list;
+  const by = (k) => L.filter((b) => b.kind === k);
+  const count = {};
+  for (const b of L) count[b.kind] = (count[b.kind] ?? 0) + 1;
+  out(`     ${L.length} pieces: ${Object.entries(count).map(([k, n]) => `${k} ${n}`).join(', ')}; ${W.colliders.circles.length} colliders`);
+  const want = { plate: 400, ladle: 4, jibPost: 4, jib: 4, column: 6, gantry: 6, press: 1, pressHead: 1, conveyor: 6, frame: 8, tank: 5, ingots: 4, girder: 4, slag: 4, pipes: 4, catwalk: 4, furnace: 1, wall: 12 };
+  assert(Object.entries(want).every(([k, n]) => count[k] === n), `every kind stands, as many as built (${Object.entries(want).filter(([k, n]) => count[k] !== n).map(([k, n]) => `${k} ${count[k]}/${n}`).join(', ') || 'all'})`);
+  // everything breaks but the furnace (it chips); every piece a material and a footprint
+  assert(L.every((b) => (b.kind === 'furnace' ? b.hpMax === Infinity : Number.isFinite(b.hpMax) && b.hpMax > 0)) && L.every((b) => ['metal', 'stone', 'wood', 'bone'].includes(b.mat) && b.r > 0 && b.h > 0), "every piece breaks (finite structure) but the furnace's body (it chips); each has a material and a footprint");
+  // the two-stage pieces: a jib's post holds its arm, a column its run of runway, the press its head
+  assert(by('jibPost').every((b) => b.top?.kind === 'jib') && by('column').every((b) => b.top?.kind === 'gantry') && by('press')[0].top?.kind === 'pressHead', "a jib's post holds its arm, a column its run of the runway, the press its head");
+  // his throwables: lift 1, a weight
+  const thr = L.filter((b) => b.lift === 1);
+  assert(['frame', 'girder', 'ingots', 'tank'].every((k) => thr.some((b) => b.kind === k)) && thr.every((b) => b.weight > 0), `his throwables (lift 1): ${[...new Set(thr.map((b) => b.kind))].join(', ')} (${thr.length})`);
+  // the innermost 10 m are clear of anything that stops a blade; nothing tall south of the fight in the frame
+  const inner = L.filter((b) => !b.floor && Math.hypot(b.x, b.z) < 10 + b.r && b.y0 < 2);
+  assert(inner.length === 0, `the innermost 10 m are clear (${inner.map((b) => b.kind).join(', ')})`);
+  const tall = L.filter((b) => !b.floor && b.z > 8 && b.y0 + b.h > 4.6 && Math.abs(b.x) < 14);
+  assert(tall.length === 0, `nothing over 4.6 m stands south of the fight in the frame (${tall.map((b) => `${b.kind} ${b.x.toFixed(0)},${b.z.toFixed(0)}`).join(' ')})`);
+  // nothing of the set inside his circle stops him
+  const inC = W.colliders.circles.filter((c) => Math.hypot(c.x, c.z) - c.r < FOUNDRY.floor.r - 0.5 && c.tag !== 'bonfire');
+  assert(inC.length === 0, `no collider inside his circle (${inC.map((c) => `${c.x.toFixed(1)},${c.z.toFixed(1)} r${c.r}`).join(' ')})`);
+  // no gap between two circles the hero can be wedged in
+  const cs = W.colliders.circles.filter((c) => c.on !== false && c.tag !== 'bonfire');
+  const narrow = [];
+  for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++) {
+    const g = Math.hypot(cs[i].x - cs[j].x, cs[i].z - cs[j].z) - cs[i].r - cs[j].r;
+    const mx = (cs[i].x * cs[j].r + cs[j].x * cs[i].r) / (cs[i].r + cs[j].r), mz = (cs[i].z * cs[j].r + cs[j].z * cs[i].r) / (cs[i].r + cs[j].r);
+    if (cs.some((c, k) => k !== i && k !== j && Math.hypot(c.x - mx, c.z - mz) < c.r)) continue;
+    if (g > 0.35 && g < 0.95 && Math.hypot(cs[i].x, cs[i].z) < FOUNDRY.bound) narrow.push(`${cs[i].x.toFixed(1)},${cs[i].z.toFixed(1)}|${cs[j].x.toFixed(1)},${cs[j].z.toFixed(1)} ${g.toFixed(2)}`);
+  }
+  assert(narrow.length === 0, `no gap between two colliders narrower than the hero and not closed (${narrow.slice(0, 6).join('; ')})`);
+  // ---- MEASURED (BRIEF 11): can it happen? A ladle's pool reaches into his circle; a corner tank's blast reaches him
+  const R = FOUNDRY.floor.r;
+  const poolIn = F.ladles.map((l) => FT.molten.spill.r - (Math.hypot(l.x, l.z) - R));
+  const tankIn = FOUNDRY.tanks.map((t) => FT.tank.boss.r - (Math.hypot(t.x, t.z) - R));
+  out(`     a spilled ladle's pool (r ${FT.molten.spill.r}) reaches ${poolIn.map((v) => v.toFixed(2)).join(' / ')} m into his circle; a tank's blast on him (r ${FT.tank.boss.r}) ${tankIn.map((v) => v.toFixed(2)).join(' / ')} m`);
+  assert(poolIn.every((v) => v > 1.5), 'every ladle spills well into his circle (a pool can catch him)');
+  assert(tankIn.filter((v) => v > 0.3).length >= 4, "the four corner tanks' blasts reach into his circle (the press's is the hero's)");
+  let worst = 0;
+  for (let a = 0; a < 64; a++) {
+    const x = Math.sin((a / 64) * 2 * Math.PI) * R, z = Math.cos((a / 64) * 2 * Math.PI) * R;
+    worst = Math.max(worst, Math.min(...thr.map((b) => Math.hypot(b.x - x, b.z - z))));
+  }
+  out(`     a throwable within ${worst.toFixed(1)} m of every point of his circle's edge`);
+  assert(worst <= 10, `a throwable within 10 m of every point of his circle (${worst.toFixed(1)})`);
+  // the hero's blade on a ladle's chain: heavy cuts (0.5) until it spills
+  {
+    const l = F.ladles[2], b = L.find((o) => o.def === l.def);
+    let cuts = 0;
+    while (l.full && cuts < 20) {
+      D.sweep(l.x + 1.2, l.z, l.x - 1.2, l.z, 0.4, 0.5, { kind: 'cut', by: 'player', y: 1.4, ya: 1.6, yb: 1.2, src: D.swing() });
+      cuts++;
+      run(G, 0.05);
+    }
+    out(`     the hero's heavy cuts (0.5) to bring a ladle down: ${cuts} (its structure ${b?.hpMax})`);
+    assert(!l.full && cuts <= 4 && F.molten.pools.some((p) => p.alive && Math.hypot(p.x - l.x, p.z - l.z) < 0.1), `the hero's blade cuts a ladle down in ${cuts} heavy cuts, and it spills`);
+  }
+  // a jib brought down (blows on its post go to its arm) drops its ladle
+  {
+    const l = F.ladles[0], post = by('jibPost').find((b) => b.def === l.post);
+    for (let i = 0; i < 30 && post.top.state === 0; i++) {
+      D.strike(post.x, post.z, 0.6, 1.5, { kind: 'blunt', by: 'boss', y: 1, src: D.swing() });
+      run(G, 0.05);
+    }
+    run(G, 0.2);
+    assert(post.top.state !== 0 && !l.full, `a jib struck down at its post (${post.top.state}) drops its ladle (full ${l.full})`);
+  }
+  // the pools drawn: heat in the fire field over a live pool (a hot rim, a crust in the middle)
+  {
+    const P = F.molten.add(-4, 4, { r: 2.2, life: 6 });
+    run(G, 0.6);
+    const fire = game.fx.fire, d = fire.data;
+    let n = 0, hot = 0;
+    for (let i = 0; i < fire.count; i++) {
+      const k = i * 15;
+      if (Math.hypot(d[k] + 4, d[k + 2] - 4) < 2.3 && d[k + 1] < 0.5) {
+        n++;
+        hot = Math.max(hot, d[k + 10]);
+      }
+    }
+    assert(P.alive && n >= 20 && hot > 1, `a pool prints as heat (${n} blobs, the hottest ${hot.toFixed(2)})`);
+    run(G, 7);
+    assert(!P.alive, 'it cools and goes');
+  }
+  // a gas tank the hero breaks: a fuse cued red, then the burst (the world, the hero inside it, him beside it)
+  {
+    const t = by('tank')[0], p = game.player;
+    duel(G, { dist: 4 });
+    const d = game.dragon;
+    d.debug.setAI(false);
+    p.debug.god = false;
+    p.debug.heal();
+    d.position.set(t.x * 0.8, 0, t.z * 0.8);
+    p.debug.teleport(t.x - 1.2, t.z + 0.6);
+    let told = 0, flashed = 0, blasts = 0, onBlast = 0;
+    const ob = d.onBlast;
+    d.onBlast = (...a) => {
+      onBlast++;
+      return ob?.apply(d, a);
+    };
+    G.watch = (n, e) => {
+      if (e?.attack === 'tankBurst') {
+        if (n === 'combat:tell') told++;
+        if (n === 'combat:flash') flashed++;
+      }
+      if (n === 'world:blast') blasts++;
+    };
+    const hp0 = p.hp, dh0 = d.hp;
+    for (let i = 0; i < 10 && t.state === 0; i++) D.strike(t.x, t.z, 0.8, 1, { kind: 'blunt', by: 'player', y: 0.8, src: D.swing() });
+    run(G, FT.tank.fuse + 0.6);
+    G.watch = null;
+    out(`     a tank: cued ${told}/${flashed}, ${blasts} blast, the hero ${hp0} -> ${p.hp}, him ${Math.round(dh0)} -> ${Math.round(d.hp)} (onBlast ${onBlast}; he stood ${Math.hypot(d.position.x - t.x, d.position.z - t.z).toFixed(1)} m from it)`);
+    assert(told === 1 && flashed === 1 && blasts === 1 && F.tanks[0].state === 'done', 'a broken tank: a red tell, its flash, then one blast (world:blast)');
+    assert(p.hp < hp0 && onBlast === 1 && d.hp < dh0, 'the burst hurts the hero inside it, and him beside it (onBlast) when the hero broke it');
+    d.onBlast = ob;
+    p.debug.god = true;
+  }
+  // the light by his phase: four states, eased; flare and dim
+  {
+    const amb = set.ambience, U = game.U;
+    const cols = [];
+    for (const n of [1, 2, 3, 4]) {
+      set.setPhase(n);
+      const g2 = { ...game, dragon: { phase: n, mode: 'foot' } };
+      for (let i = 0; i < 300; i++) amb.update(1 / 60, g2);
+      cols.push([U.uMoonColor.value.r, U.uMoonColor.value.g, U.uMoonColor.value.b].map((x) => x.toFixed(2)).join(','));
+      assert(amb.state.phase === n && amb.state.w[n - 1] > 0.95, `the light eases into phase ${n} (${amb.state.w.map((x) => x.toFixed(2)).join(' / ')}; the moon ${cols[n - 1]})`);
+    }
+    assert(new Set(cols).size === 4, 'four lights, each its own');
+    amb.flare(1);
+    assert(amb.state.flash >= 1, 'flare(k) flashes the light');
+    const g4 = { ...game, dragon: { phase: 4, mode: 'foot' } };
+    for (let i = 0; i < 30; i++) {
+      amb.dim(1);
+      amb.update(1 / 60, g4);
+    }
+    assert(amb.state.dim > 0.6, `dim(k) pulls it down while it is asked (${amb.state.dim.toFixed(2)})`);
+  }
+  // the reset: everything stands again, the ladles full, no pool, the tanks' fuses out, the light phase 1
+  W.restore();
+  game.dragon.reset();
+  run(G, 0.5);
+  assert(F.ladles.every((l) => l.full) && F.molten.pools.every((p) => !p.alive) && F.tanks.every((f) => f.state === 'idle') && L.filter((b) => !b.floor).every((b) => b.state === 0), 'the reset: every piece stands, every ladle full, no pool, the tanks quiet');
+  run(G, 4);
+  assert(set.ambience.state.phase === 1 && set.ambience.state.w[0] > 0.9, `... and the light is phase 1 again (${set.ambience.state.w.map((x) => x.toFixed(2)).join(' / ')})`);
+  run(G, 1);
+  assert(F.ladles.every((l) => l.full) && F.molten.pools.every((p) => !p.alive), 'no ladle spills by itself after the reset');
+}
+
 // ================================================================== THE SCENARIOS (one entry per line, each agent in its block)
 const S = {
   // --- core
@@ -730,6 +886,7 @@ const S = {
   death: scenarioDeath,
   events: scenarioEvents,
   // --- world
+  world: scenarioWorld,
   // --- body
   // --- fx
   // --- melee
