@@ -19,6 +19,15 @@ export const RELEASES = [
     entries: [
       {
         date: '2026-11-28',
+        title: "gcd's new outfit from design sheet 06, to try",
+        notes: [
+          'A new outfit for gcd to try before it becomes his own: a tall peaked hood over a face in shadow, a long black cloak with a green diamond on the back, a silver belt and silver boots with green accents.',
+          'His sword is the same.',
+          'Add heroLook=cloak to the address to wear it, or pick it in the Lab.',
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'Varr Nihil after the reference pack, to try',
         notes: [
           'A new look for Varr Nihil to try before it becomes his own: his hood, helm, armour and whole cape kept in every form, and every blade split into two red-white rails with a dark slit between them.',

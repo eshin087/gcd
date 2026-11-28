@@ -5,6 +5,27 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — gcd's outfit from design sheet 06, behind `?heroLook=cloak` (ADR-283; branch `player/hero-cloak-playtest`)
+
+**Owner:** sent the character sheet "MAIN CHARACTER / DESIGN EXPLORATION / 06" (a black hooded cloak, silver belt and
+boots, green accents, a green diamond on the back) and asked: "lets replace gcd's outfit with this design. don't
+replace the existing sword. show me a preview to play it in game".
+
+**What changed:** `gear/cloak.js` (five items, `CLOAK_LOADOUT`, `CLOAK_TINT`), registered in `gear/index.js`, a
+`cloak` entry in `gear/looks.js` (`hooded: true`: the face is in the hood's shadow by design, no lit twin). The
+LOOKS test lists it and checks a hooded look's face is shaded. The sword is untouched: its materials are not tinted.
+
+**Decisions:** an option first, not the default (the owner plays it in the preview; ADR-089's route). The cloak is
+mid-calf, not ankle-length, and has no arm drapes, so it passes the LOOKS route's bounds for a new look (tips over
+the grass in the roll, cloth out of the body, the free hand clear of the cloth); ADR-283 has the numbers.
+
+**Verification:** `integ.mjs . looks` (the cloak through the whole route and both deaths), turnaround and
+game-camera captures beside today's look (headless Edge); full `npm test` before the PR.
+
+**Open / next:** the owner's playtest; if picked, `CLOAK_LOADOUT` becomes `DEFAULT_LOADOUT` (+ its tint) and the
+seeded suites and the cost baseline are re-run. The sheet's ankle length and the drape over the left arm are the two
+places it departs from the drawing.
+
 ## 2026-11-28 — The deathblow is not cut short: the guard press, the blade lock (ADR-280; `fix/deathblow-guard-lock`)
 
 **Owner:** on the wyrm a perfect parry shows the perfect-dodge streak's effect; mashing attack during the deathblow seems

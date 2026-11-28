@@ -25,6 +25,7 @@ buildHero(U, {});                                         // the plain undersuit
 | `hands.js` | `buildFreeHand(ctx)`: the free hand every `arms` item that draws hands calls (one hand for every outfit) |
 | `sheet.js` | `hangSheet(ctx, parent, d, mats)`: one cloth sheet or ribbon on the streamer springs, from data; `panelSkirt(ctx, PANELS, { seed })`: a skirt of coat panels on the pelvis |
 | `looks.js` | the outfit options (kept for later use: the owner, 2026-11-14, keeps today's look as the default): `HERO_LOOKS` (id → `{ id, name, loadout, tint, of? }`; each new look also as `<id>-shade`, its face in shadow, `of` = the lit look), `LOOK_IDS`, `DEFAULT_LOOK`, `getLook`, `heroLookFromSearch`, `heroLookUrl`. Read by `main.js` (`?heroLook=`) and `player.js`; nothing in `gear/` imports it |
+| `cloak.js` | the owner's design sheet 06 (ADR-283, `?heroLook=cloak`): `CLOAK_ITEMS`, `CLOAK_LOADOUT`, `CLOAK_TINT`, the hood's rings `CLOAK_HOOD`, the chest fold `CLOAK_WRAP`, the cloak's sheets `CLOAK_SHEETS`. The face in the hood's shadow by design (its look is `hooded`: no lit twin) |
 | `moon.js`, `swallow.js`, `warden.js` | the three outfit options' items, loadouts (`MOON_LOADOUT`, ...) and colours (`MOON_TINT`, ...): the Moonlit Robe, the Swallow, the Moon Warden |
 | `../heroGeo.js` | the geometry builders every item is made of |
 | `../heroDims.js` | `DIM`, `BODY`, `REST`, `HAIR_CLUSTERS` (the body's measurements) |

@@ -4,7 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-six pieces of work since 0.4.0:
+One hundred and forty-seven pieces of work since 0.4.0:
+- **gcd's new outfit from design sheet 06, to try** (2026-11-28, ADR-283). *Added (an option, off by default: the
+  owner plays it first):* `?heroLook=cloak` (the Lab's OUTFIT row: "Hooded Cloak (sheet 06)") dresses the hero after
+  the owner's sheet: a tall peaked hood with a silver rim over a face in shadow, a long black cloak to the calf with a
+  fold wrapped across the chest, a silver seam and a green diamond down the back and three silver ticks over the hem,
+  a black bodysuit and gloves, a silver plate belt with a green bar on the buckle, silver boots with green ankle
+  strips. The sword is unchanged. `gear/cloak.js`; the LOOKS suite runs it through the whole route.
 - **The deathblow is not cut short** (2026-11-28, ADR-280). *Fixed:* pressing guard during a deathblow ended it at
   once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
   boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of

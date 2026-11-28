@@ -1263,6 +1263,9 @@ options (the project rule); each pass is shown as zoomed sheets and film strips,
 - [ ] A test or sheet script so a new boss is checked against the look before it ships
 - [ ] Done alongside S2: a boss whose look changes for the legal review is redrawn once, not twice
 
+- [~] gcd's outfit from the owner's design sheet 06 behind `?heroLook=cloak` (ADR-283); the owner plays it in the
+      preview, then it replaces today's look or stays an option
+
 ### P2 — Every boss's swings and motion, natural and polished
 - [ ] An audit per boss and per move: windup, swing, follow-through, recovery and footwork, measured
       (arm snaps, hand speed, pops) and filmed at the game camera from four sides

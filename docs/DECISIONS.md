@@ -8112,3 +8112,27 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
   guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
   change is a combo where a lock was.
+
+## ADR-283 — gcd's outfit from the owner's design sheet 06, behind `?heroLook=cloak` (2026-11-28)
+
+- **Context:** the owner sent a character sheet ("MAIN CHARACTER / DESIGN EXPLORATION / 06": a black hooded cloak,
+  a silver belt and boots, green accents, a green diamond on the back) and asked: "replace gcd's outfit with this
+  design. don't replace the existing sword. show me a preview to play it in game".
+- **Decision:** a sixth outfit option in the gear system (ADR-089), `gear/cloak.js`, worn with `?heroLook=cloak` and
+  the Lab's OUTFIT row, so the owner plays it in the preview before it replaces today's look (the project rule: the
+  owner picks a look from what they have seen; the default stays `shroud` until they say so). Items: `cloak.hood`
+  (hidesHair, shadowsFace: the sheet's face is in shadow, so the look has no lit twin; the LOOKS test's `hooded`
+  flag), `cloak.suit` (the bodysuit, the cloak's fold across the chest as one smooth band, the plate belt),
+  `cloak.arms` (black sleeves and gloves: the free hand through `buildFreeHand(ctx, M.pants)`), `cloak.legs`
+  (silver boots), `cloak.cloak` (a mantle and three sheets on the chest); no waist item. Colours by `CLOAK_TINT` on
+  `spike` / `bevel` / `welt` (silver) and `facing` (green): the sword draws in `armor`, `trim`, `leather`, `blade`,
+  `bladeTip` and `gem`, none of which is tinted, so it is exactly the sword of today.
+- **Departures from the sheet, for the fight:** the cloak ends at mid-calf, not the ankle (an ankle-length middle
+  sheet dug 26 cm into the grass in the roll; at 0.92 m its tip stays within the LOOKS bound), and it has no sheet
+  on either arm (a drape on the free arm hung by the free hand, one on the sword arm swung through the torso).
+  The roots are held a little out (`inMax` < 0: hanging free, the middle root swung into his back as he strafed);
+  the lower halves may wrap in, so the roll lifts them off the grass (6 frames under it in the route, the bound).
+  Measured through the route: cloth in the body on 1.4 % of frames (today's cloak 30 %), the free hand near
+  a sheet on 1.7 % (today's 3.7 %), the blade never through a sheet. 15.7k triangles, 15 draws (today's ~26.6k, 18).
+- **Consequences:** if the owner picks it, `CLOAK_LOADOUT` becomes `DEFAULT_LOADOUT` with `CLOAK_TINT` applied
+  beside it, and the seeded suites are re-run (a different rig shifts the seeded RNG; the cost baseline moves).
