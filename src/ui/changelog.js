@@ -18,6 +18,14 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-28',
+        title: 'One kind of parry',
+        notes: [
+          'Every parry is now a perfect parry: the same sparks, freeze and rewards every time you parry on time.',
+          'A parry pressed a touch early no longer counts as a weaker, different-looking parry.',
+        ],
+      },
+      {
         date: '2026-11-27',
         title: 'A black blow can darken the whole picture, a red string can cut in red',
         notes: [
