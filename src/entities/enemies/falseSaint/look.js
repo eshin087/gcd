@@ -244,7 +244,8 @@ function sensors(d, D) {
   }
   // their light: d.eyesK flares it (a sight line, a charge); written only when it moves
   const fu = d.rig.materials?.flask?.uniforms;
-  const k = 0.35 + 0.8 * k01(fin(d.eyesK));
+  // (v04: restrained: cosmetic cyan, never a tell, always under the white contact glint)
+  const k = 0.27 + 0.6 * k01(fin(d.eyesK));
   if (fu && k !== D.glowK) {
     D.glowK = k;
     if (fu.uGlow) fu.uGlow.value = k;

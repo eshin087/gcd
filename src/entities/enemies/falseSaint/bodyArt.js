@@ -277,29 +277,31 @@ export function merge(list) {
  */
 export const FS_ART = Object.freeze({
   fill: Object.freeze({
-    skin: [0.86, 0.64, 0.44], eye: [0.07, 0.045, 0.035], shirt: [0.5, 0.49, 0.45], lining: [0.05, 0.052, 0.06], collarIn: [0.05, 0.05, 0.055],
-    pants: [0.035, 0.036, 0.04], coat: [0.08, 0.082, 0.09], collar: [0.08, 0.082, 0.09], facing: [0.72, 0.62, 0.5], piping: [0.62, 0.6, 0.56],
-    hair: [0.02, 0.02, 0.025], hairTip: [0.04, 0.04, 0.048], armor: [0.74, 0.76, 0.8], spike: [0.3, 0.3, 0.34], bevel: [0.86, 0.88, 0.92],
+    // (v04, anchor.png: the skin OLIVE (less red, more yellow-green than the stand-in's tan), the jacket charcoal
+    // and matte, the titanium brighter and cooler than the cloth it comes out of, the laminate's rims pale)
+    skin: [0.66, 0.55, 0.34], eye: [0.05, 0.035, 0.028], shirt: [0.5, 0.49, 0.45], lining: [0.05, 0.052, 0.06], collarIn: [0.05, 0.05, 0.055],
+    pants: [0.03, 0.031, 0.034], coat: [0.065, 0.066, 0.07], collar: [0.065, 0.066, 0.07], facing: [0.88, 0.82, 0.72], piping: [0.66, 0.64, 0.6],
+    hair: [0.012, 0.012, 0.015], hairTip: [0.04, 0.04, 0.048], armor: [0.8, 0.86, 0.96], spike: [0.44, 0.46, 0.53], bevel: [0.92, 0.96, 1.02],
     welt: [0.03, 0.03, 0.034], trim: [0.42, 0.43, 0.46], gem: [0.95, 0.9, 0.76], flask: [0.45, 0.95, 1.1],
   }),
   /** the screen-left rim of light (× the material's own) */
-  rim: Object.freeze({ coat: 0.7, collar: 0.7, pants: 0.55, welt: 0.6, hair: 0.5, hairTip: 0.5, armor: 1.0, spike: 0.8 }),
+  rim: Object.freeze({ coat: 0.55, collar: 0.55, pants: 0.45, welt: 0.6, hair: 0.4, hairTip: 0.5, armor: 1.25, spike: 0.9 }),
   /** a plate's spec [k, pow] (the white glints on titanium) */
-  spec: Object.freeze({ armor: [1.4, 16], spike: [0.9, 22], bevel: [1.2, 14], trim: [1.1, 18], welt: [0.5, 24] }),
+  spec: Object.freeze({ armor: [2.0, 30], spike: [1.1, 26], bevel: [1.6, 24], trim: [1.3, 22], welt: [0.5, 24] }),
   /** glowing parts: [ink rgb, emissive rgb] */
-  glow: Object.freeze({ flask: [[0.5, 0.95, 1.1], [0.22, 0.7, 0.9]], gem: [[1.2, 1.1, 0.9], [1.4, 1.25, 0.95]] }),
+  glow: Object.freeze({ flask: [[0.46, 0.86, 1.0], [0.15, 0.48, 0.62]], gem: [[1.2, 1.1, 0.9], [1.4, 1.25, 0.95]] }),
   /** the part tables his rig shares with every boss rig on the page (written every frame by look.js; the
    *  plates' 12 - 16 are read from the player's own tables under the boss print, so they are not here):
    *  { ink, rim, fill: [fill gain, style, far line, far fill] } (model.js heroPartValues) */
   ink: Object.freeze({
     // the cloth (the trousers 5, the jacket 6): dimmer letters than the hero's lit cloth, so the frame's
     // titanium (12 - 16: the player's tables, full gain) reads brighter than the jacket it comes out of
-    5: { ink: [1, 1, 1, 0.4], rim: [0.6, 0.64, 1.0, 0.75], fill: [0.62, 8, 0, 0.55] },
-    6: { ink: [1, 1, 1, 0.45], rim: [0.6, 0.64, 1.0, 0.75], fill: [0.62, 8, 0, 0.6] },
+    5: { ink: [1, 1, 1, 0.34], rim: [0.56, 0.58, 0.7, 0.7], fill: [0.52, 8, 0, 0.5] },
+    6: { ink: [1, 1, 1, 0.38], rim: [0.56, 0.58, 0.7, 0.7], fill: [0.52, 8, 0, 0.54] },
     2: { ink: [0.2, 0.2, 0.22, 0.7], rim: [0.3, 0.3, 0.34, 0.8], fill: [1, 0, 0, 1] },
-    7: { ink: [1.0, 0.88, 0.72, 0.95], rim: [1.0, 0.9, 0.76, 1.0], fill: [1.4, 0, 0.8, 1.2] },
+    7: { ink: [1.0, 0.94, 0.84, 1.0], rim: [1.0, 0.95, 0.86, 1.0], fill: [1.5, 0, 0.8, 1.25] },
     9: { ink: [0.95, 0.93, 0.88, 0.9], rim: [0.95, 0.93, 0.88, 0.9], fill: [1.2, 0, 0.6, 1.0] },
-    11: { ink: [0.42, 0.42, 0.46, 0.75], rim: [0.55, 0.56, 0.62, 0.85], fill: [1.0, 8, 0.3, 0.8] },
+    11: { ink: [0.3, 0.3, 0.33, 0.7], rim: [0.46, 0.47, 0.52, 0.8], fill: [1.0, 8, 0.3, 0.8] },
     18: { ink: [1.2, 1.1, 0.9, 1.3], rim: [1.2, 1.1, 0.9, 1.3], fill: [1, 2, 1, 1.3] },
     19: { ink: [0.55, 0.95, 1.1, 1.0], rim: [0.55, 0.95, 1.1, 1.0], fill: [1, 2, 1, 1.1] },
   }),

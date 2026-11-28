@@ -3060,6 +3060,277 @@ async function scenarioArFair() {
   assert(bad === 0, `none lands inside a blue / normal blow's window (${bad})`);
 }
 
+// ================================================================== V04 (the owner's reference pack: his look and his motion)
+// The pack is VISUAL ONLY: these prove that the poses, the hand shapes and the look changed nothing a fight
+// reads (the timing identity), that removed shell never comes back through any clip, that the hand shapes
+// follow the beat's clock, and that the new per-frame code allocates nothing. `v04Motion` measures the motion
+// (the pop audit, the arm snaps, the planted feet, the palms' gap from the torso; run it against another
+// checkout's code with `node <this file> <other root> v04Motion` to compare).
+const V04_PALM = new Set(['fistR', 'fistL', 'palms']);
+/** The gameplay signature of every move in every phase it is used in (realised with a fixed draw; a flurry
+ *  at 3 and 9 beats): everything but the pose keys. Same as the v04 agent's scratch sig.mjs. */
+function v04Signature() {
+  const strip = (o) => {
+    if (Array.isArray(o)) return o.map(strip);
+    if (o && typeof o === 'object') {
+      const r = {};
+      for (const k of Object.keys(o).sort()) if (k !== 'keys' && k !== 'recoveryKeys' && typeof o[k] !== 'function') r[k] = strip(o[k]);
+      return r;
+    }
+    return typeof o === 'number' ? Math.round(o * 1e6) / 1e6 : o;
+  };
+  const r6 = (v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v);
+  const sig = {};
+  for (const name of Object.keys(MOVES).sort()) {
+    const def = MOVES[name];
+    sig[name] = { def: strip(def), phases: {} };
+    for (const f of phasesOf(name)) {
+      for (const count of def.streak ? [3, 9] : [null]) {
+        let s = 7;
+        const A = realise(name, f, () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296), count ? { count } : null);
+        if (!A) continue;
+        sig[name].phases[count ? `P${f}x${count}` : `P${f}`] = {
+          hits: A.hits, recoveryStart: r6(A.recoveryStart), end: r6(A.end),
+          beats: A.beats.map((b) => ({ start: r6(b.start), impact: r6(b.impact), end: r6(b.end), W: r6(b.W), H: r6(b.H), A: r6(b.A), S: r6(b.S), close: r6(b.close), flash: r6(b.flash), tellAt: r6(b.tellAt), feint: b.feint, hit: b.hit, last: b.last, def: strip(b.def) })),
+        };
+      }
+    }
+  }
+  return sig;
+}
+/** The first path where a and b differ, or ''. */
+function v04Diff(a, b, path = '') {
+  if (typeof a !== typeof b || Array.isArray(a) !== Array.isArray(b)) return path || '(root)';
+  if (a && typeof a === 'object') {
+    const ks = new Set([...Object.keys(a), ...Object.keys(b ?? {})]);
+    for (const k of ks) {
+      const r = v04Diff(a[k], b?.[k], `${path}.${k}`);
+      if (r) return r;
+    }
+    return '';
+  }
+  return a === b ? '' : `${path}: ${JSON.stringify(a)} vs ${JSON.stringify(b)}`;
+}
+/** The moves to play: [name, phase, the hero's distance]. */
+const V04_PLAY = [
+  ['benediction', 1, 1.8], ['genuflect', 1, 1.8], ['layHands', 1, 1.6], ['longWalk', 1, 6], ['rebuke', 1, 1.6], ['litany', 1, 1.8],
+  ['interdict', 2, 1.8], ['castOut', 2, 1.9], ['penance', 2, 1.5], ['votiveFist', 2, 6], ['rosary', 2, 1.8], ['vigil', 2, 6], ['absolution', 2, 6],
+  ['lauds', 3, 1.8], ['anathema', 3, 1.6], ['censerWheel', 3, 4], ['thurible', 3, 2], ['descent', 3, 6], ['triptych', 3, 6], ['passingBell', 3, 6],
+  ['requiem', 4, 1.6], ['vespers', 4, 6], ['kyrie', 4, 6], ['verdict', 4, 6], ['revelation', 4, 6],
+];
+/** Play `name` in phase `form` (AI off, the hero god, `dist` m off), `each(G, a)` every frame of the act and
+ *  of the next half second; the transitions to `form` are played first. */
+function v04Play(name, form, dist, each) {
+  const G = build();
+  duel(G, { dist, form });
+  const d = G.game.dragon;
+  place(G, dist);
+  G.game.player.debug.god = true;
+  const ok = d.brain.trigger(name);
+  const a = d.brain.act;
+  let after = 0;
+  run(G, 9, () => {}, () => {
+    (d.object3d ?? d.rig?.root)?.updateMatrixWorld?.(true);
+    each(G, d.brain.act === a ? a : null);
+    // (to the end of whatever the move led into: the grab's lift is an act of its own)
+    if (d.brain.act !== a && (d.mode !== 'act' || !d.brain.act)) after++;
+    return after > 30;
+  });
+  return { G, ok, a };
+}
+
+async function scenarioV04Timing() {
+  out('\n== scenario V04 TIMING (the look and motion pass changed no gameplay: every move\'s realised beats, zones, travel, tells, the reaction clips and the tuning identical to the frozen signature) ==');
+  const sig = v04Signature();
+  const { CLIP: CL, REACT: RE, OPEN: OP } = await imp('src/entities/enemies/falseSaint/moves.js');
+  const strip = (o) => JSON.parse(JSON.stringify(o, (k, v) => (typeof v === 'function' ? undefined : typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v)));
+  const clips = Object.fromEntries(Object.entries(CL).map(([k, c]) => [k, { dur: Math.round((c.dur ?? c.duration) * 1e6) / 1e6, hold: !!c.hold }]));
+  const file = process.env.GCD_V04_FROZEN;
+  if (!file || !fs.existsSync(file)) {
+    out(`     no frozen signature (GCD_V04_FROZEN unset): ${Object.keys(sig).length} moves signed, nothing to compare`);
+    assert(Object.keys(sig).length > 0, 'the signature covers every move');
+    return;
+  }
+  const F = JSON.parse(fs.readFileSync(file, 'utf8'));
+  let same = 0;
+  for (const name of new Set([...Object.keys(sig), ...Object.keys(F).filter((k) => !k.startsWith('__'))])) {
+    const A = sig[name], B = F[name];
+    const diff = !A || !B ? 'missing' : v04Diff({ def: B.def, phases: Object.fromEntries(Object.entries(B.phases).map(([k, v]) => [k, { hits: v.hits, recoveryStart: v.recoveryStart, end: v.end, beats: v.beats.map(({ F: _f, ...rest }) => rest) }])) }, A);
+    if (diff) assert(false, `${name}: the same as the frozen signature (${diff})`);
+    else same++;
+  }
+  assert(same === Object.keys(sig).length, `${same} / ${Object.keys(sig).length} moves identical to the frozen signature (every phase: beats, windups, holds, cues, contacts, active, sustain, close-in, zones, travel, dashes, lifts, tells, damage)`);
+  assert(!v04Diff(F.__clips, clips), `the ${Object.keys(clips).length} reaction clips' durations unchanged ${v04Diff(F.__clips, clips)}`);
+  assert(!v04Diff(F.__react, strip(RE)) && !v04Diff(F.__open, [...OP].sort()), 'the reactions\' root motion and the clips that leave him open unchanged');
+  assert(!v04Diff(F.__tuning, strip(TUNING)), `the whole TUNING unchanged ${v04Diff(F.__tuning, strip(TUNING))}`);
+}
+
+async function scenarioV04Shell() {
+  out('\n== scenario V04 SHELL (one skeleton, cumulative loss: through every move and reaction a removed piece of shell never comes back, the silhouette never changes size) ==');
+  let regrew = 0, frames = 0, chips = 0, moves = 0;
+  const worst = [];
+  for (const [name, form, dist] of V04_PLAY) {
+    const parts = {};
+    const gone = new Set();
+    let n = 0;
+    const { G, ok } = v04Play(name, form, dist, (G) => {
+      const d = G.game.dragon, sh = d.shell, D = d.rig?.root?.userData?.fsDress;
+      // a cut lands on him every 0.4 s somewhere on his body (the shell chips where it lands)
+      if (++n % 24 === 0) {
+        const pt = { x: d.position.x + Math.sin(n) * 0.2, y: 0.4 + ((n * 0.37) % 1.4), z: d.position.z + Math.cos(n) * 0.2 };
+        if (sh.chip(pt, 0.6) > 0) chips++;
+      }
+      for (const p of ['headR', 'headL', 'chestR', 'chestL', 'armR', 'foreR', 'handR', 'armL', 'foreL', 'handL', 'hip', 'legR', 'shinR', 'legL', 'shinL']) {
+        const v = sh.part(p);
+        if (v < (parts[p] ?? 0) - 1e-9) {
+          regrew++;
+          worst.push(`${name}: ${p} ${parts[p].toFixed(3)} -> ${v.toFixed(3)}`);
+        }
+        parts[p] = Math.max(parts[p] ?? 0, v);
+      }
+      for (let i = 0; i < (D?.shards?.length ?? 0); i++) {
+        const e = D.shards[i];
+        if (e.gone) gone.add(i);
+        else if (gone.has(i)) {
+          regrew++;
+          worst.push(`${name}: shard ${i} (${e.part}) shown again`);
+        }
+      }
+      frames++;
+    });
+    if (ok) moves++;
+    void G;
+  }
+  out(`     ${moves} moves played with a cut chipping him every 0.4 s (${chips} chips), ${frames} frames; ${regrew} regrowths ${worst.slice(0, 4).join('; ')}`);
+  assert(moves === V04_PLAY.length, `every move played (${moves} / ${V04_PLAY.length})`);
+  assert(regrew === 0, 'no part\'s exposure ever falls and no removed piece is ever shown again');
+}
+
+async function scenarioV04Hands() {
+  out('\n== scenario V04 HANDS (the pack\'s hand details by the beat\'s clock: a palm reaches at its contact, the clench only on the booster punch, the guard\'s half-curl after) ==');
+  let palms = 0, palmsOk = 0, fists = 0, fistsOk = 0, stray = 0, back = 0, acts = 0;
+  const bad = [];
+  for (const [name, form, dist] of V04_PLAY.filter(([n]) => ['melee', 'boost'].includes(MOVE_OWNERS_V04[n]))) {
+    const seen = new Set();
+    let endShape = null;
+    v04Play(name, form, dist, (G, a) => {
+      const d = G.game.dragon;
+      if (!a) {
+        if (d.mode !== 'act') endShape = `${d.fsHandR}/${d.fsHandL}`;
+        return;
+      }
+      for (const b of a.beats) {
+        if (b.feint || seen.has(b) || a.t < b.impact) continue;
+        seen.add(b);
+        const D = b.def, booster = (D.fsDash && !D.fsDash.rite) || (D.fsBlitz?.pass !== undefined && !D.fsBlitz.last);
+        if (booster) {
+          fists++;
+          if (d.fsHandR === 'clench') fistsOk++;
+          else bad.push(`${name} B${b.index + 1}: ${d.fsHandR} (want clench)`);
+        } else if (V04_PALM.has(D.part)) {
+          palms++;
+          const want = D.part === 'fistL' ? d.fsHandL : D.part === 'palms' ? (d.fsHandR === 'reach' && d.fsHandL === 'reach' ? 'reach' : `${d.fsHandR}/${d.fsHandL}`) : d.fsHandR;
+          if (want === 'reach' || (D.fsLay && d.fsHandR === 'reach')) palmsOk++;
+          else bad.push(`${name} B${b.index + 1} ${D.part}: ${want} (want reach)`);
+        }
+        if (!booster && (d.fsHandR === 'clench' || d.fsHandL === 'clench')) stray++;
+      }
+    });
+    acts++;
+    if (endShape === 'undefined/undefined') back++;
+    else bad.push(`${name}: after the act ${endShape}`);
+  }
+  out(`     ${acts} moves: ${palmsOk} / ${palms} palm contacts reaching, ${fistsOk} / ${fists} booster punches clenched, ${stray} clenches elsewhere, ${back} back to the guard after ${bad.slice(0, 5).join('; ')}`);
+  assert(palms > 10 && palmsOk === palms, 'every palm contact is drawn reaching (open, flat)');
+  assert(fists > 0 && fistsOk === fists, 'every booster punch is drawn clenched');
+  assert(stray === 0, 'no clench outside the booster punch');
+  assert(back === acts, 'the hands go back to the guard\'s shape after every move');
+}
+const MOVE_OWNERS_V04 = (await imp('src/entities/enemies/falseSaint/moves.js')).MOVE_OWNERS ?? {};
+
+async function scenarioV04Alloc() {
+  out('\n== scenario V04 ALLOC (the new per-frame code allocates nothing: the handlers\' hand shapes and the look\'s hands, a hundred thousand calls each) ==');
+  const v8 = await import('node:v8');
+  const vm = await import('node:vm');
+  v8.setFlagsFromString('--expose-gc');
+  const gc = vm.runInNewContext('gc');
+  const G = build();
+  duel(G, { dist: 2, form: 2 });
+  const d = G.game.dragon, M = d.parts.melee, B = d.parts.boost;
+  const { dressSaint } = await imp('src/entities/enemies/falseSaint/look.js');
+  const bm = { def: { part: 'fistR', cock: 0.74, fsBlow: 'light' }, feint: false };
+  const bb = { def: { part: 'fistR', cock: 0.62, fsDash: { carry: true } }, feint: false };
+  const SH = ['reach', 'guard', 'clench', undefined];
+  const loop = (fn, n = 100000) => {
+    for (let i = 0; i < 2000; i++) fn(i);
+    gc();
+    const h0 = process.memoryUsage().heapUsed;
+    for (let i = 0; i < n; i++) fn(i);
+    gc();
+    return process.memoryUsage().heapUsed - h0;
+  };
+  // (beatMotion with no slip / no jet / no dash, then the frame's reset)
+  const dm = loop((i) => { M.beatMotion(bm, (i % 200) / 100, null, 1 / 60); M._handLive = (i & 1) === 0; });
+  const dh = loop((i) => { d.fsHandR = SH[i & 3]; d.fsHandL = SH[(i >> 2) & 3]; dressSaint(d, 1 / 60); }, 20000);
+  void bb, B;
+  out(`     melee beatMotion (hands) x 100000: heap ${(dm / 1024).toFixed(1)} KiB; the look's hands x 20000 shape changes: heap ${(dh / 1024).toFixed(1)} KiB`);
+  assert(dm < 256 * 1024, 'the hands in the melee handler allocate nothing per frame (< 256 KiB over 100000 calls: noise)');
+  assert(dh < 256 * 1024, 'the look\'s hands allocate nothing per frame (< 256 KiB over 20000 calls)');
+}
+
+async function scenarioV04Motion() {
+  out('\n== scenario V04 MOTION (measured, every move at 60 fps: the largest one-frame jump of a hand / a foot / the head against his root (the pop audit), a planted foot\'s slide, the root\'s jolt, the palm\'s gap from the torso at the contact) ==');
+  const T = THREE, v = new T.Vector3();
+  const rows = [];
+  let popWorst = 0, slideWorst = 0;
+  for (const [name, form, dist] of V04_PLAY) {
+    let prev = null, pv = null, hand = 0, foot = 0, head = 0, slide = 0, jolt = 0, gapMin = Infinity, n = 0, hT = 0, fT = 0;
+    const seen = new Set(), anchors = [];
+    v04Play(name, form, dist, (G, a) => {
+      const d = G.game.dragon, R = d.rig;
+      if (!a || !R) return;
+      const c = Math.cos(d.yaw), s = Math.sin(d.yaw), px = d.position.x, pz = d.position.z, py = d.position.y;
+      const at = () => { const x = v.x - px, z = v.z - pz; return [x * c - z * s, v.y - py, x * s + z * c, v.x, v.y, v.z]; };
+      const loc = (o) => { v.setFromMatrixPosition(o.matrixWorld); return at(); };
+      const hpt = (side) => { d.handPoint(side, v); return at(); };
+      const cur = { hR: hpt('R'), hL: hpt('L'), fR: loc(R.legs.R.foot), fL: loc(R.legs.L.foot), hd: loc(R.head ?? R.arms.R.upper), ch: loc(R.chest ?? R.spine) };
+      // (a blink (a flit, a dash's frame, a pass) moves or turns the root by itself: not a pop of the limbs)
+      const blink = pv && (Math.hypot(px - pv[0], pz - pv[1]) > 0.5 || Math.abs(Math.atan2(Math.sin(d.yaw - (pv[3] ?? d.yaw)), Math.cos(d.yaw - (pv[3] ?? d.yaw)))) > 0.5);
+      if (prev && G.game.dt > 1e-3 && !blink) {
+        const dj = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+        const hj = Math.max(dj(cur.hR, prev.hR), dj(cur.hL, prev.hL)), fj = Math.max(dj(cur.fR, prev.fR), dj(cur.fL, prev.fL));
+        if (hj > hand) { hand = hj; hT = a.t; }
+        if (fj > foot) { foot = fj; fT = a.t; }
+        head = Math.max(head, dj(cur.hd, prev.hd));
+        // a foot down on the plates (low) that slides in the world while it stays down
+        for (const k of ['fR', 'fL']) if (cur[k][4] < py + 0.12 && prev[k][4] < py + 0.12 && py < 0.05) slide = Math.max(slide, Math.hypot(cur[k][3] - prev[k][3], cur[k][5] - prev[k][5]) / G.game.dt);
+        const vel = [(px - pv[0]) / G.game.dt, (pz - pv[1]) / G.game.dt];
+        if (pv[2]) jolt = Math.max(jolt, Math.hypot(vel[0] - pv[2][0], vel[1] - pv[2][1]));
+        pv = [px, pz, vel, d.yaw];
+      } else pv = [px, pz, null, d.yaw];
+      prev = cur;
+      n++;
+      for (const b of a.beats) {
+        if (b.feint || seen.has(b) || a.t < b.impact || !V04_PALM.has(b.def.part)) continue;
+        seen.add(b);
+        const h = b.def.part === 'fistL' ? cur.hL : cur.hR;
+        // (the gap seen from above: the hand from the chest's axis, in the ground plane)
+        gapMin = Math.min(gapMin, Math.hypot(h[0] - cur.ch[0], h[2] - cur.ch[2]));
+        // (where the palm is drawn at the contact, in his frame: + his left, + forward, up; the hero's line is x 0)
+        d.handPoint(b.def.part === 'fistL' ? 'L' : 'R', v);
+        R.root.worldToLocal(v);
+        anchors.push(`B${b.index + 1} ${b.def.part} [${v.x.toFixed(2)} ${v.z.toFixed(2)} ${v.y.toFixed(2)}]`);
+      }
+    });
+    popWorst = Math.max(popWorst, hand, foot, head);
+    slideWorst = Math.max(slideWorst, slide);
+    rows.push(`${name} P${form}: hand ${hand.toFixed(3)} (t ${hT.toFixed(2)}) foot ${foot.toFixed(3)} (t ${fT.toFixed(2)}) head ${head.toFixed(3)} m/frame; planted slide ${slide.toFixed(2)} m/s; root jolt ${jolt.toFixed(1)} m/s/frame; palm gap ${Number.isFinite(gapMin) ? gapMin.toFixed(2) : '-'} m (${n} frames)${anchors.length ? '; palm at the contact (left, fwd, up) ' + anchors.join(' ') : ''}`);
+  }
+  for (const r of rows) out(`     ${r}`);
+  out(`     worst one-frame jump ${popWorst.toFixed(3)} m, worst planted slide ${slideWorst.toFixed(2)} m/s`);
+  assert(rows.length === V04_PLAY.length, 'every move measured');
+}
+
 // ================================================================== THE SCENARIOS (one entry per line, each agent in its block)
 const S = {
   // --- core
@@ -3123,6 +3394,12 @@ const S = {
   trChange: scenarioTrChange,
   trUse: scenarioTrUse,
   // --- tuning
+  // --- v04
+  v04Timing: scenarioV04Timing,
+  v04Shell: scenarioV04Shell,
+  v04Hands: scenarioV04Hands,
+  v04Alloc: scenarioV04Alloc,
+  v04Motion: scenarioV04Motion,
 };
 // (opt-in scenarios: listed here, run only by name; tests/run.mjs may run one as a process of its own)
 const OPT_IN = new Set([]);
