@@ -71,8 +71,8 @@ import { fsLookNow } from './look.js';
 //             mortar tubes), d.eyesK (the sensors' light: how many are lit follows d.dressPhase),
 //             A weapon under a part that still has its shell does not show (look.js).
 //   the hand shapes (the v04 pack's hand details; strings on d, set by the pose / move code, read every frame):
-//             d.fsHandR, d.fsHandL   'open' | 'reach' (drawn as open: the palm's contact) | 'relax' |
-//                                    'guard' (half-curled: the guard, the default) | 'clench' (a fist: the
+//             d.fsHandR, d.fsHandL   'open' | 'reach' (drawn as open: the palm's contact) | 'guard' (half-
+//                                    curled: the guard, the default; 'relax' draws as it) | 'clench' (a fist: the
 //                                    booster punch only); d.fsFistR > 0.5 is the same as fsHandR 'clench'.
 //                                    The left hand's grip on the sword joint (two-handed) is the animator's.
 
@@ -270,7 +270,7 @@ function buildHead(ctx) {
     }
   }
   // ---- the disguise: skin (the face, the jaw, the ears, the neck), split down the middle
-  const skull = orient.up(ellipsoidGeometry(0.078, 0.09, 0.1, { widthSegs: 30, heightSegs: 22 })).translate(...SKULL);
+  const skull = orient.up(ellipsoidGeometry(0.078, 0.09, 0.1, { widthSegs: 32, heightSegs: 24 })).translate(...SKULL);
   const jaw = jawGeo(1, [20, 12]).translate(SKULL[0], SKULL[1] - 0.066, SKULL[2] + 0.016);
   const neck = limb({ length: 0.12, r0: BODY.neck[0], r1: BODY.neck[1], radial: 18, rings: 6, capSegs: 1 }).translate(0, 0.1, 0);
   const ears = [-1, 1].map((s) => ellipsoidGeometry(0.012, 0.024, 0.018, { widthSegs: 8, heightSegs: 6 }).translate(s * 0.08, SKULL[1] - 0.014, SKULL[2] - 0.008));
@@ -283,11 +283,11 @@ function buildHead(ctx) {
   // temple and the brow (phase 3), the cheek's island last (phase 4)
   const cut = {
     R: shardPart(R, ctx, head, 'headR', [{ g: sides.R, mat: M.skin, wall: true }], {
-      n: 8, O: [-0.058, 0.118, 0.07], R: 0.14, amp: 0.28, freq: 1.4, depth: 0.007,
+      n: 7, O: [-0.058, 0.118, 0.07], R: 0.14, amp: 0.4, freq: 3.6, depth: 0.007,
       tAt: [[0, 0.04], [0.42, 0.76], [0.43, 0.84], [1, 0.99]],
     }, keep),
     L: shardPart(R, ctx, head, 'headL', [{ g: sides.L, mat: M.skin, wall: true }], {
-      n: 8, O: [0.05, 0.19, 0.06], R: 0.15, amp: 0.28, freq: 1.4, depth: 0.007,
+      n: 7, O: [0.05, 0.19, 0.06], R: 0.15, amp: 0.4, freq: 3.6, depth: 0.007,
       tAt: [[0, 0.1], [0.42, 0.33], [0.43, 0.5], [1, 0.84]],
     }, keep),
   };
@@ -441,7 +441,7 @@ function buildJacket(ctx) {
   const keep = [];
   const rings = JACKET.map((r) => ({ ...r, y: ySp(r.y), gap: 0 }));
   // the closed shell, the diagonal overlap's crease drawn into it, the flap's edge a ribbon over it
-  const shell = foldLines(shellGeometry(rings, { sub: 5, cols: 44 }), (x, y, z) => {
+  const shell = foldLines(shellGeometry(rings, { sub: 4, cols: 36 }), (x, y, z) => {
     if (z < 0.02) return 0.5;
     const s = Math.min(1, Math.max(0, (ySp(1.5) - y) / 0.4));
     const [a] = CLOSE(s);
@@ -468,8 +468,8 @@ function buildJacket(ctx) {
   for (const side of ['R', 'L']) {
     const part = side === 'R' ? 'chestR' : 'chestL';
     const cfg = side === 'R'
-      ? { n: 8, O: [-0.07, ySp(1.5), 0.06], R: 0.46, amp: 0.4, freq: 2.2, depth: 0.014, tAt: [[0, 0.32], [1, 0.97]] }
-      : { n: 8, O: [0.09, ySp(1.47), 0.08], R: 0.46, amp: 0.4, freq: 2.2, depth: 0.014, tAt: [[0, 0.1], [0.18, 0.24], [0.19, 0.36], [1, 0.94]] };
+      ? { n: 6, O: [-0.07, ySp(1.5), 0.06], R: 0.46, amp: 0.4, freq: 2.2, depth: 0.014, tAt: [[0, 0.32], [1, 0.97]] }
+      : { n: 6, O: [0.09, ySp(1.47), 0.08], R: 0.46, amp: 0.4, freq: 2.2, depth: 0.014, tAt: [[0, 0.1], [0.18, 0.24], [0.19, 0.36], [1, 0.94]] };
     const layers = [{ g: half(cloth, side), mat: M.coat, wall: true }];
     const sg = half(seams, side);
     if (sg) layers.push({ g: sg, mat: M.piping });
@@ -623,13 +623,13 @@ function buildArms(ctx) {
     const wm = ctx.mesh(fore, facet(wrist.clone().scale(0.94, 1, 0.94)), M.armor, 0, -DIM.foreArm + 0.035, 0.004);
     keep.push(ws, wm);
     R.hands.push({ part: P.hand, t: skinT.wrist, skin: [ws], metal: [wm], side, wrist: true });
-    // each hand shape (the v04 pack's hand details: open, relax, guard, clench; `reach` draws as open) in
+    // each hand shape (the v04 pack's hand details: open, guard, clench; reach draws as open, relax as guard) in
     // skin and in metal; look.js shows the one the pose asks for (d.fsHandR / d.fsHandL) in the right layer
     const shapes = (parent, geos) => {
       const h = { part: P.hand, t: skinT.palm, side, shapes: {}, shape: '' };
       for (const [name, g] of Object.entries(geos)) {
         const sm = ctx.mesh(parent, g, M.skin);
-        const mm = ctx.mesh(parent, facet(g.clone().scale(0.97, 0.97, 0.97)), M.armor);
+        const mm = ctx.mesh(parent, g.clone().scale(0.97, 0.97, 0.97), M.armor);
         sm.visible = mm.visible = false;
         keep.push(sm, mm);
         h.shapes[name] = { skin: sm, metal: mm };
@@ -642,7 +642,7 @@ function buildArms(ctx) {
       // sword joint's axis (the booster punch)
       const Fi = gripFist(HK);
       R.handR = shapes(sword, {
-        open: openHandR(1.06, 0.06), relax: openHandR(1.04, 0.38), guard: openHandR(1.04, 0.62),
+        open: openHandR(1.06, 0.06), guard: openHandR(1.04, 0.5),
         clench: merge([Fi.fingers, Fi.thumb, Fi.ridge]),
       });
       // the palm's iris (the cannon): a titanium ring and an ivory centre on the palm (+X)
@@ -672,7 +672,7 @@ function buildArms(ctx) {
       const FL = fistHand(DIM.foreArm - 0.03, 1, 1);
       const fl = merge([FL.palm, FL.fingers, FL.tips, FL.thumb]);
       if (wp) fl.translate(-wp.x, -wp.y, -wp.z);
-      R.handL = shapes(gOpen, { open: lh(0.06, 1.06), relax: lh(0.38), guard: lh(0.62), clench: fl });
+      R.handL = shapes(gOpen, { open: lh(0.06, 1.06), guard: lh(0.5), clench: fl });
       const Fi = gripFist(HK);
       R.handLGrip = shapes(gGrip, { clench: merge([Fi.fingers, Fi.thumb, Fi.ridge]).translate(0, 0, -DIM.offGrip) });
       R.handLGrip.fixed = 'clench';
@@ -760,7 +760,7 @@ function buildLegs(ctx) {
   // ---- the trousers' seat (the hip part, under the jacket's skirt)
   const [hx, hy, hz] = BODY.hips.r;
   const seat = orient.up(ellipsoidGeometry(hx + 0.004, hz + 0.004, hy + 0.006, { widthSegs: 20, heightSegs: 12 })).translate(...BODY.hips.c);
-  shardPart(R, ctx, pelvis, 'hip', [{ g: seat, mat: M.pants, wall: true }], { n: 4, O: [-0.12, 0.0, 0.08], R: 0.3, amp: 0.35, freq: 2, depth: 0.01, tAt: [[0, 0.3], [1, 0.74]] }, keep);
+  shardPart(R, ctx, pelvis, 'hip', [{ g: seat, mat: M.pants }], { n: 4, O: [-0.12, 0.0, 0.08], R: 0.3, amp: 0.35, freq: 2, depth: 0.01, tAt: [[0, 0.3], [1, 0.74]] }, keep);
   F.put('hip', pelvis, sub(facet(orient.up(ellipsoidGeometry(hx - 0.008, hz - 0.008, hy - 0.004, { widthSegs: 10, heightSegs: 6 })).translate(...BODY.hips.c)), 0), M.armor);
   F.put('hip', pelvis, foldLines(bandGeometry(0.125, 0.09, 0.08, 20).translate(0, 0.1, -0.004), (x, y, z, u) => 0.5 + 0.6 * Math.sin(u * 70)), M.lining);
   const [th0, th1, thB] = BODY.thigh, [sh0, sh1, shB] = BODY.shin, Ft = BODY.foot;
@@ -773,14 +773,14 @@ function buildLegs(ctx) {
     // (the left leg: a, the second sheet's 03, both legs plated in phase 3; `?fsLook=b`, the first sheet's
     // 03, the left trouser whole until phase 4)
     const b = fsLookNow() === 'b';
-    const cutT = shardPart(R, ctx, thigh, P.leg, [{ g: tg, mat: M.pants, wall: true }], side === 'R'
+    const cutT = shardPart(R, ctx, thigh, P.leg, [{ g: tg, mat: M.pants }], side === 'R'
       ? { n: 6, O: [0, -0.4, 0.06], R: 0.46, amp: 0.42, freq: 2.2, depth: 0.012, tAt: [[0, 0.12], [1, 0.69]] }
       : { n: 6, O: [0, -0.4, 0.06], R: 0.46, amp: 0.42, freq: 2.2, depth: 0.012, tAt: b ? [[0, 0.32], [1, 0.95]] : [[0, 0.08], [1, 0.62]] }, keep);
     const sg = merge([
       limb({ length: DIM.shin - 0.07, r0: th1 + 0.002, r1: sh1 + 0.01, bulge: shB, radial: 16, rings: 8 }),
       sub(limb({ length: 0.03, r0: sh1 + 0.012, r1: sh1 + 0.013, radial: 16, rings: 1, capSegs: 1 }).translate(0, -DIM.shin + 0.1, 0), 1),
     ]);
-    const cutS = shardPart(R, ctx, shin, P.shin, [{ g: sg, mat: M.pants, wall: true }], side === 'R'
+    const cutS = shardPart(R, ctx, shin, P.shin, [{ g: sg, mat: M.pants }], side === 'R'
       ? { n: 5, O: [0, -0.2, 0.06], R: 0.34, amp: 0.42, freq: 2.2, depth: 0.012, tAt: [[0, 0.22], [1, 0.95]] }
       : { n: 5, O: [0, -0.2, 0.06], R: 0.34, amp: 0.42, freq: 2.2, depth: 0.012, tAt: b ? [[0, 0.47], [1, 0.97]] : [[0, 0.12], [1, 0.9]] }, keep);
     // ---- the boots (black, always: the frame's feet are boots too)

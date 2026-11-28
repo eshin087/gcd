@@ -172,7 +172,7 @@ function weapons(d, D, force) {
 
 /** The hand shapes a pose may ask for (d.fsHandR / d.fsHandL); `reach` draws as the open hand. */
 export const FS_HAND_SHAPES = Object.freeze(['open', 'reach', 'relax', 'guard', 'clench']);
-const shapeOf = (v, def = 'guard') => (v === 'reach' ? 'open' : v === 'open' || v === 'relax' || v === 'guard' || v === 'clench' ? v : def);
+const shapeOf = (v, def = 'guard') => (v === 'reach' ? 'open' : v === 'relax' ? 'guard' : v === 'open' || v === 'guard' || v === 'clench' ? v : def);
 
 /** The hands: skin, or the metal under it once the part is bare (a wrist, a hand), in the shape the pose
  *  asks for. The left hand's open / grip groups are the animator's to show (their `visible`); what is
