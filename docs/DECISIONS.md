@@ -7399,13 +7399,13 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   than `PATH.min`); a turn gets one per third, a thrust straight at the camera runs along the blade off the point. It is
   laid where the slice would be and not moved, so from every side it is the swing's own line. `enemy` stays behind
   `?endslash=enemy`. (2) `belt` (the owner's pick, combo A's own hand now, feel `iai`'s too): the hand at the side-front
-  of the left hip, `hang` [0.16, -0.3, 0.16], the elbow out to 0.37-0.40 m (the arm's reach; bent ~85-100°), the fingers
+  of the left hip, `hang` [0.2, -0.32, 0.16], the elbow out to 0.37-0.40 m (the arm's reach; bent ~85-100°), the fingers
   forward-down along the forearm, the palm to the hip; its rest 0.45 on the hips (`thigh`, `hip`) so the windup's chest
   whip does not fling it. Filmed from behind at the game's angle beside the first belt and a wider rest: here the forearm
   and hand show past the coat. (3) `combos.js` `A45` / `?a45=`: three options for hits 4-5, each starting where the hit
   before leaves the blade (the falling backhand from over the left shoulder, or the rising backhand from the left hip),
   no thrust, and a two-handed finisher on a smooth windup (`warp` on the clip, read by `swingPose`: the coil reached as
-  the blow leaves, not held) of 0.15-0.2 s: `a` the slam's clip nearly grounded (no shards), `b` Whirling Tempest's
+  the blow leaves, not held) of 0.17-0.2 s: `a` the slam's clip nearly grounded (no shards), `b` Whirling Tempest's
   full turn, `c` the cleave's falling diagonal into a low lunge without its dash. `0` (the default until the owner
   picks) keeps the thrust and Mountain Splitter. (4) `?sliceform=facet|jag`: the traced slice in straight cuts, a corner
   where the blade has turned `FACET.turn` since the last one or the straight cut would leave the point's path by `dev`;

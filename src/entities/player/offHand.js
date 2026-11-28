@@ -53,8 +53,8 @@ export const OFFHAND = {
   // hand sat on the front of the belt (`hang` [-0.06, -0.3, 0.13]): from behind, the game's view, the arm lay inside his
   // outline and "seems to be completely missing" (the owner); out here the forearm and hand show past his coat)
   belt: {
-    ...COMMON, hang: [0.16, -0.3, 0.16], thigh: [0.23, 0.235, 0.16], hip: 0.45, near: 0.28, w: 12, z: 0.6, k: 0.2, sway: 0.03,
-    pole: [1, -0.3, -0.3], ld: [-0.1, -0.75, 0.6], ln: [-0.9, 0, -0.3], lw: 0.85, hs: 0, keep: 0, body: 0.15,
+    ...COMMON, hang: [0.2, -0.32, 0.16], thigh: [0.27, 0.215, 0.16], hip: 0.45, near: 0.28, w: 12, z: 0.6, k: 0.2, sway: 0.03,
+    pole: [1, -0.3, -0.3], ld: [-0.15, -0.8, 0.5], ln: [-0.9, 0, -0.3], lw: 0.85, hs: 0, keep: 0, body: 0.15,
   },
   // (guard: the wuxia off-hand guard: the sword fingers raised before his chest, left of his middle, the elbow down
   // and bent ~115°, the fingers up and a little forward, the palm toward his middle)

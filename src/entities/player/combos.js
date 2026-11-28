@@ -72,7 +72,7 @@ export const COMBOS = {
 // leaves him turned to his left with the blade high left, and the thrust's coil is turned to his right at the ribs, so
 // his chest swung ~150° within the thrust's windup (67° in one frame); hit 5's 0.24 s windup on the iai clock (the coil
 // reached early, then HELD) stood him still for ~0.16 s before the blow: the pause. Each option below starts every cut
-// where the hit before it left the blade (the pendulum of swings.js), no thrust, and hit 5 winds up in 0.15-0.2 s on a
+// where the hit before it left the blade (the pendulum of swings.js), no thrust, and hit 5 winds up in 0.17-0.2 s on a
 // smooth clock (`warp`: the coil reached as the blow leaves, not held):
 //   '0'  as before: the rising thrust, then Mountain Splitter from over the left shoulder (0.24 s windup)
 //   a    the falling backhand from over the left shoulder (where hit 3 ends) down to the right hip; then both hands
@@ -95,7 +95,7 @@ export const A45 = {
   ],
   b: [
     hit('fallingBackhand', 0.1, 0.11, 0.28, 0.28, null, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),
-    hit('heavySpin', 0.15, 0.17, 0.4, 0.3, { spin: -1, spinFeet: 'hop', warp: SMOOTH5 }, FIN, F(0.13, 0.4, 1.4, 0.26, 0.9)),
+    hit('heavySpin', 0.17, 0.17, 0.4, 0.3, { spin: -1, spinFeet: 'hop', warp: SMOOTH5 }, FIN, F(0.13, 0.4, 1.4, 0.26, 0.9)),
   ],
   c: [
     hit('risingBackhand', 0.1, 0.11, 0.28, 0.28, null, null, F(0.07, 0.2, 0.55, 0.16, 0.85)),

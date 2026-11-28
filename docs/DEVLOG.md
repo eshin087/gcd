@@ -16,14 +16,14 @@ variation of the slice steel (drawn as the blade passes) looks more sharp angles
 **Done:**
 - The belt is combo A's hand (and feel `iai`'s). From behind it vanished: the hand on the front of the belt kept the whole
   arm inside his outline, dark on the dark coat. Filmed three rests from behind at the game's angle; the one at the
-  side-front of the hip (`hang` [0.16, -0.3, 0.16], the elbow out 0.37-0.40 m, the most the arm reaches) shows the
+  side-front of the hip (`hang` [0.2, -0.32, 0.16], the elbow out 0.37-0.40 m, the most the arm reaches) shows the
   forearm and hand past the coat. Its rest is 0.45 on the hips, so hit 1's chest whip does not fling it.
 - The digit slash is laid on the swing (`?endslash=path`, the default): the straight line that best fits the point's path
   on the screen through its fast frames. Before, it was across what it hit at the angle the blade near the hand crossed
   the screen: 0.7-1.0 m off the swing from the side and the front. Now 0.09-0.16 m (median), facing four ways.
 - Combo A's hits 4-5: the thrust's coil spun his chest ~150° (67° in a frame) out of hit 3's finish, and hit 5's held
   coil was the pause. `?a45=a|b|c`: a falling or rising backhand from where hit 3 leaves the blade, then a two-handed
-  finisher on a smooth 0.15-0.2 s windup (a: a falling cut from over the right shoulder; b: a full turn; c: a falling
+  finisher on a smooth 0.17-0.2 s windup (a: a falling cut from over the right shoulder; b: a full turn; c: a falling
   diagonal into a low lunge). Chest at most 26-36° a frame. `0` (as before) stays the default until the owner picks.
 - `?sliceform=facet|jag` (with `?slash=slice`): the traced slice in straight cuts meeting at corners (facet: 3-5 a
   swing; jag: 2-3, crossing in points past each corner).
