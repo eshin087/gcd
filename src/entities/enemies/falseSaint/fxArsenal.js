@@ -233,6 +233,45 @@ export function sightLine(F, S, ax, az, bx, bz, k, fromEye = true) {
   if (fresh(F, S, 'sight', bx, bz, 30)) F._say('fsSight', bx, bz, 0);
 }
 
+/**
+ * The line a jet pass will run along the floor, a → b (every frame; k 0..1 its strength: faint and dashed
+ * while it still follows the hero, solid and brighter once it is fixed, blinking at the very end). His
+ * flight lines (Vespers' passes, Passing Bell's strafe) are shown so: a crisp PALE WHITE stroke on the
+ * letter grid (steel) with a row of low HEAT either side of it (the fire kind at a low heat: dull orange
+ * letters lying on the plates) and a small heat chevron at b pointing the way he will go. Never cyan or
+ * blue (blue means a parry). The arsenal agent's (wave 2); ~2 - 3 ink lines and up to 24 blobs a frame.
+ */
+export function passLine(F, S, ax, az, bx, bz, k) {
+  if (!F.fire || !Number.isFinite(ax + az + bx + bz + k)) return;
+  k = clamp01(k);
+  const L = Math.hypot(bx - ax, bz - az);
+  if (!(L > 0.3)) return;
+  const t = now(F), Q = A_.sight;
+  const blink = k > 0.92 ? (Math.sin(t * Q.blink * TAU) > -0.2 ? 1 : 0.55) : 1;
+  const ux = (bx - ax) / L, uz = (bz - az) / L, y = 0.42;
+  const h = (0.36 + 0.36 * k) * blink;
+  if (k < 0.5) {
+    // dashed: pieces running toward b
+    const n = Math.min(48, Math.ceil(L / Q.dash)), ph = (t * 2.5) % 1;
+    for (let i = 0; i < n; i += 2) {
+      const u0 = Math.min(1, (i + ph) / n), u1 = Math.min(1, (i + ph + 1) / n);
+      F._ink(ax + (bx - ax) * u0, y, az + (bz - az) * u0, ax + (bx - ax) * u1, y, az + (bz - az) * u1, 0, h, 0, h, 0, K_STEEL);
+    }
+  } else F._ink(ax, y, az, bx, y, bz, 0, h, 0, h, 0, K_STEEL);
+  const life = F._frame();
+  if (life > 0) {
+    // the heat either side of it, low (it lies on the plates), a little brighter as it is fixed
+    const n = Math.min(10, Math.max(3, Math.round(L / 2))), hh = (0.05 + 0.08 * k) * GROUND_GAIN * blink;
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n, x = ax + (bx - ax) * u, z = az + (bz - az) * u;
+      for (const sd of [-1, 1]) F._blob(x - uz * 0.32 * sd, GROUND_Y, z + ux * 0.32 * sd, 0, 0, 0, life, 0.3, 0.3, hh, hh, K_FIRE);
+    }
+    // the chevron at its end: the way he goes
+    const c = 0.55, hc = (0.32 + 0.2 * k) * GROUND_GAIN * blink;
+    for (const sd of [-1, 1]) F._ink(bx, GROUND_Y, bz, bx - ux * c - uz * c * sd, GROUND_Y, bz - uz * c + ux * c * sd, 0, hc, 0, hc, 0, K_FIRE);
+  }
+}
+
 /** The white-hot cutting line, his eye (a) → where it meets the floor (b), k its strength (every frame).
  *  A white core, a fainter steel stroke either side, the foot molten (fire), sparks spat back, smoke. */
 export function laser(F, S, ax, ay, az, bx, by, bz, k) {

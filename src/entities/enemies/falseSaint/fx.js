@@ -64,6 +64,10 @@ import * as FX_DEBUG from './fxDebug.js';
 //   laser(ax, ay, az, bx, by, bz, k)    C  the white-hot cutting line (a his eye, b where it meets the floor)
 //   scar(ax, az, bx, bz, w, k)          1  a hot scar left on the plates a → b, w m wide (white, orange,
 //                                          red, dark over ~6.5 s x k; smoke and embers while it cools)
+//   passLine(ax, az, bx, bz, k)         C  the line a jet pass will run on the floor (Vespers, Passing Bell):
+//                                          pale white on the grid, low heat either side, a chevron at b;
+//                                          dashed while k < 0.5 (still following the hero), solid after
+//                                          (the arsenal agent's, wave 2; never cyan or blue)
 //   THE CANNONS
 //   cannonCharge(part, k)               C  the palm's iris ('palmR' | 'palmL') / the core ('core') charging,
 //                                          k 0..1; it dims the level's light (ambience.dim)
@@ -111,6 +115,7 @@ export const FS_FX_METHODS = Object.freeze([
   'sightLine', 'laser', 'scar', 'cannonCharge', 'cannonBeam', 'cannonEnd', 'gunFlash', 'bolt', 'boltHit',
   'missileLaunch', 'missile', 'missileMark', 'blast', 'shellMark', 'shellFall', 'shellBurst', 'reticle', 'skyLance', 'pour', 'sparks',
   'missileCut', 'mortarFlash', 'ringShock', 'palmHit', 'footPlant', 'fly', 'cancelFlights',
+  'passLine',
 ]);
 
 /** Every sound his effects emit (`dragon:spell { name }`; sfx.js has a recipe for each: saint.mjs checks). */
@@ -902,6 +907,9 @@ export class FsFx extends AscFx {
   }
   scar(ax, az, bx, bz, w = 0.6, k = 1) {
     return ARSENAL_FX.scar(this, this._arsenalState, ax, az, bx, bz, w, k);
+  }
+  passLine(ax, az, bx, bz, k = 1) {
+    ARSENAL_FX.passLine(this, this._arsenalState, ax, az, bx, bz, k);
   }
   cannonCharge(part, k) {
     ARSENAL_FX.cannonCharge(this, this._arsenalState, part, k);

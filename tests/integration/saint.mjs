@@ -760,6 +760,7 @@ async function scenarioFx() {
     palmHit: () => F.palmHit(x, 1.3, z, 1, 0, 1), footPlant: () => F.footPlant(0, -2, 1, 0, 0.8, 1),
     missileCut: () => F.missileCut(x, 2, z, 1, 0), mortarFlash: () => F.mortarFlash(0, 2.2, -2, 3), ringShock: () => F.ringShock(x, z, 5, 1),
     fly: () => F.fly({ kind: 'missile', x: 0, y: 2, z: -2, tx: x, tz: z, T: 1, expect: false }), cancelFlights: () => F.cancelFlights(),
+    passLine: () => F.passLine(0, -2, x, z, 0.7),
   };
   const notCovered = FS_FX_METHODS.filter((n) => !calls[n]);
   const threw = [];
@@ -777,7 +778,7 @@ async function scenarioFx() {
     () => F.missile({ x: 0, y: N }), () => F.missileMark(0, 0, N, 0.5), () => F.blast(N, 0), () => F.shellMark(0, 0, 1, N), () => F.shellFall(0, N, 0, 0.5),
     () => F.shellBurst(0, N), () => F.reticle(N, 0, 0.5), () => F.skyLance(0, 0, N, 0.5), () => F.pour(N, 3, 0, 1), () => F.sparks(0, N, 0, 1, 0, 5, 1),
     () => F.shellFlake({ x: N, y: 0, z: 0 }, null, 0.1), () => F.shellStrip(N, 1, 0, 1), () => F.transition(2, N), () => F.transitionBurst(3, N, 0, 4), () => F.coreVent(N),
-    () => F.missileCut(N, 0, 0), () => F.palmHit(N, 1, 0, 1, 0), () => F.footPlant(0, N, 1, 0), () => F.mortarFlash(N, 0, 0), () => F.ringShock(0, N, 4), () => F.fly({ kind: 'bolt', x: N, tx: 1, tz: 1, expect: false }),
+    () => F.missileCut(N, 0, 0), () => F.palmHit(N, 1, 0, 1, 0), () => F.footPlant(0, N, 1, 0), () => F.mortarFlash(N, 0, 0), () => F.ringShock(0, N, 4), () => F.fly({ kind: 'bolt', x: N, tx: 1, tz: 1, expect: false }), () => F.passLine(N, 0, 1, 1, 0.5),
   ];
   for (const f of nanCalls) { try { f(); G.tick(DT); } catch (err) { nanThrew.push(err.message); } }
   run(G, 2);
@@ -1991,6 +1992,553 @@ async function scenarioWorld() {
   assert(F.ladles.every((l) => l.full) && F.molten.pools.every((p) => !p.alive), 'no ladle spills by itself after the reset');
 }
 
+// ================================================================== arsenal (the arsenal agent's: moves/arsenal.js, arsenal.js)
+// Vigil, Absolution, Triptych, Choir, Passing Bell, Kyrie, Verdict, Revelation: each move's tells and
+// windups as realised, its hit on a hero who stands, nothing on one who answers it, what it breaks, its
+// ledger handling (missiles and shells cued, cut, never inside a guard's window), the barrage's lanes.
+const ar = (G) => G.game.dragon.parts.arsenal;
+const AR_MOVES = ['vigil', 'absolution', 'triptych', 'choir', 'passingBell', 'kyrie', 'verdict', 'revelation'];
+/** A build in phase `form`, his AI off, the hero `dist` m before him; world.groundBlow counted by kind. */
+function arDuel(form, dist = 7, seed = SEED) {
+  const G = build(seed, true);
+  duel(G, { dist, ai: false, form });
+  G.marks = {};
+  G.game.world.groundBlow = (x, z, o) => {
+    if (![x, z, o?.power].every(Number.isFinite)) throw new Error('NaN groundBlow');
+    G.marks[o.kind] = (G.marks[o.kind] ?? 0) + 1;
+    if (o.kind === 'beam') G.marks.beamLen = (G.marks.beamLen ?? 0) + (o.len || 0);
+  };
+  return G;
+}
+/** Run move `name` once where everyone stands, the hero answering with `step` (or standing); until it and
+ *  every one of its flights are over. Returns { log (flashes), hits (results during it), struck, t0 }. */
+function arRun(G, name, step = null, max = 12) {
+  const { game } = G;
+  const d = game.dragon, A = ar(G);
+  const log = flashLog(G);
+  const h0 = G.hits.length, s0 = A.stats.struck, t0 = game.time;
+  const ok = d.brain.trigger(name);
+  let acted = false;
+  run(G, max, (g) => { game.mouseGround.set(d.position.x, 0, d.position.z); step?.(g); }, () => {
+    if (d.mode === 'act') acted = true;
+    return acted && d.mode !== 'act' && A.live() === 0 && !A.L.on && game.player.state !== 'roll';
+  });
+  G.watch = null;
+  G.input.up(1);
+  G.input.axis = { x: 0, y: 0 };
+  return { ok, log, hits: G.hits.slice(h0).filter((h) => h.attack === name), struck: A.stats.struck - s0, t0 };
+}
+/** The defender bot's step (parry / guard normal and blue, roll out of red; hazards: away from the mark). */
+const arBot = (G, style = 'mixed') => {
+  G.defend = makeDefender(G, { style });
+  return () => { G.input.axis = { x: 0, y: 0 }; G.defend.act(); };
+};
+const resOf = (hits) => hits.map((h) => h.r).join(' ');
+
+async function scenarioArData() {
+  out('\n== scenario ARDATA (the arsenal as realised: tells, windups, gaps, the cue; routed to its handler; reach anywhere) ==');
+  const { MOVE_OWNERS } = await imp('src/entities/enemies/falseSaint/moves.js');
+  const lead = TUNING.flashLead;
+  for (const name of AR_MOVES) {
+    const def = MOVES[name];
+    assert(!!def && MOVE_OWNERS[name] === 'arsenal', `${name}: an arsenal move`);
+    if (!def) continue;
+    const ph = phasesOf(name);
+    for (const f of ph) {
+      const A = realise(name, f, () => 0.5), real = A.beats.filter((b) => !b.feint);
+      const first = real[0], fw = first.impact - first.tellAt;
+      const gaps = real.slice(1).map((b, i) => b.impact - real[i].impact);
+      if (f === ph[0] || f === 4) out(`     ${name.padEnd(11)} P${f}: ${real.map((b) => (b.def.tell === TELL.BLUE ? 'B' : b.def.tell === TELL.RED ? 'R' : 'N')).join('')}  first windup ${fw.toFixed(2)} s, impacts ${real.map((b) => b.impact.toFixed(2)).join(' / ')}${gaps.length ? `, ${gaps.map((g) => g.toFixed(2)).join(' / ')} s apart` : ''}, lit ${real.map((b) => (b.S + b.A).toFixed(2)).join(' / ')} s, ends ${A.end.toFixed(2)} s`);
+      const fl = TUNING.minFirstWindup * (TUNING.windupScale[f - 1] ?? 1);
+      if (!(fw >= 0.9 && fw >= fl)) assert(false, `${name} P${f}: a shot's first windup ${fw.toFixed(2)} s is long enough to read (>= 0.9, COMBAT.md ${fl.toFixed(2)})`);
+      if (!gaps.every((g) => g >= TUNING.minHitGap - 1e-6)) assert(false, `${name} P${f}: hits ${TUNING.minHitGap} s apart (${gaps.join(', ')})`);
+      if (!real.every((b) => b.impact - b.flash >= lead - 1e-6)) assert(false, `${name} P${f}: the cue ${lead} s before every impact`);
+    }
+    // (every beat of it is routed to the arsenal, which says it reaches wherever the hero is)
+    const G0 = name === AR_MOVES[0] ? build() : null;
+    if (G0) {
+      const d = G0.game.dragon;
+      const routed = AR_MOVES.every((n) => MOVES[n].beats.every((b) => d._handlerOf(b) === d.parts.arsenal));
+      assert(routed && AR_MOVES.every((n) => d.parts.arsenal.reach({ def: MOVES[n].beats[0] }) === Infinity), 'every beat of the eight is routed to FsArsenal (its FIELDS), which reaches anywhere');
+    }
+  }
+  assert(AR_MOVES.every((n) => MOVES[n].beats.every((b) => b.tell === TELL.RED || b.tell === TELL.BLUE)), 'every beat of his arsenal is a red or a blue (no plain blow from range)');
+  assert(MOVES.vigil.phase === 2 && MOVES.absolution.phase === 2 && ['triptych', 'choir', 'passingBell'].every((n) => MOVES[n].phase === 3) && ['kyrie', 'verdict', 'revelation'].every((n) => MOVES[n].phase === 4), 'P2: vigil, absolution; P3: + triptych, choir, passingBell; P4: + kyrie, verdict, revelation');
+}
+
+async function scenarioArVigil() {
+  out('\n== scenario ARVIGIL (the eye laser: the sight line held, the cut drawn across the hero\'s spot at the cue; hit standing, not rolled through; plates cut, a beam scar) ==');
+  const V = TUNING.arsenal.vigil;
+  const G = arDuel(2, 7);
+  const { game } = G;
+  const d = game.dragon, p = game.player, A = ar(G);
+  p.debug.god = true;
+  const plates = pieces(G, 'plate').filter((b) => Math.abs(b.z - p.position.z) < 1.2 && Math.abs(b.x - p.position.x) < V.half + 0.5);
+  const hp0 = plates.map((b) => b.hp);
+  let sightK = 0, litAt = NaN, flashT = NaN;
+  const sl = d.fx.sightLine.bind(d.fx);
+  d.fx.sightLine = (...a) => { sightK = Math.max(sightK, a[4]); return sl(...a); };
+  const lz = d.fx.laser.bind(d.fx);
+  d.fx.laser = (...a) => { if (!Number.isFinite(litAt)) litAt = game.time; return lz(...a); };
+  const r = arRun(G, 'vigil');
+  d.fx.sightLine = sl;
+  d.fx.laser = lz;
+  flashT = r.log[0]?.t;
+  const hit = r.hits[0];
+  const cut = plates.filter((b, i) => b.hp < hp0[i] || b.state !== 0).length;
+  out(`     standing: ${tellsOf(r.log)}, ${resOf(r.hits)} ${hit ? `${(hit.t - flashT).toFixed(3)} s after the flare` : ''}; the laser lit ${(litAt - flashT).toFixed(3)} s after it; the sight line up to k ${sightK.toFixed(2)}; ${cut} / ${plates.length} plates on the line cut, ${r.struck} pieces struck in all; marks ${JSON.stringify(G.marks)}`);
+  assert(r.ok && tellsOf(r.log) === 'R' && r.hits.length === 1 && hit.r === RESULT.HIT && Math.abs(hit.t - flashT - TUNING.flashLead) <= 0.07 + DT, `standing: one red cut, landing at the flare's impact (${hit ? (hit.t - flashT).toFixed(3) : '-'} s after it)`);
+  assert(Math.abs(litAt - flashT) <= DT + 1e-6 && sightK > 0.9, 'the sight line through the windup, the laser lit at the cue');
+  assert(cut >= 3 && (G.marks.beam ?? 0) >= 1 && G.marks.beamLen >= V.half * 2 - 0.1, `it cuts the plates on its line (${cut}) and leaves a beam scar ${G.marks.beamLen?.toFixed(1)} m long`);
+  // rolled through at the flare: nothing
+  settle(G);
+  p.debug.god = false;
+  p.debug.heal();
+  place(G, 7);
+  const hp1 = p.hp;
+  const r2 = arRun(G, 'vigil', answer(G, 'dodge', 'vigil'));
+  out(`     rolled at the flare: ${resOf(r2.hits)}, hp ${hp1} -> ${p.hp}`);
+  assert(p.hp === hp1 && r2.hits.every((h) => h.r !== RESULT.HIT), 'a roll through the cut takes nothing');
+  // a hero who walks off the line after it is fixed is missed (the line does not follow)
+  settle(G);
+  p.debug.heal();
+  place(G, 7);
+  const hp2 = p.hp;
+  let moved = false;
+  const r3 = arRun(G, 'vigil', () => { const b = d.brain.act?.beats[0]; if (b && d.brain.act.t > b.start + b.W * (V.fix + 0.05) && !moved) { moved = true; } if (moved && d.brain.act) G.input.axis = { x: 0, y: 1 }; });
+  out(`     walked away along his line after the fix: ${resOf(r3.hits)}, hp ${hp2} -> ${p.hp}`);
+  assert(r3.hits.every((h) => h.r !== RESULT.HIT), 'the line is fixed: walking off it after the fix is an answer too');
+  void A;
+}
+
+async function scenarioArAbsolution() {
+  out('\n== scenario ARABSOLUTION (the palm cannon: the charge dims the light, the beam held ~1.2 s and swept; hit standing, rolled through; cover holds then melts; a trench) ==');
+  const AB = TUNING.arsenal.absolution;
+  const G = arDuel(2, 7);
+  const { game } = G;
+  const d = game.dragon, p = game.player, A = ar(G);
+  p.debug.god = true;
+  let dimmed = 0, lit0 = NaN, lit1 = NaN, palmK = 0, hand = '';
+  const amb = game.world.forest.ambience, dim0 = amb.dim.bind(amb);
+  amb.dim = (k) => { if (k > 0.05) dimmed++; return dim0(k); };
+  const cb = d.fx.cannonBeam.bind(d.fx);
+  d.fx.cannonBeam = (...a) => { if (!Number.isFinite(lit0)) lit0 = game.time; lit1 = game.time; return cb(...a); };
+  const x0 = d.position.x, yaw0 = d.yaw;
+  let yawMin = Infinity, yawMax = -Infinity;
+  const r = arRun(G, 'absolution', () => { palmK = Math.max(palmK, d.fsPalmK); if (d.fsHandR === 'reach') hand = 'reach'; if (Number.isFinite(lit0)) { yawMin = Math.min(yawMin, d.yaw); yawMax = Math.max(yawMax, d.yaw); } });
+  amb.dim = dim0;
+  d.fx.cannonBeam = cb;
+  const flashT = r.log[0]?.t, hit = r.hits[0];
+  out(`     standing: ${tellsOf(r.log)}, ${resOf(r.hits)} ${hit ? `${(hit.t - flashT).toFixed(3)} s after the flare` : ''}; lit ${(lit1 - lit0).toFixed(2)} s, swept ${((yawMax - yawMin) / (Math.PI / 180)).toFixed(0)} deg, walked ${Math.abs(d.position.x - x0).toFixed(2)} m; dimmed ${dimmed} frames; palm ${palmK.toFixed(2)}, hand '${hand}' -> '${d.fsHandR}'; ${r.struck} pieces struck; marks ${JSON.stringify(G.marks)}`);
+  assert(tellsOf(r.log) === 'R' && r.hits.length === 1 && hit.r === RESULT.HIT && Math.abs(hit.t - flashT - TUNING.flashLead) <= DT * 2, 'standing: the beam lands at the flare\'s impact (one hit)');
+  assert(lit1 - lit0 >= AB.lit - 0.1 && yawMax - yawMin >= AB.arc * 0.8 * Math.PI / 180 && dimmed > 20, `held ${(lit1 - lit0).toFixed(2)} s and swept; the charge dims the light`);
+  assert(palmK > 0.9 && hand === 'reach' && d.fsHandR === 'guard', 'the palm\'s iris lit, the hand reaching, back to the guard after');
+  assert(r.struck >= 5 && (G.marks.beam ?? 0) >= 2, `a melted trench: ${r.struck} pieces struck, ${G.marks.beam} beam scars`);
+  void yaw0;
+  // rolled through
+  settle(G);
+  p.debug.god = false;
+  p.debug.heal();
+  place(G, 7);
+  const hp1 = p.hp;
+  const r2 = arRun(G, 'absolution', answer(G, 'dodge', 'absolution'));
+  out(`     rolled at the flare: ${resOf(r2.hits)}, hp ${hp1} -> ${p.hp}`);
+  assert(p.hp === hp1, 'a roll through the beam takes nothing (the beam is spent on him)');
+  // cover: a tank between him and the hero holds it a few ticks, then melts
+  settle(G);
+  p.debug.heal();
+  const tank = pieces(G, 'tank').filter((b) => b.state === 0).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+  if (tank) {
+    const l = Math.hypot(tank.x, tank.z), ux = tank.x / l, uz = tank.z / l;
+    d.position.set(tank.x - ux * 6, 0, tank.z - uz * 6);
+    d.yaw = Math.atan2(ux, uz);
+    run(G, 0.1);
+    p.debug.teleport(tank.x + ux * 1.6, tank.z + uz * 1.6);
+    p.yaw = Math.atan2(-ux, -uz);
+    const th0 = tank.hp, c0 = A.stats.covered, hp2 = p.hp;
+    const r3 = arRun(G, 'absolution');
+    out(`     behind a tank (hp ${th0} -> ${tank.hp}, state ${tank.state}): ${A.stats.covered - c0} ticks on the cover, the hero ${resOf(r3.hits) || 'untouched'} (hp ${hp2} -> ${p.hp})`);
+    assert(A.stats.covered - c0 >= 2 && (tank.hp < th0 || tank.state !== 0), 'the cover takes the beam tick by tick');
+  } else assert(false, 'a tank to hide behind');
+}
+
+async function scenarioArTriptych() {
+  out('\n== scenario ARTRIPTYCH (three blue bolts arriving at their impacts; parried, taken, perfectly parried: one goes home; misses fly on and bite the set) ==');
+  const G = arDuel(3, 7);
+  const { game } = G;
+  const d = game.dragon, p = game.player, A = ar(G);
+  p.debug.god = true;
+  // taken: the hero stands
+  const r = arRun(G, 'triptych');
+  const at = r.log.map((f) => f.t + TUNING.flashLead), dt = r.hits.map((h, i) => (h.t - (at[i] ?? NaN)).toFixed(3));
+  out(`     standing: ${tellsOf(r.log)}, ${resOf(r.hits)}, each ${dt.join(' / ')} s from its impact; gun ${d.fsGunK.toFixed(2)}`);
+  assert(tellsOf(r.log) === 'BBB' && r.hits.length === 3 && r.hits.every((h) => h.r === RESULT.HIT), 'three blue bolts, each lands on a hero who stands');
+  assert(r.hits.every((h, i) => Math.abs(h.t - at[i]) <= DT + 1e-6), 'each bolt arrives AT its beat\'s impact (the cue 0.35 s before it)');
+  // parried (the bot parries each glint)
+  settle(G);
+  place(G, 7);
+  const pv0 = d.posture;
+  const r2 = arRun(G, 'triptych', arBot(G));
+  G.defend = null;
+  out(`     parried: ${resOf(r2.hits)}, his posture ${pv0.toFixed(0)} -> ${d.posture.toFixed(0)}`);
+  assert(r2.hits.length === 3 && r2.hits.every((h) => h.r === RESULT.PARRIED || h.r === RESULT.BLOCKED) && r2.hits.some((h) => h.r === RESULT.PARRIED), 'parried / blocked: none hurts');
+  // a perfect parry sends one home
+  settle(G);
+  place(G, 7);
+  const hpB = d.hp, ret0 = A.stats.returned;
+  let n = 0;
+  G.ans = null;
+  const r3 = arRun(G, 'triptych', () => {
+    const a = d.brain.act;
+    if (!a) return;
+    const b = a.beats.find((x) => !x.done && x.flashed && x.impact - a.t <= 0.04 + DT && x.impact - a.t > 0 && !x._parried);
+    if (b) { b._parried = true; G.input.up(1); G.input.click(1); n++; }
+  });
+  out(`     perfect parries (${n} pressed 0.04 s before each): ${resOf(r3.hits)}, returned ${A.stats.returned - ret0}, his hp ${hpB} -> ${d.hp}`);
+  assert(A.stats.returned - ret0 >= 1 && d.hp < hpB, 'a perfect parry sends a bolt home into his chest');
+  // a miss flies on: the hero far off its line (a roll), the set behind takes it
+  settle(G);
+  place(G, 7);
+  const s0 = A.stats.struck;
+  const r4 = arRun(G, 'triptych', arBot(G, 'dodge'));
+  G.defend = null;
+  out(`     rolled: ${resOf(r4.hits)}; pieces struck by the bolts ${A.stats.struck - s0}`);
+  assert(r4.hits.every((h) => h.r !== RESULT.HIT) && A.stats.struck - s0 >= 1, 'rolled out: nothing; the bolts bite what they meet');
+}
+
+async function scenarioArChoir() {
+  out('\n== scenario ARCHOIR (the swarm: each missile on the ledger from its launch, marks round the hero, the last tracking; a blast and a crater each; cut out of the air) ==');
+  const CH = TUNING.arsenal.choir;
+  for (const form of [3, 4]) {
+    const G = arDuel(form, 7);
+    const { game } = G;
+    const d = game.dragon, p = game.player, A = ar(G), L = d.brain.ledger;
+    p.debug.god = true;
+    let pend = false, maxLive = 0, maxPetal = 0;
+    const m0 = A.stats.missiles;
+    const r = arRun(G, 'choir', () => { maxLive = Math.max(maxLive, A.live()); maxPetal = Math.max(maxPetal, d.fsPetalK); if (A.live() > 0 && L.pending(2, 2.5)) pend = true; });
+    const fired = A.stats.missiles - m0;
+    out(`     P${form}: ${fired} missiles (${maxLive} in the air at once), the ledger saw them: ${pend}, flares ${tellsOf(r.log)}, the hero (standing) ${resOf(r.hits)}; craters: ${G.marks.blast ?? 0} blast marks, ${r.struck} pieces struck; petals ${maxPetal.toFixed(2)}`);
+    const n = CH.n[form - 1];
+    assert(fired === n && n >= 8 && n <= 12, `P${form}: ${n} missiles (8 - 12)`);
+    assert(pend, 'each missile is on the ledger from its launch (pending DODGE)');
+    // (the ring ones cage him and miss a hero who stands; the trackers come down on him one after another:
+    // the first throws him, the next ones walk after him)
+    assert(r.hits.length >= 2 && r.hits.length <= CH.track.n && r.hits.every((h) => h.r === RESULT.HIT) && r.log.length >= r.hits.length && r.log.every((f) => f.tell === TELL.RED), `the ring ones cage him, the last ones come down on him (${r.hits.length} of ${CH.track.n} hit a hero who stands), each flared red`);
+    assert((G.marks.blast ?? 0) >= n && r.struck >= n, 'a blast mark and a crater for every one');
+    // rolled away from each flare: nothing
+    settle(G);
+    p.debug.god = false;
+    p.debug.heal();
+    place(G, 7);
+    const hp1 = p.hp;
+    const r2 = arRun(G, 'choir', arBot(G));
+    G.defend = null;
+    out(`     P${form} rolled out of each flare: ${resOf(r2.hits) || 'none reached him'}, hp ${hp1} -> ${p.hp}`);
+    assert(p.hp === hp1, 'rolling out of the flared marks: nothing');
+    p.debug.god = true;
+  }
+  // the cut: a missile coming down on him met by his swing (his blade's real sweep)
+  const G = arDuel(3, 7);
+  const { game } = G;
+  const d = game.dragon, p = game.player, A = ar(G);
+  p.debug.god = true;
+  // (the hero steps under a ring missile's last metres, faces it 1.2 m off and swings as it comes)
+  let swung = 0, tgt = null;
+  const c0 = A.stats.cut;
+  arRun(G, 'choir', () => {
+    if (!tgt) {
+      const s = A.M.find((x) => A._alive(x) && x.rec.track === 0 && x.rec.left > 0.9);
+      if (s) {
+        tgt = s;
+        const m = s.rec, dx = m.tx - p.position.x, dz = m.tz - p.position.z, l = Math.hypot(dx, dz) || 1;
+        p.debug.teleport(m.tx - (dx / l) * 1.2, m.tz - (dz / l) * 1.2);
+      }
+    }
+    if (tgt && A._alive(tgt)) {
+      game.mouseGround.set(tgt.rec.tx, 0, tgt.rec.tz);
+      if (tgt.rec.left < 0.34 && !tgt._sw) { tgt._sw = true; G.input.click(0); swung++; }
+    }
+  });
+  out(`     a swing at a ring missile coming down 1.2 m before him: ${swung} swing, cut out of the air ${A.stats.cut - c0}`);
+  assert(A.stats.cut - c0 >= 1, 'the hero\'s real swing cuts a missile out of the air');
+  // the cut's rule itself: a blade's sweep through a missile in flight cancels it and its ledger handle
+  settle(G);
+  place(G, 7);
+  d.brain.trigger('choir');
+  run(G, 2.2, null, () => A.live() > 0);
+  const s = A.M.find((x) => A._alive(x));
+  let ok = false;
+  if (s) {
+    run(G, 0.4);
+    const m = s.rec, h = m.cue, sw0 = p.isSwinging, sv = p.sweep.valid, a0 = p.sweep.a.clone(), b0 = p.sweep.b.clone();
+    p.isSwinging = () => true;
+    p.sweep.valid = true;
+    p.position.set(m.x + 0.5, 0, m.z);
+    p.sweep.a.set(m.x - 0.8, m.y, m.z);
+    p.sweep.b.set(m.x + 0.8, m.y, m.z);
+    p.sweep.pa?.copy?.(p.sweep.a);
+    p.sweep.pb?.copy?.(p.sweep.b);
+    const c1 = A.stats.cut;
+    A._cutMissiles();
+    ok = A.stats.cut === c1 + 1 && !m.alive && (!h || !h.alive);
+    p.isSwinging = sw0;
+    p.sweep.valid = sv;
+    p.sweep.a.copy(a0);
+    p.sweep.b.copy(b0);
+  }
+  assert(ok, 'a swing through a missile cuts it out of the air: gone, its ledger handle cancelled');
+  run(G, 4);
+}
+
+async function scenarioArBell() {
+  out('\n== scenario ARBELL (Passing Bell: up on the jets, the line shown, the strafe across the floor; the eye laser cuts the whole way; hit standing, rolled through) ==');
+  const P = TUNING.arsenal.passingBell;
+  const G = arDuel(3, 7);
+  const { game } = G;
+  const d = game.dragon, p = game.player, A = ar(G);
+  p.debug.god = true;
+  let maxY = 0, lines = 0, jets = 0;
+  const x0 = { x: d.position.x, z: d.position.z };
+  const pl = d.fx.passLine.bind(d.fx);
+  d.fx.passLine = (...a) => { lines++; return pl(...a); };
+  const r = arRun(G, 'passingBell', () => { maxY = Math.max(maxY, d.position.y); jets = Math.max(jets, d.fsJets?.back ?? 0); });
+  d.fx.passLine = pl;
+  const flown = flatDist(x0, d.position), hit = r.hits[0], flashT = r.log[0]?.t;
+  out(`     standing: ${tellsOf(r.log)}, ${resOf(r.hits)} ${hit ? `${(hit.t - flashT).toFixed(3)} s after the flare` : ''}; up ${maxY.toFixed(2)} m, flew ${flown.toFixed(1)} m, ends ${Math.hypot(d.position.x, d.position.z).toFixed(1)} m from the middle at y ${d.position.y.toFixed(2)}; ${lines} frames of its line; back jet ${jets.toFixed(2)}; ${r.struck} pieces struck; marks ${JSON.stringify(G.marks)}`);
+  assert(tellsOf(r.log) === 'R' && r.hits.length === 1 && hit.r === RESULT.HIT && Math.abs(hit.t - flashT - TUNING.flashLead) <= 0.07 + DT, 'standing: the laser\'s foot crosses him at the flare\'s impact');
+  assert(maxY >= P.h * 0.95 && flown >= 9 && Math.hypot(d.position.x, d.position.z) <= d.bound + 0.1 && d.position.y < 0.05, 'he flies up and across the floor, down at the end inside his circle');
+  assert(lines > 30 && jets > 0.5 && r.struck >= 6 && (G.marks.beam ?? 0) >= 1 && G.marks.beamLen >= 8, `the line shown through the windup, his jets lit, a scar ${G.marks.beamLen?.toFixed(1)} m across the floor`);
+  settle(G);
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  run(G, 0.2);
+  p.debug.god = false;
+  p.debug.heal();
+  place(G, 7);
+  const hp1 = p.hp;
+  const r2 = arRun(G, 'passingBell', answer(G, 'dodge', 'passingBell'));
+  out(`     rolled at the flare: ${resOf(r2.hits)}, hp ${hp1} -> ${p.hp}`);
+  assert(p.hp === hp1, 'a roll through the cut takes nothing');
+}
+
+async function scenarioArKyrie() {
+  out('\n== scenario ARKYRIE (the creeping barrage: rows of marked shells walking over the hero, lanes >= 2 m, a lane within a roll of him at every row\'s marking; a lane-taking hero is untouched; then the great shell) ==');
+  const KY = TUNING.arsenal.kyrie, roll = 4.2;
+  const sp = 2 * KY.r + KY.lane;
+  out(`     shells ${KY.r} m, lanes ${KY.lane} m of clear floor (centres ${sp.toFixed(2)} m apart: a hero's middle is safe in ${(sp - 2 * (KY.r + 0.45)).toFixed(2)} m of each), rows ${KY.step} m apart, ${KY.rowGap} s apart, each marked ${KY.T} s before it lands`);
+  assert(KY.lane >= 2, `lanes of ${KY.lane} m (>= 2)`);
+  for (const [dist, ang] of [[7, 0], [9, 0.6], [5.5, -0.8], [11, 1.2]]) {
+    const seed = `${dist} m, ${ang} rad`;
+    const G = arDuel(4, dist);
+    const { game } = G;
+    const d = game.dragon, p = game.player, A = ar(G);
+    place(G, dist, ang);
+    p.debug.god = true;
+    // standing still
+    const rows0 = A.stats.rows;
+    const r = arRun(G, 'kyrie');
+    out(`     ${seed} standing: ${A.stats.rows - rows0} rows, ${A.stats.greats} great, ${tellsOf(r.log)} flares, ${resOf(r.hits)}; ${r.struck} pieces struck, ${G.marks.blast ?? 0} blast marks`);
+    assert(A.stats.rows - rows0 === KY.rows && r.hits.length >= 2 && r.struck >= KY.rows * KY.per, 'every row fired, the hero who stands is hit (a row on him, the great shell), every shell bites the floor');
+    // the lane-taker: at each row's marking, into the nearest safe spot of that row (walking)
+    settle(G);
+    p.debug.god = false;
+    p.debug.heal();
+    place(G, dist, ang);
+    const hp1 = p.hp;
+    let seen = A.stats.rows, goal = null, worst = 0, bigRoll = 0;
+    const need = [];
+    const r2 = arRun(G, 'kyrie', () => {
+      if (A.stats.rows > seen && A.lastRow) {
+        seen = A.stats.rows;
+        const R = A.lastRow, px = p.position.x, pz = p.position.z;
+        // the safe spots: where he stands, or a lane's middle of this row on either side at his place along
+        // the axis; safe = clear of every shell still in the air (this row's and the last ones')
+        const ux = -R.qz, uz = R.qx, al = (px - R.cx) * ux + (pz - R.cz) * uz, ac = (px - R.cx) * R.qx + (pz - R.cz) * R.qz;
+        const danger = KY.r + 0.45 + 0.1;
+        const safe = (x, z) => A.S.every((s) => !A._alive(s) || s.great || Math.hypot(x - s.rec.tx, z - s.rec.tz) > danger);
+        const k0 = Math.floor((ac - R.o) / R.sp - 0.5);
+        const cands = [[px, pz]];
+        for (const k of [k0 - 1, k0, k0 + 1, k0 + 2]) { const lane = R.o + (k + 0.5) * R.sp; cands.push([R.cx + R.qx * lane + ux * al, R.cz + R.qz * lane + uz * al]); }
+        let best = null, bd = Infinity;
+        for (const [x, z] of cands) { const dd = Math.hypot(x - px, z - pz); if (dd < bd && safe(x, z)) { bd = dd; best = { x, z }; } }
+        need.push(bd);
+        worst = Math.max(worst, bd);
+        if (!(bd <= 2.5)) bigRoll++;
+        goal = best && bd > 0.05 ? best : null;
+      }
+      const a = d.brain.act;
+      // the great shell: roll off its mark at its flare (the bot's answer); the rows: walk to the goal
+      if (A.stats.greats > 0 && A.S.some((s) => s.great && A._alive(s) && s.rec.left < 0.3 && !s._rolled)) {
+        const s = A.S.find((x) => x.great && A._alive(x));
+        s._rolled = true;
+        const dx = p.position.x - s.rec.tx, dz = p.position.z - s.rec.tz, l = Math.hypot(dx, dz) || 1;
+        G.input.axis = { x: dx / l, y: -dz / l };
+        G.input.tap('Space');
+        goal = null;
+        return;
+      }
+      if (goal && p.state !== 'roll') {
+        const dx = goal.x - p.position.x, dz = goal.z - p.position.z, l = Math.hypot(dx, dz);
+        G.input.axis = l > 0.15 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+        if (l <= 0.15) goal = null;
+      } else if (p.state !== 'roll') G.input.axis = { x: 0, y: 0 };
+    }, 14);
+    out(`     ${seed} lane-taker: the way to safety at each row's marking ${need.map((x) => x.toFixed(2)).join(' / ')} m (a roll is ${roll} m), ${resOf(r2.hits) || 'untouched'}, hp ${hp1} -> ${p.hp}`);
+    assert(worst <= roll - 0.5 && bigRoll === 0, `a safe spot within a roll of where he stands at every row's marking (furthest ${worst.toFixed(2)} m)`);
+    assert(p.hp === hp1, 'a hero who takes the lanes (and rolls off the great shell) is untouched');
+  }
+}
+
+async function scenarioArVerdict() {
+  out('\n== scenario ARVERDICT (the sky lance: the reticle follows, locks, the pillar (red), the ring (normal), the molten crater) ==');
+  const VD = TUNING.arsenal.verdict;
+  const G = arDuel(4, 7);
+  const { game } = G;
+  const d = game.dragon, p = game.player, A = ar(G), F = game.world.forest.foundry;
+  p.debug.god = true;
+  let maxLag = 0, lockAt = NaN, lockGap = NaN;
+  const r = arRun(G, 'verdict', () => {
+    if (A.L.on && A.L.phase === 'track' && A.L.k > 0.3) maxLag = Math.max(maxLag, Math.hypot(A.L.x - p.position.x, A.L.z - p.position.z));
+    if (A.L.phase === 'fall' && !Number.isFinite(lockAt)) { lockAt = game.time; lockGap = Math.hypot(A.L.x - p.position.x, A.L.z - p.position.z); }
+    // (the hero walks sideways through the windup: the reticle walks after him)
+    G.input.axis = d.brain.act?.name === 'verdict' && !Number.isFinite(lockAt) ? { x: 1, y: 0 } : { x: 0, y: 0 };
+  });
+  const pool = F.molten.pools.find((x) => x.alive && x.why === 'verdict');
+  out(`     the reticle lagged at most ${maxLag.toFixed(2)} m behind a walking hero, locked ${lockGap.toFixed(2)} m from him; flares ${tellsOf(r.log)} (${r.log.map((f) => (f.t - lockAt).toFixed(2)).join(' / ')} s after the lock); ${resOf(r.hits)}; pool ${pool ? `r ${pool.r}` : 'none'}; ${r.struck} pieces struck`);
+  assert(maxLag < 2 && lockGap < 0.3, 'the reticle follows the hero, locks where he stands');
+  assert(tellsOf(r.log).startsWith('R') && r.hits[0]?.r === RESULT.HIT && Math.abs(r.hits[0].t - lockAt - VD.fall) <= DT * 2, `the pillar comes down ${VD.fall} s after the lock on a hero who stays (red)`);
+  assert(!!pool && r.struck >= 2, 'a molten crater (the set\'s pool) and the floor smashed');
+  // rolled out at the flare, the ring blocked
+  settle(G);
+  run(G, 14);
+  p.debug.god = false;
+  p.debug.heal();
+  place(G, 7);
+  const hp1 = p.hp;
+  const r2 = arRun(G, 'verdict', answer(G, 'dodge', 'verdict'));
+  out(`     rolled at the pillar's flare: ${resOf(r2.hits)}, hp ${hp1} -> ${p.hp}`);
+  assert(r2.hits[0] && r2.hits[0].r !== RESULT.HIT && p.hp === hp1, 'a roll at the flare takes the hero out from under the pillar');
+  // stepped 3 m off the locked spot, the guard held: the pillar misses, the ring (normal) is blocked
+  settle(G);
+  run(G, 14);
+  p.debug.heal();
+  place(G, 7);
+  const hp2 = p.hp;
+  let stepped = false;
+  const r3 = arRun(G, 'verdict', () => {
+    if (!stepped && A.L.phase === 'fall') {
+      stepped = true;
+      const dx = d.position.x - A.L.x, dz = d.position.z - A.L.z, l = Math.hypot(dx, dz) || 1;
+      p.debug.teleport(A.L.x + (dx / l) * 3, A.L.z + (dz / l) * 3);
+    }
+    if (stepped) G.input.press(1);
+  });
+  const gaps = r3.log.slice(1).map((f, i) => f.t - r3.log[i].t);
+  out(`     stepped 3 m off the lock, guard up: flares ${tellsOf(r3.log)} ${gaps.map((g) => g.toFixed(2)).join(' / ')} s apart, ${resOf(r3.hits)}, hp ${hp2} -> ${p.hp}`);
+  assert(tellsOf(r3.log).startsWith('RN') && gaps[0] >= TUNING.minHitGap && r3.hits.length === 1 && r3.hits[0].r === RESULT.BLOCKED && p.hp === hp2, 'the pillar misses a hero who left the spot; the ring after it (normal) is blocked');
+}
+
+async function scenarioArRevelation() {
+  out('\n== scenario ARREVELATION (full burst: the twin beams converge onto the hero at the impact, then the core beam held 2 s and swept ~60 deg; the biggest scar) ==');
+  const RV = TUNING.arsenal.revelation;
+  const G = arDuel(4, 8);
+  const { game } = G;
+  const d = game.dragon, p = game.player, A = ar(G);
+  p.debug.god = true;
+  let coreT0 = NaN, coreT1 = NaN, yawA = Infinity, yawB = -Infinity, wide = 0;
+  const cb = d.fx.cannonBeam.bind(d.fx);
+  d.fx.cannonBeam = (...a) => { if (a[6] > 2.5) { if (!Number.isFinite(coreT0)) coreT0 = game.time; coreT1 = game.time; yawA = Math.min(yawA, d.yaw); yawB = Math.max(yawB, d.yaw); wide++; } return cb(...a); };
+  const r = arRun(G, 'revelation');
+  d.fx.cannonBeam = cb;
+  out(`     standing: ${tellsOf(r.log)}, ${resOf(r.hits)} (${r.hits.map((h, i) => (h.t - (r.log[i]?.t ?? NaN)).toFixed(3)).join(' / ')} s after each flare); the core lit ${(coreT1 - coreT0).toFixed(2)} s, swept ${((yawB - yawA) / (Math.PI / 180)).toFixed(0)} deg; ${r.struck} pieces struck; marks ${JSON.stringify(G.marks)}`);
+  assert(tellsOf(r.log).startsWith('RR') && r.hits.length >= 1 && r.hits[0].r === RESULT.HIT && Math.abs(r.hits[0].t - r.log[0].t - TUNING.flashLead) <= 0.07 + DT, 'the twin beams cross on a hero who stands at the first flare\'s impact');
+  assert(coreT1 - coreT0 >= RV.core.lit - 0.1 && yawB - yawA >= RV.core.arc * 0.8 * Math.PI / 180, `the core beam held ${(coreT1 - coreT0).toFixed(2)} s and swept`);
+  assert(r.struck >= 15 && (G.marks.beam ?? 0) >= 6, `the biggest scar: ${r.struck} pieces struck, ${G.marks.beam} beam scars (${G.marks.beamLen?.toFixed(0)} m of them)`);
+  settle(G);
+  run(G, 2);
+  d.position.set(0, 0, -2);
+  d.yaw = 0;
+  run(G, 0.2);
+  p.debug.god = false;
+  p.debug.heal();
+  place(G, 8);
+  const hp1 = p.hp;
+  G.defend = makeDefender(G, {});
+  const r2 = arRun(G, 'revelation', () => { G.input.axis = { x: 0, y: 0 }; G.defend.act(); });
+  G.defend = null;
+  out(`     rolled at each flare: ${resOf(r2.hits)}, hp ${hp1} -> ${p.hp}`);
+  assert(r2.hits.every((h) => h.r !== RESULT.HIT), 'rolling at each flare: neither beam lands');
+}
+
+async function scenarioArWorld() {
+  out('\n== scenario ARWORLD (every move of the arsenal bites the world: pieces struck, floor marks) ==');
+  const rows = [];
+  for (const name of AR_MOVES) {
+    const G = arDuel(Math.max(...phasesOf(name).slice(0, 1), MOVES[name].phase), 7);
+    G.game.player.debug.god = true;
+    // (the bolts bite the set when they miss: the hero rolls out of them; every other move on a hero who stands)
+    const r = arRun(G, name, name === 'triptych' ? arBot(G, 'dodge') : null);
+    G.defend = null;
+    rows.push(`${name.padEnd(11)} struck ${String(r.struck).padStart(3)}  marks ${JSON.stringify(G.marks)}`);
+    assert(r.struck >= 1 && Object.keys(G.marks).length >= 1, `${name}: it bites the world (${r.struck} pieces struck, floor marks ${JSON.stringify(G.marks)})`);
+  }
+  out('     ' + rows.join('\n     '));
+}
+
+async function scenarioArFair() {
+  const SEEDS = (process.env.GCD_ARSEEDS ?? '1,2,3,4,5,6,7,8,9,10').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_ARSECS ?? 24);
+  out(`\n== scenario ARFAIR (the fairness guard over ${SEEDS.length} seeds x ${SECS} s of phase 3 and 4 with his swarm and barrage likely: no missile or shell lands within the guard's sep of a cued blow that needs the other answer) ==`);
+  const G0 = TUNING.pressure.guard, sep = G0.sep;
+  let lands = 0, bad = 0, delays = 0, dropped = 0, guards = 0;
+  const w0 = { choir: MOVES.choir.weight, kyrie: MOVES.kyrie.weight, verdict: MOVES.verdict.weight };
+  MOVES.choir.weight = [0, 0, 4, 4];
+  MOVES.kyrie.weight = [0, 0, 0, 4];
+  MOVES.verdict.weight = [0, 0, 0, 3];
+  try {
+    for (const seed of SEEDS) {
+      for (const ph of [3, 4]) {
+        const G = build(seed, true);
+        const { game } = G;
+        const d = game.dragon, p = game.player, A = ar(G);
+        duel(G, { dist: 6, ai: true, form: ph });
+        p.debug.god = true;
+        p.debug.noRiposte = true;
+        G.defend = bPaceDefender(G);
+        Math.random = mulberry32(seed * 13 + ph);
+        const guardAt = [], landAt = [];
+        G.watch = (n, e) => { if (n === 'combat:flash' && e?.source === 'dragon' && (e.tell === TELL.NORMAL || e.tell === TELL.BLUE)) guardAt.push(game.time + TUNING.flashLead); };
+        const ml = A._mLand, sl = A._sLand;
+        A._mLand = (rec) => { landAt.push(game.time); return ml(rec); };
+        A._sLand = (rec) => { landAt.push(game.time); return sl(rec); };
+        // (the callbacks are read at launch: the handler's slots take the wrapped ones from now on)
+        for (let i = 0; i < Math.round(SECS / DT); i++) {
+          G.defend.act();
+          const dx = d.position.x - p.position.x, dz = d.position.z - p.position.z, l = Math.hypot(dx, dz) || 1;
+          if (p.state !== 'roll') G.input.axis = l > 5 ? { x: dx / l, y: -dz / l } : l < 3 ? { x: -dx / l, y: dz / l } : { x: 0, y: 0 };
+          game.mouseGround.set(d.position.x, 0, d.position.z);
+          G.tick(DT);
+          if (d.phase !== ph && d.mode !== 'act') break;
+        }
+        for (const t of landAt) { lands++; if (guardAt.some((g) => Math.abs(g - t) < sep - DT)) bad++; }
+        guards += guardAt.length;
+        delays += A.stats.delays;
+        dropped += A.stats.dropped;
+        G.watch = null;
+        G.defend = null;
+      }
+    }
+  } finally {
+    Object.assign(MOVES.choir, { weight: w0.choir });
+    Object.assign(MOVES.kyrie, { weight: w0.kyrie });
+    Object.assign(MOVES.verdict, { weight: w0.verdict });
+  }
+  out(`     ${lands} missiles / shells landed against ${guards} guard cues; ${delays} moved later by the guard, ${dropped} not fired; ${bad} landed within ${sep} s of a guard cue`);
+  assert(lands >= 30, `enough of them flew to judge (${lands})`);
+  assert(bad === 0, `none lands inside a blue / normal blow's window (${bad})`);
+}
+
 // ================================================================== THE SCENARIOS (one entry per line, each agent in its block)
 const S = {
   // --- core
@@ -2031,6 +2579,17 @@ const S = {
   boostChange: scenarioBoostChange,
   boostPace: scenarioBoostPace,
   // --- arsenal
+  arData: scenarioArData,
+  arVigil: scenarioArVigil,
+  arAbsolution: scenarioArAbsolution,
+  arTriptych: scenarioArTriptych,
+  arChoir: scenarioArChoir,
+  arBell: scenarioArBell,
+  arKyrie: scenarioArKyrie,
+  arVerdict: scenarioArVerdict,
+  arRevelation: scenarioArRevelation,
+  arWorld: scenarioArWorld,
+  arFair: scenarioArFair,
   // --- terrain
   // --- tuning
 };
