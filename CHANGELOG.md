@@ -5,7 +5,7 @@ versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change)
 
 ## [Unreleased]
 One hundred and thirty-seven pieces of work since 0.4.0:
-- **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner to pick from the films):* the
+- **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner's pick from the films):* the
   Thousand-Body Fox's straight punches and palms now land on an open arm along one line to you (the elbow 162 - 167°,
   was 123 - 139°), his roundhouse, his paper selves' rising kick and both ankle sweeps land on a straight leg (the
   sweep stays straight through its whole turn), his hooks and uppercuts keep a real bend, and his leaps with the heel

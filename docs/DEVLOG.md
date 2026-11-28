@@ -25,9 +25,9 @@ strike, unrealistic attacks; every attack readable; his spell effects are the ba
 - **Films:** before / after of 15 moves across the three phases, at the game camera (a close crop with the frame as an
   inset) and from the side, real and half speed.
 
-**Next.** The owner's pick from the films (then the PR leaves draft). Open: Hand to Hand's opening jab's lead foot
+**Picked** (2026-11-27, from the films): both switches `a`, the default; his windups stay PBZ-fast. Open: Hand to Hand's opening jab's lead foot
 jumps 0.43 m in a frame (on main too; `anim.js _feetClip`, the hero session's file). His windups stay PBZ-fast
-(0.42 s first blows), under the audit brief's 0.7 s floor: asked in the PR.
+(0.42 s first blows), under the audit brief's 0.7 s floor: the owner kept it.
 ## 2026-11-27 — Blows land on what they strike (ADR-259; branch `claude/contact-motion-246eeb`)
 
 **Goal:** the owner's contact pass: every hit, deflect, guard, parry and deadly blow should look like it strikes the

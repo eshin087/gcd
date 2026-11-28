@@ -2536,7 +2536,7 @@ The terrace's pieces (COMBAT "The world breaks"): the charm posts are wood and b
 7 s from one ignite to a snapped foot; the stone foxes break to their plinths; the lanterns and the
 floor as the courtyard's; the great fox and the spirit gate only chip, and the gate stops nothing.
 
-### The limbs at the contact and one cue, one meaning (2026-11-26, ADR-249; `?foxLimbs=0|a`, `?foxCues=0|a`)
+### The limbs at the contact and one cue, one meaning (2026-11-26, ADR-249; `?foxLimbs=0|a`, `?foxCues=0|a`; the owner's picks: `a`, the default)
 
 The boss motion audit (the owner: "kicks aren't straight during the attack and still bended", "weird arm
 angles"). Measured on the rig (`fox.mjs . anatomy`: every blow's striking limb at its contact, in his own

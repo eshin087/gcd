@@ -6978,11 +6978,11 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   (keys a third of a turn apart cut the chord; a foot on the floor was taken by `_feetClip` for a planted one and
   walked after the clip). One shared-engine field, opt-in: a beat's `leap.stop` (brain.js `_leap`; 0 / unset = as
   always) lands a leap short of the hero; his axe heel 0.7 m, his hammer fists 0.45 m. `?foxCues=0|a`: Paper Rain
-  ends on a backfist, so the uppercut always means blue. Both switches in `PICKED` as `a` while the draft PR waits
-  for the owner's pick from the films; `0` plays him as before.
+  ends on a backfist, so the uppercut always means blue. The owner picked `a` for both from the before / after films
+  (2026-11-27): they are the default (`PICKED`); `0` plays him as before.
 - **Not changed:** every timing, tell, window, number and effect. His windups stay PBZ-fast (first blows from 0.42 s,
-  COMBAT.md "The Thousand-Body Fox"), under the audit brief's 0.7 s floor: the owner's earlier call, asked again in
-  the PR rather than changed. His effects (the Pearl, the foxfire, the Howl) are the bar the other bosses are measured
+  COMBAT.md "The Thousand-Body Fox"), under the audit brief's 0.7 s floor: the owner's earlier call, asked again with
+  the films: they kept it fast (2026-11-27). His effects (the Pearl, the foxfire, the Howl) are the bar the other bosses are measured
   against: no options offered.
 - **Found, not fixed:** Hand to Hand's opening jab lifts a lead foot the root left behind and it jumps 0.43 m in a
   frame (on `main` too; `anim.js _feetClip`, the hero session's file).
