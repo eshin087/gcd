@@ -1,6 +1,6 @@
 import { TELL, RESULT } from '../../../combat/rules.js';
 import { turnToward } from '../../../core/math.js';
-import { K_FIRE, K_STEEL, GROUND_Y } from '../duelist/fx.js';
+import { K_FIRE, K_STEEL, GROUND_Y, GROUND_GAIN } from '../duelist/fx.js';
 import { TUNING_TERRAIN } from './tuningTerrain.js';
 
 // FsTerrain: the False Saint's use of the foundry (the TERRAIN AGENT's file; its moves: moves/terrain.js;
@@ -869,7 +869,8 @@ export class FsTerrain {
       o.scar = false;
       o.falloff = 0.3;
       for (const b of W.list) {
-        if (b.state !== INTACT || b.absent || !(b.hpMax < Infinity)) continue;
+        // (a ground shock: the ladles hang over it on their chains, their cranes stand)
+        if (b.state !== INTACT || b.absent || !(b.hpMax < Infinity) || SPARED.has(b.kind)) continue;
         const e = Math.hypot(b.x - F.x, b.z - F.z);
         if (e < R0 || e >= R1) continue;
         const k = 1 - (1 - K.farK) * clamp(e / K.r1, 0, 1);
@@ -920,14 +921,17 @@ export class FsTerrain {
     const life = fx._frame();
     if (!(life > 0)) return;
     const R = F.R, half = 15.6, step = K.gridStep;
-    const n = Math.min(220, Math.max(12, Math.ceil((TAU * R) / step)));
-    const heat = F.quiet ? 0.18 : 0.42;
+    const n = Math.min(420, Math.max(12, Math.ceil((TAU * R) / step)));
+    // (floor heat prints GROUND_GAIN hotter: the field's soft depth test fades what hugs the floor)
+    const heat = (F.quiet ? 0.22 : 0.62) * GROUND_GAIN;
     let drawn = 0;
-    for (let i = 0; i < n && drawn < 120; i++) {
-      const a = (i / n) * TAU, x = F.x + Math.cos(a) * R, z = F.z + Math.sin(a) * R;
+    for (let i = 0; i < n && drawn < 220; i++) {
+      const a = (i / n) * TAU, ca = Math.cos(a), sa = Math.sin(a), x = F.x + ca * R, z = F.z + sa * R;
       if (Math.abs(x) > half || Math.abs(z) > half) continue;
-      const st = 0.7 + 0.3 * Math.sin(a * 7 + F.t * 9);
-      fx._blob(x, GROUND_Y + 0.12, z, 0, 0, 0, life, 0.55, 0.55, heat * st, heat * st, K_FIRE);
+      const st = 0.65 + 0.35 * Math.sin(a * 7 + F.t * 9);
+      // the crest (red-hot, a frame) and the wake behind it (it cools over a few tenths of a second)
+      fx._blob(x, GROUND_Y, z, 0, 0, 0, life, 0.7, 0.7, heat * st, heat * st, K_FIRE);
+      if ((i & 1) === 0) fx._blob(x - ca * 0.5, GROUND_Y, z - sa * 0.5, 0, 0, 0, 0.28, 0.6, 0.5, 0.45 * heat * st, 0, K_FIRE);
       drawn++;
       if ((i & 7) === 0 && fx.lr() < 0.5) this._grit(x, 0.15, z, 1, 2.2, Math.cos(a), Math.sin(a));
     }
@@ -1129,7 +1133,8 @@ export class FsTerrain {
     o.src = W?.swing?.() ?? -1;
     for (let i = 0; i < m; i++) {
       const q = this._near[i];
-      if (!q || q.state !== INTACT || !(q.hpMax < Infinity)) continue;
+      // (the ladles and the cranes that hold them are spared: his Crucible's, and the hero's trick)
+      if (!q || q.state !== INTACT || !(q.hpMax < Infinity) || SPARED.has(q.kind)) continue;
       const e = Math.hypot(q.x - x, q.z - z), k = 1 - (1 - C.farK) * clamp(e / C.reach, 0, 1);
       o.dx = (q.x - x) / (e || 1);
       o.dz = (q.z - z) / (e || 1);
@@ -1161,16 +1166,20 @@ export class FsTerrain {
       if (e < C.rIn) continue;
       const a = Math.atan2(b.z - z, b.x - x), si = Math.floor(((a + Math.PI) / TAU) * sectors) % sectors;
       if (used[si]) continue;
-      if (!W.take(b)) continue;
-      used[si] = 1;
       const ux = (b.x - x) / (e || 1), uz = (b.z - z) / (e || 1);
       // (how far and how long by a hash of its place: no draw on any stream)
       const h = hash2(b.x, b.z);
       const far = C.throw[0] + (C.throw[1] - C.throw[0]) * h, T = C.flight[0] + (C.flight[1] - C.flight[0]) * (1 - h);
+      // (never onto a full ladle: a plate's landing would bring it down)
+      if (this._nearLadle(b.x + ux * far * 0.5, b.z + uz * far * 0.5, 3) || this._nearLadle(b.x + ux * far, b.z + uz * far, 3)) {
+        continue;
+      }
+      if (!W.take(b)) continue;
+      used[si] = 1;
       W.carry(b, b.x, 0.15, b.z, 0.5, Math.atan2(ux, uz));
       const tw = this._throw;
       tw.time = T;
-      tw.power = 0.8;
+      tw.power = 0.45;
       tw.radius = 1.0;
       tw.by = 'boss';
       tw.onLand = null;
@@ -1179,6 +1188,14 @@ export class FsTerrain {
     }
     this.stats.platesThrown += thrown;
     out.length = 0;
+  }
+
+  /** A full ladle within r m of (x, z). */
+  _nearLadle(x, z, r) {
+    const Ls = this.foundry?.ladles;
+    if (!Ls) return false;
+    for (const L of Ls) if (L.full && Math.hypot(L.x - x, L.z - z) < r) return true;
+    return false;
   }
 
   // ------------------------------------------------------------------ THE MOLTEN POOLS
@@ -1310,6 +1327,7 @@ const TANK = Object.freeze(['tank']);
 const FILE_MOVES = new Set(['offertory', 'crucible', 'relic', 'prostration', 'diesIrae']);
 const SPOT_TURNS = Object.freeze([0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, 2.5, -2.5, Math.PI]);
 const NO_PLUNGE = Object.freeze({ plunge: false });
+const SPARED = new Set(['ladle', 'jib', 'jibPost']);
 /** 0..1 from a place (a fixed hash: no draw on any stream). */
 function hash2(x, z) {
   const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;

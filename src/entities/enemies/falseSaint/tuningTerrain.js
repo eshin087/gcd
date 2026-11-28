@@ -74,7 +74,7 @@ export const TUNING_TERRAIN = {
   // unblockable: a roll through the front). The slam bites the press (`slam` power at its ram: four or five
   // slams bring its head down; then the move is gone). Cued on the front: the tell at the slam, the flash
   // flashLead s before it reaches the hero (his own way toward or away from it counted in).
-  diesIrae: { bolt: 70, speed: 15, r0: 2.6, r1: 38, band: 1.4, damage: 22, knockback: 3, power: 1.6, farK: 0.15, plate: 0.45, slam: 1.0, aimY: 4.6, gridStep: 1.1 },
+  diesIrae: { bolt: 70, speed: 15, r0: 2.6, r1: 38, band: 1.4, damage: 22, knockback: 3, power: 1.6, farK: 0.15, plate: 0.45, slam: 1.0, aimY: 4.6, gridStep: 0.6 },
 
   // ---- THE TRANSITIONS' WORLD (FsTerrain.onMoment, called by saint.js _moment in place of its one push ring;
   // until that edit is made, FsTerrain._change adds the rest on top of core's 7 m ring at 2.2): at the
