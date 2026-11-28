@@ -65,6 +65,16 @@ const CATALOGUE = (() => {
 })();
 
 applyLevel(ASH);
+// GCD_PRESSURE=nonstop: every scenario with ADR-273's pace (?pressure=); GCD_GAMEDEF=1: the clash dance and the flash
+// chain on, as the game plays them (the sims keep both off unless a scenario sets them)
+if (process.env.GCD_PRESSURE) {
+  const PM = await imp('src/entities/enemies/ashDisciple/pressure.js');
+  if (!PM.setPressureMode(process.env.GCD_PRESSURE)) throw new Error(`unknown GCD_PRESSURE ${process.env.GCD_PRESSURE}`);
+}
+if (process.env.GCD_GAMEDEF) {
+  (await imp('src/combat/clashDance.js')).setClashMode('dance');
+  (await imp('src/combat/flashChain.js')).setCounterMode('chain');
+}
 
 /** `seed`: the AI's (a number), or { seed, real }. `real`: the courtyard's REAL set and its breakables
  *  (world.destructibles, world.scars, world.impact, world.restore, wired as src/world/world.js does),
@@ -2711,6 +2721,228 @@ async function scenarioFlow() {
   return G;
 }
 
+// ================================================================== scenario: nonstop (ADR-273, opt-in)
+// The non-stop meter (`?pressure=nonstop`, ashDisciple/pressure.js), per switch value, bot and phase, on the real
+// courtyard, clash dance and flash chain as in the game: the share of time he is in a move (and striking: before its
+// recovery), the gaps between his blows (impact to impact, his blade and what he throws: median, longest, longest
+// with the hero within 4 m at both ends, and how many over 1 s in range a minute), his runs of blows (blows no more
+// than 0.8 s apart: mean, median, the share of blows in runs of 4+, the longest), blows a move, where blades meet a
+// minute (parries, trade clashes, his guard meeting a cut), the tell mix, hits taken a minute (god mode).
+// Bots: `fence` (makeDefender + the WIN fencer: parries, rolls red, cuts in openings and now and then into him),
+// `guard` (the PACE defender: never attacks, holds the guard, roams 2.5 / 5 / 9 m).
+// env: GCD_NMODES (0,nonstop) · GCD_NBOTS (fence,guard) · GCD_NSEEDS (4242,7,99) · GCD_NSECS (90)
+async function scenarioNonstop() {
+  out('\n== scenario NONSTOP (the non-stop meter: in a move, gaps, runs, blades meeting, the mix; ADR-273) ==');
+  const PM = await imp('src/entities/enemies/ashDisciple/pressure.js');
+  const { setClashMode } = await imp('src/combat/clashDance.js');
+  const { setCounterMode } = await imp('src/combat/flashChain.js');
+  const MODES = (process.env.GCD_NMODES ?? '0,nonstop').split(',');
+  const BOTS = (process.env.GCD_NBOTS ?? 'fence,guard').split(',');
+  const SEEDS = (process.env.GCD_NSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  const SECS = Number(process.env.GCD_NSECS ?? 90);
+  const NEAR = 4, RUN = 0.8;
+  const med = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : 0; };
+  const rows = [];
+  let last = null;
+  for (const mode of MODES) {
+    for (const bot of BOTS) {
+      for (const seed of SEEDS) {
+        for (let ph = 1; ph <= 3; ph++) {
+          assert(PM.setPressureMode(mode), `the switch takes ${mode}`);
+          setClashMode('dance');
+          setCounterMode('chain');
+          const G = (last = build({ seed, real: true }));
+          const { game } = G;
+          const d = game.dragon, p = game.player;
+          duel(G, { dist: 3, ai: true });
+          p.debug.god = true;
+          G.defend = bot === 'fence' ? makeDefender(G) : paceDefender(G);
+          if (bot === 'guard') p.debug.noRiposte = true;
+          for (let n = 2; n <= ph; n++) {
+            d.brain.forcePhase(n);
+            run(G, 8, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); }, () => d.phase === n && d.mode !== 'act');
+          }
+          Math.random = mulberry32(seed * 7 + ph);
+          const lo = d.maxHp * ((TUNING.phaseAt[ph] ?? 0) + 0.15); // (above the next gate; in phase 3 above an execution)
+          const kinds = {};
+          const feints = [];
+          const blows = [], acts = [], n = { parry: 0, perfect: 0, clash: 0, guard: 0, counter: 0, breaks: 0, recoils: 0 };
+          let lastMode = d.mode, inMove = 0, striking = 0, frames = 0, foot = 0, react = 0, footRun = 0, footMin = 99;
+          const footRuns = [];
+          G.watch = (ev, e) => {
+            if (ev === 'combat:flash' && e?.source === 'dragon') {
+              const dist = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z);
+              blows.push({ t: game.time + TUNING.flashLead, tell: e.tell, attack: e.attack, dist });
+            }
+            if (ev === 'dragon:windup' && MOVES[e?.name] && !MOVES[e.name].transition) acts.push({ t: game.time, name: e.name, counter: !!MOVES[e.name].counter, from: lastMode });
+            if (ev === 'player:parry') { n.parry++; if (e?.perfect) n.perfect++; }
+            if (ev === 'combat:clash') n.clash++;
+            if (ev === 'dragon:guard') n.guard++;
+            if (ev === 'player:counter') n.counter++;
+            if (ev === 'dragon:postureBreak') n.breaks++;
+          };
+          const roam = mulberry32(seed * 31 + ph), goal = { r: 2.5, a: 0, until: -1 };
+          const t0 = game.time, h0 = G.hits.length;
+          for (let i = 0; i < Math.round(SECS / DT); i++) {
+            if (bot === 'fence') fencer(G);
+            else {
+              const rolled = G.defend.act();
+              if (game.time > goal.until) {
+                goal.r = [2.5, 5, 9][Math.floor(roam() * 3)];
+                goal.a = Math.atan2(p.position.x - d.position.x, p.position.z - d.position.z) + (roam() - 0.5) * 1.6;
+                goal.until = game.time + 4;
+              }
+              if (!rolled && p.state !== 'roll') {
+                const gx = d.position.x + Math.sin(goal.a) * goal.r, gz = d.position.z + Math.cos(goal.a) * goal.r;
+                const k = Math.hypot(gx, gz) > 11 ? 11 / Math.hypot(gx, gz) : 1;
+                const dx = gx * k - p.position.x, dz = gz * k - p.position.z, l = Math.hypot(dx, dz);
+                G.input.axis = l > 0.6 ? { x: dx / l, y: -dz / l } : { x: 0, y: 0 };
+              }
+              game.mouseGround.set(d.position.x, 0, d.position.z);
+            }
+            G.tick(DT);
+            if (d.brain.pendingPhase > ph) d.brain.pendingPhase = 0;
+            if (d.hp < lo) d.hp = lo;
+            lastMode = d.mode === 'react' ? `react:${d.brain.react?.kind}` : d.mode;
+            frames++;
+            const a = d.brain.act;
+            if (d.mode === 'act' && a && !a.def.transition) { inMove++; if (a.t < a.recoveryStart) striking++; }
+            if (d.mode === 'act' && a) for (const b of a.beats) if (b.feint && !b._nsSeen && a.t >= b.impact) { b._nsSeen = true; feints.push({ t: game.time, attack: a.name, dist: Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z) }); }
+            // his footwork between moves (circling, closing): a stretch of it with the hero within NEAR m at some
+            // point is idling in range; his reactions (a recoil, a reel, a break: the hero's openings) are not
+            if (d.mode === 'foot') {
+              foot++;
+              footRun += game.dt;
+              footMin = Math.min(footMin, Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z));
+            } else {
+              if (footRun > 0) footRuns.push([footRun, footMin]);
+              footRun = 0;
+              footMin = 99;
+              if (d.mode === 'react' || d.mode === 'broken') react++;
+              const kk = d.mode === 'react' ? d.brain.react?.kind ?? '?' : d.mode === 'act' ? null : d.mode;
+              if (kk) kinds[kk] = (kinds[kk] || 0) + 1;
+            }
+          }
+          if (footRun > 0) footRuns.push([footRun, footMin]);
+          const footNear = footRuns.filter((x) => x[1] <= NEAR).map((x) => x[0]);
+          G.watch = null;
+          G.defend = null;
+          const T = game.time - t0, M = 60 / T;
+          blows.sort((x, y) => x.t - y.t);
+          const swings = [...blows, ...feints].sort((x, y) => x.t - y.t);
+          const sw = [], swNear = [];
+          for (let i = 1; i < swings.length; i++) {
+            const g = swings[i].t - swings[i - 1].t;
+            if (g < 0.05) continue;
+            sw.push(g);
+            if (swings[i].dist <= NEAR && swings[i - 1].dist <= NEAR) swNear.push(g);
+          }
+          const gaps = [], near = [], gapBy = {};
+          for (let i = 1; i < blows.length; i++) {
+            const g = blows[i].t - blows[i - 1].t;
+            if (g < 0.05) continue; // (two of his things landing at once: one beat)
+            gaps.push(g);
+            if (blows[i].dist <= NEAR && blows[i - 1].dist <= NEAR) {
+              near.push(g);
+              // GCD_NGAPS=1: what each gap over 1 s in range lies between (inside one move, or from one to the next)
+              if (g > 1) {
+                const w = acts.filter((x) => x.t > blows[i - 1].t - 0.6 && x.t <= blows[i].t).at(-1);
+                const k = blows[i].attack === blows[i - 1].attack ? `in ${blows[i].attack}` : `${blows[i - 1].attack} > ${blows[i].attack} [${w ? `${w.from} +${(w.t - blows[i - 1].t).toFixed(2)} +${(blows[i].t - w.t).toFixed(2)}` : '?'}]`;
+                gapBy[k] = (gapBy[k] || 0) + 1;
+              }
+            }
+          }
+          const runs = [];
+          let r1 = blows.length ? 1 : 0;
+          for (let i = 1; i < blows.length; i++) {
+            if (blows[i].t - blows[i - 1].t <= RUN) r1++;
+            else { runs.push(r1); r1 = 1; }
+          }
+          if (r1) runs.push(r1);
+          const mix = { normal: 0, blue: 0, red: 0, black: 0 };
+          for (const b of blows) mix[b.tell] = (mix[b.tell] ?? 0) + 1;
+          const per = acts.filter((x) => !x.counter).map((x, i, A) => blows.filter((b) => b.attack === x.name && b.t >= x.t && b.t < (A[i + 1]?.t ?? Infinity) + 0.4).length);
+          const taken = G.hits.slice(h0).filter((h) => h.r === RESULT.HIT).length;
+          rows.push({
+            mode, bot, seed, ph, T, inMove: inMove / frames, striking: striking / frames, foot: foot / frames, react: react / frames,
+            footMax: Math.max(0, ...footNear), footMed: med(footNear), footOver: footNear.filter((x) => x > 1).length * M, feints: feints.length * M, swMax: Math.max(0, ...swNear), swOver: swNear.filter((g) => g > 1).length * M, swOver12: swNear.filter((g) => g > 1.25).length * M, kinds: Object.fromEntries(Object.entries(kinds).map(([k, v]) => [k, v / frames])),
+            gapMed: med(gaps), gapMax: Math.max(0, ...gaps), nearMax: Math.max(0, ...near), nearOver: near.filter((g) => g > 1).length * M,
+            runMean: runs.reduce((s, x) => s + x, 0) / (runs.length || 1), runMed: med(runs), run4: runs.filter((x) => x >= 4).reduce((s, x) => s + x, 0) / (blows.length || 1), runMax: Math.max(0, ...runs),
+            perMove: per.reduce((s, x) => s + x, 0) / (per.length || 1), blowsMin: blows.length * M,
+            parry: n.parry * M, clash: n.clash * M, guard: n.guard * M, meet: (n.parry + n.clash + n.guard) * M, counter: n.counter * M, breaks: n.breaks, taken: taken * M,
+            mix: Object.fromEntries(Object.entries(mix).map(([k, v]) => [k, v / (blows.length || 1)])),
+          });
+          const r = rows.at(-1);
+          if (process.env.GCD_NGAPS) { const hb = {}; for (const h of G.hits.slice(h0)) if (h.r === RESULT.HIT) hb[`${h.attack} ${h.tell}`] = (hb[`${h.attack} ${h.tell}`] || 0) + 1; out(`      hits by: ${JSON.stringify(hb)}`); }
+          if (process.env.GCD_NGAPS) { const pk = {}; for (const x of acts) pk[x.name] = (pk[x.name] || 0) + 1; out(`      picks: ${Object.entries(pk).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}`); }
+          if (process.env.GCD_NGAPS) out(`      gaps > 1 s in range: ${Object.entries(gapBy).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+          out(`   ${mode.padEnd(7)} ${bot.padEnd(5)} ${String(seed).padStart(4)} P${ph}  move ${(r.inMove * 100).toFixed(0)}% strike ${(r.striking * 100).toFixed(0)}% foot ${(r.foot * 100).toFixed(0)}% react ${(r.react * 100).toFixed(0)}%  idle in range med ${r.footMed.toFixed(2)} max ${r.footMax.toFixed(2)} >1s/min ${r.footOver.toFixed(1)}  gap med ${r.gapMed.toFixed(2)} max ${r.gapMax.toFixed(2)} near-max ${r.nearMax.toFixed(2)} >1s/min ${r.nearOver.toFixed(1)}  swings (feints ${r.feints.toFixed(1)}/min) near-max ${r.swMax.toFixed(2)} >1s/min ${r.swOver.toFixed(1)} >1.25s/min ${r.swOver12.toFixed(1)}  runs ${r.runMean.toFixed(1)} med ${r.runMed} 4+ ${(r.run4 * 100).toFixed(0)}% max ${r.runMax}  blows/move ${r.perMove.toFixed(1)}  blows/min ${r.blowsMin.toFixed(0)}  meet/min ${r.meet.toFixed(1)} (parry ${r.parry.toFixed(1)} clash ${r.clash.toFixed(1)} guard ${r.guard.toFixed(1)})  breaks ${r.breaks}  hit/min ${r.taken.toFixed(1)}  not in a move: ${Object.entries(r.kinds).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k, v]) => `${k} ${(v * 100).toFixed(0)}%`).join(' ')}  mix n${(r.mix.normal * 100).toFixed(0)} b${(r.mix.blue * 100).toFixed(0)} r${(r.mix.red * 100).toFixed(0)} k${(r.mix.black * 100).toFixed(0)}`);
+        }
+      }
+    }
+  }
+  PM.setPressureMode('0');
+  setClashMode('0');
+  setCounterMode('0');
+  // the seeds' means, per switch value, bot and phase (the table in the PR)
+  out(`\n   MEANS over seeds ${SEEDS.join(', ')}, ${SECS} s a phase: mode bot phase | in a move % | striking % | footwork % | reacting % (the hero's openings) | idle in range: footwork median / longest (s), over 1 s a minute | gap median / longest / longest in range (s) | gaps > 1 s in range a minute | counting feint swings: longest in range, over 1 s / over 1.25 s a minute | run mean / median / blows in runs of 4+ % / longest | blows a move | blows a minute | blades meet a minute (parry + clash + guard) | breaks | hits taken a minute | mix normal / blue / red / black %`);
+  const mean = (A, f) => A.reduce((s, r) => s + f(r), 0) / (A.length || 1);
+  for (const mode of MODES) for (const bot of BOTS) for (let ph = 1; ph <= 3; ph++) {
+    const A = rows.filter((r) => r.mode === mode && r.bot === bot && r.ph === ph);
+    if (!A.length) continue;
+    out(`   | ${mode} | ${bot} | P${ph} | ${(mean(A, (r) => r.inMove) * 100).toFixed(0)} | ${(mean(A, (r) => r.striking) * 100).toFixed(0)} | ${(mean(A, (r) => r.foot) * 100).toFixed(0)} | ${(mean(A, (r) => r.react) * 100).toFixed(0)} | ${mean(A, (r) => r.footMed).toFixed(2)} / ${Math.max(...A.map((r) => r.footMax)).toFixed(2)}, ${mean(A, (r) => r.footOver).toFixed(1)} | ${mean(A, (r) => r.gapMed).toFixed(2)} / ${Math.max(...A.map((r) => r.gapMax)).toFixed(2)} / ${Math.max(...A.map((r) => r.nearMax)).toFixed(2)} | ${mean(A, (r) => r.nearOver).toFixed(1)} | ${Math.max(...A.map((r) => r.swMax)).toFixed(2)}, ${mean(A, (r) => r.swOver).toFixed(1)} / ${mean(A, (r) => r.swOver12).toFixed(1)} | ${mean(A, (r) => r.runMean).toFixed(1)} / ${mean(A, (r) => r.runMed).toFixed(1)} / ${(mean(A, (r) => r.run4) * 100).toFixed(0)} / ${Math.max(...A.map((r) => r.runMax))} | ${mean(A, (r) => r.perMove).toFixed(1)} | ${mean(A, (r) => r.blowsMin).toFixed(0)} | ${mean(A, (r) => r.meet).toFixed(1)} (${mean(A, (r) => r.parry).toFixed(1)} + ${mean(A, (r) => r.clash).toFixed(1)} + ${mean(A, (r) => r.guard).toFixed(1)}) | ${mean(A, (r) => r.breaks).toFixed(1)} | ${mean(A, (r) => r.taken).toFixed(1)} | ${['normal', 'blue', 'red', 'black'].map((k) => (mean(A, (r) => r.mix[k] ?? 0) * 100).toFixed(0)).join(' / ')} |`);
+  }
+  return last;
+}
+
+// ================================================================== scenario: nonstopswitch (ADR-273)
+// The switch itself (`?pressure=`, ashDisciple/pressure.js): today by default, the table written over TUNING while
+// it is on and every number given back exactly when it goes off, the links and weights scaled only while on, and a
+// short fight with it on keeps the fairness guard (no two cues asking different answers within 0.3 s).
+async function scenarioNonstopSwitch() {
+  out('\n== scenario NONSTOPSWITCH (?pressure=: today by default, on and off exactly, the guard holds; ADR-273) ==');
+  const PM = await imp('src/entities/enemies/ashDisciple/pressure.js');
+  const { LINKS } = await imp('src/entities/enemies/ashDisciple/links.js');
+  const was = PM.pressureMode();
+  assert(PM.DEFAULT_PRESSURE === '0', `the default is today's fight until the owner picks (${PM.DEFAULT_PRESSURE})`);
+  PM.setPressureMode('0');
+  const strip = (o) => JSON.stringify({ ...o, nonstop: undefined });
+  const before = strip(TUNING);
+  assert(!PM.setPressureMode('fast') && PM.pressureMode() === '0', 'an unknown value is refused');
+  assert(PM.setPressureMode('nonstop') && PM.nonstopOn(), 'nonstop switches on');
+  const NS = TUNING.nonstop.tuning;
+  assert(TUNING.pressure.linkCut === NS.pressure.linkCut && JSON.stringify(TUNING.pressure.chainDepth) === JSON.stringify(NS.pressure.chainDepth) && TUNING.damageScale === NS.damageScale && JSON.stringify(TUNING.chain) === JSON.stringify(NS.chain), `the table is written over TUNING (linkCut ${TUNING.pressure.linkCut}, chainDepth ${TUNING.pressure.chainDepth}, damageScale ${TUNING.damageScale})`);
+  assert(TUNING.pressure.guard.sep === 0.3 && TUNING.flashLead === 0.3 && TUNING.minFirstWindup === 0.42 && TUNING.minHitGap === 0.32, 'the fairness guard and the tell floors are untouched');
+  const L = PM.pressureLinks(), max = TUNING.nonstop.links.max;
+  let bad = 0, up = 0;
+  for (const [from, list] of Object.entries(LINKS)) list.forEach((e, i) => {
+    const a = e.chance ?? 1, b = L[from][i].chance;
+    const ok = Array.isArray(a) ? a.every((x, k) => (x > 0 ? b[k] >= Math.min(x, max) - 1e-9 && b[k] <= Math.max(x, max) + 1e-9 : b[k] === x)) : b >= Math.min(a, max) - 1e-9;
+    if (!ok || L[from][i].to !== e.to || L[from][i].when !== e.when) bad++;
+    if (JSON.stringify(a) !== JSON.stringify(b)) up++;
+  });
+  assert(!bad && up > 0, `the links keep their order and targets, chances up to ${max} at most (${up} raised, ${bad} wrong)`);
+  const G = build({ seed: 4242, real: true });
+  const d = G.game.dragon;
+  assert(Math.abs(d.weigh('ashRain', MOVES.ashRain, 1, 2) - 1.8) < 1e-9 && d.LINKS === L, `his AI weighs a long string up in phase 1 (x${d.weigh('ashRain', MOVES.ashRain, 1, 2)}) and links by the scaled table`);
+  // a short fight with it on: a steady defender, no two cues asking different answers within 0.3 s
+  duel(G, { dist: 3, ai: true });
+  G.game.player.debug.god = true;
+  G.defend = paceDefender(G);
+  const fl = [];
+  G.watch = (n, e) => { if (n === 'combat:flash' && (e?.source === 'dragon' || e?.source === 'world')) fl.push([G.game.time, e.tell === TELL.RED || e.tell === TELL.BLACK ? 'dodge' : 'guard', e.attack]); };
+  run(G, 40, (GG) => { GG.input.axis = { x: 0, y: 0 }; GG.defend.act(); GG.game.mouseGround.set(d.position.x, 0, d.position.z); });
+  G.watch = null;
+  G.defend = null;
+  let clash = 0;
+  for (let i = 0; i < fl.length; i++) for (let j = i + 1; j < fl.length && fl[j][0] - fl[i][0] < 0.3; j++) if (fl[i][1] !== fl[j][1] && fl[i][2] !== fl[j][2]) clash++;
+  assert(fl.length > 40 && clash === 0, `40 s with it on: ${fl.length} cues, ${clash} pairs asking different answers within 0.3 s`);
+  PM.setPressureMode('0');
+  assert(strip(TUNING) === before && PM.pressureLinks() === LINKS && d.weigh('ashRain', MOVES.ashRain, 1, 2) === 1, 'off again: every number as before, the links and weights his own');
+  PM.setPressureMode(was);
+  return G;
+}
+
 // ================================================================== scenario: pace (the director's meter)
 // A god-mode defender that never attacks, driven by combat:flash (his thrown things send no tell):
 // the guard held through a normal / blue blow, a roll 0.28 s before a red / black one (out of a
@@ -5235,9 +5467,11 @@ async function scenarioStrategy() {
   out(`
 == scenario STRATEGY (mixed / parry-only / dodge-only; god mode, then mortal at ${Math.round(skill * 100)} %) ==`);
   let last = null;
-  for (const style of ['mixed', 'parry', 'dodge']) {
-    for (const seed of [4242, 7, 99]) {
-      for (const mortal of [false, true]) {
+  // (GCD_SSEEDS / GCD_SSTYLES / GCD_SMORTAL=1: more seeds, fewer styles, the mortal runs only)
+  const SEEDS = (process.env.GCD_SSEEDS ?? '4242,7,99').split(',').map(Number).filter(Number.isFinite);
+  for (const style of (process.env.GCD_SSTYLES ?? 'mixed,parry,dodge').split(',')) {
+    for (const seed of SEEDS) {
+      for (const mortal of process.env.GCD_SMORTAL ? [true] : [false, true]) {
         const G = build(seed);
         const { game } = G;
         duel(G, { dist: 4, ai: true });
@@ -5908,6 +6142,8 @@ const SCENARIOS = {
   phase: scenarioPhase,
   flow: scenarioFlow,
   win: scenarioWin,
+  nonstop: scenarioNonstop,
+  nonstopswitch: scenarioNonstopSwitch,
   // (the boss's pace is measured with the flurry before the dodge looks (STREAK_FX.dodgefx, 2026-11-25): the
   // Thunder Thrust's held lunge holds the world longer, a gap in HIS cues that is not his pace)
   pace: async () => {
@@ -5934,7 +6170,7 @@ const SCENARIOS = {
   },
 };
 const runs = [];
-const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer', 'audit']); // run only when named
+const OPT_IN = new Set(['probe', 'strategy', 'bots', 'ranged', 'answer', 'audit', 'nonstop']); // run only when named
 // `all`, one scenario or a comma list; GCD_SKIP (a comma list) leaves scenarios out of `all`
 // (tests/run.mjs runs the long ones as processes of their own, so a new scenario lands in `all`)
 const SKIP = new Set((process.env.GCD_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean));

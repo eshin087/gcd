@@ -40,6 +40,7 @@ import { PLACE_IDS, placeMode, setPlace, BEAT_IDS, beatMode, setBeat } from '../
 import { IDLES_IDS, IDLES_NAMES, idlesMode, setIdles, EASE_RESTS, FIGHT_RESTS, EASE_HABITS, EASE_TRICKS, EASE_REF_EXTRA, FIGHT_ACTS } from '../entities/player/idles.js';
 import { GUARD_IDS, GUARD_NAMES, guardMode, setGuard } from '../entities/player/refStance.js';
 import { CLASH_IDS, clashMode, setClashMode } from '../combat/clashDance.js';
+import { PRESSURE_IDS, pressureMode, setPressureMode } from '../entities/enemies/ashDisciple/pressure.js';
 import { RUN_ARM_IDS, RUN_ARM_NAMES, runArmMode, setRunArm } from '../entities/player/runArms.js';
 import { RUN_SWORD_IDS, RUN_SWORD_NAMES, runSwordMode, setRunSword } from '../entities/player/runSword.js';
 import { HAND_LOOK_IDS, HAND_LOOK_NAMES, handLook } from '../entities/player/gear/handLook.js';
@@ -1518,6 +1519,7 @@ export class Lab {
       ['feel', FEEL_IDS, setFeel, 'feelBtns', "the swings' feel: prod = as it ships, snap = crisp, weight = grounded, flow = fluid; the same moves on another clock, each with its own free hand (?feel=)", (m) => (m === '0' ? 'prod' : m)],
       ['offhand', OFFHAND_IDS, setOffHand, 'offHandBtns', "the free hand in a one-handed swing: auto = the feel's own, prod = as it ships, side = loose at his side, back = behind his back, quiet = its gestures pulled in (?offhand=)", (m) => (m === '0' ? 'prod' : m)],
       ['clash', CLASH_IDS, setClashMode, 'clashBtns', "the clash dance against the duelists (?clash=): dance = parries in a row inside one of his moves pay more posture each (x1, x1.25, x1.5, x1.75), their ring rises a little, and his posture recovers more slowly as his health drops; dance is the default; old = the numbers before (?clash=0). Read at each parry", (m) => (m === '0' ? 'old' : m)],
+      ['pressure', PRESSURE_IDS, setPressureMode, 'pressureBtns', "Shen Hui's pace (?pressure=, ADR-273): nonstop = the moves hand on to each other sooner (at 0.3 of the recovery, not half), the flow almost always on, a breather only after 6 / 7 / 8 moves and shorter, the strings of 4 - 10 blows weighed up and the lone blows down, the links and the chase back in likelier; today = as he ships (the default until the owner picks). Live", (m) => (m === '0' ? 'today' : m)],
       ['contact', CONTACT_IDS, setContactMode, 'contactBtns', "where blows meet (?contact=, ADR-259): a = every hit, block and guard is drawn ON what it strikes (the edge bites in, a fist lands on the body; held through the freeze, a heavy longer, then the swing carries on), the sparks at the meeting, and the body hit answers by where it was struck; b = a, and a boss's blow that would fall short is reached into (his drawn body eases into it, feet planted): the default, the owner's pick; c = b, and past the reach his whole drawn body steps in; old = as before. Read at each contact", (m) => (m === '0' ? 'old' : m === 'b' ? 'b reach' : m === 'c' ? 'c step' : m)],
     ]) {
       const r = el('div', 'lab-row', null, body);
@@ -1651,6 +1653,7 @@ export class Lab {
     for (const { m, el: b } of this.ui.placeBtns ?? []) setClass(b, 'on', placeMode() === m);
     for (const { m, el: b } of this.ui.beatBtns ?? []) setClass(b, 'on', beatMode() === m);
     for (const { m, el: b } of this.ui.clashBtns ?? []) setClass(b, 'on', clashMode() === m);
+    for (const { m, el: b } of this.ui.pressureBtns ?? []) setClass(b, 'on', pressureMode() === m);
     for (const { m, el: b } of this.ui.contactBtns ?? []) setClass(b, 'on', contactMode() === m);
     if (this.ui.perfectBtn) this.ui.perfectBtn.textContent = `perfect: ${perfectMode()}`;
     if (this.ui.parryFxBtn) this.ui.parryFxBtn.textContent = `parryFx ${parryFxMode()}`;

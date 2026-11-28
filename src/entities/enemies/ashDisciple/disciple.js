@@ -6,7 +6,7 @@ import { DUEL_POSES } from './poses.js';
 import { MOVES, MOVE_NAMES, CLIP, realise, formOn } from './moves.js';
 import { TUNING } from './tuning.js';
 import { TerrainMoves } from './terrain.js';
-import { LINKS } from './links.js';
+import { pressureLinks, pressureWeight } from './pressure.js';
 import { AshMoveFx } from './moveFx.js';
 import { AshSpecialFx } from './specialFx.js';
 import { lookOf } from '../duelist/lookSwitch.js';
@@ -93,6 +93,7 @@ export class AshDisciple extends Duelist {
   /** His AI weighs a move: one that needs a piece of the courtyard weighs nothing while none is in reach. */
   weigh(name, def, w) {
     if (def.motionOnly && lookOf('ashMotion', '0') === '0') return 0; // (ADR-226: only behind its switch)
+    w = pressureWeight(name, w, this.phase); // (ADR-273, ?pressure=nonstop: the long strings up, the lone blows down)
     return def.terrain ? this.terrain.weigh(def, w) : w;
   }
   /** A move starts: one of the courtyard's picks its piece (false: there is none, it does not start). */
@@ -238,9 +239,10 @@ export class AshDisciple extends Duelist {
   }
 
   // ---------------------------------------------------------------- the second pass (core)
-  /** His combo links (links.js; duelist/brain.js reads `d.LINKS`). */
+  /** His combo links (links.js; duelist/brain.js reads `d.LINKS`): with `?pressure=nonstop` (ADR-273) their
+   *  chances scaled (pressure.js). */
   get LINKS() {
-    return LINKS;
+    return pressureLinks();
   }
 }
 

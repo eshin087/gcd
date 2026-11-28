@@ -18,6 +18,15 @@ export const RELEASES = [
     summary: 'Everything since 0.4.0. It reaches the site as each piece lands.',
     entries: [
       {
+        date: '2026-11-27',
+        title: 'Shen Hui without a pause (to try: ?pressure=nonstop)',
+        notes: [
+          'A test of a faster Shen Hui, the Ash Disciple: add ?pressure=nonstop to the address. He flows from one string into the next with barely a pause and comes straight back in when you back off, and he throws his long strings more than his single blows.',
+          'Each of his blows hits a little lighter, so he deals about as much damage a minute as before, and every opening you earn is as long as before: parry the last blow of a string and he still recoils.',
+          'The fight as you know it stays the default until it is picked.',
+        ],
+      },
+      {
         date: '2026-11-28',
         title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
         notes: [

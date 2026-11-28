@@ -167,6 +167,39 @@ export const TUNING = {
     // 3's mean ramp at 1.02: it must be busier than phase 2, by a margin a reshuffle does not eat)
     meter: { ramp: [1, 1.05, 0.95], rampMean: [1, 1.14, 1.02], minRate: [68, 82, 90], maxGap: [3.9, 3.4, 3.7] },
   },
+  // ---- the non-stop pass (`?pressure=nonstop`, ADR-273; pressure.js applies it, off by default until the owner
+  // picks from the films). `tuning`: written over the numbers above while it is on; `weight`: his AI's weight for a
+  // move x this per phase; `links`: every link's chance x `k` (a far / away pursuit x `pursue`), at most `max`
+  nonstop: {
+    tuning: {
+      idleGap: [[0.04, 0.12], [0.03, 0.1], [0.03, 0.08]],
+      // more blows, each lighter: his damage a minute about as today (the owner: harder = more pressure, not more
+      // damage); blows a minute against a steady guard rose 77 → 94 / 94 → 101 / 102 → 109 by phase
+      damageScale: 1.0,
+      chain: [0.95, 0.96, 0.97],
+      pressure: {
+        chainDepth: [8, 9, 10],
+        chainRest: [[0.15, 0.3], [0.1, 0.25], [0.1, 0.2]],
+        linkCut: 0.3,
+        chainCut: 0.3,
+        bias: { string: [2.2, 2.2, 2.2] },
+        // what duel.mjs PACE asserts with it on (GCD_PRESSURE=nonstop; 2026-11-27, seeds 4242 / 7 / 99, 120 s:
+        // P1 90.8 - 95.2 cues a minute, P2 101.8 - 102.3, P3 104.4 - 111.1; P2 / P1 x1.094 in the mean (it lifts
+        // phase 1 the most), P3 / P2 x1.05; longest gaps 2.07 / 2.40 / 2.32 s; 0 conflicts): every phase still
+        // busier than the one before, the floors about 8 % under the slowest seed, the gaps half a second over
+        meter: { ramp: [1, 1.03, 0.97], rampMean: [1, 1.06, 1.02], minRate: [84, 94, 96], maxGap: [2.6, 2.9, 2.9] },
+      },
+    },
+    weight: {
+      // the lone blows down (they stay: openers, a blue to parry, a red to roll)
+      plumThrust: [0.4, 0.5, 1], fallingAsh: [0.4, 0.5, 1], fallingStar: [0.4, 0.5, 1], lotus: [0.5, 0.6, 1], hesitate: [0.5, 0.6, 1],
+      // the three-blow strings a little down, the strings of 4 - 10 up (red and blue inside most of them)
+      swallow: [0.8, 0.8, 1], crane: [0.8, 0.8, 1],
+      ashRain: [1.8, 1.5, 1.2], chaseRain: [1.8, 1.5, 1.2], partingWind: [1.6, 1.4, 1.2], glideKick: [1.6, 1.4, 1.2],
+      needles: [1, 1.4, 1.2], petals: [1, 1.2, 1], burningCross: [1, 1.4, 1.2],
+    },
+    links: { k: [1.5, 1.4, 1.3], pursue: [1.8, 1.6, 1.5], max: 0.9 },
+  },
   // a hero drinking a flask: no gap, and the moves that close distance are favoured × `weight`
   punish: { weight: 4 },
 
