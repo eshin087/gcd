@@ -34,7 +34,10 @@ with each other because the characters are clumped up". Measured: the cut parrie
 (his step-in aims at ~0.7 x a blow's reach, the thrust's dash stops at 1.0 m). Added `?strikeGap=a|b` (a floor of
 1.5 / 1.8 m on a duelist's own root motion for blade blows, capped by the blow's reach; off until picked), filmed
 beside today. Zoomed, the bodies stand apart up to the contact, but the perfect parry's gold clash, mark and sparks
-cover the hero's chest where the blades cross at any gap: asked the owner before touching that look (ADR-181).
+cover the hero's chest where the blades cross at any gap. The owner said film a smaller one: `?parryClash=a|b` (the mark
+0.55 x with rings and the burst 0.6 x / the X alone at 0.4 x and the burst 0.4 x; the sparks as they are), filmed with
+the 1.8 m gap beside today, plus a zoom sheet of the first parry in four rows. The blue tell glint before the thrust is
+the largest thing over the crossing: a gameplay cue, left alone (a question for the owner).
 
 ---
 

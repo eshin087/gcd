@@ -422,7 +422,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
 - [ ] The deathblow played on the iPhone; the wyrm's parry answer (it keeps the flurry riposte)
 - [x] The parry → deathblow exchange readable to a watcher: a break beat, space, a clean contact, filmed (`?dbread=`, ADR-264)
 - [x] The owner's pick of `?dbread=` made the default (`all`)
-- [ ] The strike gap (`?strikeGap=a|b`): the owner's pick; the perfect parry's gold clash covering the crossing (asked)
+- [ ] The strike gap (`?strikeGap=a|b`) and the clash's size (`?parryClash=a|b`): the owner's picks from the films
 - [ ] A next round on the perfect dodge, if any: from a concrete reference and one narrow prototype; never the background
 
 ## M1.76 — Every sound effect back to its first synth version (2026-11-23, `audio/swing-choices`, ADR-178)

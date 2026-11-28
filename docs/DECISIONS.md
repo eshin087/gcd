@@ -7703,7 +7703,13 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
     left as authored), capped at 0.85 x the blow's reach so every blow lands where it did: a 1.5 m, b 1.8 m (the
     parries at 1.5 / 1.5 m and 1.8 / 1.7 m). Off by default until the owner picks. Seen zoomed: the spacing shows
     the bodies apart up to the contact, but on a perfect parry the gold clash, its mark and its spark spit (ADR-181)
-    cover the hero's chest, where the blades meet, at any gap: raised with the owner, not changed.
+    cover the hero's chest, where the blades meet, at any gap.
+  - **The clash's size** (`?parryClash=0|a|b`, `combat/perfectFx.js`, the Lab's `parryClash`), the owner's "Yes,
+    film it": the perfect parry's mark (its gold X opening into rings up to 0.52 m) and its gold clash burst drawn
+    smaller, one idea in two steps: a the mark 0.55 x with its rings, the burst 0.6 x; b the X alone at 0.4 x, the
+    burst 0.4 x. The spit of orange sparks off the steel (ADR-181) is left as it is. Off until the owner picks; filmed
+    with the 1.8 m gap beside today. Seen in the same zoom: the largest thing on screen before his thrust is his blue
+    tell glint (a star and ring) right over the hero where the blades will meet; a gameplay cue, left as it is.
 - **Consequences:** a adds 0.35 s between the parry and the combo and 0.08 s to the first blow (the combo's own
   tempo after that is unchanged); b and a let the hero leave ADR-211's 0.6 m disc round where he parried. The duel
   suite's `deathblow` (f) plays every mode on a posture break and a blue parry: the same blows and damage, the beat,
