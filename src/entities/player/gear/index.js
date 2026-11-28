@@ -60,7 +60,7 @@ export const DEFAULT_LOADOUT = Object.freeze({
   shoulders: null,
   arms: 'shroud.arms',
   legs: 'wanderer.legs',
-  waist: null, // (ADR-281: no coat tails under the great cloak; they splayed it into a dress)
+  waist: 'wanderer.skirt-tied', // (ADR-281: the tails under the great cloak move as one)
   back: 'shroud.greatcloak',
   weapon: 'wanderer.sword',
 });

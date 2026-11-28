@@ -42,6 +42,9 @@ export const COAT_PANELS = [
   { az: -2.5, w: [0.157, 0.23, 0.357], len: [0.306, 0.306], strips: [0.068, 0.111, 0.153], fork: [0, 1, 0], out: 0.008, flare: 0.3, edge: -1, skew: 1.35, slant: 0.068 }, // back-right tail
 ];
 
+/** COAT_PANELS tied (`tie`: [flutter left, shared phase]; anim.js _coat): the default tails since ADR-281. */
+export const TIED_PANELS = COAT_PANELS.map((P) => ({ ...P, tie: [0.3, 0.6] }));
+
 /** The torn half-cape: wide ragged sheets on the streamer springs (anim.js), fanned behind his
  *  right shoulder and back; sculpted by scripts/blender/hero_parts.py (`cape.<i>.a/b/c`). `at` =
  *  the sheet's root on the chest joint, `ry` = the way its outer face looks (π = straight back),
@@ -407,13 +410,13 @@ function buildLegs({ pelvis, legs, M, DIM, BODY, REST, mesh }) {
 // ---------------------------------------------------------------- waist: the coat skirt
 /** The coat skirt, COAT_PANELS hung on the pelvis. Returns `coat`: the panels the animator springs
  *  (anim.js _coat reads each one's anchor, segs, def, strips, len and r0). */
-function buildSkirt({ pelvis, M, DIM, mesh, joint }) {
+function buildSkirt({ pelvis, M, DIM, mesh, joint }, PANELS = COAT_PANELS) {
   // 6 tapering panels × (upper + lower solid segment, each a lagging spring) → torn strips, each on
   // its own spring (anim.js); indigo lining on the inside; grey-violet piping down the open front
   // edges and the back vent's edges (COAT_PANELS `edge`). The panel tops tuck under the belt stack,
   // just inside the coat shell (no hard rim at the waist).
   const coat = [];
-  COAT_PANELS.forEach((P, i) => {
+  PANELS.forEach((P, i) => {
     const sa = Math.sin(P.az), ca = Math.cos(P.az);
     const R0 = 1 / Math.hypot(sa / DIM.coatR, ca / (DIM.coatR * 0.69)) + P.out * 0.5;
     const anchor = joint(pelvis, sa * R0, DIM.coatY, ca * R0);
@@ -577,7 +580,10 @@ export const WANDERER_ITEMS = [
   { id: 'wanderer.pauldron', slot: 'shoulders', name: 'Spiked Pauldron', build: buildPauldron },
   { id: 'wanderer.arms', slot: 'arms', name: 'Vambrace and Bracer', build: buildArms },
   { id: 'wanderer.legs', slot: 'legs', name: 'Armoured Boots', build: buildLegs },
-  { id: 'wanderer.skirt', slot: 'waist', name: 'Torn Coat Tails', build: buildSkirt },
+  { id: 'wanderer.skirt', slot: 'waist', name: 'Torn Coat Tails', build: (ctx) => buildSkirt(ctx) },
+  // the same tails TIED (ADR-281, under the great cloak): the panels and their torn points stir in
+  // step, with a third of their own flutter (anim.js _coat / _strips read `tie`)
+  { id: 'wanderer.skirt-tied', slot: 'waist', name: 'Torn Coat Tails', build: (ctx) => buildSkirt(ctx, TIED_PANELS) },
   { id: 'wanderer.cape', slot: 'back', name: 'Torn Half-Cape', build: buildCape },
   { id: 'wanderer.sword', slot: 'weapon', name: 'Moonlit Longsword', dims: SWORD_DIMS, build: buildSword },
 ];

@@ -4878,7 +4878,10 @@ export class HeroAnimator {
       const tx = Math.cos(D.az), tz = -Math.sin(D.az); // tangent (anchor +X)
       const flut = Math.min(1, Math.hypot(_v.x, _v.z) / 5);
       // (a panel may carry its own idle breeze / flare, `breeze` / `idleFlare`; else the table's)
-      const breeze = (D.breeze ?? BREEZE[i] ?? 0.03) + 0.1 * Math.sin(this.time * 2.618 + i * 1.3) * (0.5 + 0.5 * Math.sin(this.time * 0.9 + i));
+      // a TIED panel (`tie`: [flutter left, shared phase]; the coat tails under the great cloak, ADR-281)
+      // stirs and flutters in step with the others, so the skirt moves as one cloth, not six flaps
+      const ip = D.tie ? D.tie[1] : i, tk = D.tie ? D.tie[0] : 1;
+      const breeze = (D.breeze ?? BREEZE[i] ?? 0.03) + 0.1 * Math.sin(this.time * 2.618 + ip * 1.3) * (0.5 + 0.5 * Math.sin(this.time * 0.9 + ip));
       const ap = C.anchor.position;
       // the steel in this panel's anchor frame, and which side of the panel it is on (latched while
       // any of it is over the panel, so the cloth never jumps through it): the sword hand under the
@@ -4917,7 +4920,7 @@ export class HeroAnimator {
       for (let s = 0; s < 2; s++) {
         const c = st[s];
         const lag = COAT_LAG[s] * (1 + COAT_LAG_V * vs);
-        const fl = (D.flap ? 0.05 : D.flare ?? COAT_FLARE) + (breeze + (D.idleFlare ?? IDLE_FLARE[i] ?? 0) * (s ? 0.7 : 1)) * still + Math.sin(this.time * 9 + i * 1.7 + s * 1.3) * 0.07 * flut + UPDRAFT_COAT * this.updraft * (s ? 1.3 : 1);
+        const fl = (D.flap ? 0.05 : D.flare ?? COAT_FLARE) + (breeze + (D.idleFlare ?? IDLE_FLARE[i] ?? 0) * (s ? 0.7 : 1)) * still + Math.sin(this.time * 9 + ip * 1.7 + s * 1.3) * 0.07 * flut * tk + UPDRAFT_COAT * this.updraft * (s ? 1.3 : 1);
         let hx = _g.x + nx * fl - _v.x * lag;
         let hy = _g.y - _v.y * lag * 0.5;
         let hz = _g.z + nz * fl - _v.z * lag;
@@ -5090,6 +5093,8 @@ export class HeroAnimator {
    *  plus its own flutter (faster and wider with speed), and never dips into the ground. */
   _strips(C, st, vel, steps, h, still) {
     const sp = Math.hypot(vel.x, vel.z);
+    // a tied panel's points (ADR-281): one phase, a little apart, and less of their own flutter
+    const T = C.def?.tie, tk = T ? T[0] : 1;
     const flut = Math.min(1.4, sp / 5);
     const lag = STRIP_LAG * (1 + 0.2 * sp);
     _qInv2.copy(_q0).invert();
@@ -5097,13 +5102,14 @@ export class HeroAnimator {
       const S = C.strips[k], c = st[k];
       const ca = Math.cos(S.rest), sa = Math.sin(S.rest);
       _w.set(sa, 0, ca).applyQuaternion(_q0); // this strip's outward, world
-      const ph = this.time * (2.6 + 4.6 * Math.min(1, flut)) + S.phase;
+      const sph = T ? T[1] + k * 0.35 : S.phase;
+      const ph = this.time * (2.6 + 4.6 * Math.min(1, flut)) + sph;
       const up = this.updraft;
-      const fl = STRIP_FLARE + (0.08 + 0.25 * flut + 0.18 * up) * Math.sin(ph) + 0.12 * still * Math.sin(this.time * 2.618 + S.phase) + UPDRAFT_STRIP * up;
+      const fl = STRIP_FLARE + (0.08 + 0.25 * flut + 0.18 * up) * tk * Math.sin(ph) + 0.12 * still * tk * Math.sin(this.time * 2.618 + sph) + UPDRAFT_STRIP * up;
       _v.set(_w.x * fl - vel.x * lag, -1 - vel.y * lag * 0.5, _w.z * fl - vel.z * lag).normalize().applyQuaternion(_qInv2);
       const lx = _v.x * ca - _v.z * sa, lz = _v.x * sa + _v.z * ca; // into the strip's rest frame
       const tA = clamp(Math.atan2(-lz, -_v.y), STRIP_A[0], STRIP_A[1]);
-      const tB = clamp(Math.asin(clamp(lx, -1, 1)) + 0.25 * flut * Math.sin(ph * 1.3 + 1.1), -STRIP_B, STRIP_B);
+      const tB = clamp(Math.asin(clamp(lx, -1, 1)) + 0.25 * flut * tk * Math.sin(ph * 1.3 + 1.1), -STRIP_B, STRIP_B);
       for (let n = 0; n < steps; n++) {
         c.vx += (STRIP_K * (tA - c.x) - STRIP_C * c.vx) * h;
         c.vz += (STRIP_K * (tB - c.z) - STRIP_C * c.vz) * h;
