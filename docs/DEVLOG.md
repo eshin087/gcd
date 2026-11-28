@@ -5,6 +5,26 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — The great cloak from the owner's design sheet, three options (`?cloak=`; `player/cloak-reference`)
+
+**Owner:** sent a character sheet ("MAIN CHARACTER / DESIGN EXPLORATION / 03": a hooded figure in a full-length
+grey cloak with a heavy cowl, purple edges, long pale tears at the hem) and asked to replace gcd's cloak with it.
+
+- **Built** in `gear/shroud.js`: `GREAT_SHEETS` (six sheets: three down the back, one over the left arm to the boots
+  with a purple front edge, one behind the sword arm with a purple edge, today's short cape on the sword arm), the cowl
+  (`buildCowl`: a wrap over the shoulders and two rolls round the throat), the pale torn zone lower (`pale: 0.62`).
+  The sheet loop is now `hangShroudSheets` (today's cloak uses it unchanged); `edgeTrim` lifts a sheet's outer columns
+  into the `facing` material. The purple is painted on the player's own rig only (`paintGreatCloak`: a `tintHero`
+  of `facing` plus its line colours in `uSelfPart*`).
+- **Switch:** `?cloak=a` (to the boots, the cowl), `b` (to the calf), `c` (to the boots on today's mantle);
+  `gear/index.js` `CLOAK_PARAM` / `cloakFromUrl`, read by `player.js` for the default look only. No parameter =
+  today's cloak, so nothing changes until the owner picks.
+- **Checked:** close-ups (front 3/4, side, back), the game camera at 1440p from 8 sides, a run / light chain / roll
+  strip; `npm test -- --changed`.
+- **Open / next:** the owner's pick. Then it becomes `DEFAULT_LOADOUT.back` (the default-set tests count 5 cloak
+  sheets: they move to 6), the cost baseline gets the extra triangles, the switch and the losers go, an ADR. The
+  sheet's hood (up, deep), belt seal, boots and crystal sword were not part of this ask.
+
 ## 2026-11-28 — The deathblow is not cut short: the guard press, the blade lock (ADR-280; `fix/deathblow-guard-lock`)
 
 **Owner:** on the wyrm a perfect parry shows the perfect-dodge streak's effect; mashing attack during the deathblow seems

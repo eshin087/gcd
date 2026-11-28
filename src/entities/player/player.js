@@ -11,7 +11,8 @@ import { LIGHT, HEAVY, heavyAfter, SPRINT_ATK, ROLL_ATK, THRUST, CLEAVE, ONE_BRE
 import { PlayerFx, EDGE_GLINT } from './fx.js';
 import { SlashFx, slashMode } from './slashFx.js';
 import './combos.js'; // (`?combo=`: four light combos for the ending slash, worn on LIGHT at load)
-import { DEFAULT_LOADOUT, swordFromUrl } from './gear/index.js';
+import { DEFAULT_LOADOUT, swordFromUrl, cloakFromUrl } from './gear/index.js';
+import { paintGreatCloak } from './gear/shroud.js';
 import { CLASH, clashBurst, clashGrind, closestOnSegments } from '../../combat/clashFx.js';
 import { CUT_LOOK } from '../../combat/cutFx.js';
 import { CONTACT, ContactBody, contactOn, findContact, newPin, pinAt, pinStep } from '../../combat/contact.js';
@@ -199,10 +200,12 @@ export class Player {
     // rig's own materials. ?sword= (the owner's pick of the sword looks, gear/moonblade.js) swaps the
     // outfit's weapon
     this.look = getLook(game.heroLook)?.id ?? DEFAULT_LOOK;
-    const sword = swordFromUrl(), lo = HERO_LOOKS[this.look].loadout;
-    this.rig = buildHero(game.U, sword ? { ...lo, weapon: sword } : lo, { self: true });
+    // ?cloak= (gear/index.js CLOAK_PARAM: the owner's design sheet's great cloak) swaps today's cloak
+    const sword = swordFromUrl(), cloak = this.look === DEFAULT_LOOK ? cloakFromUrl() : null, lo = HERO_LOOKS[this.look].loadout;
+    this.rig = buildHero(game.U, { ...lo, ...(sword ? { weapon: sword } : {}), ...(cloak ? { back: cloak } : {}) }, { self: true });
     game.onModelBuilt?.('player'); // (see Dragon: the headless sims reseed their random stream here)
     tintHero(this.rig.materials, HERO_LOOKS[this.look].tint);
+    if (cloak) paintGreatCloak(game.U, this.rig.materials, tintHero);
     this.object3d = this.rig.root;
     this.position = this.object3d.position;
     this.radius = 0.45;
