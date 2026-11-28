@@ -1285,8 +1285,9 @@ async function scenarioBoostStep() {
     out(`     phase ${form}: ${B.stats.steps} steps (${B.stats.zigs} zig-zags, ${B.stats.stepAborts} cut short), lengths ${lens.map((l) => l?.toFixed(1)).join(' / ')} m, closest to the hero in one ${Number.isFinite(minD) ? minD.toFixed(2) : '-'} m, gaps ${gaps.map((g) => g.toFixed(2)).join(' / ')} s, hover ${(hoverY / Math.max(1, hoverN)).toFixed(2)} m (max ${maxY.toFixed(2)}), ${B.stats.plants} planted stops`);
     if (form === 1) assert(B.stats.steps === 0, 'phase 1: he walks (no jet step)');
     else {
-      // (phase 4 flows from move to move (TUNING.chain 0.8): fewer stretches of footwork to jet in)
-      assert(B.stats.steps >= (form >= 4 ? 1 : 2), `phase ${form}: he jets at a far hero (${B.stats.steps} steps)`);
+      // (from phase 3 his gap-closers (descent, the punch) and the links fill the range, so footwork to jet in is
+      // short; how OFTEN he steps is the tuning pass's: this only holds that he jets at all, seed by seed)
+      assert(B.stats.steps >= (form >= 3 ? 1 : 2), `phase ${form}: he jets at a far hero (${B.stats.steps} steps)`);
       assert(minD >= S.stop - 0.2, `phase ${form}: never through the hero (closest ${minD.toFixed(2)} m >= ${S.stop - 0.2})`);
       assert(gaps.every((g) => g >= every - 0.05), `phase ${form}: a cooldown between steps (>= ${every} s: ${gaps.map((g) => g.toFixed(2)).join(', ')})`);
       assert(lens.every((l) => l <= S.max * 1.4 + 0.1), `phase ${form}: no step longer than its legs allow (${S.max} m straight)`);

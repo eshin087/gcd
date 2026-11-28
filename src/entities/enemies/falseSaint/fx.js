@@ -39,7 +39,7 @@ import * as FX_DEBUG from './fxDebug.js';
 //                                          a fainter one at his chest's height, his jets' heat hanging on it, grit
 //   sensor(k)                           C  his sensor(s) lit: tiny cyan letters, cosmetic (k 0..1; how many by
 //                                          d.dressPhase: 1 from P2, 3 in P4). Through his death (mode 'dying') they go out one by one
-//                                          by themselves (update: sensorOut at 0.45, 1.05, 1.65 s)
+//                                          as the body's dress calls sensorOut (look.js SENSOR_OUT: 1.0, 1.65, 2.3 s)
 //   sensorOut(i)                        1  sensor i (0..2) goes out: a pop of cyan, a falling blip
 //   shellFlake(point, cut, k)           1  a chip of his shell at world point {x,y,z}, `cut` {x, z} the
 //                                          blade's travel, k the exposure it took (d.shell.last): 2 - 6 small
@@ -125,7 +125,7 @@ export const FS_SOUNDS = Object.freeze([
 export const FS_FX_BODY = Object.freeze({
   jet: { len: [0.4, 1.25], width: [0.09, 0.22], rate: 45, light: 1.5 },
   sensor: { size: 0.13, light: 0.45 },
-  death: { out: [0.45, 1.05, 1.65] }, // s into his death each sensor goes out (the last lit first)
+  death: { out: [1.0, 1.65, 2.3] }, // s into his death sensor i goes out: the body's look.js SENSOR_OUT (it puts them out; this only flickers them first)
   servo: { stride: 1.05, from: 3 }, // m between two servo sounds; the phase they start in
   metal: 0.5, // a part's exposure from which a cut on it rings as metal
 });
@@ -432,7 +432,7 @@ export class FsFx extends AscFx {
       if (!P) continue;
       let kk = k;
       if (dying && D.on) {
-        const at = B_.death.out[n - 1 - i] ?? 9;
+        const at = B_.death.out[i] ?? 9;
         if (at - D.t < 0.3) kk *= Math.sin(t * 70 + i) > 0 ? 1 : 0.25;
       }
       // (one tiny cyan letter a sensor: a glyph particle held one frame, pulled toward the camera so his
@@ -488,12 +488,8 @@ export class FsFx extends AscFx {
       this._say('fsPowerDown', d.position?.x, d.position?.z, D.n);
     }
     D.t += dt;
-    const T = B_.death.out;
-    while (D.next < D.n && D.t >= T[D.next]) {
-      // (the last lit first: the slot goes dark toward his right eye)
-      this.sensorOut(D.n - 1 - D.next);
-      D.next++;
-    }
+    // (the sensors themselves are put out by the body's dress, look.js SENSOR_OUT, timed to the knee going
+    // down; it calls sensorOut(i) once each. One driver: this only plays the power-down and the core.)
     // the core's light failing (P4): a dim glow that sinks out
     if (fin(d.dressPhase, 1) >= 4) {
       const k = Math.max(0, 1 - D.t / 1.9);
