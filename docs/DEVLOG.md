@@ -5,6 +5,28 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-28 — Halcyon after the reference pack, behind `?halRef` / `?halRefMove` (ADR-289; `halcyon-ref-look`)
+
+**Owner:** implement Halcyon's selected look and animation references (`docs/art/character-packs-v04/halcyon`: the
+anchor 00 and the corrected sheets 01 - 07), on the shared rig, with no balance change; final approval is theirs.
+
+- **Reconciled:** the inventory's 24 moves and 21 clips match the source. Most of the sheets' flight already ships
+  (ADR-254's long legs and level pass; the eyes' beams; Crossed Glare's opposing sweeps; the left-hand grab; the
+  knee-supported death). What did not: the look (dark hair, gloves, a bright blue suit, red boots), and his ward /
+  clash / flinch / backstep / sidestep / lock reactions planted on air at the hover.
+- **Captured first:** turnaround and game-camera sheets of today's Halcyon, every move and reaction filmed at the
+  game camera (scratch rig: headless Edge, `__tick`, one seed per take).
+- **Stage 1, the look (`?halRef=a`):** outfit 'd' in gear.js / look.js: blond, navy and gold, a chest strap, diamond
+  clasps, bare hands, gold toes, a long red cape one red to its edge, eyes dim until they kindle. No new object.
+- **Stage 2, the poses (`?halRefMove=a`, live):** the ten hover reactions flown (limbs.js `legsFor`); the brake and
+  the bank; Meteor's three-point landing; the car on the right palm and the statue's arm thrown from the right hand.
+- **Verified:** `city.mjs . halref` (new: timing identity over 1088 realisations, a seeded fight, the legs, Meteor,
+  the outfit); the requested city scenarios with both switches forced (`GCD_LOOK`, now read for the whole run);
+  films before / after at full speed and slowed with flash / contact / active-end / follow-end markers, timing
+  identical on all 14 filmed items; stills at 720p / 1440p / 4K from four sides. HEROLIKE's mesh-count check now
+  compares a cape size with its own look's count (86 under `?halRef`, 90 shipped).
+- **Open:** the owner picks from the films; the pack's airborne stagger / recoil / reeling / trampled stay on the
+  floor (his height is gameplay); the strap and clasps are under a letter at 720p.
 ## 2026-11-28 — Swipe to dodge on touch, the guard on the left to try (ADR-278; `ui/touch-swipe-dodge`)
 
 **Owner:** too slow to parry or dodge on the phone compared with mouse / keyboard / controller; picked "guard on the

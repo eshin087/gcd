@@ -5549,7 +5549,8 @@ data and a subclass with a few hooks.
   `'0'` (a REDRAW: the look before this pass; a thing new in this pass keeps its pick, even one with a
   `'0'` option such as `presence`); the pick from `PICKED`; under `?looks=new` `pick` for a redraw no one
   has picked (none today); else `def`. Also `pickedOf(name)` (the pick or null), `allOld()`,
-  `allProposals()`, `readLookUrl(search)` (read once at load; the tests call it to play a URL, `''` to
+  `allProposals()`, `lookExplicit(name)` (true when the URL or `setLook` named the switch, not its default or
+  pick: Halcyon's `?halRef=a` asks for its long cape only then, ADR-289), `readLookUrl(search)` (read once at load; the tests call it to play a URL, `''` to
   go back), `looksNow(names)`. Read at draw time (a Map lookup); a switch read when the rig or the
   level is built (`ashLook`, `lordLook`, `floor`, `ring`, `ascLook`, `ascLift`) needs a reload. The Lab's LOOKS section
   (`dev/labLooks.js` `LOOK_SWITCHES`) lists them.

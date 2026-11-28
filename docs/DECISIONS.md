@@ -8150,3 +8150,57 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
   guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
   change is a combo where a lock was.
+
+## ADR-289 — Halcyon after the reference pack: his look and his poses behind two switches (`?halRef`, `?halRefMove`) (2026-11-28)
+
+- **Context:** the owner made a character pack for Halcyon (`docs/art/character-packs-v04/halcyon`: the selected
+  identity anchor 00, seven corrected sheets 01 - 07, a handoff, a source inventory of 24 move IDs and 21 reaction
+  clips) and asked for his look and animation to follow it: the anchor's blond adult man, the navy armoured suit with
+  gold trim, the red cape, bare hands, no weapon; hovering idle, guard, turns, braking and strike legs; the grounded
+  impacts and reactions kept; the knee-supported death; the car, slab, statue arm and lamp held physically; See the
+  World's left hand; the twin-eye beams and Crossed Glare's two opposing sweeps; with no change to balance (damage,
+  reach, hitboxes, active windows, tells, travel, cooldowns, AI weights, phase eligibility, cue scheduling, fairness).
+  Final aesthetic approval stays with the owner. ADR-277 is the same request for Varr Nihil.
+- **Reconciled first:** the inventory's 24 move IDs and 21 clips match the source one for one (`MOVE_NAMES`, `CLIP`).
+  Much of the pack is already what ships: the owner's `?halMotion=b` (ADR-254) flies every blow with long trailing
+  legs and a level pass; the beams leave from his eyes (glare.js `eyePoint`); Crossed Glare's second beat reverses
+  its sweep (`sweepSide: -1`); See the World reaches with the left hand; death, crashed and blinded end on one knee
+  (death on a 23° forward lean, the hands low by the knee); the transitions kneel then scream, then hover.
+- **Decision:**
+  1. TWO SWITCHES, '0' (as shipped) until the owner picks (both in `lookSwitch.js` PENDING, the Lab's LOOKS rows
+     marked awaiting). `?halRef=a` (read when his rig is built) is the look, over any `?halLook=`; `?halRefMove=a`
+     (live, from his next move or reaction) the poses.
+  2. THE LOOK (gear.js / look.js, outfit 'd'): blond hair (the hero's gold-hair part, `hairTip`, so its lines print
+     warm) with fuller locks and a low lift at the brow; a navy suit and plates that stay navy at game size; the
+     plates' seams and the forearm / thigh seams gold; a gold strap from the right shoulder's clasp across the chest
+     (merged into the seams); square gold clasps set as diamonds; bare hands (the skin); navy boots, the foot gold
+     (the anchor's gold toes: at game size the foot is a letter or two); the cape one red to its edge (its lower
+     sheets in the cape's own material, not the `hem` part's lavender lines; the cape's ink red) and long (~80 %:
+     `HAL_LOOK_CAPE`, unless `?halCapeSize=` is given: `lookExplicit`); the eyes a dim red at rest that kindle to the
+     same full glow. No new object: the same meshes are built (the bare hands then batch with the skin: 86 drawn
+     meshes against 90), so no seeded fight shifts with the switch off.
+  3. THE POSES, never the timing. (a) The reactions he takes at the hover (ward, wardR, wardHigh, clash, deflect,
+     wardHold, flinch, backstep, sidestep, lock) were Tian Lei's planted stance 0.5 m up (standing on air); their keys
+     get the flier's legs of `?halMotion=b` (limbs.js `legsFor`). The reactions the engine plays on the floor keep
+     theirs: the open ones (stagger, recoil, reeling, trampled, executed: struck out of the air he drops) and the
+     kneeling ones (broken, death, crashed, blinded). (b) The hover leans back as he brakes and banks into a turn
+     (`pilot.halAcc`, his glide's smoothed acceleration in his own axes, drawn only). (c) Meteor lands in a
+     three-point landing, held into the recovery (the recovery's first key at 0.75, where the realiser ends the
+     follow-through without one, so `b.F` does not move). (d) The car rides on his right palm, the statue's arm
+     leaves from his right hand in the throw.
+  4. KEPT AS THEY ARE, from the owner's earlier picks or the gameplay: the pack draws stagger, recoil, reeling and
+     trampled in the air (07 rows 10 - 13) but his height is the hover rule's, and those drop him; the blows' legs are
+     ADR-254's (long, trailing), not the sheets' drawn-up knee; every beam, prop, cue, root path and timing.
+  5. CHECKED: `city.mjs . halref`: 1088 realisations (every move, phase, hold draw, flurry count; the shipped
+     switches, `halMotion` a / 0, the readable pace) time every beat the same on and off (start, impact, end, W, H, A,
+     S, F, close, flash); the reaction clips keep their length and hold; a seeded 24 s fight against the defender
+     lands the same 19 blows at the same times; at the hover the reactions trail the feet behind the hips (ward -0.14
+     -> 0.66 m, clash -0.18 -> 0.68, lock -0.33 -> 0.66); Meteor's recovery kneels; the anchor's outfit builds. The
+     city suite's data, timing, flight, glare, pass, car, tower, statue, grab, phase, pace, looks, herolike, limbs and
+     halmotion scenarios pass with both switches forced on (`GCD_LOOK=halRef=a,halRefMove=a`, now read for the whole
+     run as asc.mjs does).
+- **Consequences:** the default game is unchanged until the owner picks. One small physical change under
+  `?halRefMove=a`: the car leaves from his right hand, not from between his hands, so its throw's flight time (from
+  the distance) can differ by a few hundredths of a second; the cue stays on the moving car, flashLead before it
+  lands (the `car` scenario passes with it on). The anchor's own clothing details smaller than a letter at 720p (the
+  strap, the diamond clasps) read at 1440p and up. Open: a per-move pass on what the owner names from the films.

@@ -4,7 +4,16 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and forty-six pieces of work since 0.4.0:
+One hundred and forty-seven pieces of work since 0.4.0:
+- **Halcyon after the reference pack, to try** (2026-11-28, ADR-289). *Added (options, off by default: the owner
+  picks):* `?halRef=a` draws Halcyon as the owner's selected anchor (`docs/art/character-packs-v04/halcyon`): blond
+  hair swept back, a navy armoured suit with gold seams and a gold strap across the chest, gold diamond clasps, a
+  gold belt and cuffs, bare hands, navy boots with gold toes, a long red cape red to its edge, his eyes dim until
+  they kindle. `?halRefMove=a` poses him after the sheets: the reactions he takes in the air hang his legs like a
+  flier's (no planted stance at the hover), he leans back as he brakes and banks into a turn, Meteor ends in a
+  three-point landing, the car rides on his right palm and the statue's arm leaves from his right hand. The same
+  timing, zones, damage and travel (`city.mjs . halref` checks every move, phase and branch). The Lab's `halRef` and
+  `halRefMove` rows.
 - **The deathblow is not cut short** (2026-11-28, ADR-280). *Fixed:* pressing guard during a deathblow ended it at
   once with nothing dealt; the press now waits and the guard comes up as the finisher ends. A perfect parry of a
   boss's blue blow that would cross the blades now gives the deathblow (he recoils, the combo follows) instead of
