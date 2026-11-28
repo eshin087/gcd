@@ -6203,7 +6203,7 @@ async function scenarioFeel() {
       assert(!bad.length, `each feel's clock is monotone and keeps the phases' ends (${bad.slice(0, 4).join(', ') || 'all'})`);
       OH.setOffHand('auto');
       const hands = FE.FEEL_IDS.map((id) => { FE.setFeel(id); return OH.offHandLook() === null ? '0' : Object.keys(OH.OFFHAND).find((k) => OH.OFFHAND[k] === OH.offHandLook()); });
-      assert(hands.join() === '0,back,side,quiet,back', `auto wears each feel's own hand (${FE.FEEL_IDS.map((f, i) => `${f}: ${hands[i]}`).join(', ')})`);
+      assert(hands.join() === '0,back,side,quiet,belt', `auto wears each feel's own hand (${FE.FEEL_IDS.map((f, i) => `${f}: ${hands[i]}`).join(', ')})`);
     }
     const land = (plan) => {
       const G = (last = build());

@@ -1239,7 +1239,8 @@ inside the active window (scenario `feel`).
 now, the frames moving at least `PATH.fast` of the swing's fastest step fitted with one straight line in the screen's
 plane (the principal axis of their screen places, weighed by step²), run the blade's way over their extent ± `PATH.ext`;
 a turn's three thirds each get one; a thrust whose path is under `PATH.short` on the screen runs along the blade's
-screen direction off the point) and queues it `END.beat` s on (`game.time`);
+screen direction off the point; nothing of it behind him (`END.front`): an end nearer is slid along the camera's sight
+line to it until it is that far ahead (the same place on the picture), or, side-on, the part behind is cut off) and queues it `END.beat` s on (`game.time`);
 `_flush` draws what is due each frame. The direction (every place but `blade`): the blade's point `END.at` along
 it, projected by the camera each buffered frame, its steps weighted by the point's speed² (`_swing`), laid in the
 screen's plane (`_screen`); the line is queued in `END.reveal` pieces `END.step` apart from the swing's start

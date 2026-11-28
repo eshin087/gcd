@@ -999,6 +999,53 @@ export class SlashFx {
       by = cy + dy * s1;
       bz = cz + dz * s1;
     }
+    if (placeNow === 'path') {
+      // (on the swing, nothing behind him either (ADR-244's rule). An end nearer than END.front ahead along his facing is
+      // slid along the camera's line of sight to it until it is that far ahead: its place on the picture is the same, so
+      // the line stays on the swing (from behind or the front a line across the screen lies at the swing's middle depth,
+      // close to him); where that sight runs across his facing (side-on) the part behind him is cut off instead, and none
+      // is drawn if all of it is behind)
+      const P = this.p, yw = P.yaw ?? 0, fx = Math.sin(yw), fz = Math.cos(yw), fr = END.front * (P.drawScale || 1);
+      const C = this.game?.camera?.matrixWorld?.elements, ox = P.position.x, oz = P.position.z;
+      const slide = (o) => {
+        const x = o === 0 ? ax : bx, y = o === 0 ? ay : by, z = o === 0 ? az : bz, d = (x - ox) * fx + (z - oz) * fz;
+        if (d >= fr || !C) return d;
+        let rx = x - C[12], ry = y - C[13], rz = z - C[14];
+        const rl = Math.hypot(rx, ry, rz);
+        if (!(rl > 1e-4)) return d;
+        rx /= rl;
+        ry /= rl;
+        rz /= rl;
+        const rf = rx * fx + rz * fz;
+        if (Math.abs(rf) < 0.25) return d;
+        const t = (fr - d) / rf;
+        if (!(rl + t > 0.5)) return d;
+        if (o === 0) {
+          ax += rx * t;
+          ay += ry * t;
+          az += rz * t;
+        } else {
+          bx += rx * t;
+          by += ry * t;
+          bz += rz * t;
+        }
+        return fr;
+      };
+      const da = slide(0), db = slide(1);
+      if (!(da >= fr - 1e-6 || db >= fr - 1e-6)) return;
+      if (da < fr - 1e-6) {
+        const t = (fr - da) / (db - da);
+        ax += (bx - ax) * t;
+        ay += (by - ay) * t;
+        az += (bz - az) * t;
+      } else if (db < fr - 1e-6) {
+        const t = (fr - db) / (da - db);
+        bx += (ax - bx) * t;
+        by += (ay - by) * t;
+        bz += (az - bz) * t;
+      }
+      if (!(Math.hypot(bx - ax, by - ay, bz - az) > 0.2)) return;
+    }
     // drawn in END.reveal pieces END.step apart from where the swing began (a) to where it ended (b): the slash
     // runs the sword's way; after the beat (beatNow) and a turn's later cuts' delay
     const now = this.game?.time ?? 0, t0 = now + (beatNow === 'beat' ? END.beat : 0) + (this._dly || 0), R = Math.max(1, END.reveal | 0);

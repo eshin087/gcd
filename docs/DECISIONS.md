@@ -7398,7 +7398,9 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   fastest step, weighed by step², their principal axis, run the blade's way over their extent ± `PATH.ext` (no shorter
   than `PATH.min`); a turn gets one per third, a thrust straight at the camera runs along the blade off the point. It is
   laid where the slice would be and not moved, so from every side it is the swing's own line. `enemy` stays behind
-  `?endslash=enemy`. (2) `belt` (the owner's pick, combo A's own hand now, feel `iai`'s too): the hand at the side-front
+  `?endslash=enemy`. ADR-244's rule holds: no part of it nearer than `END.front` ahead of him; an end nearer is slid along
+  the camera's sight line until it is that far ahead (the same place on the picture: from behind or the front the line
+  lies at the swing's middle depth, ~0.15 m ahead), side-on the part behind is cut off. (2) `belt` (the owner's pick, combo A's own hand now, feel `iai`'s too): the hand at the side-front
   of the left hip, `hang` [0.2, -0.32, 0.16], the elbow out to 0.37-0.40 m (the arm's reach; bent ~85-100°), the fingers
   forward-down along the forearm, the palm to the hip; its rest 0.45 on the hips (`thigh`, `hip`) so the windup's chest
   whip does not fling it. Filmed from behind at the game's angle beside the first belt and a wider rest: here the forearm
