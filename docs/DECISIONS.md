@@ -8125,3 +8125,28 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   strips that differ from today's paths in kind (13 H2, 13 H3) are keyed by name; a per-move pass is open if the
   owner wants one. At 720p the blade is about two pixels wide: the split reads in close views, at 1440p and up,
   and as two rails of letters in the field.
+
+## ADR-280 — The deathblow is not cut short: a guard press waits, and it takes a perfect blue parry from the blade lock (`?dbLock=combo|lock`) (2026-11-28)
+
+- **Context:** the owner: "if i spam an attack during deathblow, the deathblow gets cancelled?". A sim parried into a
+  combo while mashing each button. Attack, heavy and dodge presses were already dropped (`tickDeathblow` clears the
+  buffer). Two holes remained. (1) A guard press (the middle click) raised the guard out of the combo's swing:
+  `tickDeathblow` saw the attack state left and ended the combo at once, its event saying N strikes and 0 damage.
+  (2) A PERFECT parry of a blue blow marked `lock` (Falling Ash, Vanishing Step, the Lord's flips ...) armed the
+  combo and crossed the blades in the same call; the lock won, the hero mashed attack to push it, and no deathblow came,
+  although a plain parry of the same blow gave one. The owner said their case was the guard press and asked for the
+  deathblow to win over the lock.
+- **Decision:** (1) `player.update` raises no guard while `db.phase === 'combo'`; the press waits while the button is
+  held and the guard comes up in the finisher's tail, as after any swing. (2) `duelist.onParried` asks
+  `player.deathblowClaims(this)` before `brain.startLock()`: true when the parry armed the combo on a blue blow from
+  this duelist (`deathblow.js` `deathblowClaims`). He then recoils as from any blue parry and the combo follows.
+  `?dbLock=lock` (the Lab's `dbLock`) gives the lock back. Tian Lei's beam and lantern locks call `startLock` directly
+  and are unchanged.
+- **Consequences:** with the deathblow on (the default), a duelist's melee blade lock is reached only with
+  `?dbLock=lock`, or `?parryRiposte=old|planted`, or `debug.noRiposte` (every `lock` blow is blue). The suites whose
+  checks are about the lock pin `?dbLock=lock` (duel `moments` and `clash`'s lock, asc `bare`); the Training's
+  "Blade lock" situation sets `dbLock: 'lock'` for itself (a Training situation's own `dbLock`, put back when it
+  ends; the old riposte there fed the dodge streak and shifted the situations after it). Lord `training` also
+  reseeds the hero flurry's figure stream per situation, as it does `Math.random`. New checks are duel `deathblow` (g), the
+  guard mashed through a combo, and (h), a perfect parry of Falling Ash under both modes. Not filmed: the visible
+  change is a combo where a lock was.

@@ -1241,6 +1241,7 @@ async function scenarioFlow() {
 // Every situation of the Training catalogue that applies to this boss, run by the runner itself
 // (src/dev/training.js): each must play out (done, within its time) and show what it promises.
 async function scenarioTraining() {
+  const FLM = await imp('src/entities/player/flurry.js');
   out('\n== scenario TRAINING (every situation of the Training catalogue for this boss plays out and shows what it promises) ==');
   const G = build(SEED, true); // (the real crater: the TERRAIN situations and his terrain moves need its pieces)
   const { game } = G;
@@ -1253,7 +1254,9 @@ async function scenarioTraining() {
   let si = 0;
   for (const s of L) {
     if (s.cat === 'BOSS MOVES' && !true) continue;
-    Math.random = mulberry32(SEED + 0x7a11 + 977 * si++); // (each situation on a stream of its own: its result does not hang on what the ones before it drew)
+    Math.random = mulberry32(SEED + 0x7a11 + 977 * si); // (each situation on a stream of its own: its result does not hang on what the ones before it drew)
+    // (... and the hero flurry's figures, a stream of their own (player/flurry.js): earlier scenarios' flurries left it anywhere)
+    FLM.setFigureSeed(SEED + 0x7a11 + 977 * si++);
     T.run(s.id);
     let frames = 0;
     while (T.ph !== 'done' && frames < Math.round(40 / DT)) { G.tick(DT); frames++;}
