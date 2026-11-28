@@ -712,6 +712,227 @@ async function scenarioDeath() {
   assert(d.mode === 'sleep' && d.hp === d.maxHp && d.phase === 1 && d.shell.exposure === 0, `the reset: asleep at the pour, whole (${d.mode}, ${d.hp})`);
 }
 
+// ================================================================== fx (the effects agent's: falseSaint/fx.js, fxArsenal.js, fxDebug.js)
+/** Every driver of fxDebug.js played through to its end; the peaks of the fire field and the particles. */
+function fxDrive(G, name, opts = {}) {
+  const { game } = G;
+  const d = game.dragon;
+  const ok = d.debug.fx(name, opts);
+  const pk = { fire: 0, add: 0, alpha: 0, lights: 0, frames: 0 };
+  run(G, 9, null, () => {
+    pk.fire = Math.max(pk.fire, game.fx.fire.count);
+    pk.add = Math.max(pk.add, game.fx.add.count);
+    pk.alpha = Math.max(pk.alpha, game.fx.alpha.count);
+    pk.lights = Math.max(pk.lights, d.fx._lights.size);
+    pk.frames++;
+    return !d.fx._drive;
+  });
+  // (and what it left flying or cooling: let it land)
+  run(G, 3, null, () => d.fx.pools().flights === 0);
+  return { ok, ...pk };
+}
+
+async function scenarioFx() {
+  out('\n== scenario FX (every method of the surface runs headless without a throw, NaN ignored, every driver plays through, fixed pools, an idle frame draws nothing) ==');
+  const { FS_FX_METHODS } = await imp('src/entities/enemies/falseSaint/fx.js');
+  const FXD = await imp('src/entities/enemies/falseSaint/fxDebug.js');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, F = d.fx;
+  duel(G, { dist: 5 });
+  game.player.debug.god = true;
+  const missing = FS_FX_METHODS.filter((n) => typeof F[n] !== 'function');
+  assert(!missing.length, `every method of the surface exists (${FS_FX_METHODS.length}; missing ${JSON.stringify(missing)})`);
+  // every method with a plain call, several frames for the held ones
+  const p = game.player.position, x = p.x, z = p.z, e0 = errors.length;
+  const calls = {
+    jet: () => F.jet('elbowR', 0.8), jetBurst: () => F.jetBurst(0, -2, 0, 1, 1), afterimage: () => F.afterimage(d, 0, 1, 0.6), dashTrail: () => F.dashTrail(0, -2, x, z, 1),
+    sensor: () => F.sensor(1), sensorOut: () => F.sensorOut(1), shellFlake: () => F.shellFlake({ x: 0, y: 1.4, z: -2 }, { x: 1, z: 0 }, 0.1), shellStrip: () => F.shellStrip(0, 1.3, -2, 0.6),
+    coreVent: () => F.coreVent(0.7), transition: () => F.transition(3, 0.7), transitionBurst: () => F.transitionBurst(4, 0, -2, 4),
+    sightLine: () => F.sightLine(x - 3, z, x + 3, z, 0.9), laser: () => F.laser(0, 2, -2, x, 0.2, z, 1), scar: () => F.scar(x - 3, z, x + 3, z, 0.5, 1),
+    cannonCharge: () => F.cannonCharge('palmR', 0.6), cannonBeam: () => F.cannonBeam(0, 1.3, -2, x, 0.3, z, 1.2, 1), cannonEnd: () => F.cannonEnd(0, -2, x, z, 1.2),
+    gunFlash: () => F.gunFlash(0, 1.3, -2, 0, 1), bolt: () => F.bolt({ x, y: 1.1, z: z - 2, dx: 0, dy: 0, dz: 1, k: 1 }), boltHit: () => F.boltHit(x, 1.1, z, 1),
+    missileLaunch: () => F.missileLaunch(0, 2, -2, 8), missile: () => F.missile({ x, y: 4, z, vx: 3, vy: -6, vz: 1, k: 0.5 }), missileMark: () => F.missileMark(x, z, 1.3, 0.6), blast: () => F.blast(x, z, 1.6, 1),
+    shellMark: () => F.shellMark(x, z, 1.3, 0.6), shellFall: () => F.shellFall(x, 12, z, 0.7), shellBurst: () => F.shellBurst(x, z, 2, 1),
+    reticle: () => F.reticle(x, z, 0.5, false), skyLance: () => F.skyLance(x, z, 1.4, 0.5), pour: () => F.pour(12.5, 3, -6.5, 1), sparks: () => F.sparks(x, 1, z, 1, 0, 12, 1),
+    missileCut: () => F.missileCut(x, 2, z, 1, 0), mortarFlash: () => F.mortarFlash(0, 2.2, -2, 3), ringShock: () => F.ringShock(x, z, 5, 1),
+    fly: () => F.fly({ kind: 'missile', x: 0, y: 2, z: -2, tx: x, tz: z, T: 1, expect: false }), cancelFlights: () => F.cancelFlights(),
+  };
+  const notCovered = FS_FX_METHODS.filter((n) => !calls[n]);
+  const threw = [];
+  const sp0 = G.counters.spawns;
+  for (const [n, f] of Object.entries(calls)) {
+    try { for (let i = 0; i < 6; i++) { f(); G.tick(DT); } } catch (err) { threw.push(`${n}: ${err.message}`); }
+  }
+  assert(!threw.length && !notCovered.length && errors.length === e0, `every method runs (6 frames each) without a throw or a console error (${JSON.stringify(threw)}; not covered ${JSON.stringify(notCovered)}; errors ${errors.slice(e0, e0 + 3).join(' | ')})`);
+  assert(G.counters.spawns - sp0 > 2000, `... and draws (${G.counters.spawns - sp0} blobs and particles)`);
+  // NaN everywhere: nothing thrown, nothing spawned with a NaN (the harness's spawn throws on one)
+  const N = NaN, nanThrew = [];
+  const nanCalls = [
+    () => F.jet('elbowR', N), () => F.jetBurst(N, 0, 0, 1), () => F.dashTrail(N, 0, 1, 1), () => F.sightLine(N, 0, 1, 1, 0.5), () => F.laser(0, N, 0, 1, 0, 1, 1),
+    () => F.scar(0, 0, N, 1, 1, 1), () => F.cannonBeam(0, 1, 0, N, 0, 1, 1, 1), () => F.cannonEnd(N, 0, 1, 1, 1), () => F.gunFlash(N, 1, 0, 0, 1), () => F.bolt({ x: N }),
+    () => F.missile({ x: 0, y: N }), () => F.missileMark(0, 0, N, 0.5), () => F.blast(N, 0), () => F.shellMark(0, 0, 1, N), () => F.shellFall(0, N, 0, 0.5),
+    () => F.shellBurst(0, N), () => F.reticle(N, 0, 0.5), () => F.skyLance(0, 0, N, 0.5), () => F.pour(N, 3, 0, 1), () => F.sparks(0, N, 0, 1, 0, 5, 1),
+    () => F.shellFlake({ x: N, y: 0, z: 0 }, null, 0.1), () => F.shellStrip(N, 1, 0, 1), () => F.transition(2, N), () => F.transitionBurst(3, N, 0, 4), () => F.coreVent(N),
+    () => F.missileCut(N, 0, 0), () => F.mortarFlash(N, 0, 0), () => F.ringShock(0, N, 4), () => F.fly({ kind: 'bolt', x: N, tx: 1, tz: 1, expect: false }),
+  ];
+  for (const f of nanCalls) { try { f(); G.tick(DT); } catch (err) { nanThrew.push(err.message); } }
+  run(G, 2);
+  assert(!nanThrew.length && errors.length === e0, `NaN arguments are ignored: no throw, no NaN blob or particle (${JSON.stringify(nanThrew.slice(0, 3))})`);
+  // every driver of fxDebug plays through and ends
+  const bad = [];
+  for (const n of FXD.NAMES) {
+    const r = fxDrive(G, n);
+    if (!r.ok || d.fx._drive) bad.push(n);
+  }
+  assert(!bad.length && d.debug.fx('nope') === false && errors.length === e0, `every driver plays through and ends (${FXD.NAMES.length}: ${FXD.NAMES.join(' ')}); an unknown name is false ${JSON.stringify(bad)}`);
+  // fixed pools: never grow
+  const S = F._arsenalState;
+  const len0 = { flights: S.flights.length, scars: S.scars.length, fresh: S.fresh.length };
+  let flown = 0;
+  for (let i = 0; i < 60; i++) if (F.fly({ kind: 'missile', x: 0, y: 2, z: -2, tx: x + (i % 7), tz: z, T: 1.5, expect: false })) flown++;
+  for (let i = 0; i < 20; i++) F.scar(i, 0, i + 2, 2, 0.5, 1);
+  run(G, 0.2);
+  assert(S.flights.length === len0.flights && S.scars.length === len0.scars && S.fresh.length === len0.fresh && flown === len0.flights && F.pools().flights === len0.flights, `the pools are fixed: ${len0.flights} flights (60 asked, ${flown} flew), ${len0.scars} scars, ${len0.fresh} fresh; nothing grows`);
+  // an idle frame: once everything is over, his effects draw nothing and keep no light
+  F.cancelFlights();
+  run(G, 12);
+  d.debug.setAI(false);
+  d.brain.act = null;
+  d.mode = 'foot';
+  run(G, 0.5);
+  const upd = F.update.bind(F);
+  let idleSpawn = 0, dimmed = 0;
+  const amb = game.world.forest.ambience, dim0 = amb.dim.bind(amb);
+  amb.dim = (k) => { dimmed++; return dim0(k); };
+  F.update = (dt, dd) => { const c = G.counters.spawns; upd(dt, dd); idleSpawn += G.counters.spawns - c; };
+  run(G, 1);
+  F.update = upd;
+  amb.dim = dim0;
+  assert(idleSpawn === 0 && dimmed === 0 && F._lights.size === 0 && F.pools().flights === 0 && F.pools().scars === 0, `an idle frame: his effects spawn nothing (${idleSpawn}), dim nothing (${dimmed}), keep no light (${F._lights.size}), nothing in the pools`);
+  // the death: the sensors go out one by one (phase 4: three)
+  d.dressPhase = 4;
+  let outs = 0;
+  G.watch = (n, e) => { if (n === 'dragon:spell' && e?.name === 'fsSensorOut') outs++; };
+  d.debug.setAI(true);
+  d.debug.kill();
+  run(G, 4, null, () => d.mode === 'dead');
+  G.watch = null;
+  assert(outs === 3 && F._sens.out.every(Boolean), `his death: three sensors go out one by one (${outs} fsSensorOut)`);
+  d.reset();
+  run(G, 0.2);
+  assert(!F._sens.out.some(Boolean) && !F._death.on, 'the reset lights them again');
+  // his palette holds the void slot
+  const { FIRE_PALETTES } = await imp('src/render/firePalettes.js');
+  assert(!!FIRE_PALETTES.saint && FIRE_PALETTES.saint.stops.length === 5, 'firePalettes.js has his block (saint: five stops)');
+}
+
+async function scenarioFxFlights() {
+  out('\n== scenario FXFLIGHTS (the flights: arrival times on his clock, the ledger sees each, retime / cancel, the caller lands it, tracking) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon, F = d.fx, L = d.brain.ledger;
+  duel(G, { dist: 8 });
+  game.player.debug.god = true;
+  const p = game.player.position;
+  // a missile: lands at `at` on his clock; the ledger counts it from the launch (a dodge)
+  let landedAt = NaN, landedRec = null;
+  const m = F.fly({ kind: 'missile', x: d.position.x, y: 2, z: d.position.z, tx: p.x, tz: p.z, T: 1.5, attack: 'choir', onLand: (r) => { landedAt = d.time; landedRec = r; } });
+  const at = m.at, id = m.id;
+  assert(m && Math.abs(m.at - (d.time + 1.5)) < 1e-6 && m.cue?.alive && Math.abs(m.cue.left - 1.5) < 1e-6, `fly() → a record: at = d.time + T (${m.at.toFixed(3)}), its ledger handle alive (${m.cue?.left?.toFixed(3)} s left)`);
+  assert(L.pending(2, 2) === true, 'the ledger sees a dodge-only thing land within 2 s (pending(DODGE))');
+  run(G, 1.6, null, () => Number.isFinite(landedAt));
+  assert(Number.isFinite(landedAt) && Math.abs(landedAt - at) <= DT + 1e-6 && landedRec?.id === id && !m.alive, `onLand on time (${(landedAt - at).toFixed(3)} s off), the record dead`);
+  // retime and cancel move the handle with it
+  const s = F.fly({ kind: 'shell', x: d.position.x, y: 2.2, z: d.position.z, tx: p.x, tz: p.z, T: 2, attack: 'kyrie' });
+  run(G, 0.5);
+  s.retime(0.8);
+  assert(Math.abs(s.left - 0.8) < 1e-6 && Math.abs(s.cue.left - 0.8) < 1e-6 && Math.abs(s.at - (d.time + 0.8)) < 1e-6, `retime(0.8): its left, its at and its ledger handle move (${s.left.toFixed(2)}, ${s.cue.left.toFixed(2)})`);
+  const h = s.cue;
+  s.cancel();
+  assert(!s.alive && !h.alive, 'cancel(): gone, its ledger handle cancelled');
+  // a shared handle (a barrage row's one) is left alone by the flight
+  const row = d.brain.expect(1.2, TELL.RED, 'kyrie');
+  const a = F.fly({ kind: 'shell', x: 0, y: 2, z: -2, tx: p.x + 2, tz: p.z, T: 1.2, expect: row }), b = F.fly({ kind: 'shell', x: 0, y: 2, z: -2, tx: p.x - 2, tz: p.z, T: 1.2, expect: row });
+  a.cancel();
+  assert(row.alive && b.cue === row, 'a handle passed in is shared and not cancelled with one of its shells');
+  b.cancel();
+  row.cancel();
+  // the cue: onCue once, cueLead before it lands
+  let cued = NaN;
+  const c = F.fly({ kind: 'missile', x: 0, y: 2, z: -2, tx: p.x, tz: p.z, T: 1.2, cueLead: 0.4, expect: false, onCue: () => { cued = d.time; } });
+  const cAt = c.at;
+  run(G, 1.4);
+  assert(Number.isFinite(cued) && Math.abs(cAt - cued - 0.4) <= DT + 1e-6, `onCue ${((cAt - cued)).toFixed(3)} s before it lands (cueLead 0.4)`);
+  // tracking: its target follows the hero for its first `track` of the flight
+  game.player.debug.teleport(d.position.x + 6, d.position.z + 6);
+  run(G, 0.1);
+  let endX = NaN, endZ = NaN;
+  const tr = F.fly({ kind: 'missile', x: d.position.x, y: 2, z: d.position.z, tx: d.position.x - 6, tz: d.position.z + 6, T: 2.4, track: 0.7, trackSpeed: 8, expect: false, onLand: (r) => { endX = r.tx; endZ = r.tz; } });
+  const miss0 = Math.hypot(tr.tx - p.x, tr.tz - p.z);
+  run(G, 2.6);
+  const miss1 = Math.hypot(endX - p.x, endZ - p.z);
+  assert(miss1 < miss0 - 5 && miss1 < 1.5, `a tracking missile ends on the hero (aimed ${miss0.toFixed(1)} m off, landed ${miss1.toFixed(1)} m off)`);
+  // a bolt: from its speed
+  const bo = F.fly({ kind: 'bolt', x: 0, y: 1.3, z: -2, tx: 0, ty: 1.1, tz: 11, speed: 26, expect: false });
+  assert(Math.abs(bo.T - Math.hypot(13, 0.2) / 26) < 1e-6 && bo.tell === TELL.BLUE, `a bolt's flight from its speed (${bo.T.toFixed(3)} s), blue by default`);
+  run(G, 1);
+  assert(F.pools().flights === 0 && errors.length === 0, 'everything landed');
+}
+
+async function scenarioFxSounds() {
+  out('\n== scenario FXSOUNDS (every fs sound has a recipe and plays; the drivers emit only listed names) ==');
+  const { FS_SOUNDS } = await imp('src/entities/enemies/falseSaint/fx.js');
+  const FXD = await imp('src/entities/enemies/falseSaint/fxDebug.js');
+  const { SFX } = await imp('src/audio/sfx.js');
+  const missing = FS_SOUNDS.filter((n) => !SFX[n]);
+  assert(!missing.length && FS_SOUNDS.every((n) => n.startsWith('fs')), `every fs sound has a recipe in sfx.js (${FS_SOUNDS.length}; missing ${JSON.stringify(missing)})`);
+  const G = build();
+  const { game } = G;
+  const d = game.dragon;
+  if (!game.audio.ctx) game.audio.unlock();
+  const e0 = errors.length;
+  // (one at a time: the voice pool drops a low one when many play at once; a refused one is tried again
+  // once the others have rung out)
+  const bad = FS_SOUNDS.filter((n) => game.audio.play(n, { x: 0, z: 0, dur: 1 }) !== true && (run(G, 3), game.audio.play(n, { x: 0, z: 0, dur: 1 }) !== true));
+  assert(game.audio.ctx && !bad.length && errors.length === e0, `each plays headless without a warning (${JSON.stringify(bad)})`);
+  // the drivers: every name an effect emits is listed (and so has its recipe)
+  const said = new Set();
+  G.watch = (n, e) => { if (n === 'dragon:spell' && String(e?.name).startsWith('fs')) said.add(e.name); };
+  duel(G, { dist: 6 });
+  game.player.debug.god = true;
+  for (const n of FXD.NAMES) fxDrive(G, n);
+  d.dressPhase = 3;
+  run(G, 0.2);
+  d.position.set(0, 0, -2);
+  for (let i = 0; i < 90; i++) { d.position.x += 0.05; G.tick(DT); }
+  G.watch = null;
+  const unlisted = [...said].filter((n) => !FS_SOUNDS.includes(n));
+  const unheard = FS_SOUNDS.filter((n) => !said.has(n) && !['fsHitMetal', 'fsPowerDown'].includes(n));
+  assert(!unlisted.length && said.size >= 28, `the drivers sound ${said.size} names, every one listed (${JSON.stringify(unlisted)}); not heard from a driver: ${JSON.stringify(unheard)}`);
+  assert(said.has('fsServo'), 'his servo steps from phase 3 (fsServo as he walks)');
+}
+
+async function scenarioFxCost() {
+  out('\n== scenario FXCOST (what each big effect costs at its peak: fire blobs, glyph particles, lights) ==');
+  const G = build();
+  const { game } = G;
+  const d = game.dragon;
+  duel(G, { dist: 7 });
+  game.player.debug.god = true;
+  const rows = [];
+  for (const n of ['kyrie', 'choir', 'revelation', 'absolution', 'vigil', 'passingBell', 'verdict', 'vespers', 'transition4', 'jets', 'pour']) {
+    run(G, 4);
+    const base = game.fx.fire.count;
+    const r = fxDrive(G, n);
+    rows.push(`${n.padEnd(12)} fire ${String(r.fire).padStart(4)} (idle ${base})  add ${String(r.add).padStart(4)}  alpha ${String(r.alpha).padStart(4)}  lights ${r.lights}`);
+    if (n === 'kyrie') assert(r.fire < 5000 && r.add + r.alpha < 6000, `a whole Kyrie fits the fire field (6000) and the particles: fire ${r.fire}, particles ${r.add + r.alpha}`);
+    if (n === 'choir') assert(r.fire < 5000, `a whole Choir fits: fire ${r.fire}`);
+    if (n === 'revelation') assert(r.fire < 5500, `Revelation fits: fire ${r.fire}`);
+  }
+  out('     ' + rows.join('\n     '));
+}
+
 // ================================================================== core: events
 async function scenarioEvents() {
   out('\n== scenario EVENTS (what this level emits is in the catalogue: checked at the end of every run) ==');
@@ -732,6 +953,10 @@ const S = {
   // --- world
   // --- body
   // --- fx
+  fx: scenarioFx,
+  fxFlights: scenarioFxFlights,
+  fxSounds: scenarioFxSounds,
+  fxCost: scenarioFxCost,
   // --- melee
   // --- boost
   // --- arsenal
