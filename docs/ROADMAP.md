@@ -239,6 +239,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` planned
       6 rides on the seeds
 - [ ] The real renderer lays ~30 % more floor marks than headless
 
+## M1.95 — The light combo planted, a real thrust, slashes that follow the blade (2026-11-27, `player/attack-anim-planted`, ADR-268)
+- [x] Combo A planted: small steps in (`?plant=`), the stance kept (anim.js `plantFeet`), no skip on hit 3; scenario `planted`
+- [x] Hit 4 a level thrust (`?poke=`, swings.js `poke`)
+- [x] The free hand seen from behind: `?offhand=guard` (combo A's) and `out`; tucked through a whole-body turn
+- [x] The ending slash on the blade's own on-screen line from every side, after the cut, clear of him, softer (`?slashSoft=`); scenario `slashaim`
+- [ ] The owner's picks: the hand (`guard` / `out`) and the softness (`a` / `b` / `c`)
+
 ## M1.94 — Instant slashes, the left hand to pick (2026-11-26, `claude/hero-instant-slash`, ADR-240)
 - [x] PRs #118 and #166 closed on the owner's call: production's combo stays
 - [x] Every attack and the flurry's finishers: one straight slash line instead of the crescent (`slashFx.js`, `?slash=arc` the crescent)

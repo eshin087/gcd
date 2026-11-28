@@ -5,6 +5,33 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
+## 2026-11-27 — The light combo planted, a real thrust, slashes that follow the blade (ADR-268; `player/attack-anim-planted`)
+
+**Owner:** with a reference combo video: too much forward momentum, the legs move too much, the left hand vanishes
+through hits 1-4, soften the slash and make its angle match the swing from every side (worst side-on and toward the
+camera), hit 4 a real thrust poke (it "attacks the sky"), the heavy's slash shows behind him. Asked: start from main
+(they did not like PR 179), "nearly planted", step in only when out of reach; the heavies meant are the heavy
+button and the charged cleave.
+
+- **The reference:** he barely moves through the whole combo, a wide low stance, weight shifts instead of steps, the
+  free arm bent before him the whole time. Taken as direction only (no footage in the repo, no pose copying).
+- **Body (`combos.js` plant / poke, `anim.js` plantFeet, `offHand.js` guard / out, `swings.js` poke):** measured on the
+  wyrm (integ `planted`), today -> new: steps 0.55 -> 0.12-0.2 m a hit, feet 5.4 -> 1.2 m through hits 1-4, the lead
+  foot RLRLR -> RRRRR, hit 4 45 -> 3 degrees off level, the free hand clear of his outline from behind 0 -> 66 % of
+  frames. Hit 5's `reach` 1.7 for the assist (with the short base step it fell short of a foe 2 m off). The guard /
+  out hands draw in through a whole-body turn (`tuck`: held out, the whirl swept the hand 22 cm a frame).
+- **Slash (`slashFx.js`, a subagent's branch merged):** the line's direction came from a point near the hand with his
+  own travel in it; now the drawn tip's on-screen way over its fastest frames, relative to his chest. Never drawn
+  before 35 % of the active window; on a hit, as the bite lets go. A line within 1 m of his chest on screen slides
+  along itself away from him (the heavies' 5.6 m lines ran over his back). Worst angle error per attack and facing:
+  up to 58 degrees (Whirling Tempest 157) -> 0-12. Softness `?slashSoft=0|a|b|c`, default `b`. Scenario `slashaim`.
+- **Films:** before (main) / after GIFs from behind, the side and the front; the agent's slash sheets per attack.
+
+**Open:** the owner picks the hand and the softness; the PR is held for that. Combo A's other switches (`?feel=`,
+`?combo=b|c|d`) still stand.
+
+---
+
 ## 2026-11-26 — Wen Yao's motion audit: straight limbs at the contact, one cue one meaning (ADR-249; `claude/wen-yao-motion-674ba7`)
 
 **Owner:** a motion audit of every boss (one session each; this is the fox's): weird arm angles, kicks bent at the

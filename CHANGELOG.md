@@ -4,7 +4,17 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [SemVer](https://semver.org/) (0.x = pre-alpha, anything may change).
 
 ## [Unreleased]
-One hundred and thirty-nine pieces of work since 0.4.0:
+One hundred and forty pieces of work since 0.4.0:
+- **The light combo stays planted, hit 4 is a real thrust, the slashes follow the blade** (2026-11-27, ADR-268). *Changed (the owner's notes on the auto attack, with a reference
+  combo):* the light combo no longer carries you forward: each hit steps in 0.12 - 0.24 m (was 0.55 - 0.8), and only
+  as far as needed when the foe is out of reach; your stance holds through the combo (the front foot slides, the back
+  foot follows) instead of a stride that swapped the lead foot every hit. The free hand is held out before you where
+  the camera sees it (it was behind your back, hidden); `?offhand=out` hangs it loose off the hip. Hit 4 is a level
+  thrust at chest height (it drove up at 45 degrees). The slash drawn as each swing ends now runs the way the blade
+  went from every side (it was up to 58 degrees off seen side-on or from the front), comes right after the cut, is
+  softer (thinner, dimmer, shorter, no white flash; `?slashSoft=0|a|b|c`) and never lies across you: the heavy
+  button's and the charged cleave's slash no longer show over your back. `?plant=0`, `?poke=0`, `?slashSoft=0`
+  play the combo as before.
 - **Wen Yao punches and kicks with straight limbs** (2026-11-26, ADR-249). *Changed (the boss motion audit; the owner's pick from the films):* the
   Thousand-Body Fox's straight punches and palms now land on an open arm along one line to you (the elbow 162 - 167°,
   was 123 - 139°), his roundhouse, his paper selves' rising kick and both ankle sweeps land on a straight leg (the

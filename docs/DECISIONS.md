@@ -7782,3 +7782,28 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
 - **Consequences:** the fight is about a fifth shorter, and cutting his barrier is no longer wasted: it chips
   him and shows the barrier where it struck. The opening has no floor sign now: its burst, and his cuts landing,
   show it. Open: whether the chip wants its own sound.
+
+## ADR-268 — The light combo planted, hit 4 a level thrust, the free hand before him, the ending slash on the blade's own line (2026-11-27)
+
+- **Context:** the owner, with a reference combo: the light combo's forward momentum is far too much and the legs
+  move too much; the left hand is gone through hits 1-4; hit 4 "attacking the sky"; the instant slash should be
+  softer and run the way the sword swung from every angle; the heavy button's and the cleave's slash show behind
+  him. Combo A (ADR-240) stepped 0.55-0.8 m a hit with a stride that swapped the lead foot every hit; its free hand
+  sat on the small of his back, inside his body from the camera behind him.
+- **Decision:**
+  1. `combos.js` `plant` (`?plant=1`, default): combo A's own steps in (0.12, 0.12, 0.14, 0.2, 0.24 m), no skip on
+     hit 3, the feet `'plant'`: anim.js `plantFeet` keeps the stance (the front foot slides on with the step, the rear
+     drawn up after it, yaws kept). A step the assist stretches past 0.45 m (a foe out of reach) is still a stride
+     (`plantedNow`, decided once a swing). Hit 5 carries `reach` 1.7 for the assist. The recovery's step home is
+     skipped; the foot planner settles the feet when he walks.
+  2. `?poke=1` (default): hit 4 plays swings.js `poke`, a level thrust (keys within 3 degrees of level; the thrust
+     test exempts a `level` clip from "thrusts drive upward").
+  3. offHand.js `guard` (combo A's hand) and `out`: rests that stand clear of his outline from behind; `tuck` draws
+     either in through a whole-body turn (`SIDE_TUCK`).
+  4. slashFx.js: the ending slash's direction is the drawn tip's on-screen way over its fastest frames, relative to
+     his chest; not before 35 % of the active window; on a hit, once the bite lets go; slid along itself to stay
+     `END.clear` from his chest on screen; a thrust streak starts 15 % behind its place. `?slashSoft=0|a|b|c`
+     (default `b`) scales its thickness, strokes, length, life, flash, heat, rows and kick.
+- **Consequences:** the combo reads as a stance fighter's; every hit still lands (integ `planted`, `combos`); the slash
+  agrees with the blade within ~12 degrees from all four sides (`slashaim`). The hand and the softness are the
+  owner's to pick (both live in the Lab). No new meshes or draw calls; the softer slash spawns fewer strokes.
