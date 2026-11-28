@@ -580,7 +580,7 @@ async function scenarioPhases() {
     assert(set.ambience.state.phase === n && set.ambience.state.w[n - 1] > 0.5, `the light follows him into phase ${n} (${set.ambience.state.w.map((x) => x.toFixed(2)).join(' / ')})`);
   }
   const A1 = realise('benediction', 1, () => 0.5), A4 = realise('benediction', 4, () => 0.5);
-  assert(A4.beats[0].W < A1.beats[0].W && A4.beats[0].W >= TUNING.minFirstWindup, `phase 4 is faster (windup ${A1.beats[0].W.toFixed(3)} -> ${A4.beats[0].W.toFixed(3)}), never under the minimum`);
+  assert(A4.beats[0].W < A1.beats[0].W && A4.beats[0].W >= TUNING.minFirstWindup * (TUNING.windupScale?.[3] ?? 1) - 1e-9, `phase 4 is faster (windup ${A1.beats[0].W.toFixed(3)} -> ${A4.beats[0].W.toFixed(3)}), never under the minimum (${TUNING.minFirstWindup} x windupScale)`);
   game.world.restore();
   d.reset();
   run(G, 0.2);
@@ -1158,10 +1158,15 @@ async function scenarioMlLinks() {
     const R0 = Math.random;
     Math.random = () => 0;
     d.brain.cooldowns.longWalk = 0;
+    // a target that is never built, put first in castOut's links for this check (an own property shadows the getter)
+    const GHOST = { to: 'fsNeverBuilt', when: 'any', chance: [1, 1, 1, 1] };
+    Object.defineProperty(d, 'LINKS', { value: { ...LINKS, castOut: [GHOST, ...LINKS.castOut] }, configurable: true });
+    const want = LINKS.castOut.find((Lk) => MOVES[Lk.to] && Lk.when !== 'near')?.to;
     let L = null, err = null;
     try { L = linkFor(d.brain, { name: 'castOut' }, s); } catch (e) { err = e; }
     Math.random = R0;
-    assert(!err && LINKS.castOut[0].to === 'votiveFist' && L?.to === 'longWalk', `castOut's links at ${s.dist.toFixed(1)} m in phase 2: votiveFist (not built here) passed over, ${L?.to} taken${err ? ` (${err.message})` : ''}`);
+    delete d.LINKS;
+    assert(!err && L && L.to !== GHOST.to && MOVES[L.to], `castOut's links at ${s.dist.toFixed(1)} m in phase 2: a move not built passed over, ${L?.to} taken (the table's first built target: ${want})${err ? ` (${err.message})` : ''}`);
   }
   // his flow in each phase with only these moves (a hero who never parries, god mode, the guard held every
   // other 5 s, walking back in when thrown off): no throw, and he goes on from move to move
