@@ -533,6 +533,8 @@ Render helpers for creature modules:
     (overlaps ADD UP: ~0.4 a cool rim, ~1 the body, 2+ the white heart; default `heatEnd` 0.35 x
     `heat`; the last sixth of its life it fades out); `kind` `'fire'` (default) | `'void'` |
     `'steel'` | `'smoke'` or a `FIRE_KIND` number; `gravity` > 0 rises. NaN positions are dropped.
+    A number kind plus `FIRE_SEEN` (4) is drawn SEEN: past the soft depth test, over the scene (a
+    timing cue only: DuelFx's white / blue glint, ADR-274).
     `clear()`, `update(dt)` (main.js, with `fxDt`), `count`, `max` (6000), `active`.
   - Pipeline side: `init(type, depthTexture)`, `setSize(W, H, cell, art, minCell = cell)`,
     `setCell(cell, art)`, `render(renderer, camera,
@@ -843,7 +845,7 @@ onGuarded({ deflect, heavy, attacker })
 // recovery; not the execution's thrust). A flask still waits for 35 % of the recovery.
 deathblowClaims(att): boolean            // a duelist asks it before it crosses the blades on a perfect parry of a
                                        // `lock` blow (duelist.onParried): true when the deathblow combo that parry
-                                       // armed takes it instead (a blue blow, ?dbLock=combo, the default; ADR-274)
+                                       // armed takes it instead (a blue blow, ?dbLock=combo, the default; ADR-277)
 startBladeLock(att, { start, push, decay, dur, hold, dist }): boolean
                                        // a duelist's perfectly parried `lock` blow (ADR-062): state 'lock', every press
                                        // of attack / guard pushes the meter +push, it falls decay / s; 1 wins, 0 loses,

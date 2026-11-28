@@ -528,7 +528,7 @@ export class Training {
     }
   }
 
-  /** A situation's own `?dbLock=` (`s.dbLock`; ADR-274) ends with it, as its riposte mode does. */
+  /** A situation's own `?dbLock=` (`s.dbLock`; ADR-277) ends with it, as its riposte mode does. */
   _restoreDbLock() {
     if (this._dbLockSaved == null) return;
     setDbLock(this._dbLockSaved);

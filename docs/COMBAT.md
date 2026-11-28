@@ -294,7 +294,9 @@ hazard the ground heats up from its spawn     its edge shows, the heat flares, a
   (7 cells), white-hot digits where they meet, written on the letter grid (0.2 s; it opens at full
   size on the cue frame and draws back into its heart). `blue` (heavy, big-posture) gets the same
   cross 1.6x as big (21 x 11 cells) with diagonals, an **eight-point star**, and a thin ring of
-  strokes opening round it (0.28 s) — still white, never blue.
+  strokes opening round it (0.28 s) — still white, never blue. **Always seen (ADR-274):** a glint's letters
+  are drawn over the scene (no depth fade: the wyrm's paw, foreleg and wings hid its claw glints) and its heart
+  is kept inside the frame like the flare's (`?glintSeen=0` as before).
 - **The sounds (2026-11-22; owner: "it should only have the sound played for red/blue attacks").**
   Only a blue and a red / black blow have cues: a warning as the windup starts and a timing sound
   just before it lands: the red ones recorded (`cue-red` / `time-red`), the blue ones the synth sting
@@ -517,9 +519,9 @@ Against a duelist (`?parryRiposte=deathblow`, the default; `planted` / `old` the
   where the hero stands (0.6 m at most): his own cuts, a new order each time, the finisher a big one. Every contact
   holds for a beat (0.16 - 0.2 s, the finisher 0.38 s; ~3 s for seven) under the cold cast; 22 + 2N a blow, 40 + 15N
   the finisher, final; he cannot be hurt; after a break he stays broken. A guard press does not end it (it waits,
-  and the guard comes up in the finisher's tail); attack, heavy and dodge presses are dropped (ADR-274).
+  and the guard comes up in the finisher's tail); attack, heavy and dodge presses are dropped (ADR-277).
 - A **perfect** parry of a blue blow marked `lock` would also cross the blades: the deathblow takes it (he recoils,
-  the combo follows; `?dbLock=lock` gives the blade lock back, ADR-274). Without the deathblow (`old` / `planted`) the
+  the combo follows; `?dbLock=lock` gives the blade lock back, ADR-277). Without the deathblow (`old` / `planted`) the
   lock is as before; Tian Lei's beam and lantern locks are their own and unchanged.
 - Each blow: a straight cut on his body that crosses the last and shatters on the finisher (`?dbfx=b`), blood (a
   spray, a wound, pools on the floor), the Flesh sound (`?dbsfx=a`).

@@ -44,6 +44,15 @@ export const RELEASES = [
       },
       {
         date: '2026-11-28',
+        title: 'The Cinder Wyrm dies whole, every white spark shows, and its blue and red paws look apart',
+        notes: [
+          "When the Cinder Wyrm falls, its neck now comes down in one natural curve with its head in line, instead of snapping up and bending at odd angles.",
+          'Every ordinary blow of a boss now shows its white spark, even when the claw or wing it comes from is hidden behind the body or past the edge of the screen.',
+          "The Cinder Wyrm's blue and red paw blows no longer look alike: the blue one winds its paw out wide and sweeps it across you (parry it), the red one leaps clear of the ground and crashes down on both paws (roll away).",
+        ],
+      },
+      {
+        date: '2026-11-28',
         title: 'One tap to begin, menus with a finish, and touch controls that fit and move',
         notes: [
           'On a phone, one tap on a world, BEGIN HERE or BOSS RUSH now starts it: no more second tap.',

@@ -5,7 +5,7 @@ verification, open issues / next steps. Keep entries short; link commits/PRs whe
 
 ---
 
-## 2026-11-28 — The deathblow is not cut short: the guard press, the blade lock (ADR-274; `fix/deathblow-guard-lock`)
+## 2026-11-28 — The deathblow is not cut short: the guard press, the blade lock (ADR-277; `fix/deathblow-guard-lock`)
 
 **Owner:** on the wyrm a perfect parry shows the perfect-dodge streak's effect; mashing attack during the deathblow seems
 to cancel it; the streak's flurry teleports gcd with no cue.
@@ -14,7 +14,7 @@ to cancel it; the streak's flurry teleports gcd with no cue.
   owner: leave it.
 - **The cancel:** sims mashing each button through a combo on the Ash Disciple. Attack, heavy and dodge were already
   ignored. Guard (the middle click) ended it at once with 0 damage, and a perfect parry of a blue `lock` blow became
-  the blade lock instead of the combo. Both fixed (ADR-274): no guard inside the combo; `player.deathblowClaims`
+  the blade lock instead of the combo. Both fixed (ADR-277): no guard inside the combo; `player.deathblowClaims`
   keeps the lock away from a combo the parry armed (`?dbLock=lock` as before; Lab `dbLock`).
 - **Training:** its "Blade lock" situation sets `dbLock: 'lock'` for itself (a new per-situation field). A first
   try with `riposte: 'old'` fed the dodge streak and failed CI's Lord `foeBlock` (his flurry blocked, no posture
@@ -30,6 +30,61 @@ to cancel it; the streak's flurry teleports gcd with no cue.
 
 ---
 
+## 2026-11-28 — Agents check what their branch changed before a PR; CI runs the full set (ADR-276; `test/changed-suites`)
+
+**Goal:** the owner saw the later chats take longer to open PRs. Each agent ran the full `npm test` before
+its PR (ADR-205), about 75 minutes of work on 8 shared slots, so agents near a PR at once queued for them.
+
+- **The rule (CLAUDE.md, "Go easy on the owner's PC"):** before a PR, run `npm test -- --changed`, not the
+  full set. CI runs every task on every PR and auto-merge waits for it, so the gate is unchanged.
+- **`--changed` (`tests/run.mjs`, rules in `tests/changed.mjs`):** the files changed since the branch left
+  `origin/main` (committed, staged, unstaged, new), mapped to tasks by first-match rules: a boss (folder,
+  level, set) to his suite, the wyrm to `integ`, the living world to `life`, the dragon print to its
+  suites, a suite or test helper to the suites that use it, docs to `changelogcheck`, and any other
+  `src/` file to everything. `--list` prints the pick and why; `--base <ref>` compares with another ref.
+- **`changedcheck` (a new task, ~1 s):** every boss folder and level has a rule, every task a rule names
+  exists, the files `BOSSES` names exist, and a handful of example picks.
+
+**Verification:** `changedcheck` passes; `--changed --list` on this branch picks everything (it changes
+the runner); the rules replayed over the last 60 merged PRs narrow 9. The other 51 touch shared code,
+mostly `duelist/lookSwitch.js`. The full `npm test` was not run locally, on purpose: CI runs it on the PR.
+
+**Open:** narrowing `duelist/lookSwitch.js` would need its diff read by section (each boss's switches
+sit in its own block); left for later, if the owner wants more out of `--changed`.
+
+---
+
+## 2026-11-28 — The wyrm's death neck, every white spark seen, the scythe and the leap (ADR-274; branch `dragon/death-neck-tells`)
+
+**Owner:** "when the dragon dies and flies up, the head and neck looks unnatural ... like the neck is broken";
+"make sure every normal attack shows the white spark hit"; "the blue and red warning paw attacks ... need to be
+completely different ... think of multiple different animations that stand out".
+
+**Measured first** (headless Edge, `__tick`, the neck's joints per frame and stick figures of the chain; each cue
+rendered twice, with the scene's depth and with nothing in front):
+- The death: the throe's head goal lay 8 m off a 6 m neck (the neck pulled straight up, a pole), the limp head was
+  laid level whatever the neck did (60 - 62° off the neck's end from 0.2 to 1.3 s), the goal's straight line to the
+  ground buckled the neck into a zig-zag as it landed.
+- The glints: the wyrm's own paw, foreleg and wings hid 92 - 100 % of its claw glints; a wing blow's glint fell
+  off the screen. The fight camera looks down at 58°, so a paw raised and brought down (the blue overhead, the red
+  stomp) is foreshortened into the same growing blob.
+
+**Changed:** the death's head swings round the neck's base inside its reach, the throe's head up and forward,
+it looks along its neck, the dying head hangs at most ~31° off it (`?deathNeck=0` before). A glint's letters
+are drawn over the scene (`FIRE_SEEN`, a blob flag in the fire field) and kept inside the frame, every boss
+(`?glintSeen=0` before). The paw blows: `?pawBlue=a|b|c` (scythe, jab, uppercut) and `?pawRed=a|b` (leap, quake),
+`pawTells.js` + `WYRM_PAW`, the Lab's LOOKS rows; the owner picked from the films ("the leap and the scythe look
+good"): the scythe and the leap are the defaults. The owner also saw the head and neck "all weird" at the films'
+start: the film rig's `debug.reset()` left the wyrm in its sleep curl standing beside the hero (a state the game
+never shows: it wakes as you come near); re-filmed from its combat stance.
+
+**Verification:** integ `pawtells` (the glint's seen flag and shader; every paw option lands on its cue,
+0.00 - 0.03 s off; the death: off the neck 62° → 33°, the sharpest bend 36° → 32°, the head's fling 1.49 → 0.82 m);
+the glint audit over every wyrm melee move (claws 90 - 100 % seen); films at the fight camera (sent to the owner).
+Full `npm test` before the PR.
+
+**Open / next:** the owner's playtest of the scythe and the leap in the fight (and on the iPhone); the leap's
+height and hang may want tuning by feel.
 ## 2026-11-28 — A new fight stance: the middle guard (ADR-275; `player/stance-four`)
 
 **Owner:** "lets change gcds combat default pose. the way he holds the sword and the angle of the sword doesn't
@@ -56,8 +111,7 @@ of close and far all in one clip." Picked from the clip: **A, the middle guard**
 - **Checked:** `heroref` green (the hold, the blend, the three habits, every move out of it within ×1.5 + 10 cm of
   the stance before, the guard from the hold); the hero suites; a film strip of a light chain, a block and a roll
   out of the hold.
-- **Open:** the owner on the preview (lock-on duels, strafing); whether the turned-down holds b-d stay.
-## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
+- **Open:** the owner on the preview (lock-on duels, strafing); whether the turned-down holds b-d stay.## 2026-11-27 — The blackout for a black blow, red trails for a red string, the black impact (ADR-271; `claude/combat-blackout-red-trails-892472`)
 
 **Goal:** two looks from the owner's Phantom Blade Zero reference (a boss fight they sent): a charged (black) attack
 drains the whole picture to dark grey, the boss alone readable with a white glint, colour back on the strike; a red

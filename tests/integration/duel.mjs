@@ -991,7 +991,7 @@ async function scenarioClash() {
   assert(wasAct && late === 0 && d.hp === hpB && d.mode === 'react' && ['ward', 'wardR', 'wardHigh'].includes(d.brain.react?.kind), `late in it he breaks the recovery off into his guard (${late} damage; ${d.brain.react?.kind})`);
   settle(G, 8);
   // (6) the blade lock: the two close to the lock's distance and the blades cross (?dbLock=lock: the deathblow
-  // does not take the perfect blue parry from it; ADR-274)
+  // does not take the perfect blue parry from it; ADR-277)
   const DBM = await imp('src/entities/player/deathblow.js');
   DBM.setDbLock('lock');
   home(G);
@@ -4571,7 +4571,7 @@ async function scenarioDeathblow() {
     assert(t.streaks.length > 0 && t.runAfter === 0 && t.ev?.art !== 'deathblow', `(e) ${mode}: the parry counts in the streak, no deathblow`);
     if (mode === 'planted') assert(t.ghost < 0.05, '(e) planted: the single cut takes no cold cast (' + t.ghost.toFixed(2) + ')');
   }
-  // (g) the guard mashed through the combo (ADR-274): it never cuts the combo short (it ended it at once, nothing dealt)
+  // (g) the guard mashed through the combo (ADR-277): it never cuts the combo short (it ended it at once, nothing dealt)
   {
     const t = take('deathblow', { near: true, run: 2, guard: true });
     out(`   (g) guard mashed: presses ${t.guarded | 0} · hits ${t.hits.length} · states ${[...t.states].join(',')}`);
@@ -4579,7 +4579,7 @@ async function scenarioDeathblow() {
     combo('(g) guard mashed', t, 3);
   }
   // (h) a PERFECT parry of a blue blow marked `lock` (Falling Ash): the combo takes it from the blade lock (?dbLock=combo,
-  // ADR-274); ?dbLock=lock: the lock as before, no combo
+  // ADR-277); ?dbLock=lock: the lock as before, no combo
   {
     const DBM = await imp('src/entities/player/deathblow.js');
     const t = take('deathblow', { move: 'fallingAsh', run: 3, secs: 6, posture: 20 });
@@ -6042,7 +6042,7 @@ const SCENARIOS = {
   fxlooks: scenarioFxLooks,
   telemetry: scenarioTelemetry,
   heavy: scenarioHeavy,
-  // (the blade lock's own checks: ?dbLock=lock, the deathblow does not take the perfect blue parry from it; ADR-274)
+  // (the blade lock's own checks: ?dbLock=lock, the deathblow does not take the perfect blue parry from it; ADR-277)
   moments: async () => {
     const M = await imp('src/entities/player/deathblow.js'), m0 = M.dbLockMode();
     M.setDbLock('lock');
