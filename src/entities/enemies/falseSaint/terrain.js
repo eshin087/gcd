@@ -1327,7 +1327,9 @@ const TANK = Object.freeze(['tank']);
 const FILE_MOVES = new Set(['offertory', 'crucible', 'relic', 'prostration', 'diesIrae']);
 const SPOT_TURNS = Object.freeze([0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, 2.5, -2.5, Math.PI]);
 const NO_PLUNGE = Object.freeze({ plunge: false });
-const SPARED = new Set(['ladle', 'jib', 'jibPost']);
+// (the tuning pass: the tanks too: the phase-4 change's nova and every Dies Irae front burst the corner tanks, so
+// Offertory was never picked in phase 4; his barrage, his beams and the hero's blade still burst them)
+const SPARED = new Set(['ladle', 'jib', 'jibPost', 'tank']);
 /** 0..1 from a place (a fixed hash: no draw on any stream). */
 function hash2(x, z) {
   const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;

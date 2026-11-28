@@ -268,7 +268,10 @@ export class FsBoost {
       // (the side away from the floor's edge; on the left of the line when both are open)
       for (const side of [1, -1]) {
         const mx = x0 + ux * len * S.zigShare - uz * t * side, mz = z0 + uz * len * S.zigShare + ux * t * side;
-        if (Math.hypot(mx, mz) < B && (d.standable?.(mx, mz) ?? true)) {
+        // (the tuning pass: from outside his circle (a fetch, a pass that ended past it) a side point nearer the
+        // middle than he is will do: standable() refuses all past the circle, and the jet in went straight)
+        const inward = Math.hypot(x0, z0) > B + 1 && Math.hypot(mx, mz) < Math.hypot(x0, z0) - 1;
+        if (inward || (Math.hypot(mx, mz) < B && (d.standable?.(mx, mz) ?? true))) {
           this._legs[0].x = mx;
           this._legs[0].z = mz;
           n = 2;

@@ -8,7 +8,7 @@ import { FS_LOADOUT, FS_FIST } from './gear.js';
 import { FS_POSES } from './poses.js';
 import { boostLoco } from './posesBoost.js';
 import { MOVES, MOVE_NAMES, CLIP, TRANSITIONS, REACT, OPEN, realise, HANDLERS, COUNTERS, STREAKS } from './moves.js';
-import { TUNING } from './tuning.js';
+import { TUNING, perPhase } from './tuning.js';
 import { LINKS } from './links.js';
 import { tintSaint, dressSaint, fsLettersOn, eyePoint, handPoint, partPoint } from './look.js';
 import { FsFx } from './fx.js';
@@ -48,7 +48,9 @@ import * as FX_DEBUG from './fxDebug.js';
 //              A routed beat's onImpact adds to the engine's world blow and floor mark (they still run as
 //              for any beat unless it is selfHit / cast).
 //   core's own fields (handled here; moves.js header): fsMoment (a transition's impact).
-//   FsBrain's own: a flurry move marked `fsNoCount` plays as authored (startStreak), not cut to the count.
+//   FsBrain's own: a flurry move marked `fsNoCount` plays as authored (startStreak), not cut to the count;
+//          a share of the picks made with the hero past the jet step's range wait for the step first
+//          (_stepFirst: TUNING.boost.step.pick), and as many links / flow moves are let go for it (_startNext).
 //   Through a phase's change (until its push ring is out) nothing lands on him (takeHit: _inChange; the
 //          multi-form duelists' rule); a cut rings off him (a spark, no damage, no posture).
 //   The jets' layers on his footwork pose (SAINT_POSES: posesBoost.js boostLoco reads d.pilot.fsDashK /
@@ -61,7 +63,7 @@ import * as FX_DEBUG from './fxDebug.js';
 //   The set: game.world.forest.foundry (world/lastFoundry.js): ladles, ladleNear, drop, molten.add / pools / at.
 //   Damage that is no blade's: hurt(damage, posture, why) · onMolten(damage, posture, x, z) (a pool he
 //          stands in: posture + strip) · onBlast(damage, posture, x, z) (a tank the hero burst beside him).
-//   Debug (the Lab, the film rig): d.debug.fx(name, opts) → fxDebug.js run(d, name, opts) · setPhase(n) ·
+//   Debug (the Lab, the film rig): d.debug.fx(name, opts) → fxDebug.js run(d, name, opts) · fxNames · setPhase(n) ·
 //          shell(k) (k: every part to at least k; none: the shell's state) · pool(x, z, r) (a molten pool
 //          at x, z: the set's molten.add) · tidy().
 // ======================================================================================================
@@ -76,6 +78,16 @@ const SAINT_POSES = Object.freeze({
   },
 });
 
+/** His feet (the tuning pass, from the V04 audit; ADR-0FS): a foot a key lifts while it is planted (or still being
+ *  stepped by the foot planner) eases off its spot over `ease` s instead of snapping (anim.js liftEase /
+ *  liftFromStep: the engine's MOTION_FIX, Wen Yao's precedent, ADR-249). Live: saint.mjs tuneFeet measures it
+ *  (off / on). 0.2 s, not the engine's MOTION_FIX.liftEase 0.12: measured (the largest foot jump in a frame;
+ *  the planted foot's peak slide), off / 0.12 / 0.2 / 0.3 s: benediction 0.79 / 0.32 / 0.24 / 0.36 m, 8.1 /
+ *  18.9 / 11.6 / 7.5 m/s; genuflect 0.62 / 0.35 / 0.20 / 0.20 m; lauds 0.71 / 0.27 / 0.27 / 0.27 m, 7.1 / 16.1
+ *  / 10.4 / 8.2 m/s (the 0.12 ease's slide was its own last jump, still near the floor). No move's timing
+ *  changes (the animator's, not realise's). */
+export const FS_FEET = { ease: 0.2 };
+
 /** Everything the shared duelist needs to be him (duelist.js: kit). */
 export const SAINT_KIT = Object.freeze({
   id: 'saint',
@@ -89,6 +101,7 @@ export const SAINT_KIT = Object.freeze({
   blade: FS_FIST,
   scale: TUNING.scale,
   REACT, OPEN,
+  animOpts: Object.freeze({ liftEase: () => FS_FEET.ease, liftFromStep: true }),
   dress: (d, dt) => dressSaint(d, dt),
   get letters() {
     return fsLettersOn();
@@ -133,12 +146,39 @@ export class FsBrain extends DuelBrain {
     return super.startStreak(count);
   }
 
+  /** The jet step IN PLACE OF A PICK (the tuning pass): when a pick is due (the breather is out) and the hero
+   *  stands past the step's range, a share `pick` [P1..P4] of those picks first close on the jet (FsBoost's
+   *  footwork takes the breather that is left: the step runs, then the pick is made from where he lands,
+   *  close). One roll per pick (`pickEvery` s at least between two). Without it the step only ever came in
+   *  a breather, and in phase 4 his ranged moves took every pick at range: no step at all (saint.mjs boostStep). */
+  _stepFirst(s, dt) {
+    const d = this.d, S = d.T.boost?.step, B = d.parts?.boost;
+    if (!S?.on || !B || B.step || d.phase < S.from || !(this.gapT <= dt) || !(B.stepCool <= 0)) return;
+    if (!(s.dist > perPhase(S.at, d.phase)) || this.clock < fin(this._stepRollT, -1)) return;
+    this._stepRollT = this.clock + fin(S.pickEvery, 0.6);
+    if (Math.random() < perPhase(S.pick ?? 0, d.phase)) this.gapT = dt * 2;
+  }
+
+  /** ... and in place of a link or the flow's next move (the tuning pass): with the hero past the step's
+   *  range and the step ready, the same share `pick` of them is let go (the move ends on its own, its
+   *  breather follows and the step takes it), unless the next move closes the distance itself (a gap
+   *  closer: the punch, the dive, the passes). In phase 4 he flowed from move to move and was hardly ever
+   *  in his footwork: 1 step in 16 s against a hero who kept 10 m off (saint.mjs boostStep). */
+  _startNext(a, N, s, cut) {
+    const d = this.d, S = d.T.boost?.step, B = d.parts?.boost;
+    if (s && S?.on && B && !B.step && d.phase >= S.from && B.stepCool <= 0 && s.dist > perPhase(S.at, d.phase) && !(N?.to && this.M[N.to]?.gapCloser)) {
+      if (Math.random() < perPhase(S.pick ?? 0, d.phase)) return false;
+    }
+    return super._startNext(a, N, s, cut);
+  }
+
   /** Footwork: every handler's footwork(dt, s) first (the jet step), then the engine's. */
   _foot(dt) {
     const d = this.d;
     if (this.aiEnabled && !(this.pendingPhase > d.phase) && !this.counter?.pending && d.game.player?.state !== 'heal') {
       const s = this._sense();
       if (s) {
+        this._stepFirst(s, dt);
         for (const { h } of d._partList ?? []) {
           let moved = false;
           try {
@@ -203,6 +243,8 @@ export class FalseSaint extends Duelist {
         return false;
       }
     };
+    /** The effect drivers debug.fx knows (the Lab's buttons). */
+    dbg.fxNames = FX_DEBUG.NAMES ?? [];
     /** Into phase n through its real transition(s), one after another (each needs the one before over). */
     dbg.setPhase = (n) => {
       fight();

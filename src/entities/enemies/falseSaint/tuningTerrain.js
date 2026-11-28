@@ -18,7 +18,9 @@ export const TUNING_TERRAIN = {
   // MEASURED (saint.mjs trPools): from a fresh pool's middle (the worst place) a roll started `arm` - 0.1 s
   // after its cue clears it unburnt (the roll's i-frames 0.04 - 0.4 s, 4.2 m); a walk out from its middle
   // takes one burn; standing at its rim, a step clears it.
-  molten: { arm: 0.55, tick: 0.5, hero: 9, knockback: 2.2, rim: 0.7, grace: 0.5, boss: 60, posture: 70, strip: 0.06, pad: 0.15, staggerEvery: 2.5 },
+  // (the tuning pass: his `posture` 70 -> 35 a burn: a pool of his own making broke him in the pace runs, P2
+  // broken 6 - 9 % of the time against a hero who never struck; a pool still strips him and costs him the bar)
+  molten: { arm: 0.55, tick: 0.5, hero: 9, knockback: 2.2, rim: 0.7, grace: 0.5, boss: 60, posture: 35, strip: 0.06, pad: 0.15, staggerEvery: 2.5 },
 
   // ---- EVERY TERRAIN MOVE: no more than `max` of them start inside `window` s, none while something of
   // his is still in the air or held (Bai Wuji's precedent: never a rain of wreckage). `maxDelay` s: the
@@ -31,7 +33,9 @@ export const TUNING_TERRAIN = {
   // past his circle (FOUNDRY.floor.r 13.8) and inside the casting floor (|x|, |z| <= `square`): out there for
   // the length of the move, then he walks back in at `home` m/s (FsTerrain.footwork / frame). `hop` the
   // share of the fetch's windup the hop takes ([from, to] u), `take` the u he tears it up at.
-  fetch: { find: 11, out: 3.4, square: 14.6, gap: 0.55, hop: [0.12, 0.62], take: 0.84, home: 7, minHero: 4 },
+  // (the tuning pass: `find` 11 -> 13: the corner tanks stand 16.7 m from the middle, so Offertory found one
+  // ~1 % of the time in phase 3 (they were whole: saint.mjs tuneFight counts them at each phase's start))
+  fetch: { find: 13, out: 3.4, square: 14.6, gap: 0.55, hop: [0.12, 0.62], take: 0.84, home: 7, minHero: 4 },
 
   // ---- CRUCIBLE (P3+, red mark): a full ladle within `reach` m of the hero. His forearm gun is raised at
   // its chain (the red sight line to it) through the windup; the pools' marks are fixed at `fix` u of it:
@@ -74,7 +78,9 @@ export const TUNING_TERRAIN = {
   // unblockable: a roll through the front). The slam bites the press (`slam` power at its ram: four or five
   // slams bring its head down; then the move is gone). Cued on the front: the tell at the slam, the flash
   // flashLead s before it reaches the hero (his own way toward or away from it counted in).
-  diesIrae: { bolt: 70, speed: 15, r0: 2.6, r1: 38, band: 1.4, damage: 22, knockback: 3, power: 1.6, farK: 0.15, plate: 0.45, slam: 1.0, aimY: 4.6, gridStep: 0.6 },
+  // (the tuning pass: `plate` 0.45 -> 0.25: from phase 4's start (28 % of the plates already broken by then) three slams
+  // broke 74 % of the floor (saint.mjs tuneWreck); now they crack more than they break, about half left whole or chipped)
+  diesIrae: { bolt: 70, speed: 15, r0: 2.6, r1: 38, band: 1.4, damage: 22, knockback: 3, power: 1.6, farK: 0.15, plate: 0.25, slam: 1.0, aimY: 4.6, gridStep: 0.6 },
 
   // ---- THE TRANSITIONS' WORLD (FsTerrain.onMoment, called by saint.js _moment in place of its one push ring;
   // until that edit is made, FsTerrain._change adds the rest on top of core's 7 m ring at 2.2): at the

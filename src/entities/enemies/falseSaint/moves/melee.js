@@ -137,7 +137,7 @@ export function moves(X) {
      *  palm on a long lunge that throws the hero through what stands behind him (B2.2 - B2.3) (n, n, blue);
      *  the heel planted and the hands caught back into the guard in the recovery (B2.4 / ref-02 04). */
     benediction: {
-      label: 'Benediction', phase: 1, weight: [2.2, 1.5, 1.0, 0.8], cooldown: 3.5, band: [0, 5], recovery: 0.8, cat: 'string',
+      label: 'Benediction', phase: 1, weight: [2.2, 1.8, 1.2, 1.0], cooldown: 3.5, band: [0, 5], recovery: 0.8, cat: 'string',
       recoveryKeys: [[0.3, { ...S(fr('mlCatch')), e: 'o' }], [0.85, S({})]],
       beats: [
         palmL(N, BN.windup[0], BN.damage[0], BN.knockback[0]),
@@ -157,7 +157,7 @@ export function moves(X) {
     /** Genuflect: a low sweep at the ankles (it scuffs the plates), then both open hands on the head and
      *  a rising knee (n, blue). */
     genuflect: {
-      label: 'Genuflect', phase: 1, weight: [1.6, 1.2, 0.9, 0.7], cooldown: 4.5, band: [0, 4.5], recovery: 0.75, cat: 'string',
+      label: 'Genuflect', phase: 1, weight: [1.6, 1.4, 1.0, 0.9], cooldown: 4.5, band: [0, 4.5], recovery: 0.75, cat: 'string',
       beats: [
         blow({
           tell: N, windup: GN.windup[0], damage: GN.damage[0], knockback: GN.knockback[0], zone: { kind: 'sector', r: 2.2, ang: 1.0 }, part: 'footL', cock: 0.7, track: 0.7,
@@ -173,7 +173,7 @@ export function moves(X) {
      *  lifts the hero (layHandsLift) and throws him through the nearest standing piece. Never the last HP.
      *  Missed, he stands open, the arm still out (the whole recovery). */
     layHands: {
-      label: 'Laying On of Hands', phase: 1, weight: [1.0, 0.9, 0.8, 0.7], cooldown: 9, band: [0, 3.4], recovery: 1.0, recoverOpen: 1, cat: 'single',
+      label: 'Laying On of Hands', phase: 1, weight: [1.0, 0.8, 0.6, 0.5], cooldown: 9, band: [0, 3.4], recovery: 1.0, recoverOpen: 1, cat: 'single',
       recoveryKeys: [[0.35, { ...S({ ...fr('mlReach'), rH: [0.1, 0.06, 0.5], bY: -0.22 }), e: 'o' }], [0.95, S({})]],
       beats: [blow({
         tell: R, windup: LH.windup, active: 0.12, damage: LH.catch, knockback: 0, zone: LINE(LH.reach, 0.9), part: 'fistR', close: LH.close, track: 0.85, cock: 0.8,
@@ -192,7 +192,7 @@ export function moves(X) {
     /** The Long Walk: he walks at the hero, unhurried; light cuts land and do not stop him (a heavy cut
      *  does); then ONE straight palm (normal, held long) that carries on into the scenery behind the hero. */
     longWalk: {
-      label: 'The Long Walk', phase: 1, weight: [1.0, 0.8, 0.7, 0.6], cooldown: 10, band: [3.4, 9.5], recovery: 0.8, cat: 'closer', gapCloser: true,
+      label: 'The Long Walk', phase: 1, weight: [1.0, 0.8, 0.7, 0.6], cooldown: 7, band: [3.4, 9.5], recovery: 0.8, cat: 'closer', gapCloser: true,
       beats: [blow({
         tell: N, windup: LW.windup, fixed: true, cock: wc, active: 0.1, damage: LW.damage, knockback: LW.knockback, blockPush: LW.blockPush,
         zone: LINE(2.1, 0.9), part: 'fistR', close: LW.close, track: 0.95, fsBlow: 'heavy', fsWalk: 1, fsCrash: LW.crash, keys: walkKeys,
@@ -213,7 +213,7 @@ export function moves(X) {
     /** Interdict: the lead palm to stop the hero, then the plated arm comes down like a gavel onto the
      *  plates before him (n, red): a crater, a slam mark. */
     interdict: {
-      label: 'Interdict', phase: 2, weight: [0, 1.3, 1.0, 0.8], cooldown: 6, band: [0, 5], recovery: 0.9, cat: 'string',
+      label: 'Interdict', phase: 2, weight: [0, 1.5, 1.1, 1.0], cooldown: 6, band: [0, 5], recovery: 0.9, cat: 'string',
       beats: [
         palmL(N, IN.windup[0], IN.damage[0], IN.knockback[0]),
         follows(gavel(IN.windup[1], IN.damage[1], IN.knockback[1]), { close: 3.0 }),
@@ -222,7 +222,7 @@ export function moves(X) {
     /** Cast Out: both palms drawn to the ribs (held), then thrust together through whatever stands between
      *  them and the hero, who goes 8 m through the scenery (blue). */
     castOut: {
-      label: 'Cast Out', phase: 2, weight: [0, 1.0, 0.9, 0.8], cooldown: 7, band: [0, 5.2], recovery: 0.8, cat: 'single',
+      label: 'Cast Out', phase: 2, weight: [0, 0.8, 0.7, 0.55], cooldown: 7, band: [0, 5.2], recovery: 0.8, cat: 'single',
       beats: [doublePalm(CO.windup, CO.damage, CO.knockback)],
     },
     /** Penance (his counter, phase 2): sunk, the plated hand-heel driven up under the chin (blue). */
@@ -238,7 +238,7 @@ export function moves(X) {
     /** Lauds: a low kick at the knee (it scuffs the plates), then the overhand hand-heel down on the
      *  collarbone (n, blue). */
     lauds: {
-      label: 'Lauds', phase: 3, weight: [0, 0, 1.1, 0.9], cooldown: 5.5, band: [0, 4.6], recovery: 0.75, cat: 'string',
+      label: 'Lauds', phase: 3, weight: [0, 0, 1.3, 1.1], cooldown: 5.5, band: [0, 4.6], recovery: 0.75, cat: 'string',
       beats: [
         blow({
           tell: N, windup: LD.windup[0], damage: LD.damage[0], knockback: LD.knockback[0], zone: { kind: 'sector', r: 2.0, ang: 0.7, fwd: 0.2 }, part: 'footR', cock: 0.7,

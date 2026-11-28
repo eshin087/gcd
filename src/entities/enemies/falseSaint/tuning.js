@@ -33,6 +33,9 @@ export const TUNING = {
   minFirstWindup: 0.7,
   minHitGap: 0.45,
   // faster each phase; realise scales every unfixed windup, the minimums still hold (saint.mjs DATA)
+  // (the tuning pass tried [1, 0.92, 0.86, 0.8] / [0.8, 0.66, 0.58, 0.48]: phase 4 +5 - 9 cues a minute, but the
+  // striking bot (85 % of the cues answered, swinging at him) then lost all three seeds (it won 2 of 3 as here):
+  // kept as they were)
   windupScale: [1, 0.94, 0.88, 0.84],
   recoveryScale: [0.8, 0.72, 0.66, 0.6],
   close: { first: 3.2, next: 1.6, speed: 15 },
@@ -70,14 +73,14 @@ export const TUNING = {
   },
   idleGap: [[0.12, 0.34], [0.08, 0.24], [0.05, 0.16], [0.03, 0.1]],
   openingGap: [[0.14, 0.4], [0.1, 0.3], [0.08, 0.24], [0.06, 0.2]],
-  chain: [0.5, 0.62, 0.72, 0.8],
+  chain: [0.65, 0.72, 0.8, 0.85],
   pressure: {
     chainDepth: [3, 4, 5, 6],
-    chainRest: [[0.3, 0.55], [0.24, 0.44], [0.18, 0.36], [0.12, 0.28]],
+    chainRest: [[0.3, 0.55], [0.2, 0.4], [0.14, 0.3], [0.1, 0.22]],
     linkCut: 0.5, chainCut: 0.5,
     near: 3.3, far: 6, front: 0.9, behind: 2.2, away: 1.2,
     maxRun: [2, 3, 3, 3], overRun: 0.1, sameCat: 0.7,
-    floorAfter: [16, 14, 12, 10], floorBoost: 1.8, floorForce: 2,
+    floorAfter: [16, 12, 10, 8], floorBoost: 1.8, floorForce: 2,
     seek: { max: 2.5, every: 9 },
     farDist: 6, closerBoost: 1.8,
     maxLive: [1, 2, 2, 3],
@@ -87,8 +90,15 @@ export const TUNING = {
     holdGap: 5,
     guard: { sep: 0.3, margin: 0.06, maxHold: 0.5, maxDelay: 0.9, horizon: 1.4, pad: 0.12 },
     pursue: { margin: 0.5, after: 0.06, gap: 0.06, closeK: [1.0, 1.4, 1.6, 1.6], dashK: [1.0, 1.4, 1.5, 1.6], away: 1.2, leapLead: 0.35, blinkLead: 0.4, blinkKeep: 0.6, miss: 0, lead: 0.6, habit: 0.6, habitMax: 3, habitDecay: 0.1 },
-    // what tests/integration/saint.mjs PACE asserts: none yet (the tuning agent sets `meter` from the
-    // bots: { ramp, rampMean, minRate, maxGap })
+    // what tests/integration/saint.mjs tunePace asserts (the tuning pass, 2026-11-28; a god-mode guarding bot that
+    // roams 2.5 / 5 / 9 m, seeds 4242 / 7 / 99 x 60 s a phase): each phase at least rampMean x the one before in
+    // the seeds' mean (phase 3 only as busy as phase 2: its beams, swarm and pass join the strings), at least
+    // minRate cues a minute per seed, no gap between two cues over maxGap s, the jet step at least `steps` x as
+    // frequent as the phase before (P3, P4). Measured: 47.7 / 53.8 / 53.7 / 55.4 - 63.4 cues a minute (seeds
+    // 43.7 - 53.6, 50.3 - 56.7, 48.5 - 59.4, 53.0 - 66.1: phase 4 moved 8 a minute between two builds whose only
+    // difference was Dies Irae's plates: the seeded fights part, so the floors are loose), gaps <= 6.4 / 4.5 / 4.9 /
+    // 5.9 s, steps 0 / 1.7 / 3.7 / 3.0 - 4.3 a minute
+    meter: { rampMean: [1, 1.04, 0.97, 0.98], minRate: [40, 46, 44, 48], maxGap: [7.0, 5.2, 5.5, 6.5], steps: 0.75 },
   },
   punish: { weight: 4 },
   fullDeflect: { minHits: 5, posture: 70 },
