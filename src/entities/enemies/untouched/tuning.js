@@ -19,7 +19,11 @@ export const TUNING = {
   // barrier opens easier", hp back near 20000; a good player wins in about three minutes): 26000 -> 20000
   // with wjBarrier's cracks 2, longer openings and openDamage (bench.mjs, six seeds, the table in
   // ADR-250). Round 2: 26000 put the perfect answerer at 234 - 245 s and the fencing bot at 2 wins in 6.
-  hp: 20000,
+  // Round 4 (the owner: "it takes too much time to chip at him": a bit easier to damage): 20000 -> 16000,
+  // and a cut on the shell chips him (wjBarrier.chip). The bench, six seeds, the good bot: 20000 won 4 in 6
+  // in 163 - 211 s; the chip alone 4 in 6 in 160 - 187 s (bots seldom cut the shell; a person cuts it often);
+  // 16000 with the chip: 4 in 6 in 120 - 150 s, its two deaths with 5 % of his bar left; fencing 5 in 6.
+  hp: 16000,
   // one bar, three phases: 66 % THE BLINDFOLD COMES OFF, 30 % THE MEASURELESS
   phaseAt: [1, 0.66, 0.3],
   radius: 0.45,
@@ -120,6 +124,9 @@ export const TUNING = {
     // 147 / 166 / 191 s, the perfect bot 106 - 119 s untouched; hp 18000 at 2.2: 3 in 6; longer openings by
     // cracks (6 / 5 / 4): no change (the good bot opens him by cracks 1 - 3 times a fight)
     openDamage: 2.5,
+    // x the damage of a cut stopped on the shell that still comes off his bar (barrier._chip; round 4, the
+    // owner: "it takes too much time to chip at him"): no stagger, no posture, never his last HP
+    chip: 0.25,
     crackFade: 9, // s without a new crack: the cracks are gone
     // the stop on the hero's side: he is thrown back off the shell by this much (player.onGuarded push)
     push: 0.9,

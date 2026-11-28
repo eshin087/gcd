@@ -6,6 +6,7 @@ import { FIRE_PALETTES } from '../../../render/firePalettes.js';
 import * as SPELL_FX from './fxSpells.js';
 import * as DOMAIN_FX from './fxDomain.js';
 import * as FX_DEBUG from './fxDebug.js';
+import { createStrikes, strikeStart, strikeUpdate } from './fxStrike.js';
 
 // Bai Wuji's effects (the FX AGENT's file): Tian Lei's AscFx (the beam's helpers, the crater, the kept
 // lights, every draw on its own stream) under his own surface. Everything that glows or strikes as a
@@ -32,6 +33,7 @@ import * as FX_DEBUG from './fxDebug.js';
 //   barrierIdle(d, dt)              C  (barrier.frame) the shell up (?wjShell), its cracks, the open sign,
 //                                      the knit-back cue in the last 0.5 s
 //   barrierStop(point, dir, heavy)  1  the blade stopped on the shell at point {x,y,z}, dir {x,z} its way in
+//                                      (?wjStrike=a|b|c: the shell's silhouette lit from it, fxStrike.js)
 //   barrierCrack(n, of)             1  an ordinary parry added a crack: n of `of` (drawn on until it opens/fades)
 //   barrierOpen(d)                  1  it breaks open: shards of strokes falling, a flash of the whole shell
 //   barrierClose(d)                 1  it knits back whole
@@ -162,6 +164,7 @@ export class WjFx extends AscFx {
     this._crackAt = new Float32Array(8); // the time each crack appeared (its fresh flash)
     this._crackN = 0;
     this._knit = { alive: false, t: 0 };
+    this._strikes = createStrikes(); // the shell's silhouette on a stop (?wjStrike, fxStrike.js)
     this._openFlash = { alive: false, t: 0 };
     this._eyePrev = new THREE.Vector3();
     this._eyeOk = false;
@@ -259,6 +262,7 @@ export class WjFx extends AscFx {
   reset() {
     super.reset();
     for (const r of this._ripples) r.alive = false;
+    for (const r of this._strikes.list) r.alive = false;
     for (const s of this._shoves) s.alive = false;
     this._crackN = 0;
     this._knit.alive = false;
@@ -291,6 +295,7 @@ export class WjFx extends AscFx {
     }
     if (fdt > 0) {
       this._ripplesUpdate(fdt);
+      strikeUpdate(this, this._strikes, d, fdt);
       this._shovesUpdate(fdt);
       if (this._knit.alive) this._knitDraw(d, fdt);
       if (this._openFlash.alive) this._openFlashDraw(d, fdt);
@@ -502,10 +507,12 @@ export class WjFx extends AscFx {
       }
       if (q.t > r.t) r = q;
     }
+    // (?wjStrike=a|b|c: the shell's silhouette lit from the point takes the place of the ripple's rings)
+    const silhouette = strikeStart(this, this._strikes, d, point, heavy);
     const Q = this._onShell(point.x, point.y, point.z);
     // (a point inside the outline stays where it is; one outside is brought onto it)
     const l = Math.hypot(Q.x, Q.y);
-    r.alive = true;
+    r.alive = !silhouette;
     r.t = 0;
     r.s = l > 0.95 ? (Q.x / l) * 0.95 : Q.x;
     r.u = l > 0.95 ? (Q.y / l) * 0.95 : Q.y;
