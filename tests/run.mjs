@@ -18,7 +18,13 @@
 // runs on the machine share one pool of ABYSS_JOBS slots (default 8): two agents' `npm test` queue in
 // it instead of starting 48 processes. --only <names> runs only the tasks whose name starts with one of
 // the comma-separated names (`--only integ,life`). On CI none of this applies: it runs as before.
+//
+// --changed runs only the tasks that cover what this branch changed since it left origin/main
+// (committed, staged, unstaged and new files; --base <ref> to compare with another): tests/changed.mjs
+// holds the rules, and a file they do not know runs everything. With --list it prints the pick and why,
+// and runs nothing. It is the local check before a PR; CI still runs every task (ADR-275).
 import { spawn } from 'node:child_process';
+import { pickTasks, changedFiles } from './changed.mjs';
 import { availableParallelism, constants, setPriority, tmpdir } from 'node:os';
 import { mkdirSync, openSync, writeSync, closeSync, readFileSync, unlinkSync, rmdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -26,7 +32,7 @@ import { join, resolve } from 'node:path';
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const valueOf = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
-const VALUED = new Set(['--jobs', '--shard', '--only']);
+const VALUED = new Set(['--jobs', '--shard', '--only', '--base']);
 const root = resolve(args.find((a, i) => !a.startsWith('--') && !VALUED.has(args[i - 1])) ?? '.');
 
 // integ's TIMING scenario (a grid of placements per wyrm attack) is about two thirds of that suite,
@@ -94,6 +100,7 @@ const TASKS = [
   ['cost', ['tests/integration/cost.mjs', '.', 'all'], {}, 12],
   ['glyphcheck', ['tests/glyphcheck.mjs', '.'], {}, 1],
   ['changelogcheck', ['tests/changelogcheck.mjs', '.'], {}, 1],
+  ['changedcheck', ['tests/changedcheck.mjs', '.'], {}, 1],
 ];
 // Run on their own once the tasks above are done, one at a time: checks that read wall-clock time.
 // world's `budget` times 3600 frames of the forest's destruction and reads the 99.9th percentile (the
@@ -132,9 +139,40 @@ if (shardArg !== undefined) {
   ({ tasks, alone } = shares[i - 1]);
   label = ` (shard ${i}/${n})`;
   process.stdout.write(`shard ${i}/${n}: ${[...tasks, ...alone].map((t) => t[0]).join(', ')}\n`);
-} else if (flag('--list')) {
-  process.stdout.write(`${[...TASKS, ...ALONE].map((t) => t[0]).join(', ')}\n`);
+} else if (flag('--list') && !flag('--changed')) {
+  // --json: each task's name and the script it runs (tests/changedcheck.mjs reads it)
+  if (flag('--json')) process.stdout.write(`${JSON.stringify([...TASKS, ...ALONE].map((t) => ({ name: t[0], file: t[1][0] })))}\n`);
+  else process.stdout.write(`${[...TASKS, ...ALONE].map((t) => t[0]).join(', ')}\n`);
   process.exit(0);
+}
+
+if (flag('--changed')) {
+  if (valueOf('--only') !== undefined) { process.stdout.write('--changed and --only pick the tasks two ways: pass one\n'); process.exit(2); }
+  let got = null;
+  try { got = changedFiles(root, valueOf('--base')); } catch (e) {
+    process.stdout.write(`--changed: could not read the branch's changes (${String(e.message).split('\n')[0]}): running everything\n`);
+  }
+  if (got) {
+    const { ref, files } = got;
+    const pick = pickTasks(files, [...TASKS, ...ALONE].map((t) => ({ name: t[0], file: t[1][0] })), root);
+    const picks = (t) => [...pick.names].some((w) => t[0] === w || t[0].startsWith(`${w} `));
+    const some = (by, n) => `${by.slice(0, n).join(', ')}${by.length > n ? ` and ${by.length - n} more` : ''}`;
+    process.stdout.write(`--changed: ${files.length} file(s) changed since ${ref}\n`);
+    if (pick.all) {
+      process.stdout.write(`  everything, for ${some(pick.why.get('*'), 5)} (shared code, or no rule in tests/changed.mjs)\n`);
+    } else {
+      tasks = tasks.filter(picks);
+      alone = alone.filter(picks);
+      for (const [n, by] of pick.why) process.stdout.write(`  ${n.padEnd(15)} <- ${some(by, 4)}\n`);
+      label += ' (changed)';
+    }
+    process.stdout.write(`  ${tasks.length + alone.length} of ${TASKS.length + ALONE.length} tasks; CI runs all of them on the PR\n`);
+    if (flag('--list')) {
+      process.stdout.write(`${[...tasks, ...alone].map((t) => t[0]).join(', ')}\n`);
+      process.exit(0);
+    }
+    if (!tasks.length && !alone.length) { process.stdout.write('nothing to run\n'); process.exit(0); }
+  }
 }
 
 const onlyArg = valueOf('--only');

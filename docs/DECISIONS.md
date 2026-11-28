@@ -7940,3 +7940,33 @@ have no switch. Turned down and removed: the dark cloak values, the tall hem, th
   so what is drawn only in the fire field near the boss (his spell, the Fox's spirit) dims with the world unless
   it is bright. Open: the phone; a red wake for fists and claws if the owner wants one; on the bare-handed bosses and the Fox's
   Howl (a beam) the impact lands a stride in front of the body, not along the beam.
+
+## ADR-275 — Agents check what their branch changed before a PR (`npm test -- --changed`); CI runs the full set (2026-11-28)
+
+- **Context:** ADR-205 asked every agent to run the full `npm test` once before opening its PR. A full run
+  is about 40 tasks and ~75 minutes of work. Locally it gets 8 shared slots, so it takes at least ~10
+  minutes, and the slowest task alone takes ~5. With several agents near a PR at once they queued for
+  the same 8 slots, and the owner saw the later chats take much longer to open their PRs. CI already runs
+  every task on every PR (four shares, ADR-153), and auto-merge (ADR-185) merges only when that is green,
+  so the local full run was a second copy of the gate, paid for on the owner's PC.
+- **Decision:** before a PR, an agent runs `npm test -- --changed`: `tests/run.mjs` reads the files the
+  branch changed since it left `origin/main` (committed, staged, unstaged and new; `--base <ref>` for
+  another) and runs the tasks `tests/changed.mjs` maps them to. The first matching rule decides a file:
+  a boss's folder, level and set run his suite (and `world` for the level and set); the wyrm and
+  Cinderwood run `integ`; the living world runs `life`; the dragon print runs its four suites and
+  `world`; a suite file runs its own tasks, and a test helper the suites that import it. Docs and repo
+  housekeeping run only `changelogcheck`. Any source file adds `cost` and `glyphcheck`. Anything else
+  under `src/` runs everything: core, combat, the hero, the duelist engine, render, ui, audio, game,
+  main.js and the level registry. So do the runner and the packages. `--changed --list` prints the pick
+  and the files behind each task. When the pick is everything, the agent runs the suites its change is
+  about with `--only` and lets CI run the rest. The `changedcheck` task fails when a boss folder or a
+  level has no rule of its own, a rule names a task that is gone, or a file `BOSSES` names is gone.
+- **Why this way:** it moves the full run to CI's machines, where it already ran, instead of the owner's
+  PC. Nothing broken can merge, because the required check is unchanged. Unknown files run everything,
+  so a gap in the rules costs time, never coverage. Hand-written rules were chosen over an import graph:
+  every suite loads the whole game through `shim.mjs`, so every graph reaches everything.
+- **Consequences:** a failure the local full run used to catch now shows up in CI after the PR is open,
+  and the agent fixes it on the branch. Replayed over the last 60 merged PRs, the rules narrow 9 of them
+  (the docs, the wyrm, the bench). The other 51 touch shared code: `duelist/lookSwitch.js` (the look
+  switch table), `combat/`, `player/` or `main.js`. So most of the time saved comes from not running the
+  full set locally, not from the narrower pick. A new boss or level needs a line in `BOSSES`.
